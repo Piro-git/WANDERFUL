@@ -1,0 +1,552 @@
+import Foundation
+
+enum ActivityType: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case hiking = "Hiking"
+    case biking = "Biking"
+    case trailRunning = "Trail running"
+
+    var id: Self { self }
+
+    var symbol: String {
+        switch self {
+        case .hiking: "figure.hiking"
+        case .biking: "figure.outdoor.cycle"
+        case .trailRunning: "figure.run"
+        }
+    }
+}
+
+enum RouteDifficulty: String, CaseIterable, Hashable, Sendable {
+    case easy = "Easy"
+    case moderate = "Moderate"
+    case challenging = "Challenging"
+
+    var symbol: String {
+        switch self {
+        case .easy: "leaf.fill"
+        case .moderate: "mountain.2.fill"
+        case .challenging: "bolt.fill"
+        }
+    }
+}
+
+enum TrailRouteType: String, Hashable, Sendable {
+    case loop = "Loop"
+    case pointToPoint = "Point to point"
+    case multiDay = "Multi-day"
+}
+
+enum DesiredFeature: String, CaseIterable, Hashable, Sendable {
+    case viewpoint
+    case forest
+    case water
+    case quiet
+    case sunset
+
+    var label: String {
+        switch self {
+        case .viewpoint: "Views"
+        case .forest: "Forest"
+        case .water: "Water"
+        case .quiet: "Quiet route"
+        case .sunset: "Sunset"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .viewpoint: "binoculars.fill"
+        case .forest: "tree.fill"
+        case .water: "drop.fill"
+        case .quiet: "leaf.fill"
+        case .sunset: "sunset.fill"
+        }
+    }
+}
+
+enum AvoidFeature: String, CaseIterable, Hashable, Sendable {
+    case majorRoads
+    case steepClimbs
+
+    var label: String {
+        switch self {
+        case .majorRoads: "Avoid major roads"
+        case .steepClimbs: "Avoid steep climbs"
+        }
+    }
+}
+
+struct RoutePlanningRequest: Hashable, Sendable {
+    let routeType: TrailRouteType
+    let startQuery: String
+    let endQuery: String?
+    let activityType: ActivityType
+    let graphHopperProfile: String
+    let targetDistanceKm: Double?
+    let targetDurationMinutes: Int?
+    let difficulty: RouteDifficulty?
+    let desiredFeatures: [DesiredFeature]
+    let avoidFeatures: [AvoidFeature]
+
+    init(
+        routeType: TrailRouteType = .pointToPoint,
+        startQuery: String,
+        endQuery: String?,
+        activityType: ActivityType,
+        graphHopperProfile: String,
+        targetDistanceKm: Double?,
+        targetDurationMinutes: Int?,
+        difficulty: RouteDifficulty?,
+        desiredFeatures: [DesiredFeature],
+        avoidFeatures: [AvoidFeature] = []
+    ) {
+        self.routeType = routeType
+        self.startQuery = startQuery
+        self.endQuery = endQuery
+        self.activityType = activityType
+        self.graphHopperProfile = graphHopperProfile
+        self.targetDistanceKm = targetDistanceKm
+        self.targetDurationMinutes = targetDurationMinutes
+        self.difficulty = difficulty
+        self.desiredFeatures = desiredFeatures
+        self.avoidFeatures = avoidFeatures
+    }
+
+    init(parsedPrompt: ParsedRoutePrompt) {
+        let targetDistanceKm = parsedPrompt.preferredDistanceKilometers
+            ?? (parsedPrompt.routeType == .loop ? Self.defaultLoopDistanceKm(for: parsedPrompt.activityType) : nil)
+        self.init(
+            routeType: parsedPrompt.routeType,
+            startQuery: parsedPrompt.startLocationQuery,
+            endQuery: parsedPrompt.endLocationQuery,
+            activityType: parsedPrompt.activityType,
+            graphHopperProfile: parsedPrompt.graphHopperProfile,
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: parsedPrompt.preferredDurationHours.map { Int(($0 * 60).rounded()) },
+            difficulty: parsedPrompt.difficulty,
+            desiredFeatures: parsedPrompt.desiredFeatures,
+            avoidFeatures: parsedPrompt.difficulty == .easy ? [.steepClimbs] : []
+        )
+    }
+
+    var metadata: RoutePlanningMetadata {
+        RoutePlanningMetadata(
+            routeType: routeType,
+            activityType: activityType,
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: targetDurationMinutes,
+            difficulty: difficulty,
+            desiredFeatures: desiredFeatures,
+            avoidFeatures: avoidFeatures
+        )
+    }
+
+    func title(startName: String, endName: String) -> String {
+        if routeType == .loop {
+            return loopTitle(startName: startName)
+        }
+
+        switch activityType {
+        case .hiking:
+            return "Hike from \(startName) to \(endName)"
+        case .biking:
+            return "Bike route from \(startName) to \(endName)"
+        case .trailRunning:
+            return "Trail run from \(startName) to \(endName)"
+        }
+    }
+
+    func loopTitle(startName: String) -> String {
+        let distancePrefix = targetDistanceKm.map {
+            "\($0.formatted(.number.precision(.fractionLength($0.rounded() == $0 ? 0 : 1)))) km "
+        } ?? ""
+
+        switch activityType {
+        case .hiking:
+            return "\(distancePrefix)Hike loop around \(startName)"
+        case .biking:
+            return "\(distancePrefix)Bike loop around \(startName)"
+        case .trailRunning:
+            return "\(distancePrefix)Trail run loop around \(startName)"
+        }
+    }
+
+    static func defaultLoopDistanceKm(for activityType: ActivityType) -> Double {
+        switch activityType {
+        case .hiking:
+            return 10
+        case .trailRunning:
+            return 8
+        case .biking:
+            return 25
+        }
+    }
+}
+
+struct RoutePlanningMetadata: Hashable, Sendable {
+    let routeType: TrailRouteType
+    let activityType: ActivityType
+    let targetDistanceKm: Double?
+    let targetDurationMinutes: Int?
+    let difficulty: RouteDifficulty?
+    let desiredFeatures: [DesiredFeature]
+    let avoidFeatures: [AvoidFeature]
+    let seed: Int?
+    let variantLabel: String?
+
+    var isEmpty: Bool {
+        routeType == .pointToPoint &&
+        targetDistanceKm == nil &&
+        targetDurationMinutes == nil &&
+        difficulty == nil &&
+        desiredFeatures.isEmpty &&
+        avoidFeatures.isEmpty &&
+        seed == nil &&
+        variantLabel == nil
+    }
+
+    init(
+        routeType: TrailRouteType,
+        activityType: ActivityType,
+        targetDistanceKm: Double?,
+        targetDurationMinutes: Int?,
+        difficulty: RouteDifficulty?,
+        desiredFeatures: [DesiredFeature],
+        avoidFeatures: [AvoidFeature],
+        seed: Int? = nil,
+        variantLabel: String? = nil
+    ) {
+        self.routeType = routeType
+        self.activityType = activityType
+        self.targetDistanceKm = targetDistanceKm
+        self.targetDurationMinutes = targetDurationMinutes
+        self.difficulty = difficulty
+        self.desiredFeatures = desiredFeatures
+        self.avoidFeatures = avoidFeatures
+        self.seed = seed
+        self.variantLabel = variantLabel
+    }
+
+    func withVariant(seed: Int?, label: String?) -> RoutePlanningMetadata {
+        RoutePlanningMetadata(
+            routeType: routeType,
+            activityType: activityType,
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: targetDurationMinutes,
+            difficulty: difficulty,
+            desiredFeatures: desiredFeatures,
+            avoidFeatures: avoidFeatures,
+            seed: seed,
+            variantLabel: label
+        )
+    }
+
+    var requestedFeatureSummary: String? {
+        guard !desiredFeatures.isEmpty else { return nil }
+        return "Requested: \(desiredFeatures.map(\.label).joined(separator: ", "))"
+    }
+
+    func distanceNote(actualDistanceKm: Double) -> String? {
+        guard let targetDistanceKm else { return nil }
+        let difference = abs(actualDistanceKm - targetDistanceKm)
+        let threshold = max(2.0, targetDistanceKm * 0.2)
+        guard difference >= threshold else { return nil }
+        return "Actual route is \(actualDistanceKm.formatted(.number.precision(.fractionLength(1)))) km based on available paths."
+    }
+}
+
+enum WaypointKind: String, Hashable {
+    case start
+    case viewpoint
+    case water
+    case rest
+    case stay
+    case finish
+
+    var symbol: String {
+        switch self {
+        case .start: "location.fill"
+        case .viewpoint: "binoculars.fill"
+        case .water: "drop.fill"
+        case .rest: "cup.and.saucer.fill"
+        case .stay: "bed.double.fill"
+        case .finish: "flag.checkered"
+        }
+    }
+}
+
+struct GeoPoint: Hashable, Sendable {
+    let latitude: Double
+    let longitude: Double
+    let elevationMeters: Double?
+
+    init(latitude: Double, longitude: Double, elevationMeters: Double? = nil) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.elevationMeters = elevationMeters
+    }
+}
+
+typealias Coordinate = GeoPoint
+
+struct RouteInstruction: Identifiable, Hashable, Sendable {
+    let id: UUID
+    let text: String
+    let streetName: String?
+    let distanceMeters: Double
+    let durationSeconds: Double
+    let sign: Int
+    let coordinate: Coordinate?
+
+    init(
+        id: UUID = UUID(),
+        text: String,
+        streetName: String?,
+        distanceMeters: Double,
+        durationSeconds: Double,
+        sign: Int,
+        coordinate: Coordinate?
+    ) {
+        self.id = id
+        self.text = text
+        self.streetName = streetName
+        self.distanceMeters = distanceMeters
+        self.durationSeconds = durationSeconds
+        self.sign = sign
+        self.coordinate = coordinate
+    }
+}
+
+struct Waypoint: Identifiable, Hashable {
+    let id: UUID
+    let name: String
+    let detail: String
+    let distanceKilometers: Double
+    let kind: WaypointKind
+    let coordinate: GeoPoint
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        detail: String,
+        distanceKilometers: Double,
+        kind: WaypointKind,
+        coordinate: GeoPoint
+    ) {
+        self.id = id
+        self.name = name
+        self.detail = detail
+        self.distanceKilometers = distanceKilometers
+        self.kind = kind
+        self.coordinate = coordinate
+    }
+}
+
+struct RouteDay: Identifiable, Hashable {
+    let id: UUID
+    let dayNumber: Int
+    let title: String
+    let distanceKilometers: Double
+    let elevationGainMeters: Int
+    let durationHours: Double
+    let summary: String
+
+    init(
+        id: UUID = UUID(),
+        dayNumber: Int,
+        title: String,
+        distanceKilometers: Double,
+        elevationGainMeters: Int,
+        durationHours: Double,
+        summary: String
+    ) {
+        self.id = id
+        self.dayNumber = dayNumber
+        self.title = title
+        self.distanceKilometers = distanceKilometers
+        self.elevationGainMeters = elevationGainMeters
+        self.durationHours = durationHours
+        self.summary = summary
+    }
+}
+
+struct Highlight: Identifiable, Hashable {
+    let id: UUID
+    let title: String
+    let subtitle: String
+    let symbol: String
+
+    init(id: UUID = UUID(), title: String, subtitle: String, symbol: String) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.symbol = symbol
+    }
+}
+
+struct SafetyNote: Identifiable, Hashable {
+    enum Severity: Hashable {
+        case info
+        case caution
+    }
+
+    let id: UUID
+    let title: String
+    let message: String
+    let severity: Severity
+
+    init(id: UUID = UUID(), title: String, message: String, severity: Severity) {
+        self.id = id
+        self.title = title
+        self.message = message
+        self.severity = severity
+    }
+}
+
+struct TrailRoute: Identifiable, Hashable {
+    let id: UUID
+    let title: String
+    let location: String
+    let activity: ActivityType
+    let distanceKilometers: Double
+    let elevationGainMeters: Int
+    let elevationLossMeters: Int?
+    let durationHours: Double
+    let difficulty: RouteDifficulty
+    let routeType: TrailRouteType
+    let summary: String
+    let whyItMatches: String
+    let highlights: [Highlight]
+    let waypoints: [Waypoint]
+    let days: [RouteDay]
+    let safetyNotes: [SafetyNote]
+    let elevationProfile: [Double]
+    let path: [GeoPoint]
+    let routeInstructions: [RouteInstruction]
+    let planningMetadata: RoutePlanningMetadata?
+
+    init(
+        id: UUID,
+        title: String,
+        location: String,
+        activity: ActivityType,
+        distanceKilometers: Double,
+        elevationGainMeters: Int,
+        elevationLossMeters: Int? = nil,
+        durationHours: Double,
+        difficulty: RouteDifficulty,
+        routeType: TrailRouteType,
+        summary: String,
+        whyItMatches: String,
+        highlights: [Highlight],
+        waypoints: [Waypoint],
+        days: [RouteDay],
+        safetyNotes: [SafetyNote],
+        elevationProfile: [Double],
+        path: [GeoPoint],
+        routeInstructions: [RouteInstruction] = [],
+        planningMetadata: RoutePlanningMetadata? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.location = location
+        self.activity = activity
+        self.distanceKilometers = distanceKilometers
+        self.elevationGainMeters = elevationGainMeters
+        self.elevationLossMeters = elevationLossMeters
+        self.durationHours = durationHours
+        self.difficulty = difficulty
+        self.routeType = routeType
+        self.summary = summary
+        self.whyItMatches = whyItMatches
+        self.highlights = highlights
+        self.waypoints = waypoints
+        self.days = days
+        self.safetyNotes = safetyNotes
+        self.elevationProfile = elevationProfile
+        self.path = path
+        self.routeInstructions = routeInstructions
+        self.planningMetadata = planningMetadata
+    }
+
+    var distanceLabel: String {
+        distanceKilometers.formatted(.number.precision(.fractionLength(distanceKilometers.rounded() == distanceKilometers ? 0 : 1))) + " km"
+    }
+
+    var elevationLabel: String {
+        elevationGainMeters.formatted() + " m"
+    }
+
+    var durationMinutes: Int {
+        Int((durationHours * 60).rounded())
+    }
+
+    var durationLabel: String {
+        if durationHours >= 12, !days.isEmpty {
+            return "\(days.count) days"
+        }
+        let hours = Int(durationHours)
+        let minutes = Int((durationHours - Double(hours)) * 60)
+        return minutes == 0 ? "\(hours) hr" : "\(hours) hr \(minutes) min"
+    }
+
+    func withPlanningMetadata(_ metadata: RoutePlanningMetadata?) -> TrailRoute {
+        TrailRoute(
+            id: id,
+            title: title,
+            location: location,
+            activity: activity,
+            distanceKilometers: distanceKilometers,
+            elevationGainMeters: elevationGainMeters,
+            elevationLossMeters: elevationLossMeters,
+            durationHours: durationHours,
+            difficulty: difficulty,
+            routeType: routeType,
+            summary: summary,
+            whyItMatches: whyItMatches,
+            highlights: highlights,
+            waypoints: waypoints,
+            days: days,
+            safetyNotes: safetyNotes,
+            elevationProfile: elevationProfile,
+            path: path,
+            routeInstructions: routeInstructions,
+            planningMetadata: metadata
+        )
+    }
+}
+
+struct AdventureIntent: Hashable, Sendable {
+    var prompt: String
+    var activity: ActivityType
+    var preferredDistanceKilometers: ClosedRange<Double>?
+    var durationHours: Double?
+    var desiredFeatures: [String]
+    var avoids: [String]
+    var locationHint: String?
+}
+
+struct RouteSuggestion: Identifiable, Hashable {
+    let id: UUID
+    let route: TrailRoute
+    let matchScore: Int
+    let explanation: String
+
+    init(id: UUID = UUID(), route: TrailRoute, matchScore: Int, explanation: String) {
+        self.id = id
+        self.route = route
+        self.matchScore = matchScore
+        self.explanation = explanation
+    }
+}
+
+struct UserPreferences: Hashable {
+    var preferredActivity: ActivityType = .hiking
+    var fitnessLevel: RouteDifficulty = .moderate
+    var preferredDistanceKilometers: Double = 15
+    var avoidsSteepClimbs = false
+    var interests: Set<String> = ["Views", "Forest", "Waterfalls"]
+    var cautiousSafetyMode = true
+    var prefersOfflineMaps = true
+    var hapticsEnabled = true
+}

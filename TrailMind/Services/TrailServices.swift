@@ -1,0 +1,212 @@
+import CoreLocation
+import Foundation
+import MapKit
+
+protocol AIPlannerService: Sendable {
+    func parseAdventurePrompt(prompt: String) async throws -> AdventureIntent
+    func generateRouteSuggestions(intent: AdventureIntent) async throws -> [TrailRoute]
+    func editRoute(route: TrailRoute, instruction: String) async throws -> TrailRoute
+}
+
+protocol RoutingService: Sendable {
+    func calculateRoute(waypoints: [Waypoint]) async throws -> TrailRoute
+    func getElevationProfile(route: TrailRoute) async throws -> [Double]
+}
+
+protocol MapService: Sendable {
+    func getMapPreview(route: TrailRoute) -> MKCoordinateRegion
+    func getRoutePolyline(route: TrailRoute) -> MKPolyline
+}
+
+protocol GPXService: Sendable {
+    func exportRouteAsGPX(route: TrailRoute) throws -> String
+}
+
+protocol LocationService: AnyObject {
+    func requestLocationPermission()
+    func getCurrentLocation() -> CLLocation?
+    func startTracking()
+    func stopTracking()
+}
+
+enum TrailServiceError: LocalizedError {
+    case noWaypoints
+
+    var errorDescription: String? {
+        switch self {
+        case .noWaypoints: "A route needs at least one waypoint."
+        }
+    }
+}
+
+struct MockAIPlannerService: AIPlannerService {
+    func parseAdventurePrompt(prompt: String) async throws -> AdventureIntent {
+        // TODO: Replace this deterministic parser with the production AI planner endpoint.
+        let lowercased = prompt.lowercased()
+        let activity: ActivityType = lowercased.contains("bike") ? .biking : (lowercased.contains("run") ? .trailRunning : .hiking)
+        let features = ["waterfall", "forest", "view", "water", "quiet"].filter(lowercased.contains)
+        let avoids = ["steep", "crowded"].filter(lowercased.contains)
+
+        return AdventureIntent(
+            prompt: prompt,
+            activity: activity,
+            preferredDistanceKilometers: lowercased.contains("12 km") ? 10...14 : nil,
+            durationHours: lowercased.contains("3 hour") ? 3 : nil,
+            desiredFeatures: features,
+            avoids: avoids,
+            locationHint: lowercased.contains("lüneburg") ? "Lüneburg" : (lowercased.contains("harz") ? "Harz" : nil)
+        )
+    }
+
+    func generateRouteSuggestions(intent: AdventureIntent) async throws -> [TrailRoute] {
+        // TODO: Send the parsed intent to routing, weather and safety services.
+        if intent.prompt.lowercased().contains("lüneburg") {
+            return [MockRoutes.luneburgLoop, MockRoutes.sunsetRidge, MockRoutes.harzWeekend]
+        }
+        if intent.prompt.lowercased().contains("sunset") || intent.durationHours == 3 {
+            return [MockRoutes.sunsetRidge, MockRoutes.luneburgLoop, MockRoutes.harzWeekend]
+        }
+        return MockRoutes.all
+    }
+
+    func editRoute(route: TrailRoute, instruction: String) async throws -> TrailRoute {
+        // TODO: Apply an AI-produced route diff, then validate it with the routing service.
+        let lowercased = instruction.lowercased()
+        if lowercased.contains("short") || lowercased.contains("less elevation") {
+            return route.edited(
+                title: route.title + " · Easier",
+                distanceKilometers: max(route.distanceKilometers * 0.82, 4),
+                elevationGainMeters: Int(Double(route.elevationGainMeters) * 0.72),
+                durationHours: route.durationHours * 0.82,
+                summary: "A gentler revision with the key scenery preserved and the steepest section removed."
+            )
+        }
+        return route.edited(
+            title: route.title + " · Scenic",
+            summary: "A refined version that adds a scenic pause while preserving the route’s overall rhythm."
+        )
+    }
+}
+
+struct MockRoutingService: RoutingService {
+    func calculateRoute(waypoints: [Waypoint]) async throws -> TrailRoute {
+        // TODO: Call the selected routing provider with activity-specific constraints.
+        guard !waypoints.isEmpty else { throw TrailServiceError.noWaypoints }
+        return MockRoutes.luneburgLoop
+    }
+
+    func getElevationProfile(route: TrailRoute) async throws -> [Double] {
+        // TODO: Sample a production elevation model along the decoded route geometry.
+        route.elevationProfile
+    }
+}
+
+struct DefaultMapService: MapService {
+    func getMapPreview(route: TrailRoute) -> MKCoordinateRegion {
+        guard let first = route.path.first else {
+            return MKCoordinateRegion(center: .init(latitude: 51.16, longitude: 10.45), span: .init(latitudeDelta: 2, longitudeDelta: 2))
+        }
+
+        let latitudes = route.path.map(\.latitude)
+        let longitudes = route.path.map(\.longitude)
+        let center = CLLocationCoordinate2D(
+            latitude: (latitudes.min()! + latitudes.max()!) / 2,
+            longitude: (longitudes.min()! + longitudes.max()!) / 2
+        )
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((latitudes.max()! - latitudes.min()!) * 1.65, 0.03),
+            longitudeDelta: max((longitudes.max()! - longitudes.min()!) * 1.65, 0.03)
+        )
+        _ = first
+        return MKCoordinateRegion(center: center, span: span)
+    }
+
+    func getRoutePolyline(route: TrailRoute) -> MKPolyline {
+        let coordinates = route.path.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        return MKPolyline(coordinates: coordinates, count: coordinates.count)
+    }
+}
+
+struct DefaultGPXService: GPXService {
+    func exportRouteAsGPX(route: TrailRoute) throws -> String {
+        // TODO: Add full metadata, timestamps and route-point extensions before file sharing ships.
+        let points = route.path.map {
+            #"    <trkpt lat="\#($0.latitude)" lon="\#($0.longitude)"></trkpt>"#
+        }.joined(separator: "\n")
+
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <gpx version="1.1" creator="TrailMind">
+          <metadata><name>\(route.title)</name></metadata>
+          <trk><name>\(route.title)</name><trkseg>
+        \(points)
+          </trkseg></trk>
+        </gpx>
+        """
+    }
+}
+
+@Observable
+final class DefaultLocationService: NSObject, LocationService, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private(set) var currentLocation: CLLocation?
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+    }
+
+    func requestLocationPermission() {
+        manager.requestWhenInUseAuthorization()
+    }
+
+    func getCurrentLocation() -> CLLocation? {
+        currentLocation
+    }
+
+    func startTracking() {
+        // TODO: Persist energy-efficient navigation samples when active guidance is implemented.
+        manager.startUpdatingLocation()
+    }
+
+    func stopTracking() {
+        manager.stopUpdatingLocation()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        currentLocation = locations.last
+    }
+}
+
+private extension TrailRoute {
+    func edited(
+        title: String? = nil,
+        distanceKilometers: Double? = nil,
+        elevationGainMeters: Int? = nil,
+        durationHours: Double? = nil,
+        summary: String? = nil
+    ) -> TrailRoute {
+        TrailRoute(
+            id: id,
+            title: title ?? self.title,
+            location: location,
+            activity: activity,
+            distanceKilometers: distanceKilometers ?? self.distanceKilometers,
+            elevationGainMeters: elevationGainMeters ?? self.elevationGainMeters,
+            elevationLossMeters: elevationLossMeters,
+            durationHours: durationHours ?? self.durationHours,
+            difficulty: difficulty,
+            routeType: routeType,
+            summary: summary ?? self.summary,
+            whyItMatches: whyItMatches,
+            highlights: highlights,
+            waypoints: waypoints,
+            days: days,
+            safetyNotes: safetyNotes,
+            elevationProfile: elevationProfile,
+            path: path,
+            routeInstructions: routeInstructions
+        )
+    }
+}

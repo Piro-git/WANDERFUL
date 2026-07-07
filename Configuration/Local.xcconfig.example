@@ -1,0 +1,3 @@
+// Copy this file to Local.xcconfig and replace the placeholder.
+// Never commit Local.xcconfig.
+GRAPHHOPPER_API_KEY = paste_your_graphhopper_api_key_here

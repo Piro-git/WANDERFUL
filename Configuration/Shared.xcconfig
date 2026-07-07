@@ -1,0 +1,3 @@
+// Safe default for fresh checkouts. Local.xcconfig is optional and gitignored.
+GRAPHHOPPER_API_KEY =
+#include? "Local.xcconfig"

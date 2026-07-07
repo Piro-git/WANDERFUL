@@ -1,0 +1,7 @@
+# Local developer configuration and secrets
+Configuration/Local.xcconfig
+
+# Xcode user state
+*.xcuserstate
+xcuserdata/
+DerivedData/

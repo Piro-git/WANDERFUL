@@ -1,0 +1,149 @@
+import SwiftUI
+
+struct OnboardingView: View {
+    struct Page {
+        let eyebrow: String
+        let title: String
+        let body: String
+        let symbol: String
+    }
+
+    @Environment(TrailTheme.self) private var theme
+    @Binding var isComplete: Bool
+    @State private var selectedPage = 0
+
+    private let pages = [
+        Page(
+            eyebrow: "PLAN NATURALLY",
+            title: "Say what kind of day you need.",
+            body: "A quiet forest loop. A hard summit. Two days of waterfalls and somewhere warm to sleep.",
+            symbol: "waveform"
+        ),
+        Page(
+            eyebrow: "ROUTES WITH REASONS",
+            title: "Not just a line on a map.",
+            body: "TrailMind balances distance, elevation, highlights, practical stops and the shape of your time.",
+            symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
+        ),
+        Page(
+            eyebrow: "STAY OUTDOOR-SMART",
+            title: "Adventure, with judgment built in.",
+            body: "Every plan includes context to review—conditions, water, exposure and the details that matter outside.",
+            symbol: "shield.lefthalf.filled.badge.checkmark"
+        )
+    ]
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [theme.forest, Color(red: 0.05, green: 0.29, blue: 0.21)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            ContourLines()
+                .stroke(.white.opacity(0.08), lineWidth: 1)
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    TrailMindMark()
+                    Spacer()
+                    Text("\(selectedPage + 1) / \(pages.count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.66))
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+
+                TabView(selection: $selectedPage) {
+                    ForEach(pages.indices, id: \.self) { index in
+                        OnboardingPageView(page: pages[index])
+                            .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                Button {
+                    if selectedPage < pages.count - 1 {
+                        withAnimation(.snappy) { selectedPage += 1 }
+                    } else {
+                        isComplete = true
+                    }
+                } label: {
+                    HStack {
+                        Text(selectedPage == pages.count - 1 ? "Start planning" : "Continue")
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.headline)
+                    .foregroundStyle(theme.forest)
+                    .padding(.horizontal, 20)
+                    .frame(height: 58)
+                    .background(theme.warmWhite, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(24)
+                .accessibilityIdentifier("onboarding.continue")
+            }
+        }
+    }
+}
+
+private struct OnboardingPageView: View {
+    @Environment(TrailTheme.self) private var theme
+    let page: OnboardingView.Page
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(theme.moss.opacity(0.24))
+                    .frame(width: 180, height: 180)
+                Circle()
+                    .stroke(.white.opacity(0.16), lineWidth: 1)
+                    .frame(width: 142, height: 142)
+                Image(systemName: page.symbol)
+                    .font(.system(size: 58, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(theme.sand)
+            }
+            .frame(maxWidth: .infinity)
+
+            Spacer()
+
+            Text(page.eyebrow)
+                .font(.caption.weight(.bold))
+                .tracking(1.5)
+                .foregroundStyle(theme.mossSoft)
+
+            Text(page.title)
+                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(page.body)
+                .font(.title3)
+                .foregroundStyle(.white.opacity(0.7))
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 14)
+    }
+}
+
+struct TrailMindMark: View {
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
+                .font(.headline)
+            Text("TrailMind")
+                .font(.headline.weight(.bold))
+        }
+        .foregroundStyle(.white)
+    }
+}
