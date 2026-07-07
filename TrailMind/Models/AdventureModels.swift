@@ -526,17 +526,62 @@ struct AdventureIntent: Hashable, Sendable {
     var locationHint: String?
 }
 
+struct RouteSuggestionDebugMetadata: Hashable, Sendable {
+    let targetDistanceKm: Double?
+    let actualDistanceKm: Double
+    let distanceRatio: Double?
+    let overlapRatio: Double?
+    let shapeQualityScore: Double?
+    let radiusKm: Double?
+    let bearingSeed: Int?
+    let bearingPattern: String?
+    let provider: String
+    let rejectionReason: String?
+
+    init(
+        targetDistanceKm: Double?,
+        actualDistanceKm: Double,
+        distanceRatio: Double?,
+        overlapRatio: Double? = nil,
+        shapeQualityScore: Double? = nil,
+        radiusKm: Double?,
+        bearingSeed: Int?,
+        bearingPattern: String? = nil,
+        provider: String,
+        rejectionReason: String?
+    ) {
+        self.targetDistanceKm = targetDistanceKm
+        self.actualDistanceKm = actualDistanceKm
+        self.distanceRatio = distanceRatio
+        self.overlapRatio = overlapRatio
+        self.shapeQualityScore = shapeQualityScore
+        self.radiusKm = radiusKm
+        self.bearingSeed = bearingSeed
+        self.bearingPattern = bearingPattern
+        self.provider = provider
+        self.rejectionReason = rejectionReason
+    }
+}
+
 struct RouteSuggestion: Identifiable, Hashable {
     let id: UUID
     let route: TrailRoute
     let matchScore: Int
     let explanation: String
+    let debugMetadata: RouteSuggestionDebugMetadata?
 
-    init(id: UUID = UUID(), route: TrailRoute, matchScore: Int, explanation: String) {
+    init(
+        id: UUID = UUID(),
+        route: TrailRoute,
+        matchScore: Int,
+        explanation: String,
+        debugMetadata: RouteSuggestionDebugMetadata? = nil
+    ) {
         self.id = id
         self.route = route
         self.matchScore = matchScore
         self.explanation = explanation
+        self.debugMetadata = debugMetadata
     }
 }
 
