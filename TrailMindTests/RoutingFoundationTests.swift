@@ -377,6 +377,85 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(suggestions.first?.debugMetadata?.bearingSeed, 11)
     }
 
+    func testRouteQualityExplanationsDescribeCloseLoopUsingRealRouteData() {
+        let route = Self.route(distanceKm: 15.4).withPlanningMetadata(
+            Self.request(routeType: .loop, endQuery: nil, targetDistanceKm: 15).metadata.withVariant(
+                seed: 11,
+                label: "Closest Match"
+            )
+        )
+
+        let explanations = RouteQualityExplanationGenerator.explanations(for: route)
+
+        XCTAssertEqual(explanations.map(\.title), [
+            "Close to your target distance",
+            "Loop route"
+        ])
+        XCTAssertTrue(explanations.first?.detail?.hasPrefix("Actual 15") == true)
+        XCTAssertTrue(explanations.first?.detail?.hasSuffix("vs requested 15 km.") == true)
+    }
+
+    func testRouteQualityExplanationsDescribeShorterAndLongerDistanceFit() {
+        let shorter = Self.route(distanceKm: 11.8)
+        let longer = Self.route(distanceKm: 18.4)
+
+        XCTAssertEqual(
+            RouteQualityExplanationGenerator.explanations(for: shorter).first?.title,
+            "Shorter than target"
+        )
+        XCTAssertEqual(
+            RouteQualityExplanationGenerator.explanations(for: longer).first?.title,
+            "Longer than target"
+        )
+    }
+
+    func testRouteQualityExplanationsUseDebugOverlapOnlyWhenAvailable() {
+        let route = Self.route(distanceKm: 15)
+        let debugMetadata = RouteSuggestionDebugMetadata(
+            targetDistanceKm: 15,
+            actualDistanceKm: 15,
+            distanceRatio: 1,
+            overlapRatio: 0.04,
+            shapeQualityScore: 0.82,
+            radiusKm: 2.4,
+            bearingSeed: 11,
+            provider: "LoopFallbackProvider",
+            rejectionReason: nil
+        )
+
+        let explanations = RouteQualityExplanationGenerator.explanations(
+            for: route,
+            debugMetadata: debugMetadata
+        )
+
+        XCTAssertTrue(explanations.map(\.title).contains("Low repeated path"))
+        XCTAssertTrue(explanations.map(\.title).contains("Calculated from live trail-network data"))
+    }
+
+    func testRouteQualityExplanationsKeepRequestedFeaturesOutOfVerifiedClaims() {
+        let metadata = RoutePlanningMetadata(
+            routeType: .loop,
+            activityType: .hiking,
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [.viewpoint, .forest, .quiet],
+            avoidFeatures: [],
+            seed: 11,
+            variantLabel: "Closest Match"
+        )
+        let route = Self.route(distanceKm: 15).withPlanningMetadata(metadata)
+
+        let explanationText = RouteQualityExplanationGenerator.explanations(for: route)
+            .flatMap { [$0.title, $0.detail ?? ""] }
+            .joined(separator: " ")
+
+        XCTAssertFalse(explanationText.localizedCaseInsensitiveContains("view"))
+        XCTAssertFalse(explanationText.localizedCaseInsensitiveContains("forest"))
+        XCTAssertFalse(explanationText.localizedCaseInsensitiveContains("quiet"))
+        XCTAssertEqual(metadata.requestedFeatureSummary, "Requested: Views, Forest, Quiet route")
+    }
+
     private static let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
     private static let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
 

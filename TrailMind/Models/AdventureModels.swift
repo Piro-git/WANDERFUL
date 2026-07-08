@@ -255,6 +255,179 @@ struct RoutePlanningMetadata: Hashable, Sendable {
     }
 }
 
+struct RouteQualityExplanation: Identifiable, Hashable, Sendable {
+    let title: String
+    let detail: String?
+    let symbol: String
+
+    var id: String {
+        [title, detail, symbol].compactMap(\.self).joined(separator: "|")
+    }
+}
+
+enum RouteQualityExplanationGenerator {
+    static func explanations(
+        for route: TrailRoute,
+        debugMetadata: RouteSuggestionDebugMetadata? = nil,
+        maximumCount: Int = 4
+    ) -> [RouteQualityExplanation] {
+        var explanations: [RouteQualityExplanation] = []
+
+        if let metadata = route.planningMetadata {
+            appendDistanceExplanation(
+                route: route,
+                metadata: metadata,
+                to: &explanations
+            )
+
+            if metadata.routeType == .loop || route.routeType == .loop {
+                explanations.append(
+                    RouteQualityExplanation(
+                        title: "Loop route",
+                        detail: "Starts and finishes at the same area.",
+                        symbol: "arrow.trianglehead.2.clockwise.rotate.90"
+                    )
+                )
+            }
+
+            appendVariantExplanation(metadata: metadata, to: &explanations)
+        }
+
+        if let debugMetadata,
+           route.routeType == .loop,
+           let overlapRatio = debugMetadata.overlapRatio,
+           overlapRatio <= 0.10
+        {
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Low repeated path",
+                    detail: "Measured overlap is \(Self.percentLabel(overlapRatio)).",
+                    symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
+                )
+            )
+        }
+
+        if hasLiveRoutingEvidence(route: route, debugMetadata: debugMetadata) {
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Calculated from live trail-network data",
+                    detail: "Distance, duration and elevation come from routed geometry.",
+                    symbol: "map.fill"
+                )
+            )
+        }
+
+        return Array(unique(explanations).prefix(maximumCount))
+    }
+
+    private static func appendDistanceExplanation(
+        route: TrailRoute,
+        metadata: RoutePlanningMetadata,
+        to explanations: inout [RouteQualityExplanation]
+    ) {
+        guard let targetDistanceKm = metadata.targetDistanceKm, targetDistanceKm > 0 else { return }
+
+        let actualDistanceKm = route.distanceKilometers
+        let difference = actualDistanceKm - targetDistanceKm
+        let tolerance = max(1.0, targetDistanceKm * 0.12)
+        let detail = "Actual \(Self.distanceLabel(actualDistanceKm)) vs requested \(Self.distanceLabel(targetDistanceKm))."
+
+        if abs(difference) <= tolerance {
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Close to your target distance",
+                    detail: detail,
+                    symbol: "ruler"
+                )
+            )
+        } else if difference < 0 {
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Shorter than target",
+                    detail: detail,
+                    symbol: "minus.circle.fill"
+                )
+            )
+        } else {
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Longer than target",
+                    detail: detail,
+                    symbol: "plus.circle.fill"
+                )
+            )
+        }
+    }
+
+    private static func appendVariantExplanation(
+        metadata: RoutePlanningMetadata,
+        to explanations: inout [RouteQualityExplanation]
+    ) {
+        switch metadata.variantLabel {
+        case "Easier Option":
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Easier elevation option",
+                    detail: "Lower climb among the generated route variants.",
+                    symbol: "leaf.fill"
+                )
+            )
+        case "More Elevation":
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "More elevation option",
+                    detail: "Higher climb among the generated route variants.",
+                    symbol: "mountain.2.fill"
+                )
+            )
+        case "Shorter Loop":
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Shorter loop option",
+                    detail: "A shorter generated variant for comparison.",
+                    symbol: "minus.circle.fill"
+                )
+            )
+        case "Longer Loop":
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Longer loop option",
+                    detail: "A longer generated variant for comparison.",
+                    symbol: "plus.circle.fill"
+                )
+            )
+        default:
+            break
+        }
+    }
+
+    private static func hasLiveRoutingEvidence(
+        route: TrailRoute,
+        debugMetadata: RouteSuggestionDebugMetadata?
+    ) -> Bool {
+        if !route.routeInstructions.isEmpty {
+            return true
+        }
+
+        return debugMetadata?.provider == "LoopFallbackProvider"
+    }
+
+    private static func unique(_ explanations: [RouteQualityExplanation]) -> [RouteQualityExplanation] {
+        var seen = Set<String>()
+        return explanations.filter { explanation in
+            seen.insert(explanation.title).inserted
+        }
+    }
+
+    private static func distanceLabel(_ distanceKm: Double) -> String {
+        distanceKm.formatted(.number.precision(.fractionLength(distanceKm.rounded() == distanceKm ? 0 : 1))) + " km"
+    }
+
+    private static func percentLabel(_ ratio: Double) -> String {
+        ratio.formatted(.percent.precision(.fractionLength(0)))
+    }
+}
+
 enum WaypointKind: String, Hashable {
     case start
     case viewpoint

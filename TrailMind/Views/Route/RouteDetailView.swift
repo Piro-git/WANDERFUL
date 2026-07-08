@@ -154,6 +154,11 @@ struct RouteDetailView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(theme.moss)
                 }
+
+                let qualityExplanations = RouteQualityExplanationGenerator.explanations(for: route)
+                if !qualityExplanations.isEmpty {
+                    RouteQualityExplanationList(explanations: qualityExplanations)
+                }
             }
             .trailCard()
         }

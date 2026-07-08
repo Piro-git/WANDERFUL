@@ -5,6 +5,17 @@ struct RouteCard: View {
     @Environment(TrailTheme.self) private var theme
     let route: TrailRoute
     let matchScore: Int?
+    let qualityExplanations: [RouteQualityExplanation]
+
+    init(
+        route: TrailRoute,
+        matchScore: Int?,
+        qualityExplanations: [RouteQualityExplanation] = []
+    ) {
+        self.route = route
+        self.matchScore = matchScore
+        self.qualityExplanations = qualityExplanations
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -54,6 +65,10 @@ struct RouteCard: View {
                 cardStat(route.durationLabel, label: "Time")
             }
 
+            if !qualityExplanations.isEmpty {
+                RouteQualityChipRow(explanations: qualityExplanations)
+            }
+
             HStack(spacing: 8) {
                 ForEach(route.highlights.prefix(3)) { highlight in
                     Image(systemName: highlight.symbol)
@@ -95,6 +110,126 @@ struct RouteCard: View {
 
     private var badgeSymbol: String {
         route.planningMetadata?.variantLabel == nil ? "sparkles" : "arrow.trianglehead.2.clockwise.rotate.90"
+    }
+}
+
+struct RouteQualityChipRow: View {
+    @Environment(TrailTheme.self) private var theme
+    let explanations: [RouteQualityExplanation]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Why this route fits")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(theme.graphite)
+
+            FlowLayout(spacing: 8, rowSpacing: 8) {
+                ForEach(explanations) { explanation in
+                    Label(explanation.title, systemImage: explanation.symbol)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(theme.forest)
+                        .lineLimit(1)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
+                        .background(theme.mossSoft.opacity(0.52), in: Capsule())
+                }
+            }
+        }
+        .padding(12)
+        .background(theme.warmWhite.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+struct RouteQualityExplanationList: View {
+    @Environment(TrailTheme.self) private var theme
+    let explanations: [RouteQualityExplanation]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Why this route fits")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(theme.graphite)
+
+            ForEach(explanations) { explanation in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: explanation.symbol)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(theme.forest)
+                        .frame(width: 24, height: 24)
+                        .background(theme.mossSoft.opacity(0.62), in: Circle())
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(explanation.title)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(theme.graphite)
+                        if let detail = explanation.detail {
+                            Text(detail)
+                                .font(.caption)
+                                .foregroundStyle(theme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(theme.warmWhite.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat
+    var rowSpacing: CGFloat
+
+    init(spacing: CGFloat, rowSpacing: CGFloat? = nil) {
+        self.spacing = spacing
+        self.rowSpacing = rowSpacing ?? spacing
+    }
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        let result = layout(proposal: proposal, subviews: subviews)
+        return result.size
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let result = layout(proposal: proposal, subviews: subviews)
+        for (index, point) in result.points.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y),
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, points: [CGPoint]) {
+        let maxWidth = proposal.width ?? 300
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var points: [CGPoint] = []
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth, x > 0 {
+                x = 0
+                y += rowHeight + rowSpacing
+                rowHeight = 0
+            }
+            points.append(CGPoint(x: x, y: y))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+
+        return (CGSize(width: maxWidth, height: y + rowHeight), points)
     }
 }
 

@@ -105,7 +105,15 @@ struct RouteSuggestionsView: View {
 
                 ForEach(suggestions) { suggestion in
                     NavigationLink(value: suggestion.route) {
-                        RouteCard(route: suggestion.route, matchScore: suggestion.matchScore)
+                        RouteCard(
+                            route: suggestion.route,
+                            matchScore: suggestion.matchScore,
+                            qualityExplanations: RouteQualityExplanationGenerator.explanations(
+                                for: suggestion.route,
+                                debugMetadata: suggestion.debugMetadata,
+                                maximumCount: 3
+                            )
+                        )
                     }
                     .buttonStyle(.plain)
                 }
