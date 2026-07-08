@@ -55,6 +55,12 @@ struct RouteCard: View {
                     .foregroundStyle(theme.secondaryText)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+
+                #if DEBUG
+                if let intentDebugMetadata = route.intentDebugMetadata {
+                    IntentSourceDebugBadge(metadata: intentDebugMetadata)
+                }
+                #endif
             }
 
             HStack(spacing: 0) {
@@ -112,6 +118,30 @@ struct RouteCard: View {
         route.planningMetadata?.variantLabel == nil ? "sparkles" : "arrow.trianglehead.2.clockwise.rotate.90"
     }
 }
+
+#if DEBUG
+private struct IntentSourceDebugBadge: View {
+    @Environment(TrailTheme.self) private var theme
+    let metadata: RouteIntentDebugMetadata
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: metadata.localFallbackUsed ? "arrow.uturn.backward.circle.fill" : "sparkles")
+                .font(.caption2.weight(.bold))
+            Text(IntentDebugFormatter.parserSourceLabel(metadata.intent.parserSource))
+                .font(.caption2.weight(.bold))
+            Text(metadata.localFallbackUsed ? "fallback" : "primary")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(theme.secondaryText)
+        }
+        .foregroundStyle(theme.forest)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(theme.mossSoft.opacity(0.5), in: Capsule())
+        .accessibilityLabel("Intent parser source \(IntentDebugFormatter.parserSourceLabel(metadata.intent.parserSource))")
+    }
+}
+#endif
 
 struct RouteQualityChipRow: View {
     @Environment(TrailTheme.self) private var theme

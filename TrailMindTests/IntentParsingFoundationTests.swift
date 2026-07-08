@@ -119,6 +119,50 @@ final class IntentParsingFoundationTests: XCTestCase {
         }
     }
 
+    func testIntentDebugFormatterIncludesParserFallbackAndIntentFields() {
+        let intent = ValidatedAdventureIntent(
+            intent: AdventureIntent(
+                rawPrompt: "15 km Rundwanderung um Schierke mit Aussicht",
+                parserSource: .localRuleBased,
+                confidence: 0.72,
+                activityType: .hiking,
+                routeType: .loop,
+                startLocationQuery: "Schierke",
+                endLocationQuery: nil,
+                regionQuery: nil,
+                targetDistanceKm: 15,
+                targetDurationMinutes: nil,
+                difficulty: .easy,
+                desiredFeatures: [.viewpoint],
+                avoidFeatures: [.steepClimbs]
+            )
+        )
+        let metadata = RouteIntentDebugMetadata(
+            intent: intent,
+            geocodedStartLabel: "Schierke",
+            geocodedEndLabel: nil
+        )
+
+        let rows = IntentDebugFormatter.rows(for: metadata)
+        let values = Dictionary(uniqueKeysWithValues: rows.map { ($0.label, $0.value) })
+
+        XCTAssertEqual(values["parserSource"], "localRuleBased")
+        XCTAssertEqual(values["validationStatus"], "validated")
+        XCTAssertEqual(values["localFallbackUsed"], "yes")
+        XCTAssertEqual(values["rawPrompt"], "15 km Rundwanderung um Schierke mit Aussicht")
+        XCTAssertEqual(values["activityType"], "Hiking")
+        XCTAssertEqual(values["routeType"], "Loop")
+        XCTAssertEqual(values["startLocationQuery"], "Schierke")
+        XCTAssertEqual(values["endLocationQuery"], "nil")
+        XCTAssertEqual(values["targetDistanceKm"], "15 km")
+        XCTAssertEqual(values["difficulty"], "Easy")
+        XCTAssertEqual(values["desiredFeatures"], "viewpoint")
+        XCTAssertEqual(values["avoidFeatures"], "steepClimbs")
+        XCTAssertEqual(values["transportMode"], "walking")
+        XCTAssertTrue(values["confidence"] == "0.72" || values["confidence"] == "0,72")
+        XCTAssertEqual(values["geocodedStartLabel"], "Schierke")
+    }
+
     func testFixturePromptEvalCoversCurrentLocalParserContract() async throws {
         let fixtures = try Self.loadFixtures()
         XCTAssertGreaterThanOrEqual(fixtures.count, 20)

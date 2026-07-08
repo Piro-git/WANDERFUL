@@ -224,7 +224,9 @@ private extension TrailRoute {
             safetyNotes: safetyNotes,
             elevationProfile: elevationProfile,
             path: path,
-            routeInstructions: routeInstructions
+            routeInstructions: routeInstructions,
+            planningMetadata: planningMetadata,
+            intentDebugMetadata: intentDebugMetadata
         )
     }
 }

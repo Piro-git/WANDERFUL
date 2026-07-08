@@ -188,14 +188,29 @@ final class PlannerViewModel {
         generationStep = 3
         try await Task.sleep(for: .milliseconds(300))
         suggestionNotice = routingResult.notice
+        let intentDebugMetadata = RouteIntentDebugMetadata(
+            intent: validatedIntent,
+            validationStatus: "validated",
+            geocodedStartLabel: planningRequest.startQuery,
+            geocodedEndLabel: planningRequest.endQuery
+        )
+        let debugSuggestions = routingResult.suggestions.map { suggestion in
+            RouteSuggestion(
+                id: suggestion.id,
+                route: suggestion.route.withIntentDebugMetadata(intentDebugMetadata),
+                matchScore: suggestion.matchScore,
+                explanation: suggestion.explanation,
+                debugMetadata: suggestion.debugMetadata
+            )
+        }
 
-        if routingResult.suggestions.count > 1 {
-            suggestions = routingResult.suggestions
+        if debugSuggestions.count > 1 {
+            suggestions = debugSuggestions
             phase = .suggestions
             return
         }
 
-        guard let route = routingResult.suggestions.first?.route else {
+        guard let route = debugSuggestions.first?.route else {
             throw GraphHopperError.noRouteFound
         }
         generatedRoute = route

@@ -880,22 +880,23 @@ Do not use full interactive Maps inside every card unless performance is clearly
 When working on this repo:
 
 1. Read this file before making changes.
-2. Keep the scope narrow.
-3. Do not redesign the UI unless explicitly asked.
-4. Preserve the premium Apple-like style.
-5. Do not add unrelated features.
-6. Do not break point-to-point routing.
-7. Do not break loop routing.
-8. Do not break mock fallback.
-9. Do not expose or commit secrets.
-10. Do not fake route claims.
-11. Use real route stats only.
-12. Keep error handling graceful.
-13. Keep GraphHopper logic centralized.
-14. Keep models typed and explicit.
-15. Add or update tests for parser, routing, and model behavior.
-16. Run build/tests after changes where possible.
-17. Summarize what changed, files changed, how to test, and what should come next.
+2. Always use the relevant `build-ios-apps` skill before doing iOS app work, especially build/run/test/debug tasks.
+3. Keep the scope narrow.
+4. Do not redesign the UI unless explicitly asked.
+5. Preserve the premium Apple-like style.
+6. Do not add unrelated features.
+7. Do not break point-to-point routing.
+8. Do not break loop routing.
+9. Do not break mock fallback.
+10. Do not expose or commit secrets.
+11. Do not fake route claims.
+12. Use real route stats only.
+13. Keep error handling graceful.
+14. Keep GraphHopper logic centralized.
+15. Keep models typed and explicit.
+16. Add or update tests for parser, routing, and model behavior.
+17. Run build/tests after changes where possible.
+18. Summarize what changed, files changed, how to test, and what should come next.
 
 ---
 
@@ -911,4 +912,3 @@ A task is not done until:
 - UI remains clean and premium
 - tests are added/updated when relevant
 - the change is summarized clearly
-

@@ -73,7 +73,7 @@ final class PlannerViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.phase, .home)
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(viewModel.generatedRoute, expectedRoute)
+        XCTAssertEqual(viewModel.generatedRoute?.id, expectedRoute.id)
         XCTAssertEqual(geocoder.requests.map(\.query), ["Ilsenburg", "Schierke"])
         XCTAssertNil(geocoder.requests.first?.preferredCoordinate)
         XCTAssertEqual(geocoder.requests.last?.preferredCoordinate, start)
@@ -87,6 +87,12 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(router.intent?.parsedIntent?.parserSource, .localRuleBased)
         XCTAssertEqual(router.intent?.parsedIntent?.startLocationQuery, "Ilsenburg")
         XCTAssertEqual(router.intent?.parsedIntent?.endLocationQuery, "Schierke")
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.intent.rawPrompt, "Ilsenburg nach Schierke")
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.intent.parserSource, .localRuleBased)
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.validationStatus, "validated")
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.localFallbackUsed, true)
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.geocodedStartLabel, "Ilsenburg")
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.geocodedEndLabel, "Schierke")
     }
 
     @MainActor
@@ -240,8 +246,10 @@ final class PlannerViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.phase, .suggestions)
         XCTAssertNil(viewModel.generatedRoute)
-        XCTAssertEqual(viewModel.suggestions.map(\.route), [first, second])
+        XCTAssertEqual(viewModel.suggestions.map(\.route.id), [first.id, second.id])
         XCTAssertEqual(viewModel.suggestions.first?.explanation, "Closest Match")
+        XCTAssertEqual(viewModel.suggestions.first?.route.intentDebugMetadata?.intent.routeType, .loop)
+        XCTAssertEqual(viewModel.suggestions.first?.route.intentDebugMetadata?.geocodedStartLabel, "Ilsenburg")
     }
 
     @MainActor
@@ -263,7 +271,7 @@ final class PlannerViewModelTests: XCTestCase {
         await viewModel.generate()
 
         XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertEqual(viewModel.generatedRoute, route)
+        XCTAssertEqual(viewModel.generatedRoute?.id, route.id)
         XCTAssertTrue(viewModel.suggestions.isEmpty)
     }
 

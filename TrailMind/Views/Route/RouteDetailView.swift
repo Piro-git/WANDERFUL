@@ -4,6 +4,9 @@ struct RouteDetailView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
     @State private var showStartNotice = false
+    #if DEBUG
+    @State private var showIntentQA = false
+    #endif
 
     let route: TrailRoute
 
@@ -19,6 +22,9 @@ struct RouteDetailView: View {
                     header
                     RouteStatsRow(route: route)
                     planningContext
+                    #if DEBUG
+                    intentQA
+                    #endif
                     ElevationProfileView(route: route)
                     highlights
                     waypoints
@@ -77,6 +83,46 @@ struct RouteDetailView: View {
                 .lineSpacing(4)
         }
     }
+
+    #if DEBUG
+    @ViewBuilder
+    private var intentQA: some View {
+        if let metadata = route.intentDebugMetadata {
+            DisclosureGroup(isExpanded: $showIntentQA) {
+                VStack(alignment: .leading, spacing: 9) {
+                    ForEach(IntentDebugFormatter.rows(for: metadata)) { row in
+                        HStack(alignment: .top, spacing: 10) {
+                            Text(row.label)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(theme.secondaryText)
+                                .frame(width: 132, alignment: .leading)
+                            Text(row.value)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(theme.graphite)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .padding(.top, 10)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: metadata.localFallbackUsed ? "arrow.uturn.backward.circle.fill" : "sparkles")
+                        .foregroundStyle(theme.forest)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Intent QA")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(theme.graphite)
+                        Text("\(IntentDebugFormatter.parserSourceLabel(metadata.intent.parserSource)) · \(metadata.localFallbackUsed ? "local fallback" : "primary parser")")
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                    }
+                }
+            }
+            .trailCard()
+        }
+    }
+    #endif
 
     private var highlights: some View {
         VStack(alignment: .leading, spacing: 14) {

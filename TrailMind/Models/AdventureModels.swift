@@ -593,6 +593,104 @@ struct SafetyNote: Identifiable, Hashable {
     }
 }
 
+struct RouteIntentDebugMetadata: Hashable, Sendable {
+    let intent: ValidatedAdventureIntent
+    let validationStatus: String
+    let localFallbackUsed: Bool
+    let geocodedStartLabel: String?
+    let geocodedEndLabel: String?
+
+    init(
+        intent: ValidatedAdventureIntent,
+        validationStatus: String = "validated",
+        localFallbackUsed: Bool? = nil,
+        geocodedStartLabel: String?,
+        geocodedEndLabel: String?
+    ) {
+        self.intent = intent
+        self.validationStatus = validationStatus
+        self.localFallbackUsed = localFallbackUsed ?? (intent.parserSource == .localRuleBased)
+        self.geocodedStartLabel = geocodedStartLabel
+        self.geocodedEndLabel = geocodedEndLabel
+    }
+}
+
+struct IntentDebugRow: Identifiable, Hashable, Sendable {
+    let label: String
+    let value: String
+
+    var id: String {
+        "\(label):\(value)"
+    }
+}
+
+enum IntentDebugFormatter {
+    static func rows(for metadata: RouteIntentDebugMetadata) -> [IntentDebugRow] {
+        let intent = metadata.intent
+        return [
+            row("parserSource", parserSourceLabel(intent.parserSource)),
+            row("validationStatus", metadata.validationStatus),
+            row("localFallbackUsed", metadata.localFallbackUsed ? "yes" : "no"),
+            row("rawPrompt", intent.rawPrompt),
+            row("activityType", intent.activityType.rawValue),
+            row("routeType", intent.routeType.rawValue),
+            row("startLocationQuery", optional(intent.startLocationQuery)),
+            row("endLocationQuery", optional(intent.endLocationQuery)),
+            row("regionQuery", optional(intent.regionQuery)),
+            row("targetDistanceKm", distanceLabel(intent.targetDistanceKm)),
+            row("targetDurationMinutes", minutesLabel(intent.targetDurationMinutes)),
+            row("difficulty", intent.difficulty?.rawValue ?? "nil"),
+            row("desiredFeatures", featureList(intent.desiredFeatures)),
+            row("avoidFeatures", avoidList(intent.avoidFeatures)),
+            row("transportMode", intent.transportMode?.rawValue ?? "nil"),
+            row("confidence", confidenceLabel(intent.confidence)),
+            row("geocodedStartLabel", optional(metadata.geocodedStartLabel)),
+            row("geocodedEndLabel", optional(metadata.geocodedEndLabel))
+        ]
+    }
+
+    static func parserSourceLabel(_ source: IntentParserSource) -> String {
+        switch source {
+        case .localRuleBased:
+            "localRuleBased"
+        case .remoteAI:
+            "remoteAI"
+        }
+    }
+
+    private static func row(_ label: String, _ value: String) -> IntentDebugRow {
+        IntentDebugRow(label: label, value: value)
+    }
+
+    private static func optional(_ value: String?) -> String {
+        guard let value, !value.isEmpty else { return "nil" }
+        return value
+    }
+
+    private static func distanceLabel(_ value: Double?) -> String {
+        guard let value else { return "nil" }
+        return value.formatted(.number.precision(.fractionLength(value.rounded() == value ? 0 : 1))) + " km"
+    }
+
+    private static func minutesLabel(_ value: Int?) -> String {
+        guard let value else { return "nil" }
+        return "\(value) min"
+    }
+
+    private static func confidenceLabel(_ value: Double?) -> String {
+        guard let value else { return "nil" }
+        return value.formatted(.number.precision(.fractionLength(2)))
+    }
+
+    private static func featureList(_ features: [DesiredFeature]) -> String {
+        features.isEmpty ? "[]" : features.map(\.rawValue).joined(separator: ", ")
+    }
+
+    private static func avoidList(_ features: [AvoidFeature]) -> String {
+        features.isEmpty ? "[]" : features.map(\.rawValue).joined(separator: ", ")
+    }
+}
+
 struct TrailRoute: Identifiable, Hashable {
     let id: UUID
     let title: String
@@ -614,6 +712,7 @@ struct TrailRoute: Identifiable, Hashable {
     let path: [GeoPoint]
     let routeInstructions: [RouteInstruction]
     let planningMetadata: RoutePlanningMetadata?
+    let intentDebugMetadata: RouteIntentDebugMetadata?
 
     init(
         id: UUID,
@@ -635,7 +734,8 @@ struct TrailRoute: Identifiable, Hashable {
         elevationProfile: [Double],
         path: [GeoPoint],
         routeInstructions: [RouteInstruction] = [],
-        planningMetadata: RoutePlanningMetadata? = nil
+        planningMetadata: RoutePlanningMetadata? = nil,
+        intentDebugMetadata: RouteIntentDebugMetadata? = nil
     ) {
         self.id = id
         self.title = title
@@ -657,6 +757,7 @@ struct TrailRoute: Identifiable, Hashable {
         self.path = path
         self.routeInstructions = routeInstructions
         self.planningMetadata = planningMetadata
+        self.intentDebugMetadata = intentDebugMetadata
     }
 
     var distanceLabel: String {
@@ -701,7 +802,34 @@ struct TrailRoute: Identifiable, Hashable {
             elevationProfile: elevationProfile,
             path: path,
             routeInstructions: routeInstructions,
-            planningMetadata: metadata
+            planningMetadata: metadata,
+            intentDebugMetadata: intentDebugMetadata
+        )
+    }
+
+    func withIntentDebugMetadata(_ metadata: RouteIntentDebugMetadata?) -> TrailRoute {
+        TrailRoute(
+            id: id,
+            title: title,
+            location: location,
+            activity: activity,
+            distanceKilometers: distanceKilometers,
+            elevationGainMeters: elevationGainMeters,
+            elevationLossMeters: elevationLossMeters,
+            durationHours: durationHours,
+            difficulty: difficulty,
+            routeType: routeType,
+            summary: summary,
+            whyItMatches: whyItMatches,
+            highlights: highlights,
+            waypoints: waypoints,
+            days: days,
+            safetyNotes: safetyNotes,
+            elevationProfile: elevationProfile,
+            path: path,
+            routeInstructions: routeInstructions,
+            planningMetadata: planningMetadata,
+            intentDebugMetadata: metadata
         )
     }
 }
