@@ -44,26 +44,44 @@ struct MockAIPlannerService: AIPlannerService {
         // TODO: Replace this deterministic parser with the production AI planner endpoint.
         let lowercased = prompt.lowercased()
         let activity: ActivityType = lowercased.contains("bike") ? .biking : (lowercased.contains("run") ? .trailRunning : .hiking)
-        let features = ["waterfall", "forest", "view", "water", "quiet"].filter(lowercased.contains)
-        let avoids = ["steep", "crowded"].filter(lowercased.contains)
+        var features: [DesiredFeature] = []
+        if lowercased.contains("view") {
+            features.append(.viewpoint)
+        }
+        if lowercased.contains("forest") {
+            features.append(.forest)
+        }
+        if lowercased.contains("water") || lowercased.contains("waterfall") {
+            features.append(.water)
+        }
+        if lowercased.contains("quiet") {
+            features.append(.quiet)
+        }
+        let avoidFeatures: [AvoidFeature] = lowercased.contains("steep") ? [.steepClimbs] : []
 
         return AdventureIntent(
-            prompt: prompt,
-            activity: activity,
-            preferredDistanceKilometers: lowercased.contains("12 km") ? 10...14 : nil,
-            durationHours: lowercased.contains("3 hour") ? 3 : nil,
+            rawPrompt: prompt,
+            parserSource: .localRuleBased,
+            confidence: 1,
+            activityType: activity,
+            routeType: .loop,
+            startLocationQuery: nil,
+            endLocationQuery: nil,
+            regionQuery: lowercased.contains("lüneburg") ? "Lüneburg" : (lowercased.contains("harz") ? "Harz" : nil),
+            targetDistanceKm: lowercased.contains("12 km") ? 12 : nil,
+            targetDurationMinutes: lowercased.contains("3 hour") ? 180 : nil,
+            difficulty: nil,
             desiredFeatures: features,
-            avoids: avoids,
-            locationHint: lowercased.contains("lüneburg") ? "Lüneburg" : (lowercased.contains("harz") ? "Harz" : nil)
+            avoidFeatures: avoidFeatures
         )
     }
 
     func generateRouteSuggestions(intent: AdventureIntent) async throws -> [TrailRoute] {
         // TODO: Send the parsed intent to routing, weather and safety services.
-        if intent.prompt.lowercased().contains("lüneburg") {
+        if intent.rawPrompt.lowercased().contains("lüneburg") {
             return [MockRoutes.luneburgLoop, MockRoutes.sunsetRidge, MockRoutes.harzWeekend]
         }
-        if intent.prompt.lowercased().contains("sunset") || intent.durationHours == 3 {
+        if intent.rawPrompt.lowercased().contains("sunset") || intent.targetDurationMinutes == 180 {
             return [MockRoutes.sunsetRidge, MockRoutes.luneburgLoop, MockRoutes.harzWeekend]
         }
         return MockRoutes.all

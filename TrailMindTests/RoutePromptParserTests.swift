@@ -7,6 +7,8 @@ final class RoutePromptParserTests: XCTestCase {
         let parser = RoutePromptParser()
         let cases = [
             ("Ilsenburg nach Schierke", "Ilsenburg", "Schierke"),
+            ("Schierke zum Brocken", "Schierke", "Brocken"),
+            ("Schierke zur Brockenstraße", "Schierke", "Brockenstraße"),
             ("von Ilsenburg nach Brocken", "Ilsenburg", "Brocken"),
             ("Wanderung von Lüneburg nach Amelinghausen", "Lüneburg", "Amelinghausen")
         ]

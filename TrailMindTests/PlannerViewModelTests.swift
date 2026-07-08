@@ -83,6 +83,10 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(router.intent?.request.startQuery, "Ilsenburg")
         XCTAssertEqual(router.intent?.request.endQuery, "Schierke")
         XCTAssertEqual(router.intent?.request.activityType, .hiking)
+        XCTAssertEqual(router.intent?.parsedIntent?.rawPrompt, "Ilsenburg nach Schierke")
+        XCTAssertEqual(router.intent?.parsedIntent?.parserSource, .localRuleBased)
+        XCTAssertEqual(router.intent?.parsedIntent?.startLocationQuery, "Ilsenburg")
+        XCTAssertEqual(router.intent?.parsedIntent?.endLocationQuery, "Schierke")
     }
 
     @MainActor
@@ -180,6 +184,8 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(router.intent?.request.startQuery, "Ilsenburg")
         XCTAssertNil(router.intent?.request.endQuery)
         XCTAssertEqual(router.intent?.request.targetDistanceKm, 15)
+        XCTAssertEqual(router.intent?.parsedIntent?.routeType, .loop)
+        XCTAssertEqual(router.intent?.parsedIntent?.startOrRegionQuery, "Ilsenburg")
     }
 
     @MainActor

@@ -49,7 +49,7 @@ struct RoutePromptParser: Sendable {
         // "Start: Ilsenburg, Ziel: Schierke"
         (
             try! NSRegularExpression(
-                pattern: #"^\s*(?:(?:route|tour|wanderung|hike)\s*)?(?:start|startpunkt|von|from)\s*[:=-]?\s*(.+?)\s*(?:,|;|\||\s+)\s*(?:ziel|zielort|ende|nach|to)\s*[:=-]?\s*(.+?)\s*$"#,
+                pattern: #"^\s*(?:(?:route|tour|wanderung|hike)\s*)?(?:start|startpunkt|von|from)\s*[:=-]?\s*(.+?)\s*(?:,|;|\||\s+)\s*(?:ziel|zielort|ende|nach|zum|zur|to)\s*[:=-]?\s*(.+?)\s*$"#,
                 options: [.caseInsensitive]
             ),
             .startEnd
@@ -73,7 +73,7 @@ struct RoutePromptParser: Sendable {
         // "mach mir eine schöne Wanderung von Ilsenburg nach Schierke"
         (
             try! NSRegularExpression(
-                pattern: #"^\s*(?:.+?\s+)?von\s+(.+?)\s+nach\s+(.+?)\s*$"#,
+                pattern: #"^\s*(?:.+?\s+)?von\s+(.+?)\s+(?:nach|zum|zur)\s+(.+?)\s*$"#,
                 options: [.caseInsensitive]
             ),
             .startEnd
@@ -81,7 +81,7 @@ struct RoutePromptParser: Sendable {
         // "Ilsenburg nach Schierke"
         (
             try! NSRegularExpression(
-                pattern: #"^\s*(?:(?:wanderung|tour|route|strecke|radroute|radtour|lauf|trailrun)\s+)?(.+?)\s+nach\s+(.+?)\s*$"#,
+                pattern: #"^\s*(?:(?:wanderung|tour|route|strecke|radroute|radtour|lauf|trailrun)\s+)?(.+?)\s+(?:nach|zum|zur)\s+(.+?)\s*$"#,
                 options: [.caseInsensitive]
             ),
             .startEnd

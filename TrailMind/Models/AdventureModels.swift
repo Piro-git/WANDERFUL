@@ -129,6 +129,23 @@ struct RoutePlanningRequest: Hashable, Sendable {
         )
     }
 
+    init(validatedIntent: ValidatedAdventureIntent) {
+        let startQuery = validatedIntent.startLocationQuery ?? validatedIntent.regionQuery ?? ""
+        self.init(
+            routeType: validatedIntent.routeType,
+            startQuery: startQuery,
+            endQuery: validatedIntent.endLocationQuery,
+            activityType: validatedIntent.activityType,
+            graphHopperProfile: validatedIntent.graphHopperProfile,
+            targetDistanceKm: validatedIntent.targetDistanceKm
+                ?? (validatedIntent.routeType == .loop ? Self.defaultLoopDistanceKm(for: validatedIntent.activityType) : nil),
+            targetDurationMinutes: validatedIntent.targetDurationMinutes,
+            difficulty: validatedIntent.difficulty,
+            desiredFeatures: validatedIntent.desiredFeatures,
+            avoidFeatures: validatedIntent.avoidFeatures
+        )
+    }
+
     var metadata: RoutePlanningMetadata {
         RoutePlanningMetadata(
             routeType: routeType,
@@ -689,14 +706,149 @@ struct TrailRoute: Identifiable, Hashable {
     }
 }
 
+enum IntentParserSource: String, Hashable, Sendable {
+    case localRuleBased
+    case remoteAI
+}
+
+enum TransportMode: String, Hashable, Sendable {
+    case walking
+    case cycling
+
+    init(activityType: ActivityType) {
+        switch activityType {
+        case .hiking, .trailRunning:
+            self = .walking
+        case .biking:
+            self = .cycling
+        }
+    }
+}
+
 struct AdventureIntent: Hashable, Sendable {
-    var prompt: String
-    var activity: ActivityType
-    var preferredDistanceKilometers: ClosedRange<Double>?
-    var durationHours: Double?
-    var desiredFeatures: [String]
-    var avoids: [String]
-    var locationHint: String?
+    let rawPrompt: String
+    let parserSource: IntentParserSource
+    let confidence: Double?
+    let activityType: ActivityType
+    let routeType: TrailRouteType
+    let startLocationQuery: String?
+    let endLocationQuery: String?
+    let regionQuery: String?
+    let targetDistanceKm: Double?
+    let targetDurationMinutes: Int?
+    let difficulty: RouteDifficulty?
+    let desiredFeatures: [DesiredFeature]
+    let avoidFeatures: [AvoidFeature]
+    let transportMode: TransportMode?
+
+    init(
+        rawPrompt: String,
+        parserSource: IntentParserSource,
+        confidence: Double?,
+        activityType: ActivityType,
+        routeType: TrailRouteType,
+        startLocationQuery: String?,
+        endLocationQuery: String?,
+        regionQuery: String?,
+        targetDistanceKm: Double?,
+        targetDurationMinutes: Int?,
+        difficulty: RouteDifficulty?,
+        desiredFeatures: [DesiredFeature],
+        avoidFeatures: [AvoidFeature],
+        transportMode: TransportMode? = nil
+    ) {
+        self.rawPrompt = rawPrompt
+        self.parserSource = parserSource
+        self.confidence = confidence
+        self.activityType = activityType
+        self.routeType = routeType
+        self.startLocationQuery = startLocationQuery
+        self.endLocationQuery = endLocationQuery
+        self.regionQuery = regionQuery
+        self.targetDistanceKm = targetDistanceKm
+        self.targetDurationMinutes = targetDurationMinutes
+        self.difficulty = difficulty
+        self.desiredFeatures = desiredFeatures
+        self.avoidFeatures = avoidFeatures
+        self.transportMode = transportMode ?? TransportMode(activityType: activityType)
+    }
+
+    init(rawPrompt: String, parsedPrompt: ParsedRoutePrompt, parserSource: IntentParserSource = .localRuleBased) {
+        self.init(
+            rawPrompt: rawPrompt,
+            parserSource: parserSource,
+            confidence: 1,
+            activityType: parsedPrompt.activityType,
+            routeType: parsedPrompt.routeType,
+            startLocationQuery: parsedPrompt.startLocationQuery,
+            endLocationQuery: parsedPrompt.endLocationQuery,
+            regionQuery: nil,
+            targetDistanceKm: parsedPrompt.preferredDistanceKilometers,
+            targetDurationMinutes: parsedPrompt.preferredDurationHours.map { Int(($0 * 60).rounded()) },
+            difficulty: parsedPrompt.difficulty,
+            desiredFeatures: parsedPrompt.desiredFeatures,
+            avoidFeatures: parsedPrompt.difficulty == .easy ? [.steepClimbs] : []
+        )
+    }
+
+    var requestedFeaturePreferences: [DesiredFeature] {
+        desiredFeatures
+    }
+
+    var prompt: String {
+        rawPrompt
+    }
+}
+
+struct ValidatedAdventureIntent: Hashable, Sendable {
+    let rawPrompt: String
+    let parserSource: IntentParserSource
+    let confidence: Double?
+    let activityType: ActivityType
+    let routeType: TrailRouteType
+    let startLocationQuery: String?
+    let endLocationQuery: String?
+    let regionQuery: String?
+    let targetDistanceKm: Double?
+    let targetDurationMinutes: Int?
+    let difficulty: RouteDifficulty?
+    let desiredFeatures: [DesiredFeature]
+    let avoidFeatures: [AvoidFeature]
+    let transportMode: TransportMode?
+
+    init(intent: AdventureIntent) {
+        rawPrompt = intent.rawPrompt
+        parserSource = intent.parserSource
+        confidence = intent.confidence
+        activityType = intent.activityType
+        routeType = intent.routeType
+        startLocationQuery = intent.startLocationQuery
+        endLocationQuery = intent.endLocationQuery
+        regionQuery = intent.regionQuery
+        targetDistanceKm = intent.targetDistanceKm
+        targetDurationMinutes = intent.targetDurationMinutes
+        difficulty = intent.difficulty
+        desiredFeatures = intent.desiredFeatures
+        avoidFeatures = intent.avoidFeatures
+        transportMode = intent.transportMode
+    }
+
+    var startOrRegionQuery: String? {
+        startLocationQuery ?? regionQuery
+    }
+
+    var requestedFeaturePreferences: [DesiredFeature] {
+        desiredFeatures
+    }
+
+    var graphHopperProfile: String {
+        switch activityType {
+        case .biking:
+            "bike"
+        case .hiking, .trailRunning:
+            "foot"
+        }
+    }
 }
 
 struct RouteSuggestionDebugMetadata: Hashable, Sendable {

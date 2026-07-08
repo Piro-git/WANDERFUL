@@ -4,6 +4,19 @@ struct RouteIntent: Hashable {
     let request: RoutePlanningRequest
     let start: Coordinate
     let end: Coordinate?
+    let parsedIntent: ValidatedAdventureIntent?
+
+    init(
+        request: RoutePlanningRequest,
+        start: Coordinate,
+        end: Coordinate?,
+        parsedIntent: ValidatedAdventureIntent? = nil
+    ) {
+        self.request = request
+        self.start = start
+        self.end = end
+        self.parsedIntent = parsedIntent
+    }
 }
 
 struct RoutingResult {

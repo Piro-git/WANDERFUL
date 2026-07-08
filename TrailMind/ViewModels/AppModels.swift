@@ -34,7 +34,8 @@ final class PlannerViewModel {
     }
 
     private let plannerService: any AIPlannerService
-    private let promptParser: RoutePromptParser
+    private let intentParsingProvider: any IntentParsingProvider
+    private let intentValidationService: IntentValidationService
     private let geocodingService: any GeocodingService
     private let routingCoordinator: any RoutingCoordinating
     private var requestKind: RequestKind = .mockSuggestions
@@ -77,12 +78,14 @@ final class PlannerViewModel {
 
     init(
         plannerService: any AIPlannerService = MockAIPlannerService(),
-        promptParser: RoutePromptParser = RoutePromptParser(),
+        intentParsingProvider: any IntentParsingProvider = LocalIntentParsingProvider(),
+        intentValidationService: IntentValidationService = IntentValidationService(),
         geocodingService: any GeocodingService = NativeGeocodingService(),
         routingCoordinator: any RoutingCoordinating = RoutingCoordinator()
     ) {
         self.plannerService = plannerService
-        self.promptParser = promptParser
+        self.intentParsingProvider = intentParsingProvider
+        self.intentValidationService = intentValidationService
         self.geocodingService = geocodingService
         self.routingCoordinator = routingCoordinator
     }
@@ -144,8 +147,9 @@ final class PlannerViewModel {
 
     private func generateDynamicRoute() async throws {
         generationStep = 0
-        let parsedPrompt = try promptParser.parse(prompt)
-        let planningRequest = RoutePlanningRequest(parsedPrompt: parsedPrompt)
+        let parsedIntent = try await intentParsingProvider.parseIntent(rawPrompt: prompt)
+        let validatedIntent = try intentValidationService.validate(parsedIntent)
+        let planningRequest = RoutePlanningRequest(validatedIntent: validatedIntent)
         try await Task.sleep(for: .milliseconds(250))
 
         generationStep = 1
@@ -172,11 +176,13 @@ final class PlannerViewModel {
         try Task.checkCancellation()
 
         generationStep = 2
-        if planningRequest.routeType != .loop, end == nil {
-            throw RoutePromptParserError.invalidPrompt
-        }
         let routingResult = try await routingCoordinator.routeSuggestions(
-            for: RouteIntent(request: planningRequest, start: start, end: end)
+            for: RouteIntent(
+                request: planningRequest,
+                start: start,
+                end: end,
+                parsedIntent: validatedIntent
+            )
         )
 
         generationStep = 3
