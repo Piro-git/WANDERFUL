@@ -1,3 +1,5 @@
 // Copy this file to Local.xcconfig and replace the placeholder.
 // Never commit Local.xcconfig.
 GRAPHHOPPER_API_KEY = paste_your_graphhopper_api_key_here
+// Optional DEBUG intent backend override for Simulator/local development.
+// INTENT_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000

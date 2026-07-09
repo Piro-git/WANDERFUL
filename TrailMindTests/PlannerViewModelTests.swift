@@ -50,7 +50,29 @@ private final class StubRoutingCoordinator: RoutingCoordinating {
     }
 }
 
+private struct FixedIntentParsingProvider: IntentParsingProvider {
+    let parserSource: IntentParserSource
+    let intent: AdventureIntent
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
+        intent
+    }
+}
+
 final class PlannerViewModelTests: XCTestCase {
+    @MainActor
+    private func makeViewModel(
+        geocodingService: any GeocodingService,
+        routingCoordinator: any RoutingCoordinating,
+        intentParsingProvider: any IntentParsingProvider = LocalIntentParsingProvider()
+    ) -> PlannerViewModel {
+        PlannerViewModel(
+            intentParsingProvider: intentParsingProvider,
+            geocodingService: geocodingService,
+            routingCoordinator: routingCoordinator
+        )
+    }
+
     @MainActor
     func testTextRouteOrchestratesParsingGeocodingAndRouting() async {
         let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
@@ -63,7 +85,7 @@ final class PlannerViewModelTests: XCTestCase {
         )
         let expectedRoute = MockRoutes.luneburgLoop
         let router = StubRoutingCoordinator(route: expectedRoute)
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -89,8 +111,9 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(router.intent?.parsedIntent?.endLocationQuery, "Schierke")
         XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.intent.rawPrompt, "Ilsenburg nach Schierke")
         XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.intent.parserSource, .localRuleBased)
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.validationStatus, "validated")
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.validationStatus, "valid")
         XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.localFallbackUsed, true)
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.repaired, false)
         XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.geocodedStartLabel, "Ilsenburg")
         XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.geocodedEndLabel, "Schierke")
     }
@@ -106,7 +129,7 @@ final class PlannerViewModelTests: XCTestCase {
             ]
         )
         let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -130,7 +153,7 @@ final class PlannerViewModelTests: XCTestCase {
             ]
         )
         let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -153,7 +176,7 @@ final class PlannerViewModelTests: XCTestCase {
             ]
         )
         let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -175,7 +198,7 @@ final class PlannerViewModelTests: XCTestCase {
             ]
         )
         let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -192,6 +215,61 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(router.intent?.request.targetDistanceKm, 15)
         XCTAssertEqual(router.intent?.parsedIntent?.routeType, .loop)
         XCTAssertEqual(router.intent?.parsedIntent?.startOrRegionQuery, "Ilsenburg")
+    }
+
+    @MainActor
+    func testRepairedRemoteLoopIntentRoutesThroughExistingCoordinator() async {
+        let start = Coordinate(latitude: 51.765, longitude: 10.664)
+        let geocoder = StubGeocodingService(
+            coordinates: [
+                "Schierke": start
+            ]
+        )
+        let route = MockRoutes.luneburgLoop
+        let router = StubRoutingCoordinator(route: route)
+        let remoteIntent = AdventureIntent(
+            rawPrompt: "Ich will eine entspannte 15 km Rundwanderung um Schierke",
+            parserSource: .remoteAI,
+            confidence: 0.78,
+            activityType: .hiking,
+            routeType: .pointToPoint,
+            startLocationQuery: "Schierke",
+            endLocationQuery: nil,
+            regionQuery: nil,
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: .easy,
+            desiredFeatures: [],
+            avoidFeatures: []
+        )
+        let viewModel = makeViewModel(
+            geocodingService: geocoder,
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(
+                parserSource: .remoteAI,
+                intent: remoteIntent
+            )
+        )
+
+        viewModel.startTextRoute(prompt: remoteIntent.rawPrompt)
+        await viewModel.generate()
+
+        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertEqual(geocoder.requests.map(\.query), ["Schierke"])
+        XCTAssertEqual(router.intent?.request.routeType, .loop)
+        XCTAssertEqual(router.intent?.request.startQuery, "Schierke")
+        XCTAssertNil(router.intent?.request.endQuery)
+        XCTAssertEqual(router.intent?.request.targetDistanceKm, 15)
+        XCTAssertEqual(router.intent?.parsedIntent?.parserSource, .remoteAI)
+        XCTAssertEqual(router.intent?.parsedIntent?.routeType, .loop)
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.validationStatus, "repaired")
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.localFallbackUsed, false)
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.repaired, true)
+        XCTAssertEqual(
+            viewModel.generatedRoute?.intentDebugMetadata?.repairReason,
+            "Repaired pointToPoint intent without an end location to loop based on loop wording."
+        )
     }
 
     @MainActor
@@ -236,7 +314,7 @@ final class PlannerViewModelTests: XCTestCase {
                 )
             )
         )
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -262,7 +340,7 @@ final class PlannerViewModelTests: XCTestCase {
         )
         let route = MockRoutes.luneburgLoop
         let router = StubRoutingCoordinator(route: route)
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -292,7 +370,7 @@ final class PlannerViewModelTests: XCTestCase {
                 )
             )
         )
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -314,7 +392,7 @@ final class PlannerViewModelTests: XCTestCase {
     func testInvalidPromptStopsBeforeGeocoding() async {
         let geocoder = StubGeocodingService(coordinates: [:])
         let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )
@@ -325,8 +403,45 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.phase, .home)
         XCTAssertEqual(
             viewModel.errorMessage,
-            "Bitte gib Start und Ziel ein, z.B. 'Ilsenburg nach Schierke'."
+            "Which area should I plan around?"
         )
+        XCTAssertTrue(geocoder.requests.isEmpty)
+        XCTAssertNil(router.intent)
+    }
+
+    @MainActor
+    func testPointToPointWithoutEndShowsContextualDestinationQuestion() async {
+        let geocoder = StubGeocodingService(coordinates: [:])
+        let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        let remoteIntent = AdventureIntent(
+            rawPrompt: "Plan a route from Ilsenburg to",
+            parserSource: .remoteAI,
+            confidence: 0.52,
+            activityType: .hiking,
+            routeType: .pointToPoint,
+            startLocationQuery: "Ilsenburg",
+            endLocationQuery: nil,
+            regionQuery: nil,
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: []
+        )
+        let viewModel = makeViewModel(
+            geocodingService: geocoder,
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(
+                parserSource: .remoteAI,
+                intent: remoteIntent
+            )
+        )
+
+        viewModel.startTextRoute(prompt: remoteIntent.rawPrompt)
+        await viewModel.generate()
+
+        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertEqual(viewModel.errorMessage, "Where do you want to go?")
         XCTAssertTrue(geocoder.requests.isEmpty)
         XCTAssertNil(router.intent)
     }
@@ -344,7 +459,7 @@ final class PlannerViewModelTests: XCTestCase {
         let router = StubRoutingCoordinator(
             result: .failure(GraphHopperError.missingAPIKey)
         )
-        let viewModel = PlannerViewModel(
+        let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
         )

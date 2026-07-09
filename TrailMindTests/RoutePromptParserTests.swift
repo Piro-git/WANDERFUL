@@ -44,6 +44,16 @@ final class RoutePromptParserTests: XCTestCase {
     }
 
     @MainActor
+    func testGermanBisPromptCreatesPointToPointRoute() throws {
+        let parser = RoutePromptParser()
+        let result = try parser.parse("Lüneburg bis Bardowick")
+
+        XCTAssertEqual(result.routeType, .pointToPoint)
+        XCTAssertEqual(result.startLocationQuery, "Lüneburg")
+        XCTAssertEqual(result.endLocationQuery, "Bardowick")
+    }
+
+    @MainActor
     func testGermanLoopPrompts() throws {
         let parser = RoutePromptParser()
         let cases = [
@@ -77,6 +87,62 @@ final class RoutePromptParserTests: XCTestCase {
         XCTAssertEqual(roundTrip.routeType, .loop)
         XCTAssertEqual(roundTrip.startLocationQuery, "Ilsenburg")
         XCTAssertNil(roundTrip.endLocationQuery)
+    }
+
+    @MainActor
+    func testNaturalLoopPromptsFromExamples() throws {
+        let parser = RoutePromptParser()
+
+        let relaxedLoop = try parser.parse(
+            "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück"
+        )
+        XCTAssertEqual(relaxedLoop.routeType, .loop)
+        XCTAssertEqual(relaxedLoop.startLocationQuery, "Schierke")
+        XCTAssertEqual(relaxedLoop.preferredDistanceKilometers, 15)
+        XCTAssertEqual(relaxedLoop.difficulty, .easy)
+
+        let shortLoop = try parser.parse(
+            "Mach mir eine kurze Wanderung bei Lüneburg, eher easy, ungefähr 8 km"
+        )
+        XCTAssertEqual(shortLoop.routeType, .loop)
+        XCTAssertEqual(shortLoop.startLocationQuery, "Lüneburg")
+        XCTAssertEqual(shortLoop.preferredDistanceKilometers, 8)
+        XCTAssertEqual(shortLoop.difficulty, .easy)
+
+        let trailRun = try parser.parse(
+            "Plan a trail run around Ilsenburg, about 90 minutes, not too steep"
+        )
+        XCTAssertEqual(trailRun.routeType, .loop)
+        XCTAssertEqual(trailRun.startLocationQuery, "Ilsenburg")
+        XCTAssertEqual(trailRun.activityType, .trailRunning)
+        XCTAssertEqual(trailRun.preferredDurationHours, 1.5)
+        XCTAssertEqual(trailRun.difficulty, .easy)
+
+        let harzLoop = try parser.parse(
+            "Wir wollen im Harz sportlich wandern, 18-22 km, möglichst wenig gleichen Weg zurück"
+        )
+        XCTAssertEqual(harzLoop.routeType, .loop)
+        XCTAssertEqual(harzLoop.startLocationQuery, "Harz")
+        XCTAssertEqual(harzLoop.preferredDistanceKilometers, 20)
+        XCTAssertEqual(harzLoop.difficulty, .challenging)
+    }
+
+    @MainActor
+    func testMultiLinePasteUsesFirstValidRoutePrompt() throws {
+        let parser = RoutePromptParser()
+        let result = try parser.parse(
+            """
+            Lüneburg bis Bardowick
+            Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück
+            Mach mir eine kurze Wanderung bei Lüneburg, eher easy, ungefähr 8 km
+            Plan a trail run around Ilsenburg, about 90 minutes, not too steep
+            Wir wollen im Harz sportlich wandern, 18-22 km, möglichst wenig gleichen Weg zurück#
+            """
+        )
+
+        XCTAssertEqual(result.routeType, .pointToPoint)
+        XCTAssertEqual(result.startLocationQuery, "Lüneburg")
+        XCTAssertEqual(result.endLocationQuery, "Bardowick")
     }
 
     @MainActor
@@ -174,7 +240,7 @@ final class RoutePromptParserTests: XCTestCase {
         XCTAssertThrowsError(try parser.parse("mach mir was schönes")) { error in
             XCTAssertEqual(
                 error.localizedDescription,
-                "Bitte gib Start und Ziel ein, z.B. 'Ilsenburg nach Schierke'."
+                "Which area should I plan around?"
             )
         }
     }

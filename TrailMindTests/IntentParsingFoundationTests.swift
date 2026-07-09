@@ -65,9 +65,144 @@ final class IntentParsingFoundationTests: XCTestCase {
             XCTAssertEqual(error as? IntentValidationError, .missingPointToPointEnd)
             XCTAssertEqual(
                 error.localizedDescription,
-                "Bitte gib Start und Ziel ein, z.B. 'Ilsenburg nach Schierke'."
+                "Where do you want to go?"
             )
         }
+    }
+
+    func testLoopWithRegionQueryOnlyRepairsToStartLocationQuery() {
+        let validator = IntentValidationService()
+        let intent = AdventureIntent(
+            rawPrompt: "Plan a 15 km loop near Schierke",
+            parserSource: .remoteAI,
+            confidence: 0.74,
+            activityType: .hiking,
+            routeType: .loop,
+            startLocationQuery: nil,
+            endLocationQuery: nil,
+            regionQuery: "Schierke",
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: []
+        )
+
+        let result = validator.validateResult(intent)
+
+        XCTAssertEqual(result.status, .repaired)
+        XCTAssertTrue(result.repaired)
+        XCTAssertEqual(result.validatedIntent?.routeType, .loop)
+        XCTAssertEqual(result.validatedIntent?.startLocationQuery, "Schierke")
+        XCTAssertEqual(result.validatedIntent?.regionQuery, "Schierke")
+        XCTAssertNil(result.validatedIntent?.endLocationQuery)
+        XCTAssertEqual(result.repairReason, "Used regionQuery as startLocationQuery for loop routing.")
+    }
+
+    func testRemoteRundwanderungPointToPointWithoutEndRepairsToLoop() {
+        let validator = IntentValidationService()
+        let intent = AdventureIntent(
+            rawPrompt: "15 km Rundwanderung um Schierke",
+            parserSource: .remoteAI,
+            confidence: 0.7,
+            activityType: .hiking,
+            routeType: .pointToPoint,
+            startLocationQuery: "Schierke",
+            endLocationQuery: nil,
+            regionQuery: nil,
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: []
+        )
+
+        let result = validator.validateResult(intent)
+
+        XCTAssertEqual(result.status, .repaired)
+        XCTAssertEqual(result.validatedIntent?.routeType, .loop)
+        XCTAssertEqual(result.validatedIntent?.startOrRegionQuery, "Schierke")
+        XCTAssertNil(result.validatedIntent?.endLocationQuery)
+        XCTAssertTrue(result.missingFields.isEmpty)
+    }
+
+    func testRemoteHikeAroundLuneburgValidatesAsLoopWithoutEndLocation() throws {
+        let validator = IntentValidationService()
+        let intent = AdventureIntent(
+            rawPrompt: "hike around Lüneburg",
+            parserSource: .remoteAI,
+            confidence: 0.66,
+            activityType: .hiking,
+            routeType: .pointToPoint,
+            startLocationQuery: nil,
+            endLocationQuery: nil,
+            regionQuery: "Lüneburg",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: []
+        )
+
+        let result = validator.validateResult(intent)
+
+        XCTAssertEqual(result.status, .repaired)
+        XCTAssertEqual(result.validatedIntent?.routeType, .loop)
+        XCTAssertEqual(result.validatedIntent?.startLocationQuery, "Lüneburg")
+        XCTAssertNil(result.validatedIntent?.endLocationQuery)
+        XCTAssertEqual(RoutePlanningRequest(validatedIntent: try XCTUnwrap(result.validatedIntent)).targetDistanceKm, 10)
+    }
+
+    func testPointToPointWithoutEndAsksForDestination() {
+        let validator = IntentValidationService()
+        let intent = AdventureIntent(
+            rawPrompt: "Plan a route from Ilsenburg to",
+            parserSource: .remoteAI,
+            confidence: 0.5,
+            activityType: .hiking,
+            routeType: .pointToPoint,
+            startLocationQuery: "Ilsenburg",
+            endLocationQuery: nil,
+            regionQuery: nil,
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: []
+        )
+
+        let result = validator.validateResult(intent)
+
+        XCTAssertEqual(result.status, .needsClarification)
+        XCTAssertEqual(result.missingFields, [.endLocationQuery])
+        XCTAssertEqual(result.clarificationReason, "missingPointToPointEnd")
+        XCTAssertEqual(result.clarificationQuestion, "Where do you want to go?")
+    }
+
+    func testVaguePromptAsksForAreaOrStartLocation() {
+        let validator = IntentValidationService()
+        let intent = AdventureIntent(
+            rawPrompt: "mach mir was schönes zum Wandern",
+            parserSource: .remoteAI,
+            confidence: 0.35,
+            activityType: .hiking,
+            routeType: .pointToPoint,
+            startLocationQuery: nil,
+            endLocationQuery: nil,
+            regionQuery: nil,
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: []
+        )
+
+        let result = validator.validateResult(intent)
+
+        XCTAssertEqual(result.status, .needsClarification)
+        XCTAssertEqual(result.missingFields, [.startLocationQuery, .endLocationQuery])
+        XCTAssertEqual(result.clarificationReason, "vagueHikingRequest")
+        XCTAssertEqual(result.clarificationQuestion, "Which area should I plan around?")
     }
 
     func testUnreasonableDistanceProducesValidationError() {
@@ -109,7 +244,7 @@ final class IntentParsingFoundationTests: XCTestCase {
     }
 
     func testRemoteProviderIsInterfaceOnlyAndDoesNotCallNetwork() async {
-        let provider = RemoteAIIntentParsingProvider()
+        let provider = RemoteAIIntentParsingProvider(baseURL: nil)
 
         do {
             _ = try await provider.parseIntent(rawPrompt: "Plan a quiet loop near Schierke")
@@ -117,6 +252,97 @@ final class IntentParsingFoundationTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? RemoteAIIntentParsingProvider.ProviderError, .notConfigured)
         }
+    }
+
+    func testRemoteParserDecodesSuccessfulBackendResponse() async throws {
+        let capturedRequest = CapturedURLRequest()
+        let provider = RemoteAIIntentParsingProvider(
+            baseURL: URL(string: "http://127.0.0.1:3000"),
+            dataLoader: { request in
+                await capturedRequest.set(request)
+                return (
+                    Self.remoteIntentData(),
+                    Self.httpResponse(statusCode: 200)
+                )
+            }
+        )
+
+        let intent = try await provider.parseIntent(
+            rawPrompt: "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück"
+        )
+        let captured = await capturedRequest.get()
+        let request = try XCTUnwrap(captured)
+        let body = try XCTUnwrap(request.httpBody)
+        let payload = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+
+        XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:3000/api/parse-intent")
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(payload?["prompt"] as? String, "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück")
+        XCTAssertEqual(payload?["locale"] as? String, "de")
+        XCTAssertTrue(payload?.keys.contains("userLocationHint") == true)
+        XCTAssertEqual(intent.parserSource, .remoteAI)
+        XCTAssertEqual(intent.routeType, .loop)
+        XCTAssertEqual(intent.activityType, .hiking)
+        XCTAssertEqual(intent.startLocationQuery, "Schierke")
+        XCTAssertNil(intent.endLocationQuery)
+        XCTAssertEqual(intent.targetDistanceKm, 15)
+        XCTAssertEqual(intent.difficulty, .easy)
+        XCTAssertEqual(intent.confidence, 0.78)
+    }
+
+    func testRemoteFailureFallsBackToLocalParser() async throws {
+        let remote = RemoteAIIntentParsingProvider(
+            baseURL: URL(string: "http://127.0.0.1:3000"),
+            dataLoader: { _ in
+                (Data(#"{"error":"nope"}"#.utf8), Self.httpResponse(statusCode: 502))
+            }
+        )
+        let provider = RemoteWithLocalFallbackIntentParsingProvider(remoteProvider: remote)
+
+        let intent = try await provider.parseIntent(rawPrompt: "15 km Rundwanderung um Schierke")
+
+        XCTAssertEqual(intent.parserSource, .localRuleBased)
+        XCTAssertEqual(intent.routeType, .loop)
+        XCTAssertEqual(intent.startLocationQuery, "Schierke")
+        XCTAssertEqual(intent.targetDistanceKm, 15)
+    }
+
+    func testInvalidRemoteJSONFallsBackToLocalParser() async throws {
+        let remote = RemoteAIIntentParsingProvider(
+            baseURL: URL(string: "http://127.0.0.1:3000"),
+            dataLoader: { _ in
+                (Data("not-json".utf8), Self.httpResponse(statusCode: 200))
+            }
+        )
+        let provider = RemoteWithLocalFallbackIntentParsingProvider(remoteProvider: remote)
+
+        let intent = try await provider.parseIntent(rawPrompt: "Ilsenburg nach Schierke")
+
+        XCTAssertEqual(intent.parserSource, .localRuleBased)
+        XCTAssertEqual(intent.routeType, .pointToPoint)
+        XCTAssertEqual(intent.startLocationQuery, "Ilsenburg")
+        XCTAssertEqual(intent.endLocationQuery, "Schierke")
+    }
+
+    func testDebugMetadataShowsRemoteParserWithoutFallback() async throws {
+        let intent = ValidatedAdventureIntent(
+            intent: try await RemoteAIIntentParsingProvider(
+                baseURL: URL(string: "http://127.0.0.1:3000"),
+                dataLoader: { _ in
+                    (Self.remoteIntentData(), Self.httpResponse(statusCode: 200))
+                }
+            )
+            .parseIntent(rawPrompt: "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück")
+        )
+        let metadata = RouteIntentDebugMetadata(
+            intent: intent,
+            geocodedStartLabel: "Schierke",
+            geocodedEndLabel: nil
+        )
+        let rows = Dictionary(uniqueKeysWithValues: IntentDebugFormatter.rows(for: metadata).map { ($0.label, $0.value) })
+
+        XCTAssertEqual(rows["parserSource"], "remoteAI")
+        XCTAssertEqual(rows["localFallbackUsed"], "no")
     }
 
     func testIntentDebugFormatterIncludesParserFallbackAndIntentFields() {
@@ -147,8 +373,12 @@ final class IntentParsingFoundationTests: XCTestCase {
         let values = Dictionary(uniqueKeysWithValues: rows.map { ($0.label, $0.value) })
 
         XCTAssertEqual(values["parserSource"], "localRuleBased")
-        XCTAssertEqual(values["validationStatus"], "validated")
+        XCTAssertEqual(values["validationStatus"], "valid")
         XCTAssertEqual(values["localFallbackUsed"], "yes")
+        XCTAssertEqual(values["repaired"], "no")
+        XCTAssertEqual(values["repairReason"], "nil")
+        XCTAssertEqual(values["missingFields"], "[]")
+        XCTAssertEqual(values["clarificationQuestion"], "nil")
         XCTAssertEqual(values["rawPrompt"], "15 km Rundwanderung um Schierke mit Aussicht")
         XCTAssertEqual(values["activityType"], "Hiking")
         XCTAssertEqual(values["routeType"], "Loop")
@@ -161,6 +391,50 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(values["transportMode"], "walking")
         XCTAssertTrue(values["confidence"] == "0.72" || values["confidence"] == "0,72")
         XCTAssertEqual(values["geocodedStartLabel"], "Schierke")
+    }
+
+    func testRemoteRouteTypeNilCanNormalizeToLoopFromPromptAndRegion() async throws {
+        let provider = RemoteAIIntentParsingProvider(
+            baseURL: URL(string: "http://127.0.0.1:3000"),
+            dataLoader: { _ in
+                (Self.remoteIntentDataWithoutRouteType(), Self.httpResponse(statusCode: 200))
+            }
+        )
+
+        let intent = try await provider.parseIntent(rawPrompt: "hike around Lüneburg")
+
+        XCTAssertEqual(intent.parserSource, .remoteAI)
+        XCTAssertEqual(intent.routeType, .loop)
+        XCTAssertEqual(intent.regionQuery, "Lüneburg")
+        XCTAssertNil(intent.endLocationQuery)
+    }
+
+    func testIntentRepairKeepsRequestedFeaturesAsPreferencesOnly() throws {
+        let validator = IntentValidationService()
+        let intent = AdventureIntent(
+            rawPrompt: "15 km Rundwanderung um Schierke mit Aussicht",
+            parserSource: .remoteAI,
+            confidence: 0.77,
+            activityType: .hiking,
+            routeType: .pointToPoint,
+            startLocationQuery: "Schierke",
+            endLocationQuery: nil,
+            regionQuery: nil,
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [.viewpoint],
+            avoidFeatures: []
+        )
+
+        let result = validator.validateResult(intent)
+        let validated = try XCTUnwrap(result.validatedIntent)
+        let request = RoutePlanningRequest(validatedIntent: validated)
+
+        XCTAssertEqual(result.status, .repaired)
+        XCTAssertEqual(validated.desiredFeatures, [.viewpoint])
+        XCTAssertEqual(validated.requestedFeaturePreferences, [.viewpoint])
+        XCTAssertEqual(request.metadata.requestedFeatureSummary, "Requested: Views")
     }
 
     func testFixturePromptEvalCoversCurrentLocalParserContract() async throws {
@@ -194,6 +468,73 @@ final class IntentParsingFoundationTests: XCTestCase {
             .appendingPathComponent("prompt_intent_eval.json")
         let data = try Data(contentsOf: fixtureURL)
         return try JSONDecoder().decode([IntentFixture].self, from: data)
+    }
+
+    private nonisolated static func remoteIntentData() -> Data {
+        Data(
+            """
+            {
+              "activityType": "hiking",
+              "routeType": "loop",
+              "startLocationQuery": "Schierke",
+              "endLocationQuery": null,
+              "regionQuery": null,
+              "targetDistanceKm": 15,
+              "targetDurationMinutes": null,
+              "difficulty": "easy",
+              "desiredFeatures": [],
+              "avoidFeatures": ["repeatedPath"],
+              "transportMode": "walking",
+              "rawPrompt": "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück",
+              "parserSource": "remoteAI",
+              "confidence": 0.78
+            }
+            """.utf8
+        )
+    }
+
+    private nonisolated static func remoteIntentDataWithoutRouteType() -> Data {
+        Data(
+            """
+            {
+              "activityType": "hiking",
+              "routeType": null,
+              "startLocationQuery": null,
+              "endLocationQuery": null,
+              "regionQuery": "Lüneburg",
+              "targetDistanceKm": null,
+              "targetDurationMinutes": null,
+              "difficulty": null,
+              "desiredFeatures": [],
+              "avoidFeatures": [],
+              "transportMode": "walking",
+              "rawPrompt": "hike around Lüneburg",
+              "parserSource": "remoteAI",
+              "confidence": 0.64
+            }
+            """.utf8
+        )
+    }
+
+    private nonisolated static func httpResponse(statusCode: Int) -> HTTPURLResponse {
+        HTTPURLResponse(
+            url: URL(string: "http://127.0.0.1:3000/api/parse-intent")!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+    }
+}
+
+private actor CapturedURLRequest {
+    private var value: URLRequest?
+
+    func set(_ request: URLRequest) {
+        value = request
+    }
+
+    func get() -> URLRequest? {
+        value
     }
 }
 

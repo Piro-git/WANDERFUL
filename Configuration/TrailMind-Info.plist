@@ -22,8 +22,15 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GRAPHHOPPER_API_KEY</key>
 	<string>$(GRAPHHOPPER_API_KEY)</string>
+	<key>INTENT_BACKEND_BASE_URL</key>
+	<string>$(INTENT_BACKEND_BASE_URL)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>TrailMind uses your location to suggest nearby adventures and support future navigation.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

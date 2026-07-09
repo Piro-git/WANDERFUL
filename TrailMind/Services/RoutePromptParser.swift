@@ -24,7 +24,7 @@ enum RoutePromptParserError: LocalizedError, Equatable {
     case invalidPrompt
 
     var errorDescription: String? {
-        "Bitte gib Start und Ziel ein, z.B. 'Ilsenburg nach Schierke'."
+        "Which area should I plan around?"
     }
 }
 
@@ -37,6 +37,18 @@ struct RoutePromptParser: Sendable {
     private static let loopPatterns: [NSRegularExpression] = [
         try! NSRegularExpression(
             pattern: #"^\s*(?:.+?\s+)?(?:rundwanderung|rundtour|runde)\s+(?:um|ab|bei)\s+(.+?)\s*$"#,
+            options: [.caseInsensitive]
+        ),
+        try! NSRegularExpression(
+            pattern: #"^\s*(?:.+?\s+)?(?:wanderung|tour|lauf|trailrun|trail\s+run|hike|walk|run)\s+(?:um|ab|bei|around|near)\s+(.+?)\s*$"#,
+            options: [.caseInsensitive]
+        ),
+        try! NSRegularExpression(
+            pattern: #"^\s*(?:.+?\s+)?(?:um|bei|around|near)\s+(.+?)\s+.*(?:wandern|wanderung|hike|trail\s*run|trailrun|laufen|run)\b.*$"#,
+            options: [.caseInsensitive]
+        ),
+        try! NSRegularExpression(
+            pattern: #"^\s*(?:.+?\s+)?(?:im|in der|in den)\s+(.+?)\s+.*(?:wandern|wanderung|hike|laufen|trailrun|trail\s*run|run)\b.*$"#,
             options: [.caseInsensitive]
         ),
         try! NSRegularExpression(
@@ -81,7 +93,7 @@ struct RoutePromptParser: Sendable {
         // "Ilsenburg nach Schierke"
         (
             try! NSRegularExpression(
-                pattern: #"^\s*(?:(?:wanderung|tour|route|strecke|radroute|radtour|lauf|trailrun)\s+)?(.+?)\s+(?:nach|zum|zur)\s+(.+?)\s*$"#,
+                pattern: #"^\s*(?:(?:wanderung|tour|route|strecke|radroute|radtour|lauf|trailrun)\s+)?(.+?)\s+(?:nach|zum|zur|bis)\s+(.+?)\s*$"#,
                 options: [.caseInsensitive]
             ),
             .startEnd
@@ -106,12 +118,28 @@ struct RoutePromptParser: Sendable {
 
     private static let trailingLocationPatterns = [
         #"\s+(?:mit|with)\s+(?:aussicht|views?|panorama|wald|forest|wasser|water|wasserfall|waterfall|ruhig|quiet|sonnenuntergang|sunset)\b.*$"#,
+        #"\s+(?:mit|with)\s+(?:wenig|little|not too much)\s+(?:gleicher|same|shared|zuruck|zurück|back)\b.*$"#,
+        #"\s+(?:moglichst|möglichst)\s+(?:wenig|kaum)\s+(?:gleicher|denselben|gleichen|same)\b.*$"#,
+        #"\s+(?:,|;|-)?\s*(?:eher|rather)?\s*(?:easy|leicht|einfach|entspannt|relaxed|gentle)\b.*$"#,
         #"\s+(?:für|for)\s+\d+(?:[,.]\d+)?\s*(?:km|kilometer|h|std\.?|stunden?|hours?|hrs?)\b.*$"#,
-        #"\s+(?:ca\.?|circa|ungefähr|ungefaehr|about|around)\s+\d+(?:[,.]\d+)?\s*(?:km|kilometer|h|std\.?|stunden?|hours?|hrs?)\b.*$"#,
+        #"\s+(?:ca\.?|circa|ungefähr|ungefaehr|about|around)\s+\d+(?:[,.]\d+)?\s*(?:km|kilometer|h|std\.?|stunden?|hours?|hrs?|minutes?|minuten?|mins?)\b.*$"#,
         #"\s+(?:heute|morgen|today|tomorrow)\b.*$"#
     ]
 
     func parse(_ prompt: String) throws -> ParsedRoutePrompt {
+        let candidates = promptCandidates(from: prompt)
+        if candidates.count > 1 {
+            for candidate in candidates {
+                if let parsedPrompt = try? parseSingle(candidate) {
+                    return parsedPrompt
+                }
+            }
+        }
+
+        return try parseSingle(prompt)
+    }
+
+    private func parseSingle(_ prompt: String) throws -> ParsedRoutePrompt {
         let fullRange = NSRange(prompt.startIndex..<prompt.endIndex, in: prompt)
 
         if let loopPrompt = parseLoop(prompt, fullRange: fullRange) {
@@ -163,6 +191,16 @@ struct RoutePromptParser: Sendable {
         throw RoutePromptParserError.invalidPrompt
     }
 
+    private func promptCandidates(from prompt: String) -> [String] {
+        prompt.components(separatedBy: .newlines)
+            .map {
+                $0.trimmingCharacters(
+                    in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "#"))
+                )
+            }
+            .filter { !$0.isEmpty }
+    }
+
     private func parseLoop(_ prompt: String, fullRange: NSRange) -> ParsedRoutePrompt? {
         for pattern in Self.loopPatterns {
             guard
@@ -195,7 +233,7 @@ struct RoutePromptParser: Sendable {
     private func cleanLocation(_ value: String) -> String {
         var cleaned = value.trimmingCharacters(
             in: CharacterSet.whitespacesAndNewlines.union(
-                CharacterSet(charactersIn: #",.;:!?'"„“"#)
+                CharacterSet(charactersIn: #",.;:!?'"„“#"#)
             )
         )
 
@@ -209,7 +247,7 @@ struct RoutePromptParser: Sendable {
 
         return cleaned.trimmingCharacters(
             in: CharacterSet.whitespacesAndNewlines.union(
-                CharacterSet(charactersIn: #",.;:!?'"„“"#)
+                CharacterSet(charactersIn: #",.;:!?'"„“#"#)
             )
         )
     }
@@ -230,14 +268,25 @@ struct RoutePromptParser: Sendable {
     }
 
     private func preferredDistanceKilometers(in prompt: String) -> Double? {
-        firstDouble(
+        if let rangeValue = firstDistanceRange(in: prompt) {
+            return rangeValue
+        }
+
+        return firstDouble(
             in: prompt,
             pattern: #"(?:ca\.?|circa|ungefähr|ungefaehr|about|around)?\s*(\d+(?:[,.]\d+)?)\s*(?:km|kilometer)\b"#
         )
     }
 
     private func preferredDurationHours(in prompt: String) -> Double? {
-        firstDouble(
+        if let minutes = firstDouble(
+            in: prompt,
+            pattern: #"(?:about|around|ca\.?|circa|ungefähr|ungefaehr)?\s*(\d+(?:[,.]\d+)?)\s*(?:minutes?|minuten?|mins?)\b"#
+        ) {
+            return minutes / 60
+        }
+
+        return firstDouble(
             in: prompt,
             pattern: #"(\d+(?:[,.]\d+)?)\s*(?:h|std\.?|stunden?|hours?|hrs?)\b"#
         )
@@ -246,7 +295,10 @@ struct RoutePromptParser: Sendable {
     private func difficulty(in prompt: String) -> RouteDifficulty? {
         let normalized = normalized(prompt)
 
-        if ["anspruchsvoll", "fordernd", "schwer", "steil", "challenging", "hard", "tough"].contains(where: normalized.contains) {
+        if ["nicht zu steil", "not too steep", "wenig steil"].contains(where: normalized.contains) {
+            return .easy
+        }
+        if ["anspruchsvoll", "fordernd", "schwer", "steil", "sportlich", "challenging", "hard", "tough", "sporty"].contains(where: normalized.contains) {
             return .challenging
         }
         if ["leicht", "einfach", "entspannt", "spaziergang", "easy", "relaxed", "gentle"].contains(where: normalized.contains) {
@@ -289,6 +341,27 @@ struct RoutePromptParser: Sendable {
         }
 
         return Double(prompt[valueRange].replacingOccurrences(of: ",", with: "."))
+    }
+
+    private func firstDistanceRange(in prompt: String) -> Double? {
+        guard
+            let regex = try? NSRegularExpression(
+                pattern: #"(\d+(?:[,.]\d+)?)\s*(?:-|–|—|bis|to)\s*(\d+(?:[,.]\d+)?)\s*(?:km|kilometer)\b"#,
+                options: [.caseInsensitive]
+            ),
+            let match = regex.firstMatch(
+                in: prompt,
+                range: NSRange(prompt.startIndex..<prompt.endIndex, in: prompt)
+            ),
+            let lowerRange = Range(match.range(at: 1), in: prompt),
+            let upperRange = Range(match.range(at: 2), in: prompt),
+            let lower = Double(prompt[lowerRange].replacingOccurrences(of: ",", with: ".")),
+            let upper = Double(prompt[upperRange].replacingOccurrences(of: ",", with: "."))
+        else {
+            return nil
+        }
+
+        return (lower + upper) / 2
     }
 
     private func normalized(_ prompt: String) -> String {

@@ -597,19 +597,31 @@ struct RouteIntentDebugMetadata: Hashable, Sendable {
     let intent: ValidatedAdventureIntent
     let validationStatus: String
     let localFallbackUsed: Bool
+    let repaired: Bool
+    let repairReason: String?
+    let missingFields: [String]
+    let clarificationQuestion: String?
     let geocodedStartLabel: String?
     let geocodedEndLabel: String?
 
     init(
         intent: ValidatedAdventureIntent,
-        validationStatus: String = "validated",
+        validationStatus: String = IntentValidationStatus.valid.rawValue,
         localFallbackUsed: Bool? = nil,
+        repaired: Bool = false,
+        repairReason: String? = nil,
+        missingFields: [String] = [],
+        clarificationQuestion: String? = nil,
         geocodedStartLabel: String?,
         geocodedEndLabel: String?
     ) {
         self.intent = intent
         self.validationStatus = validationStatus
         self.localFallbackUsed = localFallbackUsed ?? (intent.parserSource == .localRuleBased)
+        self.repaired = repaired
+        self.repairReason = repairReason
+        self.missingFields = missingFields
+        self.clarificationQuestion = clarificationQuestion
         self.geocodedStartLabel = geocodedStartLabel
         self.geocodedEndLabel = geocodedEndLabel
     }
@@ -631,6 +643,10 @@ enum IntentDebugFormatter {
             row("parserSource", parserSourceLabel(intent.parserSource)),
             row("validationStatus", metadata.validationStatus),
             row("localFallbackUsed", metadata.localFallbackUsed ? "yes" : "no"),
+            row("repaired", metadata.repaired ? "yes" : "no"),
+            row("repairReason", optional(metadata.repairReason)),
+            row("missingFields", metadata.missingFields.isEmpty ? "[]" : metadata.missingFields.joined(separator: ", ")),
+            row("clarificationQuestion", optional(metadata.clarificationQuestion)),
             row("rawPrompt", intent.rawPrompt),
             row("activityType", intent.activityType.rawValue),
             row("routeType", intent.routeType.rawValue),

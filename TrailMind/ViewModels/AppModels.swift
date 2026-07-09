@@ -78,7 +78,7 @@ final class PlannerViewModel {
 
     init(
         plannerService: any AIPlannerService = MockAIPlannerService(),
-        intentParsingProvider: any IntentParsingProvider = LocalIntentParsingProvider(),
+        intentParsingProvider: any IntentParsingProvider = IntentParsingProviderFactory.makeDefaultProvider(),
         intentValidationService: IntentValidationService = IntentValidationService(),
         geocodingService: any GeocodingService = NativeGeocodingService(),
         routingCoordinator: any RoutingCoordinating = RoutingCoordinator()
@@ -148,7 +148,14 @@ final class PlannerViewModel {
     private func generateDynamicRoute() async throws {
         generationStep = 0
         let parsedIntent = try await intentParsingProvider.parseIntent(rawPrompt: prompt)
-        let validatedIntent = try intentValidationService.validate(parsedIntent)
+        let validationResult = intentValidationService.validateResult(parsedIntent)
+        guard let validatedIntent = validationResult.validatedIntent else {
+            errorMessage = validationResult.clarificationQuestion
+                ?? validationResult.validationError?.localizedDescription
+                ?? IntentClarificationQuestion.vagueArea
+            phase = .home
+            return
+        }
         let planningRequest = RoutePlanningRequest(validatedIntent: validatedIntent)
         try await Task.sleep(for: .milliseconds(250))
 
@@ -190,7 +197,11 @@ final class PlannerViewModel {
         suggestionNotice = routingResult.notice
         let intentDebugMetadata = RouteIntentDebugMetadata(
             intent: validatedIntent,
-            validationStatus: "validated",
+            validationStatus: validationResult.status.rawValue,
+            repaired: validationResult.repaired,
+            repairReason: validationResult.repairReason,
+            missingFields: validationResult.missingFields.map(\.rawValue),
+            clarificationQuestion: validationResult.clarificationQuestion,
             geocodedStartLabel: planningRequest.startQuery,
             geocodedEndLabel: planningRequest.endQuery
         )
