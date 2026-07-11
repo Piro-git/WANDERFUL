@@ -22,6 +22,7 @@ struct RouteDetailView: View {
                     header
                     RouteStatsRow(route: route)
                     planningContext
+                    verifiedRouteCharacteristics
                     #if DEBUG
                     intentQA
                     #endif
@@ -45,11 +46,16 @@ struct RouteDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    appModel.toggleSaved(route)
+                    Task { await appModel.savedRoutes.toggle(route) }
                 } label: {
-                    Image(systemName: appModel.isSaved(route) ? "bookmark.fill" : "bookmark")
+                    if appModel.savedRoutes.pendingRouteIDs.contains(route.id) {
+                        ProgressView()
+                    } else {
+                        Image(systemName: appModel.savedRoutes.isSaved(route) ? "bookmark.fill" : "bookmark")
+                    }
                 }
-                .accessibilityLabel(appModel.isSaved(route) ? "Remove from saved routes" : "Save route")
+                .disabled(appModel.savedRoutes.pendingRouteIDs.contains(route.id))
+                .accessibilityLabel(appModel.savedRoutes.isSaved(route) ? "Remove from saved routes" : "Save route")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -59,6 +65,26 @@ struct RouteDetailView: View {
             Button("Got it", role: .cancel) { }
         } message: {
             Text("Turn-by-turn guidance will connect here next. Review the full route, current weather and local trail conditions before starting.")
+        }
+        .alert(
+            "Saved Routes",
+            isPresented: Binding(
+                get: { appModel.savedRoutes.errorMessage != nil },
+                set: { if !$0 { appModel.savedRoutes.clearError() } }
+            )
+        ) {
+            Button("OK", role: .cancel) { appModel.savedRoutes.clearError() }
+        } message: {
+            Text(appModel.savedRoutes.errorMessage ?? "Please try again.")
+        }
+    }
+
+    @ViewBuilder
+    private var verifiedRouteCharacteristics: some View {
+        if let characteristics = route.verifiedCharacteristics,
+           characteristics.hasDisplayableData
+        {
+            VerifiedRouteCharacteristicsView(characteristics: characteristics)
         }
     }
 
@@ -166,9 +192,9 @@ struct RouteDetailView: View {
                             PlanningChip(label: variantLabel, symbol: "slider.horizontal.3")
                         }
 
-                        if let targetDistanceKm = metadata.targetDistanceKm {
+                        if let requestedDistanceSummary = metadata.requestedDistanceSummary {
                             PlanningChip(
-                                label: "ca. \(targetDistanceKm.formatted(.number.precision(.fractionLength(targetDistanceKm.rounded() == targetDistanceKm ? 0 : 1)))) km",
+                                label: requestedDistanceSummary,
                                 symbol: "ruler"
                             )
                         }
@@ -195,10 +221,29 @@ struct RouteDetailView: View {
                         .foregroundStyle(theme.secondaryText)
                 }
 
+                if let routeShapingSummary = metadata.routeShapingSummary,
+                   !routeShapingSummary.isEmpty
+                {
+                    RouteShapingSummaryView(summary: routeShapingSummary)
+                }
+
                 if let distanceNote = metadata.distanceNote(actualDistanceKm: route.distanceKilometers) {
                     Text(distanceNote)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(theme.moss)
+                }
+
+                if case .singleRoute = metadata.loopSearchOutcome {
+                    HStack(alignment: .top, spacing: 9) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundStyle(theme.moss)
+                        Text("TrailMind found one distinct loop for this start and distance. A nearby trailhead or different distance may yield alternatives.")
+                            .font(.caption)
+                            .foregroundStyle(theme.graphite)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .background(theme.sand.opacity(0.62), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
 
                 let qualityExplanations = RouteQualityExplanationGenerator.explanations(for: route)
@@ -323,6 +368,202 @@ private struct PlanningChip: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(theme.mossSoft.opacity(0.62), in: Capsule())
+    }
+}
+
+private struct RouteShapingSummaryView: View {
+    @Environment(TrailTheme.self) private var theme
+
+    let summary: RouteShapingSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !summary.applied.isEmpty {
+                preferenceRow(
+                    title: "Applied to routing",
+                    preferences: summary.applied,
+                    symbol: "checkmark.circle.fill",
+                    color: theme.forest
+                )
+            }
+            if !summary.requestedOnly.isEmpty {
+                preferenceRow(
+                    title: "Requested only",
+                    preferences: summary.requestedOnly,
+                    symbol: "info.circle.fill",
+                    color: theme.secondaryText
+                )
+            }
+        }
+    }
+
+    private func preferenceRow(
+        title: String,
+        preferences: [RouteShapingPreference],
+        symbol: String,
+        color: Color
+    ) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: symbol)
+                .foregroundStyle(color)
+            Text("\(title): \(preferences.map(\.label).joined(separator: ", "))")
+                .font(.caption)
+                .foregroundStyle(theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct VerifiedRouteCharacteristicsView: View {
+    @Environment(TrailTheme.self) private var theme
+
+    let characteristics: VerifiedRouteCharacteristics
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Route surface",
+                subtitle: "Measured from mapped GraphHopper route segments."
+            )
+
+            if characteristics.hasDisplayableSurfaceData {
+                surfaceBar
+                HStack(spacing: 18) {
+                    if let unpavedRatio = characteristics.unpavedRatio {
+                        legendItem(
+                            label: "Unpaved",
+                            value: percentLabel(unpavedRatio),
+                            color: theme.forest
+                        )
+                    }
+                    if let pavedRatio = characteristics.pavedRatio {
+                        legendItem(
+                            label: "Paved",
+                            value: percentLabel(pavedRatio),
+                            color: theme.moss
+                        )
+                    }
+                    if let unknownRatio = characteristics.unknownSurfaceRatio, unknownRatio >= 0.01 {
+                        legendItem(
+                            label: "Unknown",
+                            value: percentLabel(unknownRatio),
+                            color: theme.secondaryText.opacity(0.45)
+                        )
+                    }
+                }
+            }
+
+            if let pathAndTrackRatio = characteristics.pathAndTrackRatio {
+                factRow(
+                    title: "Paths and tracks",
+                    value: percentLabel(pathAndTrackRatio),
+                    symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
+                )
+            }
+
+            if let majorRoadRatio = characteristics.majorRoadRatio {
+                factRow(
+                    title: "Major roads",
+                    value: percentLabel(majorRoadRatio),
+                    symbol: "road.lanes"
+                )
+            }
+
+            if let maximumHikeRating = characteristics.maximumHikeRating,
+               maximumHikeRating >= 2
+            {
+                let distanceKm = characteristics.mountainHikingDistanceMeters / 1_000
+                factRow(
+                    title: "Mountain-hiking classified sections",
+                    value: "\(distanceKm.formatted(.number.precision(.fractionLength(1)))) km · rating up to \(maximumHikeRating)",
+                    symbol: "mountain.2.fill"
+                )
+            }
+
+            Text(coverageSummary)
+                .font(.caption)
+                .foregroundStyle(theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .trailCard()
+    }
+
+    private var surfaceBar: some View {
+        GeometryReader { proxy in
+            let pavedWidth = proxy.size.width * (characteristics.pavedRatio ?? 0)
+            let unpavedWidth = proxy.size.width * (characteristics.unpavedRatio ?? 0)
+            let unknownWidth = max(0, proxy.size.width - pavedWidth - unpavedWidth)
+
+            HStack(spacing: 0) {
+                Rectangle()
+                    .fill(theme.forest)
+                    .frame(width: unpavedWidth)
+                Rectangle()
+                    .fill(theme.moss)
+                    .frame(width: pavedWidth)
+                Rectangle()
+                    .fill(theme.secondaryText.opacity(0.25))
+                    .frame(width: unknownWidth)
+            }
+            .clipShape(Capsule())
+        }
+        .frame(height: 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Surface: \(percentLabel(characteristics.unpavedRatio ?? 0)) unpaved, \(percentLabel(characteristics.pavedRatio ?? 0)) paved"
+        )
+    }
+
+    private func legendItem(label: String, value: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(theme.graphite)
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(theme.secondaryText)
+            }
+        }
+    }
+
+    private func factRow(title: String, value: String, symbol: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(theme.forest)
+                .frame(width: 28, height: 28)
+                .background(theme.mossSoft.opacity(0.62), in: Circle())
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(theme.graphite)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(theme.secondaryText)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private var coverageSummary: String {
+        var values: [String] = []
+        if characteristics.surfaceCoverageMeters > 0 {
+            values.append("surface \(percentLabel(characteristics.surfaceCoverageRatio))")
+        }
+        if characteristics.roadClassCoverageMeters > 0 {
+            values.append("road class \(percentLabel(characteristics.roadClassCoverageRatio))")
+        }
+        if characteristics.hikeRatingCoverageMeters > 0 {
+            values.append("hike rating \(percentLabel(characteristics.hikeRatingCoverageRatio))")
+        }
+        return "Mapped-data coverage: \(values.joined(separator: ", ")). Unknown sections are not treated as paved or unpaved."
+    }
+
+    private func percentLabel(_ ratio: Double) -> String {
+        "\(Int((ratio * 100).rounded()))%"
     }
 }
 

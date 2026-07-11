@@ -128,6 +128,21 @@ final class RoutePromptParserTests: XCTestCase {
     }
 
     @MainActor
+    func testLoopPromptExtractsRepeatedPathAvoidance() throws {
+        let parser = RoutePromptParser()
+        let parsed = try parser.parse(
+            "15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück"
+        )
+
+        XCTAssertEqual(parsed.routeType, .loop)
+        XCTAssertEqual(parsed.avoidFeatures, [.repeatedPath])
+        XCTAssertEqual(
+            RoutePlanningRequest(parsedPrompt: parsed).avoidFeatures,
+            [.repeatedPath]
+        )
+    }
+
+    @MainActor
     func testMultiLinePasteUsesFirstValidRoutePrompt() throws {
         let parser = RoutePromptParser()
         let result = try parser.parse(
@@ -156,7 +171,7 @@ final class RoutePromptParserTests: XCTestCase {
         let trailRun = RoutePlanningRequest(parsedPrompt: try parser.parse("Trailrun loop from Ilsenburg for 2 hours"))
         XCTAssertEqual(trailRun.routeType, .loop)
         XCTAssertEqual(trailRun.activityType, .trailRunning)
-        XCTAssertEqual(trailRun.targetDistanceKm, 8)
+        XCTAssertEqual(trailRun.targetDistanceKm, 16)
         XCTAssertEqual(trailRun.targetDurationMinutes, 120)
 
         let bike = RoutePlanningRequest(parsedPrompt: try parser.parse("Bike loop around Lüneburg"))

@@ -18,6 +18,14 @@ protocol GraphHopperRouteCalculating {
         request: RoutePlanningRequest,
         seeds: [Int]
     ) async throws -> [TrailRoute]
+
+    func calculateRoundTripRouteVariants(
+        start: Coordinate,
+        request: RoutePlanningRequest,
+        seeds: [Int],
+        deadline: Date?,
+        maximumConcurrentRequests: Int
+    ) async throws -> [TrailRoute]
 }
 
 extension GraphHopperRouteCalculating {
@@ -84,6 +92,20 @@ extension GraphHopperRouteCalculating {
         )
         return [route]
     }
+
+    func calculateRoundTripRouteVariants(
+        start: Coordinate,
+        request: RoutePlanningRequest,
+        seeds: [Int],
+        deadline: Date?,
+        maximumConcurrentRequests: Int
+    ) async throws -> [TrailRoute] {
+        try await calculateRoundTripRouteVariants(
+            start: start,
+            request: request,
+            seeds: seeds
+        )
+    }
 }
 
 enum GraphHopperError: LocalizedError, Sendable {
@@ -136,18 +158,30 @@ enum GraphHopperError: LocalizedError, Sendable {
     }
 }
 
-struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopperMultiPointRouteCalculating {
+struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopperMultiPointRouteCalculating, ConcurrentGraphHopperMultiPointRouteCalculating {
     private let session: URLSession
     private let configurationProvider: @Sendable () throws -> GraphHopperConfiguration
+    private let gateway: (any BackendRouteGatewayRouting)?
+
+    init() {
+        session = .shared
+        configurationProvider = { throw GraphHopperError.missingAPIKey }
+        gateway = BackendRouteGateway()
+    }
 
     init(
-        session: URLSession = .shared,
-        configurationProvider: @escaping @Sendable () throws -> GraphHopperConfiguration = {
-            try GraphHopperConfiguration.local()
-        }
+        session: URLSession,
+        configurationProvider: @escaping @Sendable () throws -> GraphHopperConfiguration
     ) {
         self.session = session
         self.configurationProvider = configurationProvider
+        gateway = nil
+    }
+
+    init(gateway: any BackendRouteGatewayRouting) {
+        session = .shared
+        configurationProvider = { throw GraphHopperError.missingAPIKey }
+        self.gateway = gateway
     }
 
     func calculateGraphHopperRoute(
@@ -196,35 +230,63 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         request planningRequest: RoutePlanningRequest,
         seeds: [Int] = [11, 29, 47]
     ) async throws -> [TrailRoute] {
+        try await calculateRoundTripRouteVariants(
+            start: start,
+            request: planningRequest,
+            seeds: seeds,
+            deadline: nil,
+            maximumConcurrentRequests: 1
+        )
+    }
+
+    func calculateRoundTripRouteVariants(
+        start: Coordinate,
+        request planningRequest: RoutePlanningRequest,
+        seeds: [Int],
+        deadline: Date?,
+        maximumConcurrentRequests: Int
+    ) async throws -> [TrailRoute] {
+        if let gateway {
+            return try await calculateGatewayRoundTripRouteVariants(
+                gateway: gateway,
+                start: start,
+                planningRequest: planningRequest,
+                seeds: seeds,
+                deadline: deadline,
+                maximumConcurrentRequests: maximumConcurrentRequests
+            )
+        }
         let configuration = try configurationProvider()
         var variants: [(seed: Int, route: TrailRoute)] = []
         var firstError: Error?
+        let concurrency = max(maximumConcurrentRequests, 1)
+        var nextSeedIndex = 0
 
-        for seed in seeds {
-            do {
-                let request = try makeRoundTripRequest(
-                    configuration: configuration,
-                    start: start,
-                    planningRequest: planningRequest,
-                    seed: seed
-                )
-                let route = try await execute(
-                    request: request,
-                    requestedStart: start,
-                    requestedEnd: start,
-                    planningRequest: planningRequest
-                )
-                variants.append((seed, route))
-            } catch {
-                if firstError == nil {
-                    firstError = error
+        while nextSeedIndex < seeds.count {
+            guard deadline.map({ Date() < $0 }) ?? true else { break }
+            let batchEnd = min(nextSeedIndex + concurrency, seeds.count)
+            let batch = Array(seeds[nextSeedIndex..<batchEnd])
+            let results = await roundTripResults(
+                for: batch,
+                configuration: configuration,
+                start: start,
+                planningRequest: planningRequest,
+                deadline: deadline
+            )
+            for (seed, result) in results {
+                switch result {
+                case let .success(route):
+                    variants.append((seed, route))
+                case let .failure(error):
+                    firstError = firstError ?? error
                 }
             }
+            nextSeedIndex = batchEnd
         }
 
         let rankedRoutes = Self.rankedLoopVariants(
             variants,
-            targetDistanceKm: planningRequest.targetDistanceKm ?? RoutePlanningRequest.defaultLoopDistanceKm(for: planningRequest.activityType)
+            planningRequest: planningRequest
         )
         if !rankedRoutes.isEmpty {
             return rankedRoutes
@@ -233,13 +295,87 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         throw firstError ?? GraphHopperError.noRouteFound
     }
 
+    private func roundTripResults(
+        for seeds: [Int],
+        configuration: GraphHopperConfiguration,
+        start: Coordinate,
+        planningRequest: RoutePlanningRequest,
+        deadline: Date?
+    ) async -> [(Int, Result<TrailRoute, Error>)] {
+        guard seeds.count == 2 else {
+            guard let seed = seeds.first else { return [] }
+            return [(
+                seed,
+                await roundTripResult(
+                    seed: seed,
+                    configuration: configuration,
+                    start: start,
+                    planningRequest: planningRequest,
+                    deadline: deadline
+                )
+            )]
+        }
+
+        async let first = roundTripResult(
+            seed: seeds[0],
+            configuration: configuration,
+            start: start,
+            planningRequest: planningRequest,
+            deadline: deadline
+        )
+        async let second = roundTripResult(
+            seed: seeds[1],
+            configuration: configuration,
+            start: start,
+            planningRequest: planningRequest,
+            deadline: deadline
+        )
+        return [(seeds[0], await first), (seeds[1], await second)]
+    }
+
+    private func roundTripResult(
+        seed: Int,
+        configuration: GraphHopperConfiguration,
+        start: Coordinate,
+        planningRequest: RoutePlanningRequest,
+        deadline: Date?
+    ) async -> Result<TrailRoute, Error> {
+        do {
+            let request = try makeRoundTripRequest(
+                configuration: configuration,
+                start: start,
+                planningRequest: planningRequest,
+                seed: seed,
+                timeoutInterval: requestTimeout(until: deadline)
+            )
+            let route = try await execute(
+                request: request,
+                requestedStart: start,
+                requestedEnd: start,
+                planningRequest: planningRequest
+            )
+            return .success(route)
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func calculateGraphHopperRoute(
         request planningRequest: RoutePlanningRequest,
         start: Coordinate,
         end: Coordinate
     ) async throws -> TrailRoute {
-        let configuration = try configurationProvider()
         let routePreferences = GraphHopperRoutePreferences.conservative(for: planningRequest)
+        if let gateway {
+            return try await calculateGatewayPointToPointRoute(
+                gateway: gateway,
+                planningRequest: planningRequest,
+                start: start,
+                end: end,
+                routePreferences: routePreferences
+            )
+        }
+        let configuration = try configurationProvider()
         let request = try makeRequest(
             configuration: configuration,
             start: start,
@@ -249,11 +385,20 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         )
 
         do {
-            return try await execute(
+            let route = try await execute(
                 request: request,
                 requestedStart: start,
                 requestedEnd: end,
                 planningRequest: planningRequest
+            )
+            return route.withPlanningMetadata(
+                route.planningMetadata?.withRouteShapingSummary(
+                    .pointToPoint(
+                        request: planningRequest,
+                        customModelApplied: routePreferences.customModel != nil,
+                        alternativeRoutesApplied: routePreferences.alternativeRoute != nil
+                    )
+                )
             )
         } catch let error as GraphHopperError {
             guard routePreferences.usesFlexibleRouting, error.isFlexibleRoutingFallbackCandidate else {
@@ -267,11 +412,20 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 planningRequest: planningRequest,
                 routePreferences: nil
             )
-            return try await execute(
+            let route = try await execute(
                 request: fallbackRequest,
                 requestedStart: start,
                 requestedEnd: end,
                 planningRequest: planningRequest
+            )
+            return route.withPlanningMetadata(
+                route.planningMetadata?.withRouteShapingSummary(
+                    .pointToPoint(
+                        request: planningRequest,
+                        customModelApplied: false,
+                        alternativeRoutesApplied: false
+                    )
+                )
             )
         }
     }
@@ -281,15 +435,44 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         request planningRequest: RoutePlanningRequest,
         seed: Int? = nil
     ) async throws -> TrailRoute {
+        try await calculateGraphHopperRoute(
+            waypoints: waypoints,
+            request: planningRequest,
+            seed: seed,
+            deadline: nil
+        )
+    }
+
+    func calculateGraphHopperRoute(
+        waypoints: [Coordinate],
+        request planningRequest: RoutePlanningRequest,
+        seed: Int?,
+        deadline: Date?
+    ) async throws -> TrailRoute {
         guard let start = waypoints.first, let end = waypoints.last, waypoints.count >= 2 else {
             throw TrailServiceError.noWaypoints
         }
 
+        if let gateway {
+            let route = try await executeGateway(
+                gateway: gateway,
+                request: backendMultiPointRequest(
+                    waypoints: waypoints,
+                    planningRequest: planningRequest
+                ),
+                requestedStart: start,
+                requestedEnd: end,
+                planningRequest: planningRequest
+            )
+            guard let seed else { return route }
+            return route.withPlanningMetadata(route.planningMetadata?.withVariant(seed: seed, label: nil))
+        }
         let configuration = try configurationProvider()
         let request = try makeMultiPointRequest(
             configuration: configuration,
             waypoints: waypoints,
-            planningRequest: planningRequest
+            planningRequest: planningRequest,
+            timeoutInterval: requestTimeout(until: deadline)
         )
         let route = try await execute(
             request: request,
@@ -302,6 +485,268 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             return route
         }
         return route.withPlanningMetadata(route.planningMetadata?.withVariant(seed: seed, label: nil))
+    }
+
+    private func calculateGatewayPointToPointRoute(
+        gateway: any BackendRouteGatewayRouting,
+        planningRequest: RoutePlanningRequest,
+        start: Coordinate,
+        end: Coordinate,
+        routePreferences: GraphHopperRoutePreferences
+    ) async throws -> TrailRoute {
+        do {
+            let route = try await executeGateway(
+                gateway: gateway,
+                request: backendPointToPointRequest(
+                    start: start,
+                    end: end,
+                    planningRequest: planningRequest,
+                    routePreferences: routePreferences
+                ),
+                requestedStart: start,
+                requestedEnd: end,
+                planningRequest: planningRequest
+            )
+            return route.withPlanningMetadata(
+                route.planningMetadata?.withRouteShapingSummary(
+                    .pointToPoint(
+                        request: planningRequest,
+                        customModelApplied: routePreferences.customModel != nil,
+                        alternativeRoutesApplied: routePreferences.alternativeRoute != nil
+                    )
+                )
+            )
+        } catch let error as GraphHopperError {
+            guard routePreferences.usesFlexibleRouting, error.isFlexibleRoutingFallbackCandidate else {
+                throw error
+            }
+            let route = try await executeGateway(
+                gateway: gateway,
+                request: backendPointToPointRequest(
+                    start: start,
+                    end: end,
+                    planningRequest: planningRequest,
+                    routePreferences: nil
+                ),
+                requestedStart: start,
+                requestedEnd: end,
+                planningRequest: planningRequest
+            )
+            return route.withPlanningMetadata(
+                route.planningMetadata?.withRouteShapingSummary(
+                    .pointToPoint(
+                        request: planningRequest,
+                        customModelApplied: false,
+                        alternativeRoutesApplied: false
+                    )
+                )
+            )
+        }
+    }
+
+    private func calculateGatewayRoundTripRouteVariants(
+        gateway: any BackendRouteGatewayRouting,
+        start: Coordinate,
+        planningRequest: RoutePlanningRequest,
+        seeds: [Int],
+        deadline: Date?,
+        maximumConcurrentRequests: Int
+    ) async throws -> [TrailRoute] {
+        var variants: [(seed: Int, route: TrailRoute)] = []
+        var firstError: Error?
+        var nextSeedIndex = 0
+        let concurrency = max(maximumConcurrentRequests, 1)
+        while nextSeedIndex < seeds.count {
+            guard deadline.map({ Date() < $0 }) ?? true else { break }
+            let batchEnd = min(nextSeedIndex + concurrency, seeds.count)
+            let batch = Array(seeds[nextSeedIndex..<batchEnd])
+            let results = await gatewayRoundTripResults(
+                gateway: gateway,
+                seeds: batch,
+                start: start,
+                planningRequest: planningRequest
+            )
+            for (seed, result) in results {
+                switch result {
+                case let .success(route): variants.append((seed, route))
+                case let .failure(error): firstError = firstError ?? error
+                }
+            }
+            nextSeedIndex = batchEnd
+        }
+        let routes = Self.rankedLoopVariants(variants, planningRequest: planningRequest)
+        if !routes.isEmpty { return routes }
+        throw firstError ?? GraphHopperError.noRouteFound
+    }
+
+    private func gatewayRoundTripResults(
+        gateway: any BackendRouteGatewayRouting,
+        seeds: [Int],
+        start: Coordinate,
+        planningRequest: RoutePlanningRequest
+    ) async -> [(Int, Result<TrailRoute, Error>)] {
+        guard seeds.count == 2 else {
+            guard let seed = seeds.first else { return [] }
+            return [(seed, await gatewayRoundTripResult(
+                gateway: gateway,
+                seed: seed,
+                start: start,
+                planningRequest: planningRequest
+            ))]
+        }
+        async let first = gatewayRoundTripResult(
+            gateway: gateway,
+            seed: seeds[0],
+            start: start,
+            planningRequest: planningRequest
+        )
+        async let second = gatewayRoundTripResult(
+            gateway: gateway,
+            seed: seeds[1],
+            start: start,
+            planningRequest: planningRequest
+        )
+        return [(seeds[0], await first), (seeds[1], await second)]
+    }
+
+    private func gatewayRoundTripResult(
+        gateway: any BackendRouteGatewayRouting,
+        seed: Int,
+        start: Coordinate,
+        planningRequest: RoutePlanningRequest
+    ) async -> Result<TrailRoute, Error> {
+        do {
+            let route = try await executeGateway(
+                gateway: gateway,
+                request: backendRoundTripRequest(
+                    start: start,
+                    planningRequest: planningRequest,
+                    seed: seed
+                ),
+                requestedStart: start,
+                requestedEnd: start,
+                planningRequest: planningRequest
+            )
+            return .success(route.withPlanningMetadata(
+                route.planningMetadata?.withVariant(seed: seed, label: nil)
+            ))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func executeGateway(
+        gateway: any BackendRouteGatewayRouting,
+        request: BackendRouteRequest,
+        requestedStart: Coordinate,
+        requestedEnd: Coordinate,
+        planningRequest: RoutePlanningRequest
+    ) async throws -> TrailRoute {
+        let data = try await gateway.route(request)
+        let response: GraphHopperRouteResponse
+        do {
+            response = try JSONDecoder().decode(GraphHopperRouteResponse.self, from: data)
+        } catch {
+            throw GraphHopperError.decoding(message: "TrailMind’s routing service returned an unexpected response.")
+        }
+        guard let path = Self.bestPath(
+            in: response.paths,
+            targetDistanceKm: planningRequest.targetDistanceKm
+        ) else {
+            throw GraphHopperError.noRouteFound
+        }
+        return try makeTrailRoute(
+            from: path,
+            requestedStart: requestedStart,
+            requestedEnd: requestedEnd,
+            planningRequest: planningRequest
+        )
+    }
+
+    private func backendPointToPointRequest(
+        start: Coordinate,
+        end: Coordinate,
+        planningRequest: RoutePlanningRequest,
+        routePreferences: GraphHopperRoutePreferences?
+    ) -> BackendRouteRequest {
+        BackendRouteRequest(
+            profile: planningRequest.graphHopperProfile,
+            routeType: "pointToPoint",
+            points: [start, end].map(BackendRouteRequest.Point.init),
+            algorithm: routePreferences?.algorithm,
+            roundTrip: nil,
+            alternativeRoute: routePreferences?.alternativeRoute.map {
+                BackendRouteRequest.AlternativeRoute(
+                    maxPaths: $0.maxPaths,
+                    maxWeightFactor: $0.maxWeightFactor,
+                    maxShareFactor: $0.maxShareFactor
+                )
+            },
+            locale: "de",
+            includeElevation: true,
+            includeInstructions: true,
+            includePathDetails: ["surface", "road_class", "hike_rating"],
+            preferences: routePreferences == nil ? nil : backendPreferences(for: planningRequest)
+        )
+    }
+
+    private func backendRoundTripRequest(
+        start: Coordinate,
+        planningRequest: RoutePlanningRequest,
+        seed: Int
+    ) -> BackendRouteRequest {
+        let targetDistance = planningRequest.targetDistanceKm
+            ?? RoutePlanningRequest.defaultLoopDistanceKm(for: planningRequest.activityType)
+        return BackendRouteRequest(
+            profile: planningRequest.graphHopperProfile,
+            routeType: "loop",
+            points: [BackendRouteRequest.Point(start)],
+            algorithm: "round_trip",
+            roundTrip: .init(distanceMeters: targetDistance * 1_000, seed: seed),
+            alternativeRoute: nil,
+            locale: "de",
+            includeElevation: true,
+            includeInstructions: true,
+            includePathDetails: ["surface", "road_class", "hike_rating"],
+            preferences: nil
+        )
+    }
+
+    private func backendMultiPointRequest(
+        waypoints: [Coordinate],
+        planningRequest: RoutePlanningRequest
+    ) -> BackendRouteRequest {
+        BackendRouteRequest(
+            profile: planningRequest.graphHopperProfile,
+            routeType: planningRequest.routeType == .loop ? "loop" : "pointToPoint",
+            points: waypoints.map(BackendRouteRequest.Point.init),
+            algorithm: nil,
+            roundTrip: nil,
+            alternativeRoute: nil,
+            locale: "de",
+            includeElevation: true,
+            includeInstructions: true,
+            includePathDetails: ["surface", "road_class", "hike_rating"],
+            preferences: nil
+        )
+    }
+
+    private func backendPreferences(
+        for planningRequest: RoutePlanningRequest
+    ) -> BackendRouteRequest.Preferences {
+        var avoid: [String] = []
+        if planningRequest.avoidFeatures.contains(.majorRoads) { avoid.append("majorRoads") }
+        if planningRequest.avoidFeatures.contains(.steepClimbs) { avoid.append("steepClimbs") }
+        let activityType = switch planningRequest.activityType {
+        case .hiking: "hiking"
+        case .trailRunning: "trailRunning"
+        case .biking: "biking"
+        }
+        return BackendRouteRequest.Preferences(
+            activityType: activityType,
+            avoid: avoid,
+            difficulty: planningRequest.difficulty == .easy ? "easy" : nil
+        )
     }
 
     private func execute(
@@ -344,9 +789,14 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 requestedEnd: requestedEnd,
                 planningRequest: planningRequest
             )
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let error as GraphHopperError {
             throw error
         } catch let error as URLError {
+            if error.code == .cancelled, Task.isCancelled {
+                throw CancellationError()
+            }
             throw GraphHopperError.network(message: error.localizedDescription)
         } catch {
             throw GraphHopperError.network(message: error.localizedDescription)
@@ -461,7 +911,8 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
     private func makeMultiPointRequest(
         configuration: GraphHopperConfiguration,
         waypoints: [Coordinate],
-        planningRequest: RoutePlanningRequest
+        planningRequest: RoutePlanningRequest,
+        timeoutInterval: TimeInterval = 30
     ) throws -> URLRequest {
         guard var components = URLComponents(
             url: configuration.baseURL.appending(path: "route"),
@@ -497,7 +948,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 30
+        request.timeoutInterval = timeoutInterval
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = try JSONEncoder().encode(payload)
@@ -508,7 +959,8 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         configuration: GraphHopperConfiguration,
         start: Coordinate,
         planningRequest: RoutePlanningRequest,
-        seed: Int
+        seed: Int,
+        timeoutInterval: TimeInterval = 30
     ) throws -> URLRequest {
         guard var components = URLComponents(
             url: configuration.baseURL.appending(path: "route"),
@@ -548,11 +1000,16 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 30
+        request.timeoutInterval = timeoutInterval
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = try JSONEncoder().encode(payload)
         return request
+    }
+
+    private func requestTimeout(until deadline: Date?) -> TimeInterval {
+        guard let deadline else { return 30 }
+        return min(max(deadline.timeIntervalSinceNow, 0.5), 30)
     }
 
     private func makeTrailRoute(
@@ -592,6 +1049,10 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         guard coordinates.count >= 2, path.distance >= 10, path.time > 0 else {
             throw GraphHopperError.noRouteFound
         }
+        let verifiedCharacteristics = Self.verifiedCharacteristics(
+            details: path.details,
+            coordinates: coordinates
+        )
 
         let distanceKilometers = path.distance / 1_000
         let durationHours = Double(path.time) / 3_600_000
@@ -624,7 +1085,11 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
 
         return TrailRoute(
             id: UUID(),
-            title: planningRequest.title(startName: resolvedStartName, endName: resolvedEndName),
+            title: planningRequest.title(
+                startName: resolvedStartName,
+                endName: resolvedEndName,
+                actualDistanceKm: distanceKilometers
+            ),
             location: "Germany",
             activity: activity,
             distanceKilometers: distanceKilometers,
@@ -682,7 +1147,8 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             ),
             path: coordinates,
             routeInstructions: routeInstructions,
-            planningMetadata: planningRequest.metadata
+            planningMetadata: planningRequest.metadata,
+            verifiedCharacteristics: verifiedCharacteristics
         )
     }
 
@@ -713,6 +1179,94 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         }
     }
 
+    private static func verifiedCharacteristics(
+        details: GraphHopperPathDetails?,
+        coordinates: [Coordinate]
+    ) -> VerifiedRouteCharacteristics? {
+        guard let details, coordinates.count >= 2 else { return nil }
+
+        let segmentDistances = zip(coordinates, coordinates.dropFirst()).map(distanceMeters)
+        let routeDistanceMeters = segmentDistances.reduce(0, +)
+        guard routeDistanceMeters > 0 else { return nil }
+
+        let surface = characteristicBreakdown(
+            details.surface,
+            segmentDistances: segmentDistances
+        )
+        let roadClass = characteristicBreakdown(
+            details.roadClass,
+            segmentDistances: segmentDistances
+        )
+        let hikeRating = characteristicBreakdown(
+            details.hikeRating,
+            segmentDistances: segmentDistances
+        )
+
+        guard surface.coverage > 0 || roadClass.coverage > 0 || hikeRating.coverage > 0 else {
+            return nil
+        }
+
+        return VerifiedRouteCharacteristics(
+            routeDistanceMeters: routeDistanceMeters,
+            surfaceBreakdown: surface.values,
+            roadClassBreakdown: roadClass.values,
+            hikeRatingBreakdown: hikeRating.values,
+            surfaceCoverageMeters: surface.coverage,
+            roadClassCoverageMeters: roadClass.coverage,
+            hikeRatingCoverageMeters: hikeRating.coverage
+        )
+    }
+
+    private static func characteristicBreakdown(
+        _ details: [GraphHopperPathDetail],
+        segmentDistances: [Double]
+    ) -> (values: [VerifiedRouteCharacteristicValue], coverage: Double) {
+        guard !details.isEmpty, !segmentDistances.isEmpty else { return ([], 0) }
+
+        var segmentValues = Array<String?>(repeating: nil, count: segmentDistances.count)
+        for detail in details {
+            guard let value = detail.value?.normalizedValue else { continue }
+            let lowerBound = min(max(detail.fromIndex, 0), segmentDistances.count)
+            let upperBound = min(max(detail.toIndex, 0), segmentDistances.count)
+            guard lowerBound < upperBound else { continue }
+
+            for index in lowerBound..<upperBound where segmentValues[index] == nil {
+                segmentValues[index] = value
+            }
+        }
+
+        var distancesByValue: [String: Double] = [:]
+        var coverage = 0.0
+        for (index, value) in segmentValues.enumerated() {
+            guard let value else { continue }
+            let distance = segmentDistances[index]
+            distancesByValue[value, default: 0] += distance
+            coverage += distance
+        }
+
+        let values = distancesByValue
+            .map { VerifiedRouteCharacteristicValue(value: $0.key, distanceMeters: $0.value) }
+            .sorted { lhs, rhs in
+                if lhs.distanceMeters != rhs.distanceMeters {
+                    return lhs.distanceMeters > rhs.distanceMeters
+                }
+                return lhs.value < rhs.value
+            }
+        return (values, coverage)
+    }
+
+    private static func distanceMeters(_ from: Coordinate, _ to: Coordinate) -> Double {
+        let earthRadiusMeters = 6_371_000.0
+        let latitudeDelta = (to.latitude - from.latitude) * .pi / 180
+        let longitudeDelta = (to.longitude - from.longitude) * .pi / 180
+        let fromLatitude = from.latitude * .pi / 180
+        let toLatitude = to.latitude * .pi / 180
+        let haversine = sin(latitudeDelta / 2) * sin(latitudeDelta / 2)
+            + cos(fromLatitude) * cos(toLatitude)
+            * sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
+        return earthRadiusMeters * 2 * atan2(sqrt(haversine), sqrt(max(0, 1 - haversine)))
+    }
+
     private static func downsample(_ values: [Double], maximumCount: Int) -> [Double] {
         guard values.count > maximumCount else { return values }
         let stride = Double(values.count - 1) / Double(maximumCount - 1)
@@ -735,11 +1289,26 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
 
     private static func rankedLoopVariants(
         _ variants: [(seed: Int, route: TrailRoute)],
-        targetDistanceKm: Double
+        planningRequest: RoutePlanningRequest
     ) -> [TrailRoute] {
+        let targetDistanceKm = planningRequest.targetDistanceKm
+            ?? RoutePlanningRequest.defaultLoopDistanceKm(for: planningRequest.activityType)
         let sorted = variants.sorted { lhs, rhs in
             let lhsDistanceDifference = abs(lhs.route.distanceKilometers - targetDistanceKm)
             let rhsDistanceDifference = abs(rhs.route.distanceKilometers - targetDistanceKm)
+
+            let routesAreEffectivelyTied = abs(lhsDistanceDifference - rhsDistanceDifference) <= 0.5
+                && abs(lhs.route.elevationGainMeters - rhs.route.elevationGainMeters) <= 50
+                && abs(lhs.route.durationMinutes - rhs.route.durationMinutes) <= 10
+            if routesAreEffectivelyTied,
+               planningRequest.avoidFeatures.contains(.majorRoads),
+               let lhsMajorRoadRatio = lhs.route.verifiedCharacteristics?.majorRoadRatio,
+               let rhsMajorRoadRatio = rhs.route.verifiedCharacteristics?.majorRoadRatio,
+               abs(lhsMajorRoadRatio - rhsMajorRoadRatio) > 0.001
+            {
+                return lhsMajorRoadRatio < rhsMajorRoadRatio
+            }
+
             if lhsDistanceDifference != rhsDistanceDifference {
                 return lhsDistanceDifference < rhsDistanceDifference
             }
@@ -908,16 +1477,27 @@ private struct GraphHopperRoutePreferences {
         var priority: [GraphHopperCustomStatement] = []
 
         switch request.activityType {
-        case .hiking, .trailRunning:
+        case .hiking:
             priority.append(.init(condition: "road_class == PRIMARY", multiplyBy: "0.85"))
             priority.append(.init(condition: "road_class == SECONDARY", multiplyBy: "0.9"))
+        case .trailRunning:
+            priority.append(.init(condition: "road_class == PRIMARY", multiplyBy: "0.75"))
+            priority.append(.init(condition: "road_class == SECONDARY", multiplyBy: "0.85"))
+            priority.append(.init(condition: "road_class == TRACK || road_class == FOOTWAY", multiplyBy: "1.05"))
         case .biking:
             priority.append(.init(condition: "road_class == PRIMARY", multiplyBy: "0.9"))
             priority.append(.init(condition: "road_class == TRACK", multiplyBy: "1.05"))
         }
 
-        if request.desiredFeatures.contains(.quiet) || request.avoidFeatures.contains(.majorRoads) {
-            priority.append(.init(condition: "road_class == TRUNK", multiplyBy: "0.75"))
+        if request.avoidFeatures.contains(.majorRoads) {
+            priority.append(.init(condition: "road_class == TRUNK", multiplyBy: "0.45"))
+            priority.append(.init(condition: "road_class == PRIMARY", multiplyBy: "0.65"))
+            priority.append(.init(condition: "road_class == SECONDARY", multiplyBy: "0.82"))
+        }
+
+        if request.avoidFeatures.contains(.steepClimbs) || request.difficulty == .easy {
+            priority.append(.init(condition: "max_slope > 12", multiplyBy: "0.72"))
+            priority.append(.init(condition: "max_slope > 20", multiplyBy: "0.5"))
         }
 
         guard !priority.isEmpty else {
@@ -997,6 +1577,7 @@ private struct GraphHopperRoutePath: Decodable {
     let descend: Double?
     let points: GraphHopperLineString?
     let instructions: [GraphHopperInstruction]
+    let details: GraphHopperPathDetails?
 
     enum CodingKeys: String, CodingKey {
         case distance
@@ -1005,6 +1586,7 @@ private struct GraphHopperRoutePath: Decodable {
         case descend
         case points
         case instructions
+        case details
     }
 
     init(from decoder: Decoder) throws {
@@ -1015,6 +1597,78 @@ private struct GraphHopperRoutePath: Decodable {
         descend = try container.decodeIfPresent(Double.self, forKey: .descend)
         points = try container.decodeIfPresent(GraphHopperLineString.self, forKey: .points)
         instructions = try container.decodeIfPresent([GraphHopperInstruction].self, forKey: .instructions) ?? []
+        details = try? container.decode(GraphHopperPathDetails.self, forKey: .details)
+    }
+}
+
+private struct GraphHopperPathDetails: Decodable {
+    let surface: [GraphHopperPathDetail]
+    let roadClass: [GraphHopperPathDetail]
+    let hikeRating: [GraphHopperPathDetail]
+
+    enum CodingKeys: String, CodingKey {
+        case surface
+        case roadClass = "road_class"
+        case hikeRating = "hike_rating"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        surface = (try? container.decode([GraphHopperPathDetail].self, forKey: .surface)) ?? []
+        roadClass = (try? container.decode([GraphHopperPathDetail].self, forKey: .roadClass)) ?? []
+        hikeRating = (try? container.decode([GraphHopperPathDetail].self, forKey: .hikeRating)) ?? []
+    }
+}
+
+private struct GraphHopperPathDetail: Decodable {
+    let fromIndex: Int
+    let toIndex: Int
+    let value: GraphHopperPathDetailValue?
+
+    init(from decoder: Decoder) throws {
+        guard
+            var container = try? decoder.unkeyedContainer(),
+            let decodedFromIndex = try? container.decode(Int.self),
+            let decodedToIndex = try? container.decode(Int.self)
+        else {
+            fromIndex = 0
+            toIndex = 0
+            value = nil
+            return
+        }
+        fromIndex = decodedFromIndex
+        toIndex = decodedToIndex
+
+        if (try? container.decodeNil()) == true {
+            value = nil
+        } else if let string = try? container.decode(String.self) {
+            value = .string(string)
+        } else if let number = try? container.decode(Double.self) {
+            value = .number(number)
+        } else if let boolean = try? container.decode(Bool.self) {
+            value = .string(boolean ? "true" : "false")
+        } else {
+            value = nil
+        }
+    }
+}
+
+private enum GraphHopperPathDetailValue {
+    case string(String)
+    case number(Double)
+
+    var normalizedValue: String? {
+        switch self {
+        case let .string(value):
+            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return normalized.isEmpty ? nil : normalized
+        case let .number(value):
+            guard value.isFinite else { return nil }
+            if value.rounded() == value {
+                return String(Int(value))
+            }
+            return String(value)
+        }
     }
 }
 

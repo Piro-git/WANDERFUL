@@ -9,6 +9,7 @@ struct ParsedRoutePrompt: Equatable, Sendable {
     let preferredDurationHours: Double?
     let difficulty: RouteDifficulty?
     let desiredFeatures: [DesiredFeature]
+    let avoidFeatures: [AvoidFeature]
 
     var graphHopperProfile: String {
         switch activityType {
@@ -184,7 +185,8 @@ struct RoutePromptParser: Sendable {
                 preferredDistanceKilometers: preferredDistanceKilometers(in: prompt),
                 preferredDurationHours: preferredDurationHours(in: prompt),
                 difficulty: difficulty(in: prompt),
-                desiredFeatures: desiredFeatures(in: prompt)
+                desiredFeatures: desiredFeatures(in: prompt),
+                avoidFeatures: avoidFeatures(in: prompt)
             )
         }
 
@@ -223,7 +225,8 @@ struct RoutePromptParser: Sendable {
                 preferredDistanceKilometers: preferredDistanceKilometers(in: prompt),
                 preferredDurationHours: preferredDurationHours(in: prompt),
                 difficulty: difficulty(in: prompt),
-                desiredFeatures: desiredFeatures(in: prompt)
+                desiredFeatures: desiredFeatures(in: prompt),
+                avoidFeatures: avoidFeatures(in: prompt)
             )
         }
 
@@ -308,6 +311,22 @@ struct RoutePromptParser: Sendable {
             return .moderate
         }
         return nil
+    }
+
+    private func avoidFeatures(in prompt: String) -> [AvoidFeature] {
+        let normalized = normalized(prompt)
+        var features: [AvoidFeature] = []
+
+        if ["hauptstraßen", "hauptstrassen", "major roads", "busy roads", "verkehrsreich"].contains(where: normalized.contains) {
+            features.append(.majorRoads)
+        }
+        if ["nicht zu steil", "not too steep", "wenig steil", "avoid steep", "wenig höhenmeter", "wenig hoehenmeter"].contains(where: normalized.contains) {
+            features.append(.steepClimbs)
+        }
+        if ["wenig gleicher strecke", "wenig gleichen weg", "wenig denselben weg", "gleiche strecke zurück", "gleiche strecke zuruck", "avoid backtracking", "little backtracking", "low repeat", "repeated path"].contains(where: normalized.contains) {
+            features.append(.repeatedPath)
+        }
+        return features
     }
 
     private func desiredFeatures(in prompt: String) -> [DesiredFeature] {

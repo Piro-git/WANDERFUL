@@ -90,9 +90,244 @@ final class RoutingFoundationTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(result.suggestions, [fallbackSuggestion])
+        XCTAssertEqual(result.suggestions.map(\.route.id), [fallbackSuggestion.route.id])
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertNotNil(result.notice)
+    }
+
+    func testLoopNoRouteFoundTriesLoopFallback() async throws {
+        let fallbackSuggestion = RouteSuggestionNormalizer.suggestions(from: [Self.route(distanceKm: 12)])[0]
+        let primary = StubRoutingProvider(result: .failure(GraphHopperError.noRouteFound))
+        let fallback = StubRoutingProvider(result: .success([fallbackSuggestion]))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(
+                request: Self.request(routeType: .loop, endQuery: nil, targetDistanceKm: 12),
+                start: Self.start,
+                end: nil
+            )
+        )
+
+        XCTAssertEqual(result.suggestions.map(\.route.id), [fallbackSuggestion.route.id])
+        XCTAssertEqual(primary.requestedIntents.count, 1)
+        XCTAssertEqual(fallback.requestedIntents.count, 1)
+        XCTAssertEqual(
+            result.notice,
+            "GraphHopper could not build a direct round trip, so TrailMind tried alternate loop shapes from the same start."
+        )
+    }
+
+    func testSingleDirectLoopIsCombinedWithFallbackLoopsForComparison() async throws {
+        let directSuggestion = RouteSuggestionNormalizer.suggestions(from: [Self.route(distanceKm: 15)])[0]
+        let fallbackSuggestions = RouteSuggestionNormalizer.suggestions(from: [
+            Self.route(distanceKm: 14.2, longitudeOffset: 0.04),
+            Self.route(distanceKm: 16.1, longitudeOffset: 0.08)
+        ])
+        let primary = StubRoutingProvider(result: .success([directSuggestion]))
+        let fallback = StubRoutingProvider(result: .success(fallbackSuggestions))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(
+                request: Self.request(routeType: .loop, endQuery: nil),
+                start: Self.start,
+                end: nil
+            )
+        )
+
+        XCTAssertEqual(result.suggestions.map(\.route.distanceKilometers), [15, 14.2, 16.1])
+        XCTAssertEqual(result.suggestions.map(\.explanation), ["Closest Match", "Shorter Loop", "Longer Loop"])
+        XCTAssertEqual(primary.requestedIntents.count, 1)
+        XCTAssertEqual(fallback.requestedIntents.count, 1)
+        XCTAssertEqual(
+            result.notice,
+            "TrailMind found distinct real loop options from the same start for comparison."
+        )
+    }
+
+    func testSingleDirectLoopAndOneDistinctFallbackBecomeComparableOptions() async throws {
+        let directSuggestion = RouteSuggestionNormalizer.suggestions(from: [Self.route(distanceKm: 15)])[0]
+        let fallbackSuggestion = RouteSuggestionNormalizer.suggestions(
+            from: [Self.route(distanceKm: 14.6, longitudeOffset: 0.04)]
+        )[0]
+        let primary = StubRoutingProvider(result: .success([directSuggestion]))
+        let fallback = StubRoutingProvider(result: .success([fallbackSuggestion]))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(
+                request: Self.request(routeType: .loop, endQuery: nil),
+                start: Self.start,
+                end: nil
+            )
+        )
+
+        XCTAssertEqual(result.suggestions.map(\.route.distanceKilometers), [15, 14.6])
+        XCTAssertEqual(result.suggestions.map(\.explanation), ["Closest Match", "Loop Option"])
+        XCTAssertEqual(fallback.requestedIntents.count, 1)
+        XCTAssertEqual(
+            result.notice,
+            "TrailMind found distinct real loop options from the same start for comparison."
+        )
+    }
+
+    func testDuplicateFallbackLoopDoesNotCreateAFalseComparison() async throws {
+        let directRoute = Self.route(distanceKm: 15)
+        let directSuggestion = RouteSuggestionNormalizer.suggestions(from: [directRoute])[0]
+        let duplicateSuggestion = RouteSuggestionNormalizer.suggestions(from: [directRoute])[0]
+        let primary = StubRoutingProvider(result: .success([directSuggestion]))
+        let fallback = StubRoutingProvider(result: .success([duplicateSuggestion]))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(
+                request: Self.request(routeType: .loop, endQuery: nil),
+                start: Self.start,
+                end: nil
+            )
+        )
+
+        XCTAssertEqual(result.suggestions.map(\.route.id), [directSuggestion.route.id])
+        XCTAssertNil(result.notice)
+        XCTAssertEqual(result.loopSearchOutcome, .singleRoute)
+        XCTAssertEqual(result.loopSearchDiagnostics?.directRouteCount, 1)
+        XCTAssertEqual(result.loopSearchDiagnostics?.fallbackRouteCount, 1)
+    }
+
+    func testThreeDistinctLoopsProduceAComparisonOutcome() async throws {
+        let directSuggestions = RouteSuggestionNormalizer.suggestions(from: [
+            Self.route(distanceKm: 15),
+            Self.route(distanceKm: 14.4, longitudeOffset: 0.04),
+            Self.route(distanceKm: 16.1, longitudeOffset: 0.08)
+        ])
+        let primary = StubRoutingProvider(result: .success(directSuggestions))
+        let fallback = StubRoutingProvider(result: .success([]))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(
+                request: Self.request(routeType: .loop, endQuery: nil),
+                start: Self.start,
+                end: nil
+            )
+        )
+
+        XCTAssertEqual(result.suggestions.count, 3)
+        XCTAssertEqual(result.loopSearchOutcome, .comparison(routeCount: 3))
+        XCTAssertEqual(result.loopSearchDiagnostics?.directRouteCount, 3)
+        XCTAssertTrue(fallback.requestedIntents.isEmpty)
+    }
+
+    func testLoopResultReportsAppliedAndRequestedOnlyShapingPreferences() async throws {
+        let request = RoutePlanningRequest(
+            routeType: .loop,
+            startQuery: "Ilsenburg",
+            endQuery: nil,
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: 15,
+            targetDurationMinutes: 180,
+            difficulty: .easy,
+            desiredFeatures: [.viewpoint],
+            avoidFeatures: [.steepClimbs, .majorRoads, .repeatedPath]
+        )
+        let primary = StubRoutingProvider(
+            result: .success(
+                RouteSuggestionNormalizer.suggestions(from: [
+                    Self.route(distanceKm: 14.7, elevationGainMeters: 180),
+                    Self.route(distanceKm: 15.4, longitudeOffset: 0.04, elevationGainMeters: 320)
+                ])
+            )
+        )
+        let fallback = StubRoutingProvider(result: .success([]))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(request: request, start: Self.start, end: nil)
+        )
+        let summary = try XCTUnwrap(result.suggestions.first?.route.planningMetadata?.routeShapingSummary)
+
+        XCTAssertEqual(
+            summary.applied,
+            [.activityProfile, .targetDistance, .targetDuration, .reduceRepeatedPath, .lowerElevation]
+        )
+        XCTAssertEqual(summary.requestedOnly, [.avoidMajorRoads])
+        XCTAssertFalse(summary.applied.contains { $0.rawValue.contains("view") })
+    }
+
+    func testExpiredBudgetPreservesTheFirstDirectLoop() async throws {
+        let directSuggestion = RouteSuggestionNormalizer.suggestions(from: [Self.route(distanceKm: 15)])[0]
+        let primary = StubRoutingProvider(result: .success([directSuggestion]))
+        let fallback = StubRoutingProvider(result: .success([
+            RouteSuggestionNormalizer.suggestions(from: [Self.route(distanceKm: 14.6, longitudeOffset: 0.04)])[0]
+        ]))
+        let coordinator = RoutingCoordinator(
+            primaryProvider: primary,
+            loopFallbackProvider: fallback,
+            loopSearchPolicy: LoopSearchPolicy(totalBudgetSeconds: 0)
+        )
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(
+                request: Self.request(routeType: .loop, endQuery: nil),
+                start: Self.start,
+                end: nil
+            )
+        )
+
+        XCTAssertEqual(result.suggestions.map(\.route.id), [directSuggestion.route.id])
+        XCTAssertEqual(result.loopSearchOutcome, .singleRoute)
+        XCTAssertTrue(result.loopSearchDiagnostics?.didReachTimeBudget == true)
+        XCTAssertTrue(fallback.requestedIntents.isEmpty)
+    }
+
+    func testComparableDirectLoopsDoNotRequestFallback() async throws {
+        let directSuggestions = RouteSuggestionNormalizer.suggestions(from: [
+            Self.route(distanceKm: 14.7),
+            Self.route(distanceKm: 16.0, longitudeOffset: 0.04)
+        ])
+        let primary = StubRoutingProvider(result: .success(directSuggestions))
+        let fallback = StubRoutingProvider(result: .success([]))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        let result = try await coordinator.routeSuggestions(
+            for: RouteIntent(
+                request: Self.request(routeType: .loop, endQuery: nil),
+                start: Self.start,
+                end: nil
+            )
+        )
+
+        XCTAssertEqual(result.suggestions.map(\.route.id), directSuggestions.map(\.route.id))
+        XCTAssertEqual(result.suggestions.map(\.explanation), ["Closest Match", "Longer Loop"])
+        XCTAssertTrue(fallback.requestedIntents.isEmpty)
+        XCTAssertNil(result.notice)
+    }
+
+    func testLoopNoRouteFoundAfterFallbackUsesLoopSpecificError() async {
+        let primary = StubRoutingProvider(result: .failure(GraphHopperError.noRouteFound))
+        let fallback = StubRoutingProvider(result: .failure(GraphHopperError.noRouteFound))
+        let coordinator = RoutingCoordinator(primaryProvider: primary, loopFallbackProvider: fallback)
+
+        do {
+            _ = try await coordinator.routeSuggestions(
+                for: RouteIntent(
+                    request: Self.request(routeType: .loop, endQuery: nil, targetDistanceKm: 12),
+                    start: Self.start,
+                    end: nil
+                )
+            )
+            XCTFail("Expected loop-specific route failure.")
+        } catch let error as RoutingError {
+            XCTAssertEqual(error, .loopRouteNotFound)
+            XCTAssertEqual(
+                error.localizedDescription,
+                "GraphHopper couldn’t build a loop route from this start. Try a nearby trailhead or a different duration."
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     func testPointToPointFlexibleModeErrorDoesNotUseLoopFallback() async {
@@ -161,7 +396,7 @@ final class RoutingFoundationTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(client.requests.count, 3)
+        XCTAssertEqual(client.requests.count, 5)
         XCTAssertEqual(suggestions.map(\.route.distanceKilometers), [21])
         XCTAssertEqual(suggestions.first?.debugMetadata?.targetDistanceKm, 20)
         XCTAssertEqual(suggestions.first?.debugMetadata?.actualDistanceKm, 21)
@@ -322,6 +557,19 @@ final class RoutingFoundationTests: XCTestCase {
         }
     }
 
+    func testShapeAwareQualityRejectsOutAndBackAndAllowsMeaningfulSharedLoop() {
+        XCTAssertFalse(
+            LoopFallbackProvider.acceptsLoopQuality(
+                .init(overlapRatio: 0.52, shapeQualityScore: 0.08)
+            )
+        )
+        XCTAssertTrue(
+            LoopFallbackProvider.acceptsLoopQuality(
+                .init(overlapRatio: 0.52, shapeQualityScore: 0.48)
+            )
+        )
+    }
+
     func testCleanLoopRanksAboveGoodDistanceRouteWithWeakOverlap() {
         let weakOverlap = LoopRouteVariantRanker.Variant(
             seed: 11,
@@ -347,6 +595,107 @@ final class RoutingFoundationTests: XCTestCase {
         let ranked = LoopRouteVariantRanker.rank([weakOverlap, cleanLoop], targetDistanceKm: 20)
 
         XCTAssertEqual(ranked.map(\.seed), [29])
+    }
+
+    func testModerateOverlapLoopRemainsAvailableWhenNoCleanerOptionExists() {
+        let moderateOverlap = LoopRouteVariantRanker.Variant(
+            seed: 11,
+            route: Self.route(distanceKm: 15.2, path: Self.cleanLoopPath()),
+            radiusKm: nil,
+            radiusFactor: nil,
+            bearingDegrees: nil,
+            bearingPattern: "left_arc",
+            overlapRatio: 0.32,
+            shapeQualityScore: 0.70
+        )
+
+        let ranked = LoopRouteVariantRanker.rank([moderateOverlap], targetDistanceKm: 15)
+
+        XCTAssertEqual(ranked.map(\.seed), [11])
+        XCTAssertEqual(ranked.first?.route.planningMetadata?.variantLabel, "Closest Match")
+    }
+
+    func testEasyLoopRankingPrefersLowerElevationWithinDistanceTolerance() {
+        let steep = Self.route(distanceKm: 15.0, elevationGainMeters: 760)
+        let gentler = Self.route(
+            distanceKm: 14.4,
+            longitudeOffset: 0.04,
+            elevationGainMeters: 180
+        )
+
+        let ranked = RouteSuggestionNormalizer.comparableLoopSuggestions(
+            from: RouteSuggestionNormalizer.suggestions(from: [steep, gentler]),
+            targetDistanceKm: 15,
+            request: RoutePlanningRequest(
+                routeType: .loop,
+                startQuery: "Ilsenburg",
+                endQuery: nil,
+                activityType: .hiking,
+                graphHopperProfile: "foot",
+                targetDistanceKm: 15,
+                targetDurationMinutes: nil,
+                difficulty: .easy,
+                desiredFeatures: [],
+                avoidFeatures: [.steepClimbs]
+            )
+        )
+
+        XCTAssertEqual(ranked.map(\.route.elevationGainMeters), [180, 760])
+    }
+
+    func testDurationBasedLoopRankingUsesVerifiedRouteDuration() {
+        let distanceMatch = Self.route(distanceKm: 15.0, durationHours: 3.5)
+        let durationMatch = Self.route(
+            distanceKm: 14.2,
+            longitudeOffset: 0.04,
+            durationHours: 2.0
+        )
+
+        let ranked = RouteSuggestionNormalizer.comparableLoopSuggestions(
+            from: RouteSuggestionNormalizer.suggestions(from: [distanceMatch, durationMatch]),
+            targetDistanceKm: 15,
+            request: RoutePlanningRequest(
+                routeType: .loop,
+                startQuery: "Ilsenburg",
+                endQuery: nil,
+                activityType: .hiking,
+                graphHopperProfile: "foot",
+                targetDistanceKm: 15,
+                targetDurationMinutes: 120,
+                difficulty: nil,
+                desiredFeatures: []
+            )
+        )
+
+        XCTAssertEqual(ranked.map(\.route.durationMinutes), [120, 210])
+    }
+
+    func testRepeatedPathPreferenceRejectsDirectOutAndBackGeometry() {
+        let outAndBack = Self.route(distanceKm: 15, path: Self.outAndBackPath())
+        let clean = Self.route(
+            distanceKm: 15.4,
+            longitudeOffset: 0.04,
+            path: Self.cleanLoopPath(longitudeOffset: 0.04)
+        )
+
+        let ranked = RouteSuggestionNormalizer.comparableLoopSuggestions(
+            from: RouteSuggestionNormalizer.suggestions(from: [outAndBack, clean]),
+            targetDistanceKm: 15,
+            request: RoutePlanningRequest(
+                routeType: .loop,
+                startQuery: "Ilsenburg",
+                endQuery: nil,
+                activityType: .hiking,
+                graphHopperProfile: "foot",
+                targetDistanceKm: 15,
+                targetDurationMinutes: nil,
+                difficulty: nil,
+                desiredFeatures: [],
+                avoidFeatures: [.repeatedPath]
+            )
+        )
+
+        XCTAssertEqual(ranked.map(\.route.id), [clean.id])
     }
 
     func testFallbackRetriesWithSmallerRadiusWhenCandidatesAreTooLong() async throws {
@@ -393,6 +742,32 @@ final class RoutingFoundationTests: XCTestCase {
         ])
         XCTAssertTrue(explanations.first?.detail?.hasPrefix("Actual 15") == true)
         XCTAssertTrue(explanations.first?.detail?.hasSuffix("vs requested 15 km.") == true)
+    }
+
+    func testMaterialDistanceMismatchUsesCentralizedExplanation() {
+        let metadata = Self.request(
+            routeType: .loop,
+            endQuery: nil,
+            targetDistanceKm: 15
+        ).metadata
+
+        XCTAssertEqual(metadata.distanceFit(actualDistanceKm: 12.2), .shorter)
+        XCTAssertEqual(
+            metadata.distanceNote(actualDistanceKm: 12.2),
+            "Closest available mapped loop to your 15 km request."
+        )
+        XCTAssertEqual(metadata.requestedDistanceSummary, "Requested: about 15 km")
+    }
+
+    func testDistanceWithinToleranceDoesNotShowMismatchExplanation() {
+        let metadata = Self.request(
+            routeType: .loop,
+            endQuery: nil,
+            targetDistanceKm: 15
+        ).metadata
+
+        XCTAssertEqual(metadata.distanceFit(actualDistanceKm: 14.0), .withinTolerance)
+        XCTAssertNil(metadata.distanceNote(actualDistanceKm: 14.0))
     }
 
     func testRouteQualityExplanationsDescribeShorterAndLongerDistanceFit() {
@@ -488,6 +863,8 @@ final class RoutingFoundationTests: XCTestCase {
     private static func route(
         distanceKm: Double,
         longitudeOffset: Double = 0,
+        elevationGainMeters: Int = 120,
+        durationHours: Double? = nil,
         path customPath: [Coordinate]? = nil
     ) -> TrailRoute {
         let path = customPath ?? (0..<14).map { index in
@@ -505,9 +882,9 @@ final class RoutingFoundationTests: XCTestCase {
             location: "Germany",
             activity: .hiking,
             distanceKilometers: distanceKm,
-            elevationGainMeters: 120,
+            elevationGainMeters: elevationGainMeters,
             elevationLossMeters: 118,
-            durationHours: max(distanceKm / 4, 0.5),
+            durationHours: durationHours ?? max(distanceKm / 4, 0.5),
             difficulty: .moderate,
             routeType: .loop,
             summary: "A test loop.",

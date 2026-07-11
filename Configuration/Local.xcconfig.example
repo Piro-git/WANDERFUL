@@ -1,5 +1,6 @@
-// Copy this file to Local.xcconfig and replace the placeholder.
-// Never commit Local.xcconfig.
-GRAPHHOPPER_API_KEY = paste_your_graphhopper_api_key_here
+// Copy this file to Local.xcconfig for local-only overrides.
+// Never commit Local.xcconfig. Permanent provider keys belong on the backend.
 // Optional DEBUG intent backend override for Simulator/local development.
 // INTENT_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000
+// Release/CI must provide the real HTTPS backend explicitly.
+// PRODUCTION_BACKEND_BASE_URL = https:/$()/api.example.com

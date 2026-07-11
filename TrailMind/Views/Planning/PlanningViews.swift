@@ -14,26 +14,32 @@ struct GeneratingRouteView: View {
                     .frame(width: 170, height: 170)
 
                 Circle()
-                    .trim(from: 0, to: CGFloat(planner.generationStep + 1) / CGFloat(planner.generationMessages.count))
+                    .trim(from: 0, to: progressFraction)
                     .stroke(
                         AngularGradient(colors: [theme.moss, theme.forestBright, theme.moss], center: .center),
                         style: StrokeStyle(lineWidth: 20, lineCap: .round)
                     )
                     .frame(width: 170, height: 170)
                     .rotationEffect(.degrees(-90))
-                    .animation(.smooth(duration: 0.6), value: planner.generationStep)
+                    .animation(.smooth(duration: 0.6), value: planner.completedGenerationStageCount)
 
-                Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
-                    .font(.system(size: 46, weight: .medium))
-                    .foregroundStyle(theme.forest)
-                    .contentTransition(.symbolEffect(.replace))
+                if planner.generationFailure != nil {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 42, weight: .medium))
+                        .foregroundStyle(theme.warning)
+                } else {
+                    Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
+                        .font(.system(size: 46, weight: .medium))
+                        .foregroundStyle(theme.forest)
+                        .contentTransition(.symbolEffect(.replace))
+                }
             }
 
             VStack(spacing: 10) {
-                Text(planner.generationMessages[planner.generationStep])
+                Text(currentTitle)
                     .font(.trailSection)
                     .contentTransition(.numericText())
-                    .id(planner.generationStep)
+                    .id(currentTitle)
                     .transition(.blurReplace)
 
                 Text("“\(planner.prompt)”")
@@ -45,13 +51,13 @@ struct GeneratingRouteView: View {
             }
 
             VStack(spacing: 12) {
-                ForEach(planner.generationMessages.indices, id: \.self) { index in
+                ForEach(planner.generationStages) { stage in
                     HStack {
-                        Image(systemName: index <= planner.generationStep ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(index <= planner.generationStep ? theme.moss : theme.secondaryText.opacity(0.3))
-                        Text(planner.generationMessages[index])
+                        stageIndicator(for: stage.status)
+                            .frame(width: 20, height: 20)
+                        Text(stage.title)
                             .font(.subheadline)
-                            .foregroundStyle(index <= planner.generationStep ? theme.graphite : theme.secondaryText.opacity(0.55))
+                            .foregroundStyle(textColor(for: stage.status))
                         Spacer()
                     }
                 }
@@ -60,13 +66,79 @@ struct GeneratingRouteView: View {
             .padding(.horizontal, TrailSpacing.page)
 
             Spacer()
-            Text(planner.generationFooter)
-                .font(.caption)
-                .foregroundStyle(theme.secondaryText)
+            if let failure = planner.generationFailure {
+                VStack(spacing: 12) {
+                    Text(failure.message)
+                        .font(.footnote)
+                        .foregroundStyle(theme.graphite)
+                        .multilineTextAlignment(.center)
+
+                    HStack(spacing: 12) {
+                        Button("Edit request", action: planner.editRequest)
+                            .buttonStyle(.bordered)
+                        Button("Try again", action: planner.retryGeneration)
+                            .buttonStyle(.borderedProminent)
+                            .tint(theme.forest)
+                    }
+                }
+                .padding(.horizontal, TrailSpacing.page)
                 .padding(.bottom, 20)
+                .accessibilityIdentifier("generation.recovery")
+            } else {
+                VStack(spacing: 12) {
+                    Text(planner.generationFooter)
+                        .font(.caption)
+                        .foregroundStyle(theme.secondaryText)
+
+                    Button("Cancel", role: .cancel, action: planner.cancelGeneration)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.forest)
+                        .accessibilityIdentifier("generation.cancel")
+                }
+                .padding(.bottom, 20)
+            }
         }
-        .task {
+        .task(id: planner.generationRequestID) {
+            guard planner.generationRequestID != nil else { return }
             await planner.generate()
+        }
+    }
+
+    private var currentTitle: String {
+        planner.generationStages.first { $0.status == .active || $0.status == .failed }?.title
+            ?? "Preparing your route"
+    }
+
+    private var progressFraction: CGFloat {
+        guard !planner.generationStages.isEmpty else { return 0 }
+        return CGFloat(planner.completedGenerationStageCount) / CGFloat(planner.generationStages.count)
+    }
+
+    @ViewBuilder
+    private func stageIndicator(for status: PlannerViewModel.GenerationStageStatus) -> some View {
+        switch status {
+        case .completed:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(theme.moss)
+        case .active:
+            ProgressView()
+                .controlSize(.small)
+                .tint(theme.moss)
+        case .pending:
+            Image(systemName: "circle")
+                .foregroundStyle(theme.secondaryText.opacity(0.3))
+        case .failed:
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(theme.warning)
+        }
+    }
+
+    private func textColor(for status: PlannerViewModel.GenerationStageStatus) -> Color {
+        switch status {
+        case .active, .completed, .failed:
+            theme.graphite
+        case .pending:
+            theme.secondaryText.opacity(0.55)
         }
     }
 }
@@ -82,7 +154,7 @@ struct RouteSuggestionsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: TrailSpacing.section) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Three ways to go")
+                    Text(routeCountTitle)
                         .font(.trailTitle)
                     Text("Built around “\(prompt)”")
                         .font(.body)
@@ -138,5 +210,16 @@ struct RouteSuggestionsView: View {
         }
         .navigationTitle("Your routes")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var routeCountTitle: String {
+        switch suggestions.count {
+        case 2:
+            "2 routes to compare"
+        case 3:
+            "3 routes to compare"
+        default:
+            "Your routes"
+        }
     }
 }

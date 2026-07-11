@@ -19,6 +19,9 @@ struct TrailMindApp: App {
             .environment(appModel)
             .tint(theme.forestBright)
             .preferredColorScheme(.light)
+            .task {
+                await appModel.savedRoutes.loadIfNeeded()
+            }
         }
     }
 }

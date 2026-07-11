@@ -16,6 +16,11 @@ Rules:
 - Do not invent distances, elevation, safety, scenic quality, water availability, trail status, camping legality, or verified POIs.
 - Put unverified wishes into desiredFeatures or avoidFeatures only.
 - If required information is missing, return null fields and low confidence instead of guessing.
+- TrailMind-specific language:
+  - German "Runde", "Rundwanderung", "Rundtour", "Rundweg" means routeType "loop".
+  - "bei/um/ab <place>", "around/near/from <place>", and "im/in der/in den <region>" identify the loop start or region.
+  - If a pasted prompt contains multiple route requests on separate lines, extract the first actionable route request.
+  - Duration-only loop requests are valid: set targetDurationMinutes and leave targetDistanceKm null.
 - Return only JSON matching the provided schema.
 `.trim();
 
@@ -139,7 +144,7 @@ async function parseWithOpenRouter(request, env, options = {}) {
     throw new IntentParseError("OpenRouter returned malformed intent JSON.", 502);
   }
 
-  return sanitizeIntent(parsed, request.prompt);
+  return sanitizeIntent(repairIntent(parsed, request.prompt), request.prompt);
 }
 
 async function parseWithGoogle(request, env, options = {}) {
@@ -184,7 +189,7 @@ async function parseWithGoogle(request, env, options = {}) {
     throw new IntentParseError("Google Gemini returned malformed intent JSON.", 502);
   }
 
-  return sanitizeIntent(parsed, request.prompt);
+  return sanitizeIntent(repairIntent(parsed, request.prompt), request.prompt);
 }
 
 function googleResponseText(payload) {
@@ -245,38 +250,110 @@ export function sanitizeIntent(rawIntent, rawPrompt) {
     }
   }
 
-  const activityType = enumOrNull(rawIntent.activityType, ALLOWED_ACTIVITY_TYPES);
-  const routeType = enumOrNull(rawIntent.routeType, ALLOWED_ROUTE_TYPES);
-  const targetDistanceKm = saneNumberOrNull(rawIntent.targetDistanceKm, 0.1, 300);
-  const targetDurationMinutes = saneNumberOrNull(rawIntent.targetDurationMinutes, 5, 10080);
+  const repairedIntent = repairIntent(rawIntent, rawPrompt);
+  const activityType = enumOrNull(repairedIntent.activityType, ALLOWED_ACTIVITY_TYPES);
+  const routeType = enumOrNull(repairedIntent.routeType, ALLOWED_ROUTE_TYPES);
+  const targetDistanceKm = saneNumberOrNull(repairedIntent.targetDistanceKm, 0.1, 300);
+  const targetDurationMinutes = saneNumberOrNull(repairedIntent.targetDurationMinutes, 5, 10080);
 
-  let confidence = saneNumberOrNull(rawIntent.confidence, 0, 1);
+  let confidence = saneNumberOrNull(repairedIntent.confidence, 0, 1);
   if (confidence === null) {
     confidence = 0.3;
   }
-  if (routeType === "loop" && !cleanString(rawIntent.startLocationQuery) && !cleanString(rawIntent.regionQuery)) {
+  if (routeType === "loop" && !cleanString(repairedIntent.startLocationQuery) && !cleanString(repairedIntent.regionQuery)) {
     confidence = Math.min(confidence, 0.35);
   }
-  if (routeType === "pointToPoint" && (!cleanString(rawIntent.startLocationQuery) || !cleanString(rawIntent.endLocationQuery))) {
+  if (routeType === "pointToPoint" && (!cleanString(repairedIntent.startLocationQuery) || !cleanString(repairedIntent.endLocationQuery))) {
     confidence = Math.min(confidence, 0.35);
   }
 
   return {
     activityType,
     routeType,
-    startLocationQuery: cleanStringOrNull(rawIntent.startLocationQuery),
-    endLocationQuery: cleanStringOrNull(rawIntent.endLocationQuery),
-    regionQuery: cleanStringOrNull(rawIntent.regionQuery),
+    startLocationQuery: cleanStringOrNull(repairedIntent.startLocationQuery),
+    endLocationQuery: cleanStringOrNull(repairedIntent.endLocationQuery),
+    regionQuery: cleanStringOrNull(repairedIntent.regionQuery),
     targetDistanceKm,
     targetDurationMinutes,
-    difficulty: enumOrNull(rawIntent.difficulty, ALLOWED_DIFFICULTIES),
-    desiredFeatures: uniqueAllowed(rawIntent.desiredFeatures, ALLOWED_DESIRED_FEATURES),
-    avoidFeatures: uniqueAllowed(rawIntent.avoidFeatures, ALLOWED_AVOID_FEATURES),
-    transportMode: enumOrNull(rawIntent.transportMode, ALLOWED_TRANSPORT_MODES),
+    difficulty: enumOrNull(repairedIntent.difficulty, ALLOWED_DIFFICULTIES),
+    desiredFeatures: uniqueAllowed(repairedIntent.desiredFeatures, ALLOWED_DESIRED_FEATURES),
+    avoidFeatures: uniqueAllowed(repairedIntent.avoidFeatures, ALLOWED_AVOID_FEATURES),
+    transportMode: enumOrNull(repairedIntent.transportMode, ALLOWED_TRANSPORT_MODES),
     rawPrompt,
     parserSource: "remoteAI",
     confidence
   };
+}
+
+export function repairIntent(rawIntent, rawPrompt) {
+  const repaired = { ...rawIntent };
+  const prompt = cleanString(rawPrompt);
+  const normalized = prompt.toLowerCase();
+  const routeType = enumOrNull(repaired.routeType, ALLOWED_ROUTE_TYPES);
+  const loopCue = indicatesLoopPrompt(normalized);
+  const promptActivityType = activityFromPrompt(normalized);
+  const loopLocation = extractLoopLocation(prompt);
+  const hasRegion = Boolean(cleanString(repaired.regionQuery) || loopLocation);
+  const shouldInferRegionalLoop =
+    !routeType &&
+    !cleanString(repaired.endLocationQuery) &&
+    hasRegion &&
+    Boolean(promptActivityType) &&
+    !indicatesPointToPointPrompt(normalized);
+
+  if (!routeType && (loopCue || shouldInferRegionalLoop)) {
+    repaired.routeType = "loop";
+  }
+  if (routeType === "pointToPoint" && !cleanString(repaired.endLocationQuery) && loopCue) {
+    repaired.routeType = "loop";
+  }
+
+  const hasPointToPointLocations =
+    repaired.routeType === "pointToPoint" &&
+    cleanString(repaired.startLocationQuery) &&
+    cleanString(repaired.endLocationQuery);
+  const activityType =
+    enumOrNull(repaired.activityType, ALLOWED_ACTIVITY_TYPES) ??
+    promptActivityType ??
+    (hasPointToPointLocations ? "hiking" : null);
+
+  if (!repaired.activityType && activityType) {
+    repaired.activityType = activityType;
+  }
+  if (!repaired.transportMode && repaired.activityType) {
+    repaired.transportMode = repaired.activityType === "biking" ? "cycling" : "walking";
+  }
+
+  if (repaired.routeType === "loop") {
+    repaired.endLocationQuery = null;
+    if (!cleanString(repaired.startLocationQuery) && cleanString(repaired.regionQuery)) {
+      repaired.startLocationQuery = repaired.regionQuery;
+    }
+    if (!cleanString(repaired.startLocationQuery) && loopLocation) {
+      repaired.startLocationQuery = loopLocation;
+    }
+  }
+
+  if (!saneNumberOrNull(repaired.targetDistanceKm, 0.1, 300)) {
+    repaired.targetDistanceKm = firstNumberBefore(normalized, ["km", "kilometer"]);
+  }
+  if (!saneNumberOrNull(repaired.targetDurationMinutes, 5, 10080)) {
+    repaired.targetDurationMinutes = durationMinutes(normalized);
+  }
+  if (!repaired.difficulty && /\b(entspannt|entspannte|entspannten|relaxed|leicht|easy)\b/.test(normalized)) {
+    repaired.difficulty = "easy";
+  }
+
+  repaired.desiredFeatures = [
+    ...(Array.isArray(repaired.desiredFeatures) ? repaired.desiredFeatures : []),
+    ...desiredFeaturesFromPrompt(normalized)
+  ];
+  repaired.avoidFeatures = [
+    ...(Array.isArray(repaired.avoidFeatures) ? repaired.avoidFeatures : []),
+    ...avoidFeaturesFromPrompt(normalized)
+  ];
+
+  return repaired;
 }
 
 function userPrompt(request) {
@@ -293,9 +370,7 @@ function mockIntent(request) {
   const normalized = request.prompt.toLowerCase();
   const targetDistanceKm = firstNumberBefore(normalized, ["km", "kilometer"]);
   const targetDurationMinutes = durationMinutes(normalized);
-  const isBike = /\b(bike|biking|radroute|radtour|fahrrad)\b/.test(normalized);
-  const isRun = /\b(trailrun|trail run|running|joggen|lauf)\b/.test(normalized);
-  const activityType = isBike ? "biking" : isRun ? "trailRunning" : "hiking";
+  const activityType = activityFromPrompt(normalized) ?? "hiking";
   const routeType =
     /\b(rundwanderung|rundtour|runde|loop|round trip)\b/.test(normalized)
       ? "loop"
@@ -309,18 +384,8 @@ function mockIntent(request) {
     routeType
   );
 
-  const desiredFeatures = [];
-  if (/\b(aussicht|view|views|panorama)\b/.test(normalized)) desiredFeatures.push("viewpoint");
-  if (/\b(wald|forest)\b/.test(normalized)) desiredFeatures.push("forest");
-  if (/\b(wasser|water|wasserfall|waterfall)\b/.test(normalized)) desiredFeatures.push("water");
-  if (/\b(ruhig|quiet)\b/.test(normalized)) desiredFeatures.push("quiet");
-  if (/\b(sonnenuntergang|sunset)\b/.test(normalized)) desiredFeatures.push("sunset");
-
-  const avoidFeatures = [];
-  if (/\b(steil|steep)\b/.test(normalized)) avoidFeatures.push("steepClimbs");
-  if (/\b(wenig gleicher strecke|gleiche strecke|zurück|backtracking|repeated)\b/.test(normalized)) {
-    avoidFeatures.push("repeatedPath");
-  }
+  const desiredFeatures = desiredFeaturesFromPrompt(normalized);
+  const avoidFeatures = avoidFeaturesFromPrompt(normalized);
 
   return {
     activityType,
@@ -340,6 +405,61 @@ function mockIntent(request) {
     parserSource: "remoteAI",
     confidence: routeType && (startLocationQuery || regionQuery) ? 0.78 : 0.25
   };
+}
+
+function activityFromPrompt(normalized) {
+  if (/\b(bike|biking|cycling|radroute|radtour|fahrrad)\b/.test(normalized)) {
+    return "biking";
+  }
+  if (/\b(trailrun|trail run|running|joggen|lauf)\b/.test(normalized)) {
+    return "trailRunning";
+  }
+  if (/\b(wanderung|wandern|hike|hiking|walk|route|tour|runde|rundwanderung|rundtour)\b/.test(normalized)) {
+    return "hiking";
+  }
+  return null;
+}
+
+function indicatesLoopPrompt(normalized) {
+  if (/\b(rundwanderung|rundtour|runde|rundweg|loop|round trip)\b/.test(normalized)) {
+    return true;
+  }
+  return /\b(?:bei|um|ab|around|near)\s+\S+/.test(normalized) &&
+    /\b(wanderung|wandern|hike|hiking|trailrun|trail run|bike|biking|radtour|radroute|route|tour)\b/.test(normalized);
+}
+
+function indicatesPointToPointPrompt(normalized) {
+  return /\b(?:from|von)\s+.+\b(?:to|nach|zum|zur)\b/.test(normalized) ||
+    /\b(?:nach|to|zum|zur)\s+[\p{L}\p{N}]/u.test(normalized);
+}
+
+function extractLoopLocation(prompt) {
+  const explicit = prompt.match(/\b(?:um|bei|ab|around|near|from)\s+([^,.;!?\n]+)/i);
+  if (explicit) {
+    return cleanLocationStringOrNull(explicit[1]);
+  }
+
+  const region = prompt.match(/\b(?:im|in der|in den)\s+([^,.;!?\n]+)/i);
+  return cleanLocationStringOrNull(region?.[1]);
+}
+
+function desiredFeaturesFromPrompt(normalized) {
+  const desiredFeatures = [];
+  if (/\b(aussicht|blick|view|views|panorama)\b/.test(normalized)) desiredFeatures.push("viewpoint");
+  if (/\b(wald|forest)\b/.test(normalized)) desiredFeatures.push("forest");
+  if (/\b(wasser|water|wasserfall|waterfall)\b/.test(normalized)) desiredFeatures.push("water");
+  if (/\b(ruhig|quiet)\b/.test(normalized)) desiredFeatures.push("quiet");
+  if (/\b(sonnenuntergang|sunset)\b/.test(normalized)) desiredFeatures.push("sunset");
+  return desiredFeatures;
+}
+
+function avoidFeaturesFromPrompt(normalized) {
+  const avoidFeatures = [];
+  if (/\b(steil|steep)\b/.test(normalized)) avoidFeatures.push("steepClimbs");
+  if (/\b(wenig gleicher strecke|gleiche strecke|zurück|zurueck|backtracking|repeated)\b/.test(normalized)) {
+    avoidFeatures.push("repeatedPath");
+  }
+  return avoidFeatures;
 }
 
 function mockLocations(prompt, normalized, routeType) {

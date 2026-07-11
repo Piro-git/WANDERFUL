@@ -2,6 +2,7 @@
 Configuration/Local.xcconfig
 backend/.env
 backend/.env.*
+backend/node_modules/
 .env
 .env.*
 

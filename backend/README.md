@@ -1,8 +1,15 @@
-# TrailMind Intent Backend
+# TrailMind Backend
 
-Minimal local backend for parsing outdoor route-planning prompts into AdventureIntent-compatible JSON.
+Minimal backend for TrailMind intent parsing and secure route-engine access.
 
-The backend only extracts intent. It does not calculate route geometry, distance, elevation, safety, scenic quality, water availability, trail status, camping legality, weather, POIs, navigation, accounts, or persistence.
+The backend exposes:
+
+- `POST /api/parse-intent` for AdventureIntent-compatible prompt parsing.
+- `POST /api/app-attest/challenge`, `/register`, and `/route-session` for installation verification.
+- `POST /api/route` for a strictly validated GraphHopper routing request.
+- `GET /health` for a fast, provider-independent liveness response.
+
+The route endpoint proxies real GraphHopper results; it does not invent geometry, distance, duration, elevation, safety, scenic quality, water availability, trail status, camping legality, weather, POIs, navigation, accounts, or persistence. See [Route API contract](docs/route-api.md).
 
 ## Environment
 
@@ -28,10 +35,17 @@ If neither `GOOGLE_API_KEY` nor `OPENROUTER_API_KEY` is set, the endpoint return
 
 Secrets should live in `backend/.env`, which is ignored by git.
 
+GraphHopper and App Attest configuration is documented in `config.example.env`. Keep `GRAPHHOPPER_API_KEY` only in the backend environment. To use route or intent endpoints locally without App Attest, explicitly set `ROUTE_ALLOW_INSECURE_LOCAL_ROUTING=true` and `INTENT_ALLOW_INSECURE_LOCAL_PARSING=true` with `NODE_ENV=development`. The in-memory App Attest repository also requires the separate `APP_ATTEST_ALLOW_IN_MEMORY=true` opt-in. Production refuses App Attest, route-session, routing, and remote-intent traffic unless a shared durable repository is injected; see [the datastore decision](docs/app-attest-durable-storage.md).
+
+App Attest uses exact-pinned, Node 20-compatible parsing dependencies: `cbor-x` for strict CBOR decoding, `asn1js` for the Apple nonce extension, and maintained `pkijs` for standards-based X.509 path validation against the pinned Apple App Attestation root. Node's crypto APIs perform SHA-256, P-256 public-key handling, secure randomness, opaque-token hashing, and ECDSA verification. Dependency versions and audit results should be reviewed during normal backend upgrades rather than floated automatically.
+
 ## Run Locally
 
 ```sh
 cd backend
+export NODE_ENV=development
+export ROUTE_ALLOW_INSECURE_LOCAL_ROUTING=true
+export INTENT_ALLOW_INSECURE_LOCAL_PARSING=true
 npm test
 npm run build
 npm start
@@ -42,6 +56,8 @@ The server listens on `http://localhost:3000` by default. Override with:
 ```sh
 PORT=3001 npm start
 ```
+
+`api/index.js` and `vercel.json` adapt the same request handler for Vercel previews. A preview without a durable repository and the required environment configuration exposes only the provider-independent health check; protected intent and routing operations remain fail-closed.
 
 ## Example Request
 

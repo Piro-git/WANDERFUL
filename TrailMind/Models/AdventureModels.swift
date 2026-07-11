@@ -67,12 +67,110 @@ enum DesiredFeature: String, CaseIterable, Hashable, Sendable {
 enum AvoidFeature: String, CaseIterable, Hashable, Sendable {
     case majorRoads
     case steepClimbs
+    case repeatedPath
 
     var label: String {
         switch self {
         case .majorRoads: "Avoid major roads"
         case .steepClimbs: "Avoid steep climbs"
+        case .repeatedPath: "Reduce repeated path"
         }
+    }
+}
+
+enum RouteShapingPreference: String, Hashable, Sendable {
+    case activityProfile
+    case targetDistance
+    case targetDuration
+    case lowerElevation
+    case avoidMajorRoads
+    case reduceRepeatedPath
+
+    var label: String {
+        switch self {
+        case .activityProfile: "Activity profile"
+        case .targetDistance: "Distance target"
+        case .targetDuration: "Duration target"
+        case .lowerElevation: "Lower elevation"
+        case .avoidMajorRoads: "Avoid major roads"
+        case .reduceRepeatedPath: "Reduce repeated path"
+        }
+    }
+}
+
+struct RouteShapingSummary: Hashable, Sendable {
+    let applied: [RouteShapingPreference]
+    let requestedOnly: [RouteShapingPreference]
+
+    var isEmpty: Bool {
+        applied.isEmpty && requestedOnly.isEmpty
+    }
+
+    static func pointToPoint(
+        request: RoutePlanningRequest,
+        customModelApplied: Bool,
+        alternativeRoutesApplied: Bool
+    ) -> RouteShapingSummary {
+        var applied: [RouteShapingPreference] = [.activityProfile]
+        var requestedOnly: [RouteShapingPreference] = []
+
+        if request.targetDistanceKm != nil {
+            if alternativeRoutesApplied {
+                applied.append(.targetDistance)
+            } else {
+                requestedOnly.append(.targetDistance)
+            }
+        }
+        if request.targetDurationMinutes != nil {
+            requestedOnly.append(.targetDuration)
+        }
+        if request.avoidFeatures.contains(.steepClimbs) || request.difficulty == .easy {
+            if customModelApplied {
+                applied.append(.lowerElevation)
+            } else {
+                requestedOnly.append(.lowerElevation)
+            }
+        }
+        if request.avoidFeatures.contains(.majorRoads) {
+            if customModelApplied {
+                applied.append(.avoidMajorRoads)
+            } else {
+                requestedOnly.append(.avoidMajorRoads)
+            }
+        }
+        if request.avoidFeatures.contains(.repeatedPath) {
+            requestedOnly.append(.reduceRepeatedPath)
+        }
+        return RouteShapingSummary(applied: applied, requestedOnly: requestedOnly)
+    }
+
+    static func loop(
+        request: RoutePlanningRequest,
+        lowerElevationApplied: Bool
+    ) -> RouteShapingSummary {
+        var applied: [RouteShapingPreference] = [.activityProfile]
+        var requestedOnly: [RouteShapingPreference] = []
+
+        if request.targetDistanceKm != nil {
+            applied.append(.targetDistance)
+        }
+        if request.targetDurationMinutes != nil {
+            applied.append(.targetDuration)
+        }
+        if request.avoidFeatures.contains(.repeatedPath) {
+            applied.append(.reduceRepeatedPath)
+        }
+        if request.avoidFeatures.contains(.steepClimbs) || request.difficulty == .easy {
+            if lowerElevationApplied {
+                applied.append(.lowerElevation)
+            } else {
+                requestedOnly.append(.lowerElevation)
+            }
+        }
+        if request.avoidFeatures.contains(.majorRoads) {
+            requestedOnly.append(.avoidMajorRoads)
+        }
+        return RouteShapingSummary(applied: applied, requestedOnly: requestedOnly)
     }
 }
 
@@ -113,8 +211,9 @@ struct RoutePlanningRequest: Hashable, Sendable {
     }
 
     init(parsedPrompt: ParsedRoutePrompt) {
+        let targetDurationMinutes = parsedPrompt.preferredDurationHours.map { Int(($0 * 60).rounded()) }
         let targetDistanceKm = parsedPrompt.preferredDistanceKilometers
-            ?? (parsedPrompt.routeType == .loop ? Self.defaultLoopDistanceKm(for: parsedPrompt.activityType) : nil)
+            ?? (parsedPrompt.routeType == .loop ? Self.loopDistanceKm(for: parsedPrompt.activityType, durationMinutes: targetDurationMinutes) : nil)
         self.init(
             routeType: parsedPrompt.routeType,
             startQuery: parsedPrompt.startLocationQuery,
@@ -122,10 +221,14 @@ struct RoutePlanningRequest: Hashable, Sendable {
             activityType: parsedPrompt.activityType,
             graphHopperProfile: parsedPrompt.graphHopperProfile,
             targetDistanceKm: targetDistanceKm,
-            targetDurationMinutes: parsedPrompt.preferredDurationHours.map { Int(($0 * 60).rounded()) },
+            targetDurationMinutes: targetDurationMinutes,
             difficulty: parsedPrompt.difficulty,
             desiredFeatures: parsedPrompt.desiredFeatures,
-            avoidFeatures: parsedPrompt.difficulty == .easy ? [.steepClimbs] : []
+            avoidFeatures: parsedPrompt.avoidFeatures + (
+                parsedPrompt.difficulty == .easy && !parsedPrompt.avoidFeatures.contains(.steepClimbs)
+                    ? [.steepClimbs]
+                    : []
+            )
         )
     }
 
@@ -138,7 +241,7 @@ struct RoutePlanningRequest: Hashable, Sendable {
             activityType: validatedIntent.activityType,
             graphHopperProfile: validatedIntent.graphHopperProfile,
             targetDistanceKm: validatedIntent.targetDistanceKm
-                ?? (validatedIntent.routeType == .loop ? Self.defaultLoopDistanceKm(for: validatedIntent.activityType) : nil),
+                ?? (validatedIntent.routeType == .loop ? Self.loopDistanceKm(for: validatedIntent.activityType, durationMinutes: validatedIntent.targetDurationMinutes) : nil),
             targetDurationMinutes: validatedIntent.targetDurationMinutes,
             difficulty: validatedIntent.difficulty,
             desiredFeatures: validatedIntent.desiredFeatures,
@@ -158,9 +261,9 @@ struct RoutePlanningRequest: Hashable, Sendable {
         )
     }
 
-    func title(startName: String, endName: String) -> String {
+    func title(startName: String, endName: String, actualDistanceKm: Double? = nil) -> String {
         if routeType == .loop {
-            return loopTitle(startName: startName)
+            return loopTitle(startName: startName, actualDistanceKm: actualDistanceKm)
         }
 
         switch activityType {
@@ -173,9 +276,9 @@ struct RoutePlanningRequest: Hashable, Sendable {
         }
     }
 
-    func loopTitle(startName: String) -> String {
-        let distancePrefix = targetDistanceKm.map {
-            "\($0.formatted(.number.precision(.fractionLength($0.rounded() == $0 ? 0 : 1)))) km "
+    func loopTitle(startName: String, actualDistanceKm: Double? = nil) -> String {
+        let distancePrefix = actualDistanceKm.map {
+            "\($0.formatted(.number.locale(Locale(identifier: "en_US_POSIX")).precision(.fractionLength(1)))) km "
         } ?? ""
 
         switch activityType {
@@ -198,9 +301,32 @@ struct RoutePlanningRequest: Hashable, Sendable {
             return 25
         }
     }
+
+    static func loopDistanceKm(for activityType: ActivityType, durationMinutes: Int?) -> Double {
+        guard let durationMinutes, durationMinutes > 0 else {
+            return defaultLoopDistanceKm(for: activityType)
+        }
+
+        let hours = Double(durationMinutes) / 60
+        let speedKmh: Double = switch activityType {
+        case .hiking:
+            4
+        case .trailRunning:
+            8
+        case .biking:
+            15
+        }
+        return max(3, min((hours * speedKmh).rounded(), 80))
+    }
 }
 
 struct RoutePlanningMetadata: Hashable, Sendable {
+    enum DistanceFit: Equatable, Sendable {
+        case withinTolerance
+        case shorter
+        case longer
+    }
+
     let routeType: TrailRouteType
     let activityType: ActivityType
     let targetDistanceKm: Double?
@@ -210,6 +336,8 @@ struct RoutePlanningMetadata: Hashable, Sendable {
     let avoidFeatures: [AvoidFeature]
     let seed: Int?
     let variantLabel: String?
+    let loopSearchOutcome: LoopSearchOutcome?
+    let routeShapingSummary: RouteShapingSummary?
 
     var isEmpty: Bool {
         routeType == .pointToPoint &&
@@ -219,7 +347,9 @@ struct RoutePlanningMetadata: Hashable, Sendable {
         desiredFeatures.isEmpty &&
         avoidFeatures.isEmpty &&
         seed == nil &&
-        variantLabel == nil
+        variantLabel == nil &&
+        loopSearchOutcome == nil &&
+        routeShapingSummary == nil
     }
 
     init(
@@ -231,7 +361,9 @@ struct RoutePlanningMetadata: Hashable, Sendable {
         desiredFeatures: [DesiredFeature],
         avoidFeatures: [AvoidFeature],
         seed: Int? = nil,
-        variantLabel: String? = nil
+        variantLabel: String? = nil,
+        loopSearchOutcome: LoopSearchOutcome? = nil,
+        routeShapingSummary: RouteShapingSummary? = nil
     ) {
         self.routeType = routeType
         self.activityType = activityType
@@ -242,6 +374,8 @@ struct RoutePlanningMetadata: Hashable, Sendable {
         self.avoidFeatures = avoidFeatures
         self.seed = seed
         self.variantLabel = variantLabel
+        self.loopSearchOutcome = loopSearchOutcome
+        self.routeShapingSummary = routeShapingSummary
     }
 
     func withVariant(seed: Int?, label: String?) -> RoutePlanningMetadata {
@@ -254,7 +388,41 @@ struct RoutePlanningMetadata: Hashable, Sendable {
             desiredFeatures: desiredFeatures,
             avoidFeatures: avoidFeatures,
             seed: seed,
-            variantLabel: label
+            variantLabel: label,
+            loopSearchOutcome: loopSearchOutcome,
+            routeShapingSummary: routeShapingSummary
+        )
+    }
+
+    func withLoopSearchOutcome(_ outcome: LoopSearchOutcome?) -> RoutePlanningMetadata {
+        RoutePlanningMetadata(
+            routeType: routeType,
+            activityType: activityType,
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: targetDurationMinutes,
+            difficulty: difficulty,
+            desiredFeatures: desiredFeatures,
+            avoidFeatures: avoidFeatures,
+            seed: seed,
+            variantLabel: variantLabel,
+            loopSearchOutcome: outcome,
+            routeShapingSummary: routeShapingSummary
+        )
+    }
+
+    func withRouteShapingSummary(_ summary: RouteShapingSummary?) -> RoutePlanningMetadata {
+        RoutePlanningMetadata(
+            routeType: routeType,
+            activityType: activityType,
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: targetDurationMinutes,
+            difficulty: difficulty,
+            desiredFeatures: desiredFeatures,
+            avoidFeatures: avoidFeatures,
+            seed: seed,
+            variantLabel: variantLabel,
+            loopSearchOutcome: loopSearchOutcome,
+            routeShapingSummary: summary
         )
     }
 
@@ -263,12 +431,28 @@ struct RoutePlanningMetadata: Hashable, Sendable {
         return "Requested: \(desiredFeatures.map(\.label).joined(separator: ", "))"
     }
 
-    func distanceNote(actualDistanceKm: Double) -> String? {
+    var requestedDistanceSummary: String? {
         guard let targetDistanceKm else { return nil }
-        let difference = abs(actualDistanceKm - targetDistanceKm)
-        let threshold = max(2.0, targetDistanceKm * 0.2)
-        guard difference >= threshold else { return nil }
-        return "Actual route is \(actualDistanceKm.formatted(.number.precision(.fractionLength(1)))) km based on available paths."
+        return "Requested: about \(Self.distanceLabel(targetDistanceKm))"
+    }
+
+    func distanceFit(actualDistanceKm: Double) -> DistanceFit? {
+        guard let targetDistanceKm, targetDistanceKm > 0 else { return nil }
+        let difference = actualDistanceKm - targetDistanceKm
+        let tolerance = max(1.0, targetDistanceKm * 0.12)
+        if abs(difference) <= tolerance { return .withinTolerance }
+        return difference < 0 ? .shorter : .longer
+    }
+
+    func distanceNote(actualDistanceKm: Double) -> String? {
+        guard let targetDistanceKm, let fit = distanceFit(actualDistanceKm: actualDistanceKm) else { return nil }
+        guard fit != .withinTolerance else { return nil }
+        let routeKind = routeType == .loop ? "loop" : "route"
+        return "Closest available mapped \(routeKind) to your \(Self.distanceLabel(targetDistanceKm)) request."
+    }
+
+    private static func distanceLabel(_ value: Double) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(value.rounded() == value ? 0 : 1)))) km"
     }
 }
 
@@ -280,6 +464,177 @@ struct RouteQualityExplanation: Identifiable, Hashable, Sendable {
     var id: String {
         [title, detail, symbol].compactMap(\.self).joined(separator: "|")
     }
+}
+
+struct VerifiedRouteCharacteristicValue: Identifiable, Hashable, Sendable {
+    let value: String
+    let distanceMeters: Double
+
+    var id: String { value }
+}
+
+struct VerifiedRouteCharacteristics: Hashable, Sendable {
+    static let minimumDisplayCoverage = 0.60
+
+    let routeDistanceMeters: Double
+    let surfaceBreakdown: [VerifiedRouteCharacteristicValue]
+    let roadClassBreakdown: [VerifiedRouteCharacteristicValue]
+    let hikeRatingBreakdown: [VerifiedRouteCharacteristicValue]
+    let surfaceCoverageMeters: Double
+    let roadClassCoverageMeters: Double
+    let hikeRatingCoverageMeters: Double
+
+    var surfaceCoverageRatio: Double {
+        ratio(surfaceCoverageMeters)
+    }
+
+    var roadClassCoverageRatio: Double {
+        ratio(roadClassCoverageMeters)
+    }
+
+    var hikeRatingCoverageRatio: Double {
+        ratio(hikeRatingCoverageMeters)
+    }
+
+    var hasDisplayableSurfaceData: Bool {
+        surfaceCoverageRatio >= Self.minimumDisplayCoverage
+    }
+
+    var hasDisplayableRoadClassData: Bool {
+        roadClassCoverageRatio >= Self.minimumDisplayCoverage
+    }
+
+    var pavedRatio: Double? {
+        guard hasDisplayableSurfaceData else { return nil }
+        return ratio(distance(for: Self.pavedSurfaceValues, in: surfaceBreakdown))
+    }
+
+    var unpavedRatio: Double? {
+        guard hasDisplayableSurfaceData else { return nil }
+        return ratio(distance(for: Self.unpavedSurfaceValues, in: surfaceBreakdown))
+    }
+
+    var unknownSurfaceRatio: Double? {
+        guard hasDisplayableSurfaceData else { return nil }
+        return max(0, 1 - (pavedRatio ?? 0) - (unpavedRatio ?? 0))
+    }
+
+    var pathAndTrackRatio: Double? {
+        guard hasDisplayableRoadClassData else { return nil }
+        return ratio(distance(for: Self.pathAndTrackRoadClasses, in: roadClassBreakdown))
+    }
+
+    var majorRoadRatio: Double? {
+        guard hasDisplayableRoadClassData else { return nil }
+        return ratio(distance(for: Self.majorRoadClasses, in: roadClassBreakdown))
+    }
+
+    var maximumHikeRating: Int? {
+        hikeRatingBreakdown.compactMap { Int($0.value) }.max()
+    }
+
+    var mountainHikingDistanceMeters: Double {
+        hikeRatingBreakdown.reduce(into: 0) { total, entry in
+            guard let rating = Int(entry.value), rating >= 2 else { return }
+            total += entry.distanceMeters
+        }
+    }
+
+    var hasDisplayableData: Bool {
+        hasDisplayableSurfaceData
+            || hasDisplayableRoadClassData
+            || maximumHikeRating != nil
+    }
+
+    var cardFacts: [RouteQualityExplanation] {
+        var facts: [RouteQualityExplanation] = []
+
+        if let unpavedRatio, unpavedRatio >= 0.01 {
+            facts.append(
+                RouteQualityExplanation(
+                    title: "\(Self.percentLabel(unpavedRatio)) unpaved",
+                    detail: nil,
+                    symbol: "leaf.fill"
+                )
+            )
+        } else if let pavedRatio, pavedRatio >= 0.01 {
+            facts.append(
+                RouteQualityExplanation(
+                    title: "\(Self.percentLabel(pavedRatio)) paved",
+                    detail: nil,
+                    symbol: "road.lanes"
+                )
+            )
+        }
+
+        if let pathAndTrackRatio, pathAndTrackRatio >= 0.60 {
+            facts.append(
+                RouteQualityExplanation(
+                    title: "Mostly paths and tracks",
+                    detail: nil,
+                    symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
+                )
+            )
+        } else if let majorRoadRatio, majorRoadRatio >= 0.01 {
+            facts.append(
+                RouteQualityExplanation(
+                    title: "\(Self.percentLabel(majorRoadRatio)) major roads",
+                    detail: nil,
+                    symbol: "road.lanes"
+                )
+            )
+        }
+
+        if let maximumHikeRating, maximumHikeRating >= 2 {
+            facts.append(
+                RouteQualityExplanation(
+                    title: "Mountain-hiking sections",
+                    detail: nil,
+                    symbol: "mountain.2.fill"
+                )
+            )
+        }
+
+        return Array(facts.prefix(2))
+    }
+
+    private func ratio(_ distanceMeters: Double) -> Double {
+        guard routeDistanceMeters > 0 else { return 0 }
+        return min(max(distanceMeters / routeDistanceMeters, 0), 1)
+    }
+
+    private func distance(
+        for values: Set<String>,
+        in breakdown: [VerifiedRouteCharacteristicValue]
+    ) -> Double {
+        breakdown.reduce(into: 0) { total, entry in
+            if values.contains(entry.value) {
+                total += entry.distanceMeters
+            }
+        }
+    }
+
+    private static func percentLabel(_ ratio: Double) -> String {
+        "\(Int((ratio * 100).rounded()))%"
+    }
+
+    private static let pavedSurfaceValues: Set<String> = [
+        "paved", "asphalt", "concrete", "concrete:lanes", "concrete:plates",
+        "paving_stones", "sett", "unhewn_cobblestone", "cobblestone", "metal"
+    ]
+
+    private static let unpavedSurfaceValues: Set<String> = [
+        "unpaved", "compacted", "fine_gravel", "gravel", "pebblestone", "rock",
+        "dirt", "earth", "ground", "grass", "grass_paver", "mud", "sand", "woodchips"
+    ]
+
+    private static let pathAndTrackRoadClasses: Set<String> = [
+        "track", "footway", "path", "steps"
+    ]
+
+    private static let majorRoadClasses: Set<String> = [
+        "motorway", "trunk", "primary", "secondary"
+    ]
 }
 
 enum RouteQualityExplanationGenerator {
@@ -342,14 +697,17 @@ enum RouteQualityExplanationGenerator {
         metadata: RoutePlanningMetadata,
         to explanations: inout [RouteQualityExplanation]
     ) {
-        guard let targetDistanceKm = metadata.targetDistanceKm, targetDistanceKm > 0 else { return }
+        guard
+            let targetDistanceKm = metadata.targetDistanceKm,
+            targetDistanceKm > 0,
+            let distanceFit = metadata.distanceFit(actualDistanceKm: route.distanceKilometers)
+        else { return }
 
         let actualDistanceKm = route.distanceKilometers
-        let difference = actualDistanceKm - targetDistanceKm
-        let tolerance = max(1.0, targetDistanceKm * 0.12)
         let detail = "Actual \(Self.distanceLabel(actualDistanceKm)) vs requested \(Self.distanceLabel(targetDistanceKm))."
 
-        if abs(difference) <= tolerance {
+        switch distanceFit {
+        case .withinTolerance:
             explanations.append(
                 RouteQualityExplanation(
                     title: "Close to your target distance",
@@ -357,7 +715,7 @@ enum RouteQualityExplanationGenerator {
                     symbol: "ruler"
                 )
             )
-        } else if difference < 0 {
+        case .shorter:
             explanations.append(
                 RouteQualityExplanation(
                     title: "Shorter than target",
@@ -365,7 +723,7 @@ enum RouteQualityExplanationGenerator {
                     symbol: "minus.circle.fill"
                 )
             )
-        } else {
+        case .longer:
             explanations.append(
                 RouteQualityExplanation(
                     title: "Longer than target",
@@ -597,33 +955,42 @@ struct RouteIntentDebugMetadata: Hashable, Sendable {
     let intent: ValidatedAdventureIntent
     let validationStatus: String
     let localFallbackUsed: Bool
+    let parserDebugInfo: IntentParserDebugInfo?
     let repaired: Bool
     let repairReason: String?
     let missingFields: [String]
     let clarificationQuestion: String?
     let geocodedStartLabel: String?
     let geocodedEndLabel: String?
+    let loopSearchOutcome: LoopSearchOutcome?
+    let loopSearchDiagnostics: LoopSearchDiagnostics?
 
     init(
         intent: ValidatedAdventureIntent,
         validationStatus: String = IntentValidationStatus.valid.rawValue,
         localFallbackUsed: Bool? = nil,
+        parserDebugInfo: IntentParserDebugInfo? = nil,
         repaired: Bool = false,
         repairReason: String? = nil,
         missingFields: [String] = [],
         clarificationQuestion: String? = nil,
         geocodedStartLabel: String?,
-        geocodedEndLabel: String?
+        geocodedEndLabel: String?,
+        loopSearchOutcome: LoopSearchOutcome? = nil,
+        loopSearchDiagnostics: LoopSearchDiagnostics? = nil
     ) {
         self.intent = intent
         self.validationStatus = validationStatus
         self.localFallbackUsed = localFallbackUsed ?? (intent.parserSource == .localRuleBased)
+        self.parserDebugInfo = parserDebugInfo
         self.repaired = repaired
         self.repairReason = repairReason
         self.missingFields = missingFields
         self.clarificationQuestion = clarificationQuestion
         self.geocodedStartLabel = geocodedStartLabel
         self.geocodedEndLabel = geocodedEndLabel
+        self.loopSearchOutcome = loopSearchOutcome
+        self.loopSearchDiagnostics = loopSearchDiagnostics
     }
 }
 
@@ -643,10 +1010,23 @@ enum IntentDebugFormatter {
             row("parserSource", parserSourceLabel(intent.parserSource)),
             row("validationStatus", metadata.validationStatus),
             row("localFallbackUsed", metadata.localFallbackUsed ? "yes" : "no"),
+            row("remoteAttempted", boolLabel(metadata.parserDebugInfo?.remoteAttempted)),
+            row("remoteSucceeded", boolLabel(metadata.parserDebugInfo?.remoteSucceeded)),
+            row("remoteFailureReason", optional(metadata.parserDebugInfo?.remoteFailureReason)),
+            row("remoteStatusCode", statusCodeLabel(metadata.parserDebugInfo?.remoteStatusCode)),
+            row("remoteValidationError", optional(metadata.parserDebugInfo?.remoteValidationError)),
+            row("backendBaseURL", optional(metadata.parserDebugInfo?.backendBaseURL)),
+            row("parserMode", metadata.parserDebugInfo?.parserMode.debugLabel ?? "unknown"),
             row("repaired", metadata.repaired ? "yes" : "no"),
             row("repairReason", optional(metadata.repairReason)),
             row("missingFields", metadata.missingFields.isEmpty ? "[]" : metadata.missingFields.joined(separator: ", ")),
             row("clarificationQuestion", optional(metadata.clarificationQuestion)),
+            row("loopSearchStatus", loopSearchStatus(metadata.loopSearchDiagnostics, outcome: metadata.loopSearchOutcome)),
+            row("loopSearchElapsed", loopSearchElapsed(metadata.loopSearchDiagnostics)),
+            row("loopDirectCount", loopRouteCount(metadata.loopSearchDiagnostics?.directRouteCount)),
+            row("loopFallbackCount", loopRouteCount(metadata.loopSearchDiagnostics?.fallbackRouteCount)),
+            row("loopRejections", rejectionSummary(metadata.loopSearchDiagnostics?.rejectionCounts)),
+            row("loopBudgetReached", boolLabel(metadata.loopSearchDiagnostics?.didReachTimeBudget)),
             row("rawPrompt", intent.rawPrompt),
             row("activityType", intent.activityType.rawValue),
             row("routeType", intent.routeType.rawValue),
@@ -683,6 +1063,16 @@ enum IntentDebugFormatter {
         return value
     }
 
+    private static func boolLabel(_ value: Bool?) -> String {
+        guard let value else { return "unknown" }
+        return value ? "yes" : "no"
+    }
+
+    private static func statusCodeLabel(_ value: Int?) -> String {
+        guard let value else { return "nil" }
+        return "\(value)"
+    }
+
     private static func distanceLabel(_ value: Double?) -> String {
         guard let value else { return "nil" }
         return value.formatted(.number.precision(.fractionLength(value.rounded() == value ? 0 : 1))) + " km"
@@ -696,6 +1086,35 @@ enum IntentDebugFormatter {
     private static func confidenceLabel(_ value: Double?) -> String {
         guard let value else { return "nil" }
         return value.formatted(.number.precision(.fractionLength(2)))
+    }
+
+    private static func loopSearchStatus(
+        _ diagnostics: LoopSearchDiagnostics?,
+        outcome: LoopSearchOutcome?
+    ) -> String {
+        guard diagnostics != nil || outcome != nil else { return "not_applicable" }
+        switch outcome {
+        case let .comparison(routeCount):
+            return "comparison (\(routeCount) routes)"
+        case .singleRoute:
+            return "single distinct route"
+        case nil:
+            return "unknown"
+        }
+    }
+
+    private static func loopSearchElapsed(_ diagnostics: LoopSearchDiagnostics?) -> String {
+        guard let diagnostics else { return "nil" }
+        return "\(diagnostics.elapsedMilliseconds) ms"
+    }
+
+    private static func loopRouteCount(_ count: Int?) -> String {
+        count.map(String.init) ?? "nil"
+    }
+
+    private static func rejectionSummary(_ values: [String: Int]?) -> String {
+        guard let values, !values.isEmpty else { return "[]" }
+        return values.keys.sorted().map { "\($0): \(values[$0] ?? 0)" }.joined(separator: ", ")
     }
 
     private static func featureList(_ features: [DesiredFeature]) -> String {
@@ -729,6 +1148,7 @@ struct TrailRoute: Identifiable, Hashable {
     let routeInstructions: [RouteInstruction]
     let planningMetadata: RoutePlanningMetadata?
     let intentDebugMetadata: RouteIntentDebugMetadata?
+    let verifiedCharacteristics: VerifiedRouteCharacteristics?
 
     init(
         id: UUID,
@@ -751,7 +1171,8 @@ struct TrailRoute: Identifiable, Hashable {
         path: [GeoPoint],
         routeInstructions: [RouteInstruction] = [],
         planningMetadata: RoutePlanningMetadata? = nil,
-        intentDebugMetadata: RouteIntentDebugMetadata? = nil
+        intentDebugMetadata: RouteIntentDebugMetadata? = nil,
+        verifiedCharacteristics: VerifiedRouteCharacteristics? = nil
     ) {
         self.id = id
         self.title = title
@@ -774,6 +1195,7 @@ struct TrailRoute: Identifiable, Hashable {
         self.routeInstructions = routeInstructions
         self.planningMetadata = planningMetadata
         self.intentDebugMetadata = intentDebugMetadata
+        self.verifiedCharacteristics = verifiedCharacteristics
     }
 
     var distanceLabel: String {
@@ -819,7 +1241,8 @@ struct TrailRoute: Identifiable, Hashable {
             path: path,
             routeInstructions: routeInstructions,
             planningMetadata: metadata,
-            intentDebugMetadata: intentDebugMetadata
+            intentDebugMetadata: intentDebugMetadata,
+            verifiedCharacteristics: verifiedCharacteristics
         )
     }
 
@@ -845,7 +1268,8 @@ struct TrailRoute: Identifiable, Hashable {
             path: path,
             routeInstructions: routeInstructions,
             planningMetadata: planningMetadata,
-            intentDebugMetadata: metadata
+            intentDebugMetadata: metadata,
+            verifiedCharacteristics: verifiedCharacteristics
         )
     }
 }
@@ -931,7 +1355,11 @@ struct AdventureIntent: Hashable, Sendable {
             targetDurationMinutes: parsedPrompt.preferredDurationHours.map { Int(($0 * 60).rounded()) },
             difficulty: parsedPrompt.difficulty,
             desiredFeatures: parsedPrompt.desiredFeatures,
-            avoidFeatures: parsedPrompt.difficulty == .easy ? [.steepClimbs] : []
+            avoidFeatures: parsedPrompt.avoidFeatures + (
+                parsedPrompt.difficulty == .easy && !parsedPrompt.avoidFeatures.contains(.steepClimbs)
+                    ? [.steepClimbs]
+                    : []
+            )
         )
     }
 

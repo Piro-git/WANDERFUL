@@ -1,4 +1,4 @@
 // Safe default for fresh checkouts. Local.xcconfig is optional and gitignored.
-GRAPHHOPPER_API_KEY =
 INTENT_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000
+PRODUCTION_BACKEND_BASE_URL =
 #include? "Local.xcconfig"

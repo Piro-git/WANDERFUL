@@ -54,6 +54,168 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
+    func testPathDetailsAreDecodedAndWeightedByGeometryDistance() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseWithDetailsData()
+                )
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            startQuery: "Start",
+            endQuery: "Finish",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+
+        let route = try await client.calculateGraphHopperRoute(
+            request: request,
+            start: Coordinate(latitude: 0, longitude: 0),
+            end: Coordinate(latitude: 0, longitude: 0.03)
+        )
+
+        let characteristics = try XCTUnwrap(route.verifiedCharacteristics)
+        XCTAssertEqual(characteristics.surfaceCoverageRatio, 1, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(characteristics.pavedRatio), 1.0 / 3.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(characteristics.unpavedRatio), 2.0 / 3.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(characteristics.majorRoadRatio), 1.0 / 3.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(characteristics.pathAndTrackRatio), 2.0 / 3.0, accuracy: 0.01)
+        XCTAssertEqual(characteristics.maximumHikeRating, 2)
+        XCTAssertEqual(
+            characteristics.mountainHikingDistanceMeters / characteristics.routeDistanceMeters,
+            2.0 / 3.0,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(
+            characteristics.cardFacts.map(\.title),
+            ["67% unpaved", "Mostly paths and tracks"]
+        )
+        let factualText = characteristics.cardFacts.map(\.title).joined(separator: " ").lowercased()
+        XCTAssertFalse(factualText.contains("scenic"))
+        XCTAssertFalse(factualText.contains("safe"))
+        XCTAssertFalse(factualText.contains("water"))
+        XCTAssertFalse(factualText.contains("closure"))
+    }
+
+    @MainActor
+    func testNullUnknownAndOutOfRangeDetailsDoNotInvalidateRoute() async throws {
+        let details = #"""
+        {
+          "surface": [["broken"], [-4, 1, "asphalt"], [1, 2, null], [2, 99, "volcanic_glass"], [3, 1, "gravel"]],
+          "road_class": [],
+          "hike_rating": []
+        }
+        """#
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseWithDetailsData(
+                        coordinates: "[0, 0, 0], [0.01, 0, 0], [0.02, 0, 0], [0.03, 0, 0]",
+                        detailsJSON: details
+                    )
+                )
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            startQuery: "Start",
+            endQuery: "Finish",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+
+        let route = try await client.calculateGraphHopperRoute(
+            request: request,
+            start: Coordinate(latitude: 0, longitude: 0),
+            end: Coordinate(latitude: 0, longitude: 0.03)
+        )
+
+        let characteristics = try XCTUnwrap(route.verifiedCharacteristics)
+        XCTAssertEqual(characteristics.surfaceCoverageRatio, 2.0 / 3.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(characteristics.pavedRatio), 1.0 / 3.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(characteristics.unpavedRatio), 0, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(characteristics.unknownSurfaceRatio), 2.0 / 3.0, accuracy: 0.01)
+        XCTAssertTrue(characteristics.surfaceBreakdown.contains { $0.value == "volcanic_glass" })
+    }
+
+    @MainActor
+    func testSurfacePercentagesStayHiddenBelowCoverageThreshold() async throws {
+        let details = #"{"surface":[[0,1,"asphalt"]]}"#
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseWithDetailsData(detailsJSON: details)
+                )
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            startQuery: "Start",
+            endQuery: "Finish",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+
+        let route = try await client.calculateGraphHopperRoute(
+            request: request,
+            start: Coordinate(latitude: 0, longitude: 0),
+            end: Coordinate(latitude: 0, longitude: 0.03)
+        )
+
+        let characteristics = try XCTUnwrap(route.verifiedCharacteristics)
+        XCTAssertEqual(characteristics.surfaceCoverageRatio, 1.0 / 3.0, accuracy: 0.01)
+        XCTAssertFalse(characteristics.hasDisplayableSurfaceData)
+        XCTAssertNil(characteristics.pavedRatio)
+        XCTAssertNil(characteristics.unpavedRatio)
+        XCTAssertTrue(characteristics.cardFacts.isEmpty)
+    }
+
+    @MainActor
+    func testMissingDetailsLeaveVerifiedCharacteristicsUnknown() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(statusCode: 200, data: try Self.routeResponseData(distanceMeters: 10_000, timeMilliseconds: 7_200_000))
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            startQuery: "Start",
+            endQuery: "Finish",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+
+        let route = try await client.calculateGraphHopperRoute(
+            request: request,
+            start: Coordinate(latitude: 51.8, longitude: 10.6),
+            end: Coordinate(latitude: 51.7, longitude: 10.7)
+        )
+
+        XCTAssertNil(route.verifiedCharacteristics)
+    }
+
+    @MainActor
     func testCustomModelFailureFallsBackToNormalRouteRequest() async throws {
         let errorData = Data(#"{"message":"custom model rejected","hints":[]}"#.utf8)
         let routeData = try Self.routeResponseData(distanceMeters: 20_300, timeMilliseconds: 14_640_000)
@@ -89,6 +251,90 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(route.title, "Bike route from Lüneburg to Amelinghausen")
         XCTAssertEqual(route.activity, .biking)
         XCTAssertEqual(route.planningMetadata?.desiredFeatures, [.quiet])
+    }
+
+    @MainActor
+    func testRoadAndSlopePreferencesAreAppliedWhenCustomModelSucceeds() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        distanceMeters: 12_400,
+                        timeMilliseconds: 10_800_000
+                    )
+                )
+            ]
+        )
+        let client = try makeClient()
+        let planningRequest = RoutePlanningRequest(
+            startQuery: "Ilsenburg",
+            endQuery: "Schierke",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: .easy,
+            desiredFeatures: [],
+            avoidFeatures: [.majorRoads, .steepClimbs]
+        )
+
+        let route = try await client.calculateGraphHopperRoute(
+            request: planningRequest,
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+        )
+
+        let body = try XCTUnwrap(String(data: URLProtocolStub.requestBodies()[0], encoding: .utf8))
+        XCTAssertTrue(body.contains("road_class == TRUNK"))
+        XCTAssertTrue(body.contains("road_class == PRIMARY"))
+        XCTAssertTrue(body.contains("max_slope > 12"))
+        XCTAssertTrue(body.contains("max_slope > 20"))
+        XCTAssertEqual(
+            route.planningMetadata?.routeShapingSummary?.applied,
+            [.activityProfile, .lowerElevation, .avoidMajorRoads]
+        )
+        XCTAssertTrue(route.planningMetadata?.routeShapingSummary?.requestedOnly.isEmpty == true)
+    }
+
+    @MainActor
+    func testRejectedCustomModelKeepsRoadAndSlopePreferencesRequestedOnly() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(statusCode: 400, data: Data(#"{"message":"flexible mode unavailable","hints":[]}"#.utf8)),
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        distanceMeters: 12_400,
+                        timeMilliseconds: 10_800_000
+                    )
+                )
+            ]
+        )
+        let client = try makeClient()
+        let planningRequest = RoutePlanningRequest(
+            startQuery: "Ilsenburg",
+            endQuery: "Schierke",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: .easy,
+            desiredFeatures: [],
+            avoidFeatures: [.majorRoads, .steepClimbs]
+        )
+
+        let route = try await client.calculateGraphHopperRoute(
+            request: planningRequest,
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+        )
+
+        XCTAssertEqual(route.planningMetadata?.routeShapingSummary?.applied, [.activityProfile])
+        XCTAssertEqual(
+            route.planningMetadata?.routeShapingSummary?.requestedOnly,
+            [.lowerElevation, .avoidMajorRoads]
+        )
     }
 
     @MainActor
@@ -165,8 +411,9 @@ final class GraphHopperClientTests: XCTestCase {
         let payload = try JSONSerialization.jsonObject(with: URLProtocolStub.requestBodies()[0]) as? [String: Any]
         XCTAssertEqual((payload?["points"] as? [[Double]])?.count, 1)
         XCTAssertEqual(route.routeType, .loop)
-        XCTAssertEqual(route.title, "15 km Hike loop around Ilsenburg")
+        XCTAssertEqual(route.title, "15.2 km Hike loop around Ilsenburg")
         XCTAssertEqual(route.planningMetadata?.routeType, .loop)
+        XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
     }
 
     @MainActor
@@ -213,6 +460,47 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
+    func testLiveLoopTitleUsesActualDistanceAndRetainsRequestedTarget() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.loopRouteResponseData(
+                        distanceMeters: 12_200,
+                        timeMilliseconds: 10_800_000
+                    )
+                )
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            routeType: .loop,
+            startQuery: "Ilsenburg",
+            endQuery: nil,
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+
+        let route = try await client.calculateRoundTripRoute(
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            request: request,
+            seed: 11
+        )
+
+        XCTAssertEqual(route.title, "12.2 km Hike loop around Ilsenburg")
+        XCTAssertEqual(route.distanceKilometers, 12.2, accuracy: 0.001)
+        XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
+        XCTAssertEqual(
+            route.planningMetadata?.distanceNote(actualDistanceKm: route.distanceKilometers),
+            "Closest available mapped loop to your 15 km request."
+        )
+    }
+
+    @MainActor
     func testRoundTripVariantsUseSeedsPreserveValidRoutesAndRankByDistance() async throws {
         URLProtocolStub.reset(
             responses: [
@@ -248,6 +536,72 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(routes.map(\.distanceKilometers), [14.7, 20.0, 9.8])
         XCTAssertEqual(routes.map { $0.planningMetadata?.seed }, [29, 11, 47])
         XCTAssertEqual(routes.map { $0.planningMetadata?.variantLabel }, ["Closest Match", "Longer Loop", "Shorter Loop"])
+    }
+
+    @MainActor
+    func testMajorRoadAvoidanceBreaksOnlyNearLoopRankingTies() async throws {
+        let lowRoadDetails = #"{"road_class":[[0,3,"footway"]]}"#
+        let highRoadDetails = #"{"road_class":[[0,3,"primary"]]}"#
+        URLProtocolStub.reset(
+            responses: [
+                .init(statusCode: 200, data: try Self.loopRouteResponseData(distanceMeters: 14_800, timeMilliseconds: 13_500_000, detailsJSON: lowRoadDetails)),
+                .init(statusCode: 200, data: try Self.loopRouteResponseData(distanceMeters: 15_100, timeMilliseconds: 13_500_000, detailsJSON: highRoadDetails))
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            routeType: .loop,
+            startQuery: "Ilsenburg",
+            endQuery: nil,
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: [.majorRoads]
+        )
+
+        let routes = try await client.calculateRoundTripRouteVariants(
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            request: request,
+            seeds: [11, 29]
+        )
+
+        XCTAssertEqual(routes.map(\.distanceKilometers), [14.8, 15.1])
+    }
+
+    @MainActor
+    func testMajorRoadAvoidanceDoesNotOverrideMateriallyBetterDistanceMatch() async throws {
+        let highRoadDetails = #"{"road_class":[[0,3,"primary"]]}"#
+        let lowRoadDetails = #"{"road_class":[[0,3,"footway"]]}"#
+        URLProtocolStub.reset(
+            responses: [
+                .init(statusCode: 200, data: try Self.loopRouteResponseData(distanceMeters: 14_900, timeMilliseconds: 13_500_000, detailsJSON: highRoadDetails)),
+                .init(statusCode: 200, data: try Self.loopRouteResponseData(distanceMeters: 15_700, timeMilliseconds: 13_500_000, detailsJSON: lowRoadDetails))
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            routeType: .loop,
+            startQuery: "Ilsenburg",
+            endQuery: nil,
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: [.majorRoads]
+        )
+
+        let routes = try await client.calculateRoundTripRouteVariants(
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            request: request,
+            seeds: [11, 29]
+        )
+
+        XCTAssertEqual(routes.map(\.distanceKilometers), [14.9, 15.7])
     }
 
     @MainActor
@@ -388,10 +742,43 @@ final class GraphHopperClientTests: XCTestCase {
         return Data(json.utf8)
     }
 
+    private static func routeResponseWithDetailsData(
+        coordinates: String = "[0, 0, 0], [0.01, 0, 0], [0.03, 0, 0]",
+        detailsJSON: String = #"""
+        {
+          "surface": [[0, 1, "asphalt"], [1, 2, "gravel"]],
+          "road_class": [[0, 1, "primary"], [1, 2, "footway"]],
+          "hike_rating": [[0, 1, 1], [1, 2, 2]]
+        }
+        """#
+    ) throws -> Data {
+        let json = """
+        {
+          "paths": [
+            {
+              "distance": 3335,
+              "time": 2400000,
+              "ascend": 20,
+              "descend": 20,
+              "points": {
+                "type": "LineString",
+                "coordinates": [\(coordinates)]
+              },
+              "details": \(detailsJSON),
+              "instructions": []
+            }
+          ]
+        }
+        """
+        return Data(json.utf8)
+    }
+
     private static func loopRouteResponseData(
         distanceMeters: Int,
-        timeMilliseconds: Int
+        timeMilliseconds: Int,
+        detailsJSON: String? = nil
     ) throws -> Data {
+        let detailsPayload = detailsJSON.map { ",\n              \"details\": \($0)" } ?? ""
         let json = """
         {
           "paths": [
@@ -418,7 +805,7 @@ final class GraphHopperClientTests: XCTestCase {
                   "interval": [0, 3],
                   "sign": 0
                 }
-              ]
+              ]\(detailsPayload)
             }
           ]
         }

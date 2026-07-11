@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PlanFlowView: View {
     @Environment(TrailTheme.self) private var theme
@@ -13,6 +14,7 @@ struct PlanFlowView: View {
                 switch planner.phase {
                 case .home:
                     HomeView(
+                        initialPrompt: planner.prompt,
                         errorNotice: planner.errorMessage,
                         onPlan: { prompt in
                             withAnimation(.smooth) {
@@ -62,6 +64,8 @@ struct HomeView: View {
 
     @Environment(TrailTheme.self) private var theme
     @State private var composerMode: ComposerMode?
+    @State private var voiceLanguage = VoicePlanningLanguage.deviceDefault
+    let initialPrompt: String
     let errorNotice: String?
     let onPlan: (String) -> Void
     let onTextRoute: (String) -> Void
@@ -133,7 +137,12 @@ struct HomeView: View {
         .scrollIndicators(.hidden)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $composerMode) { mode in
-            PromptComposerView(startsListening: mode.startsListening, onSubmit: onTextRoute)
+            PromptComposerView(
+                startsListening: mode.startsListening,
+                initialPrompt: initialPrompt,
+                language: $voiceLanguage,
+                onSubmit: onTextRoute
+            )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.warmWhite)
@@ -253,12 +262,12 @@ struct VoiceInputOrb: View {
                 Image(systemName: "waveform")
                     .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(theme.forest)
-                    .symbolEffect(.variableColor.iterative, options: .repeat(.continuous))
             }
         }
         .buttonStyle(.plain)
         .trailGlass(cornerRadius: 46, interactive: true)
-        .accessibilityLabel("Describe adventure by voice")
+        .accessibilityLabel("Plan a route by voice")
+        .accessibilityHint("Opens the route composer and starts microphone permission handling.")
         .accessibilityIdentifier("home.voice")
     }
 }
@@ -285,27 +294,58 @@ struct PromptChip: View {
     }
 }
 
-private struct PromptComposerView: View {
+struct PromptComposerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(TrailTheme.self) private var theme
     @FocusState private var isFocused: Bool
-    @State private var prompt = ""
+    @State private var voiceModel: VoicePlanningModel
+    @Binding private var language: VoicePlanningLanguage
 
     let startsListening: Bool
     let onSubmit: (String) -> Void
+
+    init(
+        startsListening: Bool,
+        initialPrompt: String,
+        language: Binding<VoicePlanningLanguage>,
+        service: (any VoicePlanningService)? = nil,
+        onSubmit: @escaping (String) -> Void
+    ) {
+        self.startsListening = startsListening
+        self.onSubmit = onSubmit
+        _language = language
+        _voiceModel = State(
+            initialValue: VoicePlanningModel(
+                service: service ?? AppleSpeechVoicePlanningService(),
+                initialPrompt: initialPrompt,
+                language: language.wrappedValue
+            )
+        )
+    }
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(startsListening ? "I’m listening…" : "Shape your adventure")
+                    Text(title)
                         .font(.trailTitle)
-                    Text("Tell me where to start and finish. German or English both work naturally.")
+                    Text(subtitle)
                         .foregroundStyle(theme.secondaryText)
                 }
 
+                Picker("Voice language", selection: $voiceModel.language) {
+                    ForEach(VoicePlanningLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .disabled(voiceModel.state.isCapturing)
+                .accessibilityHint("Chooses the language used for speech recognition.")
+
                 ZStack(alignment: .topLeading) {
-                    if prompt.isEmpty {
+                    if voiceModel.prompt.isEmpty {
                         Text("Ilsenburg nach Schierke")
                             .foregroundStyle(theme.secondaryText.opacity(0.7))
                             .padding(.horizontal, 16)
@@ -313,7 +353,7 @@ private struct PromptComposerView: View {
                             .allowsHitTesting(false)
                     }
 
-                    TextEditor(text: $prompt)
+                    TextEditor(text: $voiceModel.prompt)
                         .scrollContentBackground(.hidden)
                         .padding(11)
                         .focused($isFocused)
@@ -328,10 +368,16 @@ private struct PromptComposerView: View {
                         .stroke(theme.forest.opacity(0.1), lineWidth: 1)
                 }
 
+                voiceControls
+
                 PrimaryButton(title: "Build my route", symbol: "sparkles") {
+                    let prompt = voiceModel.trimmedPrompt
+                    voiceModel.dismiss()
                     dismiss()
                     onSubmit(prompt)
                 }
+                .disabled(!voiceModel.canSubmit)
+                .opacity(voiceModel.canSubmit ? 1 : 0.45)
                 .accessibilityIdentifier("composer.submit")
 
                 Spacer()
@@ -339,15 +385,167 @@ private struct PromptComposerView: View {
             .padding(TrailSpacing.page)
             .background(TrailBackground())
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if voiceModel.state.isCapturing || voiceModel.state == .completed {
+                        Button("Cancel") {
+                            voiceModel.cancelRecording()
+                        }
+                        .accessibilityHint("Stops listening and restores the text from before recording.")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
+                    Button("Close") {
+                        voiceModel.dismiss()
+                        dismiss()
+                    }
                 }
             }
-            .onAppear {
-                isFocused = true
+            .task {
+                if startsListening {
+                    await voiceModel.start()
+                } else {
+                    isFocused = true
+                }
+            }
+            .onChange(of: voiceModel.language) {
+                language = voiceModel.language
+            }
+            .onChange(of: voiceModel.state) { oldState, newState in
+                if oldState != .listening, newState == .listening {
+                    AccessibilityNotification.Announcement("Listening started").post()
+                } else if oldState == .listening, newState != .listening {
+                    AccessibilityNotification.Announcement("Listening stopped").post()
+                }
+            }
+            .onChange(of: scenePhase) {
+                guard scenePhase != .active, voiceModel.state.isCapturing else { return }
+                if voiceModel.state == .listening {
+                    voiceModel.stop()
+                } else {
+                    voiceModel.dismiss()
+                }
+            }
+            .onDisappear {
+                voiceModel.dismiss()
             }
         }
     }
+
+    @ViewBuilder
+    private var voiceControls: some View {
+        switch voiceModel.state {
+        case .requestingPermission, .preparing:
+            HStack(spacing: 12) {
+                ProgressView()
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Button("Cancel") { voiceModel.cancelRecording() }
+            }
+            .accessibilityElement(children: .combine)
+
+        case .listening:
+            HStack(spacing: 12) {
+                Image(systemName: "mic.fill")
+                    .foregroundStyle(theme.warning)
+                    .symbolEffect(.pulse)
+                Text("Listening…")
+                    .font(.subheadline.weight(.bold))
+                Spacer()
+                Button("Stop") { voiceModel.stop() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(theme.forest)
+                    .accessibilityHint("Stops microphone capture and keeps the transcript for review.")
+            }
+
+        case .permissionDenied:
+            VStack(alignment: .leading, spacing: 12) {
+                Label(permissionMessage, systemImage: "mic.slash.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.secondaryText)
+                Button("Open Settings") {
+                    if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                        openURL(settingsURL)
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+
+        case let .unavailable(message), let .failed(message):
+            VStack(alignment: .leading, spacing: 12) {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.secondaryText)
+                Button("Try again") {
+                    Task { await voiceModel.retry() }
+                }
+                .buttonStyle(.bordered)
+            }
+
+        case .idle, .completed:
+            Button {
+                isFocused = false
+                Task { await voiceModel.start() }
+            } label: {
+                Label(voiceModel.state == .completed ? "Record again" : "Use voice", systemImage: "mic.fill")
+            }
+            .buttonStyle(.bordered)
+            .tint(theme.forest)
+
+        case .stopping:
+            Label("Finishing transcription…", systemImage: "stop.circle")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(theme.secondaryText)
+        }
+    }
+
+    private var title: String {
+        switch voiceModel.state {
+        case .requestingPermission: "Waiting for microphone access…"
+        case .preparing: "Preparing microphone…"
+        case .listening: "Listening…"
+        case .stopping: "Finishing transcription…"
+        case .completed: "Review your request"
+        case .permissionDenied: "Microphone access needed"
+        case .unavailable: "Voice input unavailable"
+        case .failed: "Voice input stopped"
+        case .idle: "Describe your route"
+        }
+    }
+
+    private var subtitle: String {
+        switch voiceModel.state {
+        case .completed:
+            "Edit anything you like, then build your route."
+        case .permissionDenied:
+            "Enable microphone and speech recognition access in Settings to plan by voice."
+        default:
+            "Tell me where to start and finish. German or English both work naturally."
+        }
+    }
+
+    private var permissionMessage: String {
+        guard case let .permissionDenied(reason) = voiceModel.state else { return "" }
+        return switch reason {
+        case .microphone:
+            "TrailMind needs microphone access to turn your route request into text."
+        case .speechRecognition:
+            "TrailMind needs speech recognition access to transcribe your route request."
+        case .restricted:
+            "Speech recognition is restricted on this device."
+        }
+    }
+}
+
+#Preview("Voice composer") {
+    PromptComposerView(
+        startsListening: false,
+        initialPrompt: "15 km Rundwanderung um Ilsenburg",
+        language: .constant(.german),
+        service: FakeVoicePlanningService(),
+        onSubmit: { _ in }
+    )
+    .environment(TrailTheme())
 }
 
 private struct CompactRouteCard: View {

@@ -71,6 +71,10 @@ struct RouteCard: View {
                 cardStat(route.durationLabel, label: "Time")
             }
 
+            if let facts = route.verifiedCharacteristics?.cardFacts, !facts.isEmpty {
+                VerifiedRouteFactRow(facts: facts)
+            }
+
             if !qualityExplanations.isEmpty {
                 RouteQualityChipRow(explanations: qualityExplanations)
             }
@@ -116,6 +120,33 @@ struct RouteCard: View {
 
     private var badgeSymbol: String {
         route.planningMetadata?.variantLabel == nil ? "sparkles" : "arrow.trianglehead.2.clockwise.rotate.90"
+    }
+}
+
+private struct VerifiedRouteFactRow: View {
+    @Environment(TrailTheme.self) private var theme
+    let facts: [RouteQualityExplanation]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Mapped route facts")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(theme.graphite)
+
+            FlowLayout(spacing: 8, rowSpacing: 8) {
+                ForEach(facts.prefix(2)) { fact in
+                    Label(fact.title, systemImage: fact.symbol)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(theme.forest)
+                        .lineLimit(1)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
+                        .background(theme.sand.opacity(0.7), in: Capsule())
+                }
+            }
+        }
+        .padding(12)
+        .background(theme.warmWhite.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

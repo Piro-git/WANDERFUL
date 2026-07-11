@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseIntentEndpoint, sanitizeIntent } from "../src/parseIntent.js";
+import { parseIntentEndpoint, repairIntent, sanitizeIntent } from "../src/parseIntent.js";
 import {
   GOOGLE_INTERACTIONS_URL,
   OPENROUTER_CHAT_COMPLETIONS_URL
@@ -26,6 +26,44 @@ describe("parseIntentEndpoint", () => {
     assert.deepEqual(intent.avoidFeatures, ["repeatedPath"]);
     assert.equal(intent.parserSource, "remoteAI");
     assert.ok(intent.confidence > 0.5);
+  });
+
+  it("repairs under-specified remoteAI loop output for pasted German round prompts", () => {
+    const prompt = [
+      "Ich will eine entspannte Runde bei Ilsenburg, ca. 3 Stunden",
+      "Mach mir eine kurze Wanderung bei Lüneburg, eher easy"
+    ].join("\n");
+
+    const repaired = sanitizeIntent(
+      repairIntent(
+        {
+          activityType: null,
+          routeType: "loop",
+          startLocationQuery: null,
+          endLocationQuery: null,
+          regionQuery: null,
+          targetDistanceKm: null,
+          targetDurationMinutes: null,
+          difficulty: null,
+          desiredFeatures: [],
+          avoidFeatures: [],
+          transportMode: null,
+          rawPrompt: prompt,
+          parserSource: "remoteAI",
+          confidence: 0.42
+        },
+        prompt
+      ),
+      prompt
+    );
+
+    assert.equal(repaired.activityType, "hiking");
+    assert.equal(repaired.routeType, "loop");
+    assert.equal(repaired.startLocationQuery, "Ilsenburg");
+    assert.equal(repaired.endLocationQuery, null);
+    assert.equal(repaired.targetDurationMinutes, 180);
+    assert.equal(repaired.difficulty, "easy");
+    assert.equal(repaired.transportMode, "walking");
   });
 
   it("parses an English point-to-point prompt with mock fallback", async () => {
@@ -57,6 +95,37 @@ describe("parseIntentEndpoint", () => {
     assert.equal(intent.startLocationQuery, null);
     assert.equal(intent.endLocationQuery, null);
     assert.ok(intent.confidence <= 0.35);
+  });
+
+  it("repairs a named regional day hike without a destination to a loop", () => {
+    const prompt =
+      "Ich will mit Freunden wandern gehen in der Sächsischen Schweiz. Wir wollen so entspannt einen Tag wandern gehen ohne Vorkenntnisse";
+
+    const intent = sanitizeIntent(
+      {
+        activityType: "hiking",
+        routeType: null,
+        startLocationQuery: null,
+        endLocationQuery: null,
+        regionQuery: "Sächsische Schweiz",
+        targetDistanceKm: null,
+        targetDurationMinutes: null,
+        difficulty: "easy",
+        desiredFeatures: [],
+        avoidFeatures: [],
+        transportMode: "walking",
+        rawPrompt: prompt,
+        parserSource: "remoteAI",
+        confidence: 0.9
+      },
+      prompt
+    );
+
+    assert.equal(intent.routeType, "loop");
+    assert.equal(intent.startLocationQuery, "Sächsische Schweiz");
+    assert.equal(intent.endLocationQuery, null);
+    assert.equal(intent.regionQuery, "Sächsische Schweiz");
+    assert.equal(intent.difficulty, "easy");
   });
 
   it("keeps desired features as preferences only", () => {
@@ -168,6 +237,112 @@ describe("parseIntentEndpoint", () => {
     assert.equal(body.response_format.json_schema.strict, true);
     assert.equal(body.provider.require_parameters, true);
     assert.equal(fetchCalls[0].init.headers.Authorization, "Bearer test-key");
+  });
+
+  it("repairs under-specified OpenRouter JSON before returning it to the app", async () => {
+    const prompt = [
+      "Ich will eine entspannte Runde bei Ilsenburg, ca. 3 Stunden",
+      "Mach mir eine kurze Wanderung bei Lüneburg, eher easy"
+    ].join("\n");
+    const fetchImpl = async () => ({
+      ok: true,
+      async json() {
+        return {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  activityType: null,
+                  routeType: "loop",
+                  startLocationQuery: null,
+                  endLocationQuery: null,
+                  regionQuery: null,
+                  targetDistanceKm: null,
+                  targetDurationMinutes: null,
+                  difficulty: null,
+                  desiredFeatures: [],
+                  avoidFeatures: [],
+                  transportMode: null,
+                  rawPrompt: prompt,
+                  parserSource: "remoteAI",
+                  confidence: 0.42
+                })
+              }
+            }
+          ]
+        };
+      }
+    });
+
+    const intent = await parseIntentEndpoint(
+      { prompt, locale: "de" },
+      {
+        env: {
+          OPENROUTER_API_KEY: "test-key",
+          OPENROUTER_MODEL: "test/model"
+        },
+        fetchImpl
+      }
+    );
+
+    assert.equal(intent.parserSource, "remoteAI");
+    assert.equal(intent.activityType, "hiking");
+    assert.equal(intent.routeType, "loop");
+    assert.equal(intent.startLocationQuery, "Ilsenburg");
+    assert.equal(intent.endLocationQuery, null);
+    assert.equal(intent.targetDurationMinutes, 180);
+    assert.equal(intent.difficulty, "easy");
+  });
+
+  it("repairs point-to-point remoteAI output with locations but missing activity", async () => {
+    const prompt = "Lüneburg bis Bardowick";
+    const fetchImpl = async () => ({
+      ok: true,
+      async json() {
+        return {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  activityType: null,
+                  routeType: "pointToPoint",
+                  startLocationQuery: "Lüneburg",
+                  endLocationQuery: "Bardowick",
+                  regionQuery: null,
+                  targetDistanceKm: null,
+                  targetDurationMinutes: null,
+                  difficulty: null,
+                  desiredFeatures: [],
+                  avoidFeatures: [],
+                  transportMode: null,
+                  rawPrompt: prompt,
+                  parserSource: "remoteAI",
+                  confidence: 0.9
+                })
+              }
+            }
+          ]
+        };
+      }
+    });
+
+    const intent = await parseIntentEndpoint(
+      { prompt, locale: "de" },
+      {
+        env: {
+          OPENROUTER_API_KEY: "test-key",
+          OPENROUTER_MODEL: "test/model"
+        },
+        fetchImpl
+      }
+    );
+
+    assert.equal(intent.parserSource, "remoteAI");
+    assert.equal(intent.activityType, "hiking");
+    assert.equal(intent.routeType, "pointToPoint");
+    assert.equal(intent.startLocationQuery, "Lüneburg");
+    assert.equal(intent.endLocationQuery, "Bardowick");
+    assert.equal(intent.transportMode, "walking");
   });
 
   it("uses Google Gemini as the primary provider when configured", async () => {

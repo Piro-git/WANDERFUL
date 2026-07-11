@@ -20,8 +20,6 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>GRAPHHOPPER_API_KEY</key>
-	<string>$(GRAPHHOPPER_API_KEY)</string>
 	<key>INTENT_BACKEND_BASE_URL</key>
 	<string>$(INTENT_BACKEND_BASE_URL)</string>
 	<key>LSApplicationCategoryType</key>
@@ -33,6 +31,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>TrailMind uses your location to suggest nearby adventures and support future navigation.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>TrailMind uses the microphone to turn your spoken route request into text.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>TrailMind uses speech recognition to transcribe your spoken route request.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

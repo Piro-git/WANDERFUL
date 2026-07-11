@@ -1,27 +1,107 @@
 import Foundation
 
+struct LoopSearchPolicy: Hashable, Sendable {
+    static let comparisonDefault = LoopSearchPolicy()
+
+    let targetSuggestionCount: Int
+    let minimumComparableSuggestionCount: Int
+    let totalBudgetSeconds: TimeInterval
+    let maximumConcurrentRequests: Int
+
+    init(
+        targetSuggestionCount: Int = 3,
+        minimumComparableSuggestionCount: Int = 2,
+        totalBudgetSeconds: TimeInterval = 25,
+        maximumConcurrentRequests: Int = 2
+    ) {
+        self.targetSuggestionCount = targetSuggestionCount
+        self.minimumComparableSuggestionCount = minimumComparableSuggestionCount
+        self.totalBudgetSeconds = totalBudgetSeconds
+        self.maximumConcurrentRequests = maximumConcurrentRequests
+    }
+}
+
+enum LoopSearchOutcome: Hashable, Sendable {
+    case comparison(routeCount: Int)
+    case singleRoute
+}
+
+struct LoopSearchDiagnostics: Hashable, Sendable {
+    let elapsedMilliseconds: Int
+    let directRouteCount: Int
+    let fallbackRouteCount: Int
+    let rejectionCounts: [String: Int]
+    let didReachTimeBudget: Bool
+
+    static func empty(elapsedMilliseconds: Int = 0) -> LoopSearchDiagnostics {
+        LoopSearchDiagnostics(
+            elapsedMilliseconds: elapsedMilliseconds,
+            directRouteCount: 0,
+            fallbackRouteCount: 0,
+            rejectionCounts: [:],
+            didReachTimeBudget: false
+        )
+    }
+}
+
 struct RouteIntent: Hashable {
     let request: RoutePlanningRequest
     let start: Coordinate
     let end: Coordinate?
     let parsedIntent: ValidatedAdventureIntent?
+    let loopSearchPolicy: LoopSearchPolicy?
+    let loopSearchDeadline: Date?
 
     init(
         request: RoutePlanningRequest,
         start: Coordinate,
         end: Coordinate?,
-        parsedIntent: ValidatedAdventureIntent? = nil
+        parsedIntent: ValidatedAdventureIntent? = nil,
+        loopSearchPolicy: LoopSearchPolicy? = nil,
+        loopSearchDeadline: Date? = nil
     ) {
         self.request = request
         self.start = start
         self.end = end
         self.parsedIntent = parsedIntent
+        self.loopSearchPolicy = loopSearchPolicy
+        self.loopSearchDeadline = loopSearchDeadline
+    }
+
+    var hasExpiredLoopSearchBudget: Bool {
+        guard let loopSearchDeadline else { return false }
+        return Date() >= loopSearchDeadline
     }
 }
 
 struct RoutingResult {
     let suggestions: [RouteSuggestion]
     let notice: String?
+    let loopSearchOutcome: LoopSearchOutcome?
+    let loopSearchDiagnostics: LoopSearchDiagnostics?
+
+    init(
+        suggestions: [RouteSuggestion],
+        notice: String?,
+        loopSearchOutcome: LoopSearchOutcome? = nil,
+        loopSearchDiagnostics: LoopSearchDiagnostics? = nil
+    ) {
+        self.suggestions = suggestions
+        self.notice = notice
+        self.loopSearchOutcome = loopSearchOutcome
+        self.loopSearchDiagnostics = loopSearchDiagnostics
+    }
+}
+
+enum RoutingError: LocalizedError, Equatable {
+    case loopRouteNotFound
+
+    var errorDescription: String? {
+        switch self {
+        case .loopRouteNotFound:
+            "GraphHopper couldn’t build a loop route from this start. Try a nearby trailhead or a different duration."
+        }
+    }
 }
 
 protocol RoutingCoordinating {
@@ -35,29 +115,227 @@ protocol RoutingProvider {
 struct RoutingCoordinator: RoutingCoordinating {
     private let primaryProvider: any RoutingProvider
     private let loopFallbackProvider: any RoutingProvider
+    private let loopSearchPolicy: LoopSearchPolicy
 
     init(
         primaryProvider: any RoutingProvider = GraphHopperRoutingProvider(),
-        loopFallbackProvider: any RoutingProvider = LoopFallbackProvider()
+        loopFallbackProvider: any RoutingProvider = LoopFallbackProvider(),
+        loopSearchPolicy: LoopSearchPolicy = .comparisonDefault
     ) {
         self.primaryProvider = primaryProvider
         self.loopFallbackProvider = loopFallbackProvider
+        self.loopSearchPolicy = loopSearchPolicy
     }
 
     func routeSuggestions(for intent: RouteIntent) async throws -> RoutingResult {
+        let searchStartedAt = Date()
+        let routingIntent = intent.request.routeType == .loop
+            ? RouteIntent(
+                request: intent.request,
+                start: intent.start,
+                end: intent.end,
+                parsedIntent: intent.parsedIntent,
+                loopSearchPolicy: loopSearchPolicy,
+                loopSearchDeadline: searchStartedAt.addingTimeInterval(loopSearchPolicy.totalBudgetSeconds)
+            )
+            : intent
         do {
-            return RoutingResult(
-                suggestions: try await primaryProvider.routeSuggestions(for: intent),
-                notice: nil
+            let primarySuggestions = try await primaryProvider.routeSuggestions(for: routingIntent)
+            guard routingIntent.request.routeType == .loop else {
+                return RoutingResult(suggestions: primarySuggestions, notice: nil)
+            }
+
+            let targetDistanceKm = routingIntent.request.targetDistanceKm
+                ?? RoutePlanningRequest.defaultLoopDistanceKm(for: routingIntent.request.activityType)
+            let distinctPrimary = RouteSuggestionNormalizer.comparableLoopSuggestions(
+                from: primarySuggestions,
+                targetDistanceKm: targetDistanceKm,
+                maximumSuggestions: loopSearchPolicy.targetSuggestionCount,
+                request: routingIntent.request
+            )
+            if distinctPrimary.count >= loopSearchPolicy.minimumComparableSuggestionCount {
+                return loopResult(
+                    suggestions: distinctPrimary,
+                    notice: nil,
+                    searchStartedAt: searchStartedAt,
+                    directRouteCount: distinctPrimary.count,
+                    fallbackRouteCount: 0,
+                    rejectionCounts: [:],
+                    request: routingIntent.request
+                )
+            }
+
+            return await supplementedLoopSuggestions(
+                primarySuggestions: distinctPrimary,
+                for: routingIntent,
+                searchStartedAt: searchStartedAt
             )
         } catch let error as GraphHopperError
-            where intent.request.routeType == .loop && error.isFlexibleModeUnavailable
+            where routingIntent.request.routeType == .loop && error.shouldTryLoopFallback
         {
-            return RoutingResult(
-                suggestions: try await loopFallbackProvider.routeSuggestions(for: intent),
-                notice: "GraphHopper round trips need flexible mode on this API plan, so TrailMind built loop options from normal routed segments."
+            let notice = error.isFlexibleModeUnavailable
+                ? "GraphHopper round trips need flexible mode on this API plan, so TrailMind built loop options from normal routed segments."
+                : "GraphHopper could not build a direct round trip, so TrailMind tried alternate loop shapes from the same start."
+            do {
+                let fallback = try await fallbackSearch(
+                    for: routingIntent,
+                    excluding: []
+                )
+                return loopResult(
+                    suggestions: fallback.suggestions,
+                    notice: notice,
+                    searchStartedAt: searchStartedAt,
+                    directRouteCount: 0,
+                    fallbackRouteCount: fallback.suggestions.count,
+                    rejectionCounts: fallback.rejectionCounts,
+                    request: routingIntent.request
+                )
+            } catch let fallbackError as GraphHopperError where fallbackError.isNoRouteFound {
+                throw RoutingError.loopRouteNotFound
+            }
+        } catch let error as GraphHopperError
+            where routingIntent.request.routeType == .loop && error.isNoRouteFound {
+            throw RoutingError.loopRouteNotFound
+        }
+    }
+
+    private func supplementedLoopSuggestions(
+        primarySuggestions: [RouteSuggestion],
+        for intent: RouteIntent,
+        searchStartedAt: Date
+    ) async -> RoutingResult {
+        let targetDistanceKm = intent.request.targetDistanceKm
+            ?? RoutePlanningRequest.defaultLoopDistanceKm(for: intent.request.activityType)
+        let distinctPrimary = RouteSuggestionNormalizer.comparableLoopSuggestions(
+            from: primarySuggestions,
+            targetDistanceKm: targetDistanceKm,
+            maximumSuggestions: loopSearchPolicy.targetSuggestionCount,
+            request: intent.request
+        )
+        let primarySignatures = distinctPrimary.compactMap { suggestion -> String? in
+            let signature = LoopFallbackProvider.geometrySignature(for: suggestion.route)
+            return signature.isEmpty ? nil : signature
+        }
+
+        guard !intent.hasExpiredLoopSearchBudget else {
+            return loopResult(
+                suggestions: distinctPrimary,
+                notice: nil,
+                searchStartedAt: searchStartedAt,
+                directRouteCount: distinctPrimary.count,
+                fallbackRouteCount: 0,
+                rejectionCounts: ["time_budget_expired": 1],
+                request: intent.request
             )
         }
+
+        do {
+            let fallback = try await fallbackSearch(
+                for: intent,
+                excluding: primarySignatures
+            )
+            let comparableSuggestions = RouteSuggestionNormalizer.comparableLoopSuggestions(
+                from: distinctPrimary + fallback.suggestions,
+                targetDistanceKm: targetDistanceKm,
+                request: intent.request
+            )
+            let notice = comparableSuggestions.count >= loopSearchPolicy.minimumComparableSuggestionCount
+                ? "TrailMind found distinct real loop options from the same start for comparison."
+                : nil
+            return loopResult(
+                suggestions: comparableSuggestions,
+                notice: notice,
+                searchStartedAt: searchStartedAt,
+                directRouteCount: distinctPrimary.count,
+                fallbackRouteCount: fallback.suggestions.count,
+                rejectionCounts: fallback.rejectionCounts,
+                request: intent.request
+            )
+        } catch {
+            return loopResult(
+                suggestions: distinctPrimary,
+                notice: nil,
+                searchStartedAt: searchStartedAt,
+                directRouteCount: distinctPrimary.count,
+                fallbackRouteCount: 0,
+                rejectionCounts: ["fallback_unavailable": 1],
+                request: intent.request
+            )
+        }
+    }
+
+    private func fallbackSearch(
+        for intent: RouteIntent,
+        excluding signatures: [String]
+    ) async throws -> LoopFallbackSearchResult {
+        if let provider = loopFallbackProvider as? LoopFallbackProvider {
+            return try await provider.search(for: intent, excluding: Set(signatures))
+        }
+        return LoopFallbackSearchResult(
+            suggestions: try await loopFallbackProvider.routeSuggestions(for: intent),
+            rejectionCounts: [:],
+            didReachTimeBudget: intent.hasExpiredLoopSearchBudget
+        )
+    }
+
+    private func loopResult(
+        suggestions: [RouteSuggestion],
+        notice: String?,
+        searchStartedAt: Date,
+        directRouteCount: Int,
+        fallbackRouteCount: Int,
+        rejectionCounts: [String: Int],
+        request: RoutePlanningRequest
+    ) -> RoutingResult {
+        let elapsedMilliseconds = max(0, Int(Date().timeIntervalSince(searchStartedAt) * 1_000))
+        let diagnostics = LoopSearchDiagnostics(
+            elapsedMilliseconds: elapsedMilliseconds,
+            directRouteCount: directRouteCount,
+            fallbackRouteCount: fallbackRouteCount,
+            rejectionCounts: rejectionCounts,
+            didReachTimeBudget: elapsedMilliseconds >= Int(loopSearchPolicy.totalBudgetSeconds * 1_000)
+                || rejectionCounts["time_budget_expired"] != nil
+        )
+        let outcome: LoopSearchOutcome = suggestions.count >= loopSearchPolicy.minimumComparableSuggestionCount
+            ? .comparison(routeCount: suggestions.count)
+            : .singleRoute
+        let minimumElevation = suggestions.map(\.route.elevationGainMeters).min()
+        let shapedSuggestions = suggestions.enumerated().map { index, suggestion in
+            let shapingSummary = RouteShapingSummary.loop(
+                request: request,
+                lowerElevationApplied: suggestions.count >= 2
+                    && index == 0
+                    && suggestion.route.elevationGainMeters == minimumElevation
+            )
+            let metadata = (suggestion.route.planningMetadata ?? request.metadata)
+                .withRouteShapingSummary(shapingSummary)
+            return RouteSuggestion(
+                id: suggestion.id,
+                route: suggestion.route.withPlanningMetadata(metadata),
+                matchScore: suggestion.matchScore,
+                explanation: suggestion.explanation,
+                debugMetadata: suggestion.debugMetadata
+            )
+        }
+        return RoutingResult(
+            suggestions: shapedSuggestions,
+            notice: notice,
+            loopSearchOutcome: outcome,
+            loopSearchDiagnostics: diagnostics
+        )
+    }
+}
+
+private extension GraphHopperError {
+    var isNoRouteFound: Bool {
+        if case .noRouteFound = self {
+            return true
+        }
+        return false
+    }
+
+    var shouldTryLoopFallback: Bool {
+        isFlexibleModeUnavailable || isNoRouteFound
     }
 }
 
@@ -80,7 +358,9 @@ struct GraphHopperRoutingProvider: RoutingProvider {
             routes = try await client.calculateRoundTripRouteVariants(
                 start: intent.start,
                 request: intent.request,
-                seeds: loopSeeds
+                seeds: loopSeeds,
+                deadline: intent.loopSearchDeadline,
+                maximumConcurrentRequests: intent.loopSearchPolicy?.maximumConcurrentRequests ?? 1
             )
         case .pointToPoint, .multiDay:
             guard let end = intent.end else {
@@ -105,7 +385,34 @@ protocol GraphHopperMultiPointRouteCalculating {
         request: RoutePlanningRequest,
         seed: Int?
     ) async throws -> TrailRoute
+
+    func calculateGraphHopperRoute(
+        waypoints: [Coordinate],
+        request: RoutePlanningRequest,
+        seed: Int?,
+        deadline: Date?
+    ) async throws -> TrailRoute
 }
+
+extension GraphHopperMultiPointRouteCalculating {
+    func calculateGraphHopperRoute(
+        waypoints: [Coordinate],
+        request: RoutePlanningRequest,
+        seed: Int?,
+        deadline: Date?
+    ) async throws -> TrailRoute {
+        try await calculateGraphHopperRoute(
+            waypoints: waypoints,
+            request: request,
+            seed: seed
+        )
+    }
+}
+
+// The production URLSession client supports two in-flight requests. Other
+// conformers stay sequential unless they opt in, which keeps custom/test
+// clients deterministic.
+protocol ConcurrentGraphHopperMultiPointRouteCalculating: GraphHopperMultiPointRouteCalculating { }
 
 enum LoopFallbackBearingPattern: String, CaseIterable, Hashable {
     case leftArc = "left_arc"
@@ -116,8 +423,19 @@ enum LoopFallbackBearingPattern: String, CaseIterable, Hashable {
     case counterclockwise = "counterclockwise"
 }
 
+struct LoopFallbackSearchResult {
+    let suggestions: [RouteSuggestion]
+    let rejectionCounts: [String: Int]
+    let didReachTimeBudget: Bool
+}
+
 struct LoopFallbackProvider: RoutingProvider {
+    private static let maximumAcceptableOverlap = 0.40
+    private static let maximumShapeAwareOverlap = 0.65
+    private static let minimumShapeQualityForSharedSections = 0.35
+
     struct Candidate: Hashable {
+        let index: Int
         let seed: Int
         let radiusKm: Double
         let radiusFactor: Double
@@ -129,6 +447,10 @@ struct LoopFallbackProvider: RoutingProvider {
     private struct CandidateOutcome {
         var accepted: [LoopRouteVariantRanker.Variant] = []
         var rejectionReasons: [String] = []
+        var rejectionCounts: [String: Int] = [:]
+        var rejectedAsTooLong: Set<LoopFallbackBearingPattern> = []
+        var rejectedAsTooShort: Set<LoopFallbackBearingPattern> = []
+        var didReachTimeBudget = false
         var firstError: Error?
 
         var allRejectedAsTooLong: Bool {
@@ -139,6 +461,48 @@ struct LoopFallbackProvider: RoutingProvider {
         var allRejectedAsTooShort: Bool {
             !rejectionReasons.isEmpty &&
                 rejectionReasons.allSatisfy { $0 == RejectionReason.tooShort.rawValue || $0 == RejectionReason.tooShortHard.rawValue }
+        }
+
+        var hasRejectedAsTooLong: Bool {
+            rejectionReasons.contains(RejectionReason.tooLong.rawValue) ||
+                rejectionReasons.contains(RejectionReason.tooLongHard.rawValue)
+        }
+
+        var hasRejectedAsTooShort: Bool {
+            rejectionReasons.contains(RejectionReason.tooShort.rawValue) ||
+                rejectionReasons.contains(RejectionReason.tooShortHard.rawValue)
+        }
+
+        mutating func record(
+            _ reason: RejectionReason,
+            pattern: LoopFallbackBearingPattern
+        ) {
+            rejectionReasons.append(reason.rawValue)
+            rejectionCounts[reason.rawValue, default: 0] += 1
+            switch reason {
+            case .tooLong, .tooLongHard:
+                rejectedAsTooLong.insert(pattern)
+            case .tooShort, .tooShortHard:
+                rejectedAsTooShort.insert(pattern)
+            default:
+                break
+            }
+        }
+
+        mutating func recordRoutingFailure() {
+            rejectionCounts["routing_failure", default: 0] += 1
+        }
+
+        mutating func merge(_ other: CandidateOutcome) {
+            accepted.append(contentsOf: other.accepted)
+            rejectionReasons.append(contentsOf: other.rejectionReasons)
+            for (reason, count) in other.rejectionCounts {
+                rejectionCounts[reason, default: 0] += count
+            }
+            rejectedAsTooLong.formUnion(other.rejectedAsTooLong)
+            rejectedAsTooShort.formUnion(other.rejectedAsTooShort)
+            didReachTimeBudget = didReachTimeBudget || other.didReachTimeBudget
+            firstError = firstError ?? other.firstError
         }
     }
 
@@ -173,13 +537,20 @@ struct LoopFallbackProvider: RoutingProvider {
     }
 
     func routeSuggestions(for intent: RouteIntent) async throws -> [RouteSuggestion] {
+        try await search(for: intent).suggestions
+    }
+
+    func search(
+        for intent: RouteIntent,
+        excluding initialSignatures: Set<String> = []
+    ) async throws -> LoopFallbackSearchResult {
         guard intent.request.routeType == .loop else {
             throw RoutePromptParserError.invalidPrompt
         }
 
         let targetDistanceKm = intent.request.targetDistanceKm
             ?? RoutePlanningRequest.defaultLoopDistanceKm(for: intent.request.activityType)
-        var signatures = Set<String>()
+        var signatures = initialSignatures
 
         let initialOutcome = await evaluateCandidates(
             start: intent.start,
@@ -189,33 +560,44 @@ struct LoopFallbackProvider: RoutingProvider {
             signatures: &signatures
         )
         var variants = initialOutcome.accepted
-        var firstError = initialOutcome.firstError
+        var accumulatedOutcome = initialOutcome
 
-        if variants.isEmpty, initialOutcome.allRejectedAsTooLong {
+        if variants.count < maximumSuggestions,
+           initialOutcome.hasRejectedAsTooLong
+        {
             let retryOutcome = await evaluateCandidates(
                 start: intent.start,
                 targetDistanceKm: targetDistanceKm,
                 radiusFactors: baseRadiusFactors.map { max($0 * 0.72, 0.08) },
                 intent: intent,
-                signatures: &signatures
+                signatures: &signatures,
+                patterns: orderedPatterns(from: initialOutcome.rejectedAsTooLong)
             )
             variants.append(contentsOf: retryOutcome.accepted)
-            firstError = firstError ?? retryOutcome.firstError
-        } else if variants.isEmpty, initialOutcome.allRejectedAsTooShort {
+            accumulatedOutcome.merge(retryOutcome)
+        }
+
+        if variants.count < maximumSuggestions,
+           initialOutcome.hasRejectedAsTooShort
+        {
             let retryOutcome = await evaluateCandidates(
                 start: intent.start,
                 targetDistanceKm: targetDistanceKm,
                 radiusFactors: baseRadiusFactors.map { min($0 * 1.18, 0.28) },
                 intent: intent,
-                signatures: &signatures
+                signatures: &signatures,
+                patterns: orderedPatterns(from: initialOutcome.rejectedAsTooShort)
             )
             variants.append(contentsOf: retryOutcome.accepted)
-            firstError = firstError ?? retryOutcome.firstError
+            accumulatedOutcome.merge(retryOutcome)
         }
 
         let rankedVariants = LoopRouteVariantRanker.rank(
             variants,
-            targetDistanceKm: targetDistanceKm
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: intent.request.targetDurationMinutes,
+            prefersLowerElevation: intent.request.avoidFeatures.contains(.steepClimbs)
+                || intent.request.difficulty == .easy
         )
         .prefix(maximumSuggestions)
 
@@ -245,10 +627,14 @@ struct LoopFallbackProvider: RoutingProvider {
             )
         }
         if !suggestions.isEmpty {
-            return suggestions
+            return LoopFallbackSearchResult(
+                suggestions: suggestions,
+                rejectionCounts: accumulatedOutcome.rejectionCounts,
+                didReachTimeBudget: accumulatedOutcome.didReachTimeBudget
+            )
         }
 
-        throw firstError ?? GraphHopperError.noRouteFound
+        throw accumulatedOutcome.firstError ?? GraphHopperError.noRouteFound
     }
 
     private func evaluateCandidates(
@@ -256,14 +642,16 @@ struct LoopFallbackProvider: RoutingProvider {
         targetDistanceKm: Double,
         radiusFactors: [Double],
         intent: RouteIntent,
-        signatures: inout Set<String>
+        signatures: inout Set<String>,
+        patterns: [LoopFallbackBearingPattern]? = nil
     ) async -> CandidateOutcome {
         var outcome = CandidateOutcome()
 
         let usableSeeds = seeds.isEmpty ? [11, 29, 47] : seeds
-        for (index, pattern) in bearingPatterns.enumerated() {
+        let candidatePatterns = patterns?.isEmpty == false ? patterns! : bearingPatterns
+        let candidates = candidatePatterns.enumerated().map { index, pattern in
             let seed = usableSeeds[index % usableSeeds.count]
-            let candidate = Self.candidate(
+            return Self.candidate(
                 start: start,
                 targetDistanceKm: targetDistanceKm,
                 seed: seed,
@@ -271,14 +659,31 @@ struct LoopFallbackProvider: RoutingProvider {
                 radiusFactors: radiusFactors,
                 bearingPattern: pattern
             )
-            do {
-                let route = try await client.calculateGraphHopperRoute(
-                    waypoints: candidate.waypoints,
-                    request: intent.request,
-                    seed: candidate.seed
-                )
+        }
+        let concurrency = client is any ConcurrentGraphHopperMultiPointRouteCalculating
+            ? max(intent.loopSearchPolicy?.maximumConcurrentRequests ?? 2, 1)
+            : 1
+        var nextCandidateIndex = 0
+
+        while nextCandidateIndex < candidates.count {
+            if intent.hasExpiredLoopSearchBudget {
+                outcome.didReachTimeBudget = true
+                outcome.rejectionCounts["time_budget_expired", default: 0] += 1
+                break
+            }
+
+            let batchEnd = min(nextCandidateIndex + concurrency, candidates.count)
+            let batch = Array(candidates[nextCandidateIndex..<batchEnd])
+            let results = await routeResults(for: batch, intent: intent)
+            for (candidate, result) in results {
+                switch result {
+                case let .success(route):
                 guard Self.hasUsableGeometry(route) else {
-                    outcome.rejectionReasons.append(RejectionReason.insufficientGeometry.rawValue)
+                    outcome.record(.insufficientGeometry, pattern: candidate.bearingPattern)
+                    Self.debugCandidateRejection(
+                        pattern: candidate.bearingPattern,
+                        reason: RejectionReason.insufficientGeometry.rawValue
+                    )
                     continue
                 }
 
@@ -286,19 +691,33 @@ struct LoopFallbackProvider: RoutingProvider {
                     route: route,
                     targetDistanceKm: targetDistanceKm
                 ) {
-                    outcome.rejectionReasons.append(rejectionReason.rawValue)
+                    outcome.record(rejectionReason, pattern: candidate.bearingPattern)
+                    Self.debugCandidateRejection(
+                        pattern: candidate.bearingPattern,
+                        reason: rejectionReason.rawValue
+                    )
                     continue
                 }
 
                 let quality = Self.qualityAnalysis(for: route)
-                if quality.overlapRatio > 0.25 {
-                    outcome.rejectionReasons.append(RejectionReason.tooMuchOverlap.rawValue)
+                // A connected trail network can require shared sections. Keep those
+                // only when the returned geometry still forms a meaningful loop.
+                if !Self.acceptsLoopQuality(quality) {
+                    outcome.record(.tooMuchOverlap, pattern: candidate.bearingPattern)
+                    Self.debugCandidateRejection(
+                        pattern: candidate.bearingPattern,
+                        reason: RejectionReason.tooMuchOverlap.rawValue
+                    )
                     continue
                 }
 
                 let signature = Self.geometrySignature(for: route)
                 guard !signature.isEmpty, signatures.insert(signature).inserted else {
-                    outcome.rejectionReasons.append(RejectionReason.duplicateGeometry.rawValue)
+                    outcome.record(.duplicateGeometry, pattern: candidate.bearingPattern)
+                    Self.debugCandidateRejection(
+                        pattern: candidate.bearingPattern,
+                        reason: RejectionReason.duplicateGeometry.rawValue
+                    )
                     continue
                 }
                 outcome.accepted.append(
@@ -311,16 +730,67 @@ struct LoopFallbackProvider: RoutingProvider {
                         bearingPattern: candidate.bearingPattern.rawValue,
                         overlapRatio: quality.overlapRatio,
                         shapeQualityScore: quality.shapeQualityScore
+                        )
                     )
-                )
-            } catch {
-                if outcome.firstError == nil {
-                    outcome.firstError = error
+                case let .failure(error):
+                    if outcome.firstError == nil {
+                        outcome.firstError = error
+                    }
+                    outcome.recordRoutingFailure()
+                    Self.debugCandidateRejection(
+                        pattern: candidate.bearingPattern,
+                        reason: "routing failure: \(error.localizedDescription)"
+                    )
                 }
+            }
+            nextCandidateIndex = batchEnd
+            if outcome.accepted.count >= maximumSuggestions {
+                break
             }
         }
 
         return outcome
+    }
+
+    private func routeResults(
+        for candidates: [Candidate],
+        intent: RouteIntent
+    ) async -> [(Candidate, Result<TrailRoute, Error>)] {
+        guard candidates.count == 2 else {
+            guard let candidate = candidates.first else { return [] }
+            return [(candidate, await routeResult(for: candidate, intent: intent))]
+        }
+
+        async let first = routeResult(for: candidates[0], intent: intent)
+        async let second = routeResult(for: candidates[1], intent: intent)
+        return [
+            (candidates[0], await first),
+            (candidates[1], await second)
+        ]
+    }
+
+    private func routeResult(
+        for candidate: Candidate,
+        intent: RouteIntent
+    ) async -> Result<TrailRoute, Error> {
+        do {
+            return .success(
+                try await client.calculateGraphHopperRoute(
+                    waypoints: candidate.waypoints,
+                    request: intent.request,
+                    seed: candidate.seed,
+                    deadline: intent.loopSearchDeadline
+                )
+            )
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private func orderedPatterns(
+        from patterns: Set<LoopFallbackBearingPattern>
+    ) -> [LoopFallbackBearingPattern] {
+        bearingPatterns.filter { patterns.contains($0) }
     }
 
     static func makeCandidates(
@@ -392,6 +862,23 @@ struct LoopFallbackProvider: RoutingProvider {
             overlapRatio: overlapRatio(for: route.path),
             shapeQualityScore: shapeQualityScore(for: route.path)
         )
+    }
+
+    static func acceptsLoopQuality(_ quality: QualityAnalysis) -> Bool {
+        if quality.overlapRatio <= maximumAcceptableOverlap {
+            return true
+        }
+        return quality.overlapRatio <= maximumShapeAwareOverlap &&
+            quality.shapeQualityScore >= minimumShapeQualityForSharedSections
+    }
+
+    private static func debugCandidateRejection(
+        pattern: LoopFallbackBearingPattern,
+        reason: String
+    ) {
+        #if DEBUG
+        print("TrailMind loop fallback [\(pattern.rawValue)]: \(reason)")
+        #endif
     }
 
     static func overlapRatio(for coordinates: [Coordinate]) -> Double {
@@ -516,6 +1003,7 @@ struct LoopFallbackProvider: RoutingProvider {
             )
         }
         return Candidate(
+            index: index,
             seed: seed,
             radiusKm: radiusKm,
             radiusFactor: radiusFactor,
@@ -591,9 +1079,93 @@ enum RouteSuggestionNormalizer {
             )
         }
     }
+
+    static func comparableLoopSuggestions(
+        from suggestions: [RouteSuggestion],
+        targetDistanceKm: Double,
+        maximumSuggestions: Int = 3,
+        request: RoutePlanningRequest? = nil
+    ) -> [RouteSuggestion] {
+        var signatures = Set<String>()
+        let distinctSuggestions = suggestions.filter { suggestion in
+            let signature = LoopFallbackProvider.geometrySignature(for: suggestion.route)
+            guard !signature.isEmpty else { return true }
+            return signatures.insert(signature).inserted
+        }
+
+        let qualityFilteredSuggestions: [RouteSuggestion]
+        if request?.avoidFeatures.contains(.repeatedPath) == true {
+            qualityFilteredSuggestions = distinctSuggestions.filter {
+                LoopFallbackProvider.acceptsLoopQuality(
+                    LoopFallbackProvider.qualityAnalysis(for: $0.route)
+                )
+            }
+        } else {
+            qualityFilteredSuggestions = distinctSuggestions
+        }
+
+        let prefersLowerElevation = request?.avoidFeatures.contains(.steepClimbs) == true
+            || request?.difficulty == .easy
+        let sortedSuggestions = qualityFilteredSuggestions.sorted { lhs, rhs in
+            if let targetDurationMinutes = request?.targetDurationMinutes {
+                let lhsDurationBucket = abs(lhs.route.durationMinutes - targetDurationMinutes) / 15
+                let rhsDurationBucket = abs(rhs.route.durationMinutes - targetDurationMinutes) / 15
+                if lhsDurationBucket != rhsDurationBucket {
+                    return lhsDurationBucket < rhsDurationBucket
+                }
+            }
+            let lhsDistanceDifference = abs(lhs.route.distanceKilometers - targetDistanceKm)
+            let rhsDistanceDifference = abs(rhs.route.distanceKilometers - targetDistanceKm)
+            if prefersLowerElevation {
+                let distanceTolerance = max(1.0, targetDistanceKm * 0.08)
+                let lhsDistanceBucket = Int(lhsDistanceDifference / distanceTolerance)
+                let rhsDistanceBucket = Int(rhsDistanceDifference / distanceTolerance)
+                if lhsDistanceBucket != rhsDistanceBucket {
+                    return lhsDistanceBucket < rhsDistanceBucket
+                }
+                if lhs.route.elevationGainMeters != rhs.route.elevationGainMeters {
+                    return lhs.route.elevationGainMeters < rhs.route.elevationGainMeters
+                }
+            }
+            if lhsDistanceDifference != rhsDistanceDifference {
+                return lhsDistanceDifference < rhsDistanceDifference
+            }
+            if lhs.route.elevationGainMeters != rhs.route.elevationGainMeters {
+                return lhs.route.elevationGainMeters < rhs.route.elevationGainMeters
+            }
+            return lhs.route.durationMinutes < rhs.route.durationMinutes
+        }
+
+        let comparisonSuggestions = Array(sortedSuggestions.prefix(maximumSuggestions))
+        let minimumElevation = comparisonSuggestions.map(\.route.elevationGainMeters).min()
+        let maximumElevation = comparisonSuggestions.map(\.route.elevationGainMeters).max()
+
+        return comparisonSuggestions.enumerated().map { index, suggestion in
+            let label = LoopRouteVariantRanker.label(
+                route: suggestion.route,
+                index: index,
+                targetDistanceKm: targetDistanceKm,
+                minimumElevation: minimumElevation,
+                maximumElevation: maximumElevation
+            )
+            let metadata = suggestion.route.planningMetadata?.withVariant(
+                seed: suggestion.route.planningMetadata?.seed,
+                label: label
+            )
+            return RouteSuggestion(
+                id: suggestion.id,
+                route: suggestion.route.withPlanningMetadata(metadata),
+                matchScore: max(96 - index * 4, 84),
+                explanation: label,
+                debugMetadata: suggestion.debugMetadata
+            )
+        }
+    }
 }
 
 enum LoopRouteVariantRanker {
+    private static let maximumModerateOverlap = 0.65
+
     struct Variant: Hashable {
         let seed: Int
         let route: TrailRoute
@@ -629,10 +1201,13 @@ enum LoopRouteVariantRanker {
 
     static func rank(
         _ variants: [Variant],
-        targetDistanceKm: Double
+        targetDistanceKm: Double,
+        targetDurationMinutes: Int? = nil,
+        prefersLowerElevation: Bool = false
     ) -> [Variant] {
         let preferredVariants = variants.filter { $0.overlapRatio < 0.18 }
-        let sortableVariants = preferredVariants.isEmpty ? variants.filter { $0.overlapRatio <= 0.25 } : preferredVariants
+        let moderateOverlapVariants = variants.filter { $0.overlapRatio <= Self.maximumModerateOverlap }
+        let sortableVariants = preferredVariants.isEmpty ? moderateOverlapVariants : preferredVariants
         let sorted = sortableVariants.sorted { lhs, rhs in
             let lhsOverlapBucket = overlapBucket(lhs.overlapRatio)
             let rhsOverlapBucket = overlapBucket(rhs.overlapRatio)
@@ -644,8 +1219,26 @@ enum LoopRouteVariantRanker {
             {
                 return lhs.shapeQualityScore > rhs.shapeQualityScore
             }
+            if let targetDurationMinutes {
+                let lhsDurationBucket = abs(lhs.route.durationMinutes - targetDurationMinutes) / 15
+                let rhsDurationBucket = abs(rhs.route.durationMinutes - targetDurationMinutes) / 15
+                if lhsDurationBucket != rhsDurationBucket {
+                    return lhsDurationBucket < rhsDurationBucket
+                }
+            }
             let lhsDistanceDifference = abs(lhs.route.distanceKilometers - targetDistanceKm)
             let rhsDistanceDifference = abs(rhs.route.distanceKilometers - targetDistanceKm)
+            if prefersLowerElevation {
+                let distanceTolerance = max(1.0, targetDistanceKm * 0.08)
+                let lhsDistanceBucket = Int(lhsDistanceDifference / distanceTolerance)
+                let rhsDistanceBucket = Int(rhsDistanceDifference / distanceTolerance)
+                if lhsDistanceBucket != rhsDistanceBucket {
+                    return lhsDistanceBucket < rhsDistanceBucket
+                }
+                if lhs.route.elevationGainMeters != rhs.route.elevationGainMeters {
+                    return lhs.route.elevationGainMeters < rhs.route.elevationGainMeters
+                }
+            }
             if lhsDistanceDifference != rhsDistanceDifference {
                 return lhsDistanceDifference < rhsDistanceDifference
             }

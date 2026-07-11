@@ -6,9 +6,14 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test",
-    "build": "node --check src/*.js test/*.test.js"
+    "build": "node --check api/*.js src/*.js src/appAttest/*.js src/routing/*.js test/*.js"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "asn1js": "3.0.7",
+    "cbor-x": "1.6.4",
+    "pkijs": "3.4.0"
   }
 }

@@ -30,6 +30,28 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(validated.targetDistanceKm, 15)
     }
 
+    func testMultiLineRelaxedRoundPromptUsesFirstValidLoop() async throws {
+        let provider = LocalIntentParsingProvider()
+        let validator = IntentValidationService()
+        let prompt = """
+        Ich will eine entspannte Runde bei Ilsenburg, ca. 3 Stunden
+        Mach mir eine kurze Wanderung bei Lüneburg, eher easy
+        """
+
+        let intent = try await provider.parseIntent(rawPrompt: prompt)
+        let validated = try validator.validate(intent)
+
+        XCTAssertEqual(validated.routeType, .loop)
+        XCTAssertEqual(validated.startLocationQuery, "Ilsenburg")
+        XCTAssertNil(validated.endLocationQuery)
+        XCTAssertEqual(validated.targetDurationMinutes, 180)
+        XCTAssertEqual(validated.difficulty, .easy)
+        XCTAssertEqual(validated.avoidFeatures, [.steepClimbs])
+
+        let request = RoutePlanningRequest(validatedIntent: validated)
+        XCTAssertEqual(request.targetDistanceKm, 12)
+    }
+
     func testPointToPointPromptCreatesValidPointToPointIntent() async throws {
         let provider = LocalIntentParsingProvider()
         let validator = IntentValidationService()
@@ -258,6 +280,7 @@ final class IntentParsingFoundationTests: XCTestCase {
         let capturedRequest = CapturedURLRequest()
         let provider = RemoteAIIntentParsingProvider(
             baseURL: URL(string: "http://127.0.0.1:3000"),
+            authorizer: FakeIntentAuthorizer(),
             dataLoader: { request in
                 await capturedRequest.set(request)
                 return (
@@ -277,6 +300,14 @@ final class IntentParsingFoundationTests: XCTestCase {
 
         XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:3000/api/parse-intent")
         XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: "Authorization"),
+            "TrailMindRouteSession \(String(repeating: "A", count: 43))"
+        )
+        XCTAssertEqual(
+            request.value(forHTTPHeaderField: "X-TrailMind-Request-ID"),
+            "00000000-0000-4000-8000-000000000001"
+        )
         XCTAssertEqual(payload?["prompt"] as? String, "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück")
         XCTAssertEqual(payload?["locale"] as? String, "de")
         XCTAssertTrue(payload?.keys.contains("userLocationHint") == true)
@@ -287,12 +318,53 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertNil(intent.endLocationQuery)
         XCTAssertEqual(intent.targetDistanceKm, 15)
         XCTAssertEqual(intent.difficulty, .easy)
+        XCTAssertEqual(intent.avoidFeatures, [.repeatedPath])
         XCTAssertEqual(intent.confidence, 0.78)
+
+        let debugSnapshot = await provider.intentParserDebugInfo()
+        let debugInfo = try XCTUnwrap(debugSnapshot)
+        XCTAssertEqual(debugInfo.remoteAttempted, true)
+        XCTAssertEqual(debugInfo.remoteSucceeded, true)
+        XCTAssertNil(debugInfo.remoteFailureReason)
+        XCTAssertEqual(debugInfo.remoteStatusCode, 200)
+        XCTAssertNil(debugInfo.remoteValidationError)
+        XCTAssertEqual(debugInfo.backendBaseURL, "http://127.0.0.1:3000")
+        XCTAssertEqual(debugInfo.parserMode, .remoteWithLocalFallback)
     }
 
-    func testRemoteFailureFallsBackToLocalParser() async throws {
+    func testRemoteParserRefreshesARejectedSessionOnce() async throws {
+        let authorizer = SequencedIntentAuthorizer()
+        let requests = RequestCounter()
+        let provider = RemoteAIIntentParsingProvider(
+            baseURL: URL(string: "http://127.0.0.1:3000"),
+            authorizer: authorizer,
+            dataLoader: { _ in
+                let attempt = await requests.increment()
+                if attempt == 1 {
+                    return (
+                        Data(#"{"error":{"code":"route_session_expired","message":"Session expired."}}"#.utf8),
+                        Self.httpResponse(statusCode: 401)
+                    )
+                }
+                return (Self.remoteIntentData(), Self.httpResponse(statusCode: 200))
+            }
+        )
+
+        let intent = try await provider.parseIntent(rawPrompt: "15 km loop around Schierke")
+        let requestCount = await requests.value()
+        let costs = await authorizer.costs()
+        let invalidatedTokens = await authorizer.invalidatedTokens()
+
+        XCTAssertEqual(intent.routeType, .loop)
+        XCTAssertEqual(requestCount, 2)
+        XCTAssertEqual(costs, [3, 3])
+        XCTAssertEqual(invalidatedTokens, [String(repeating: "A", count: 43)])
+    }
+
+    func testRemoteFailureFallsBackToLocalParserAndRecordsReason() async throws {
         let remote = RemoteAIIntentParsingProvider(
             baseURL: URL(string: "http://127.0.0.1:3000"),
+            authorizer: FakeIntentAuthorizer(),
             dataLoader: { _ in
                 (Data(#"{"error":"nope"}"#.utf8), Self.httpResponse(statusCode: 502))
             }
@@ -305,11 +377,22 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(intent.routeType, .loop)
         XCTAssertEqual(intent.startLocationQuery, "Schierke")
         XCTAssertEqual(intent.targetDistanceKm, 15)
+
+        let debugSnapshot = await provider.intentParserDebugInfo()
+        let debugInfo = try XCTUnwrap(debugSnapshot)
+        XCTAssertEqual(debugInfo.remoteAttempted, true)
+        XCTAssertEqual(debugInfo.remoteSucceeded, false)
+        XCTAssertEqual(debugInfo.remoteFailureReason, "http 502")
+        XCTAssertEqual(debugInfo.remoteStatusCode, 502)
+        XCTAssertNil(debugInfo.remoteValidationError)
+        XCTAssertEqual(debugInfo.backendBaseURL, "http://127.0.0.1:3000")
+        XCTAssertEqual(debugInfo.parserMode, .remoteWithLocalFallback)
     }
 
-    func testInvalidRemoteJSONFallsBackToLocalParser() async throws {
+    func testInvalidRemoteJSONFallsBackToLocalParserAndRecordsReason() async throws {
         let remote = RemoteAIIntentParsingProvider(
             baseURL: URL(string: "http://127.0.0.1:3000"),
+            authorizer: FakeIntentAuthorizer(),
             dataLoader: { _ in
                 (Data("not-json".utf8), Self.httpResponse(statusCode: 200))
             }
@@ -322,12 +405,162 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(intent.routeType, .pointToPoint)
         XCTAssertEqual(intent.startLocationQuery, "Ilsenburg")
         XCTAssertEqual(intent.endLocationQuery, "Schierke")
+
+        let debugSnapshot = await provider.intentParserDebugInfo()
+        let debugInfo = try XCTUnwrap(debugSnapshot)
+        XCTAssertEqual(debugInfo.remoteAttempted, true)
+        XCTAssertEqual(debugInfo.remoteSucceeded, false)
+        XCTAssertEqual(debugInfo.remoteFailureReason, "invalidJSON")
+        XCTAssertEqual(debugInfo.remoteStatusCode, 200)
+        XCTAssertNil(debugInfo.remoteValidationError)
+        XCTAssertEqual(debugInfo.backendBaseURL, "http://127.0.0.1:3000")
+        XCTAssertEqual(debugInfo.parserMode, .remoteWithLocalFallback)
+    }
+
+    func testRemoteTimeoutFallsBackToLocalParserAndRecordsReadableReason() async throws {
+        let remote = RemoteAIIntentParsingProvider(
+            baseURL: URL(string: "http://127.0.0.1:3000"),
+            authorizer: FakeIntentAuthorizer(),
+            dataLoader: { _ in
+                throw URLError(.timedOut)
+            }
+        )
+        let provider = RemoteWithLocalFallbackIntentParsingProvider(remoteProvider: remote)
+
+        let intent = try await provider.parseIntent(
+            rawPrompt: "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück"
+        )
+
+        XCTAssertEqual(intent.parserSource, .localRuleBased)
+        XCTAssertEqual(intent.routeType, .loop)
+        XCTAssertEqual(intent.startLocationQuery, "Schierke")
+        XCTAssertEqual(intent.targetDistanceKm, 15)
+
+        let debugSnapshot = await provider.intentParserDebugInfo()
+        let debugInfo = try XCTUnwrap(debugSnapshot)
+        XCTAssertEqual(debugInfo.remoteAttempted, true)
+        XCTAssertEqual(debugInfo.remoteSucceeded, false)
+        XCTAssertEqual(debugInfo.remoteFailureReason, "network: timedOut")
+        XCTAssertNil(debugInfo.remoteStatusCode)
+        XCTAssertNil(debugInfo.remoteValidationError)
+        XCTAssertEqual(debugInfo.backendBaseURL, "http://127.0.0.1:3000")
+    }
+
+    func testRemoteNeedsClarificationFallsBackToLocalParserWhenLocalIntentIsValid() async throws {
+        let prompt = """
+        Ich will eine entspannte Runde bei Ilsenburg, ca. 3 Stunden
+        Mach mir eine kurze Wanderung bei Lüneburg, eher easy
+        """
+        let remote = FixedIntentParsingProvider(
+            intent: AdventureIntent(
+                rawPrompt: prompt,
+                parserSource: .remoteAI,
+                confidence: 0.45,
+                activityType: .hiking,
+                routeType: .loop,
+                startLocationQuery: nil,
+                endLocationQuery: nil,
+                regionQuery: nil,
+                targetDistanceKm: nil,
+                targetDurationMinutes: 180,
+                difficulty: .easy,
+                desiredFeatures: [],
+                avoidFeatures: []
+            )
+        )
+        let provider = RemoteWithLocalFallbackIntentParsingProvider(remoteProvider: remote)
+
+        let intent = try await provider.parseIntent(rawPrompt: prompt)
+        let validated = try IntentValidationService().validate(intent)
+
+        XCTAssertEqual(intent.parserSource, .localRuleBased)
+        XCTAssertEqual(validated.routeType, .loop)
+        XCTAssertEqual(validated.startLocationQuery, "Ilsenburg")
+        XCTAssertNil(validated.endLocationQuery)
+        XCTAssertEqual(validated.targetDurationMinutes, 180)
+        XCTAssertEqual(validated.difficulty, .easy)
+
+        let debugSnapshot = await provider.intentParserDebugInfo()
+        let debugInfo = try XCTUnwrap(debugSnapshot)
+        XCTAssertEqual(debugInfo.remoteAttempted, true)
+        XCTAssertEqual(debugInfo.remoteSucceeded, true)
+        XCTAssertEqual(debugInfo.remoteValidationError, "missing fields: startLocationQuery, regionQuery")
+    }
+
+    func testRemoteValidationFailureFallsBackToLocalParserAndRecordsValidationError() async throws {
+        let prompt = "Lüneburg bis Bardowick"
+        let remote = FixedIntentParsingProvider(
+            intent: AdventureIntent(
+                rawPrompt: prompt,
+                parserSource: .remoteAI,
+                confidence: 0.52,
+                activityType: .hiking,
+                routeType: .pointToPoint,
+                startLocationQuery: "Lüneburg",
+                endLocationQuery: nil,
+                regionQuery: nil,
+                targetDistanceKm: nil,
+                targetDurationMinutes: nil,
+                difficulty: nil,
+                desiredFeatures: [],
+                avoidFeatures: []
+            )
+        )
+        let provider = RemoteWithLocalFallbackIntentParsingProvider(remoteProvider: remote)
+
+        let intent = try await provider.parseIntent(rawPrompt: prompt)
+
+        XCTAssertEqual(intent.parserSource, .localRuleBased)
+        XCTAssertEqual(intent.routeType, .pointToPoint)
+        XCTAssertEqual(intent.startLocationQuery, "Lüneburg")
+        XCTAssertEqual(intent.endLocationQuery, "Bardowick")
+
+        let debugSnapshot = await provider.intentParserDebugInfo()
+        let debugInfo = try XCTUnwrap(debugSnapshot)
+        XCTAssertEqual(debugInfo.remoteAttempted, true)
+        XCTAssertEqual(debugInfo.remoteSucceeded, true)
+        XCTAssertNil(debugInfo.remoteFailureReason)
+        XCTAssertEqual(debugInfo.remoteValidationError, "missing fields: endLocationQuery")
+        XCTAssertEqual(debugInfo.parserMode, .remoteWithLocalFallback)
+    }
+
+    func testLocalOnlyModeDoesNotAttemptRemote() async throws {
+        let provider = LocalIntentParsingProvider()
+
+        let intent = try await provider.parseIntent(rawPrompt: "Lüneburg bis Bardowick")
+
+        XCTAssertEqual(intent.parserSource, .localRuleBased)
+        XCTAssertEqual(intent.routeType, .pointToPoint)
+        XCTAssertEqual(intent.startLocationQuery, "Lüneburg")
+        XCTAssertEqual(intent.endLocationQuery, "Bardowick")
+
+        let debugSnapshot = await provider.intentParserDebugInfo()
+        let debugInfo = try XCTUnwrap(debugSnapshot)
+        XCTAssertEqual(debugInfo.remoteAttempted, false)
+        XCTAssertEqual(debugInfo.remoteSucceeded, false)
+        XCTAssertNil(debugInfo.remoteFailureReason)
+        XCTAssertNil(debugInfo.remoteStatusCode)
+        XCTAssertNil(debugInfo.remoteValidationError)
+        XCTAssertEqual(debugInfo.parserMode, .localOnly)
+    }
+
+    func testDebugParserModeCanBeConfiguredFromEnvironment() {
+        let localProvider = IntentParsingProviderFactory.makeDefaultProvider(
+            environment: ["TRAILMIND_INTENT_PARSER_MODE": "local_only"]
+        )
+        let remoteProvider = IntentParsingProviderFactory.makeDefaultProvider(
+            environment: ["TRAILMIND_INTENT_PARSER_MODE": "remote_with_local_fallback"]
+        )
+
+        XCTAssertTrue(localProvider is LocalIntentParsingProvider)
+        XCTAssertTrue(remoteProvider is RemoteWithLocalFallbackIntentParsingProvider)
     }
 
     func testDebugMetadataShowsRemoteParserWithoutFallback() async throws {
         let intent = ValidatedAdventureIntent(
             intent: try await RemoteAIIntentParsingProvider(
                 baseURL: URL(string: "http://127.0.0.1:3000"),
+                authorizer: FakeIntentAuthorizer(),
                 dataLoader: { _ in
                     (Self.remoteIntentData(), Self.httpResponse(statusCode: 200))
                 }
@@ -336,6 +569,15 @@ final class IntentParsingFoundationTests: XCTestCase {
         )
         let metadata = RouteIntentDebugMetadata(
             intent: intent,
+            parserDebugInfo: IntentParserDebugInfo(
+                remoteAttempted: true,
+                remoteSucceeded: true,
+                remoteFailureReason: nil,
+                remoteStatusCode: 200,
+                remoteValidationError: nil,
+                backendBaseURL: "http://127.0.0.1:3000",
+                parserMode: .remoteWithLocalFallback
+            ),
             geocodedStartLabel: "Schierke",
             geocodedEndLabel: nil
         )
@@ -343,6 +585,11 @@ final class IntentParsingFoundationTests: XCTestCase {
 
         XCTAssertEqual(rows["parserSource"], "remoteAI")
         XCTAssertEqual(rows["localFallbackUsed"], "no")
+        XCTAssertEqual(rows["remoteAttempted"], "yes")
+        XCTAssertEqual(rows["remoteSucceeded"], "yes")
+        XCTAssertEqual(rows["remoteStatusCode"], "200")
+        XCTAssertEqual(rows["backendBaseURL"], "http://127.0.0.1:3000")
+        XCTAssertEqual(rows["parserMode"], "remote with local fallback")
     }
 
     func testIntentDebugFormatterIncludesParserFallbackAndIntentFields() {
@@ -375,6 +622,13 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(values["parserSource"], "localRuleBased")
         XCTAssertEqual(values["validationStatus"], "valid")
         XCTAssertEqual(values["localFallbackUsed"], "yes")
+        XCTAssertEqual(values["remoteAttempted"], "unknown")
+        XCTAssertEqual(values["remoteSucceeded"], "unknown")
+        XCTAssertEqual(values["remoteFailureReason"], "nil")
+        XCTAssertEqual(values["remoteStatusCode"], "nil")
+        XCTAssertEqual(values["remoteValidationError"], "nil")
+        XCTAssertEqual(values["backendBaseURL"], "nil")
+        XCTAssertEqual(values["parserMode"], "unknown")
         XCTAssertEqual(values["repaired"], "no")
         XCTAssertEqual(values["repairReason"], "nil")
         XCTAssertEqual(values["missingFields"], "[]")
@@ -396,6 +650,7 @@ final class IntentParsingFoundationTests: XCTestCase {
     func testRemoteRouteTypeNilCanNormalizeToLoopFromPromptAndRegion() async throws {
         let provider = RemoteAIIntentParsingProvider(
             baseURL: URL(string: "http://127.0.0.1:3000"),
+            authorizer: FakeIntentAuthorizer(),
             dataLoader: { _ in
                 (Self.remoteIntentDataWithoutRouteType(), Self.httpResponse(statusCode: 200))
             }
@@ -438,36 +693,15 @@ final class IntentParsingFoundationTests: XCTestCase {
     }
 
     func testFixturePromptEvalCoversCurrentLocalParserContract() async throws {
-        let fixtures = try Self.loadFixtures()
-        XCTAssertGreaterThanOrEqual(fixtures.count, 20)
-        XCTAssertLessThanOrEqual(fixtures.count, 30)
+        let fixtures = try IntentEvalFixture.load()
+        let summary = await IntentEvaluator().evaluate(
+            fixtures: fixtures,
+            provider: LocalIntentParsingProvider(),
+            label: "local parser"
+        )
 
-        let provider = LocalIntentParsingProvider()
-        let validator = IntentValidationService()
-
-        for fixture in fixtures {
-            let intent = try await provider.parseIntent(rawPrompt: fixture.prompt)
-            let validated = try validator.validate(intent)
-
-            XCTAssertEqual(validated.routeType.rawValue, fixture.routeType, fixture.prompt)
-            XCTAssertEqual(validated.activityType.rawValue, fixture.activityType, fixture.prompt)
-            XCTAssertEqual(validated.startLocationQuery, fixture.startLocationQuery, fixture.prompt)
-            XCTAssertEqual(validated.endLocationQuery, fixture.endLocationQuery, fixture.prompt)
-            XCTAssertEqual(validated.regionQuery, fixture.regionQuery, fixture.prompt)
-            XCTAssertEqual(validated.targetDistanceKm, fixture.targetDistanceKm, fixture.prompt)
-            XCTAssertEqual(validated.targetDurationMinutes, fixture.targetDurationMinutes, fixture.prompt)
-            XCTAssertEqual(validated.desiredFeatures.map(\.rawValue), fixture.desiredFeatures, fixture.prompt)
-        }
-    }
-
-    private static func loadFixtures() throws -> [IntentFixture] {
-        let testFile = URL(fileURLWithPath: #filePath)
-        let fixtureURL = testFile
-            .deletingLastPathComponent()
-            .appendingPathComponent("Fixtures")
-            .appendingPathComponent("prompt_intent_eval.json")
-        let data = try Data(contentsOf: fixtureURL)
-        return try JSONDecoder().decode([IntentFixture].self, from: data)
+        XCTAssertEqual(summary.total, fixtures.count)
+        XCTAssertEqual(summary.failed, 0, summary.formatted())
     }
 
     private nonisolated static func remoteIntentData() -> Data {
@@ -538,14 +772,59 @@ private actor CapturedURLRequest {
     }
 }
 
-private struct IntentFixture: Decodable {
-    let prompt: String
-    let routeType: String
-    let activityType: String
-    let startLocationQuery: String?
-    let endLocationQuery: String?
-    let regionQuery: String?
-    let targetDistanceKm: Double?
-    let targetDurationMinutes: Int?
-    let desiredFeatures: [String]
+private actor FakeIntentAuthorizer: RouteSessionAuthorizing {
+    func authorization(cost: Int) async throws -> RouteSessionAuthorization {
+        XCTAssertEqual(cost, 3)
+        return RouteSessionAuthorization(
+            token: String(repeating: "A", count: 43),
+            requestID: UUID(uuidString: "00000000-0000-4000-8000-000000000001")!
+        )
+    }
+
+    func invalidate(token: String) async {}
+}
+
+private actor SequencedIntentAuthorizer: RouteSessionAuthorizing {
+    private var requestedCosts: [Int] = []
+    private var invalidated: [String] = []
+
+    func authorization(cost: Int) async throws -> RouteSessionAuthorization {
+        requestedCosts.append(cost)
+        let tokenCharacter = requestedCosts.count == 1 ? "A" : "B"
+        return RouteSessionAuthorization(
+            token: String(repeating: tokenCharacter, count: 43),
+            requestID: UUID()
+        )
+    }
+
+    func invalidate(token: String) async {
+        invalidated.append(token)
+    }
+
+    func costs() -> [Int] { requestedCosts }
+    func invalidatedTokens() -> [String] { invalidated }
+}
+
+private actor RequestCounter {
+    private var count = 0
+
+    func increment() -> Int {
+        count += 1
+        return count
+    }
+
+    func value() -> Int { count }
+}
+
+private struct FixedIntentParsingProvider: IntentParsingProvider {
+    let parserSource: IntentParserSource = .remoteAI
+    let intent: AdventureIntent
+
+    init(intent: AdventureIntent) {
+        self.intent = intent
+    }
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
+        intent
+    }
 }

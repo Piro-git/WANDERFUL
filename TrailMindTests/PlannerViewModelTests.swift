@@ -59,18 +59,289 @@ private struct FixedIntentParsingProvider: IntentParsingProvider {
     }
 }
 
+private struct DelayedIntentParsingProvider: IntentParsingProvider {
+    let parserSource: IntentParserSource = .localRuleBased
+    let delay: Duration
+    let ignoresCancellation: Bool
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
+        do {
+            try await Task.sleep(for: delay)
+        } catch {
+            if !ignoresCancellation { throw error }
+        }
+        return try await LocalIntentParsingProvider().parseIntent(rawPrompt: rawPrompt)
+    }
+}
+
+@MainActor
+private final class DelayedRoutingCoordinator: RoutingCoordinating {
+    let delay: Duration
+    let ignoresCancellation: Bool
+    let result: RoutingResult
+    private(set) var didStart = false
+
+    init(delay: Duration, ignoresCancellation: Bool, route: TrailRoute) {
+        self.delay = delay
+        self.ignoresCancellation = ignoresCancellation
+        result = RoutingResult(
+            suggestions: RouteSuggestionNormalizer.suggestions(from: [route]),
+            notice: nil
+        )
+    }
+
+    func routeSuggestions(for intent: RouteIntent) async throws -> RoutingResult {
+        didStart = true
+        do {
+            try await Task.sleep(for: delay)
+        } catch {
+            if !ignoresCancellation { throw error }
+        }
+        return result
+    }
+}
+
+@MainActor
+private final class DelayedGeocodingService: GeocodingService {
+    let delay: Duration
+    let coordinate: Coordinate
+
+    init(delay: Duration, coordinate: Coordinate) {
+        self.delay = delay
+        self.coordinate = coordinate
+    }
+
+    func geocodeLocation(_ query: String, near preferredCoordinate: Coordinate?) async throws -> Coordinate {
+        try await Task.sleep(for: delay)
+        return coordinate
+    }
+}
+
 final class PlannerViewModelTests: XCTestCase {
     @MainActor
     private func makeViewModel(
         geocodingService: any GeocodingService,
         routingCoordinator: any RoutingCoordinating,
-        intentParsingProvider: any IntentParsingProvider = LocalIntentParsingProvider()
+        intentParsingProvider: any IntentParsingProvider = LocalIntentParsingProvider(),
+        operationTimeouts: PlannerViewModel.OperationTimeouts = .production
     ) -> PlannerViewModel {
         PlannerViewModel(
             intentParsingProvider: intentParsingProvider,
             geocodingService: geocodingService,
-            routingCoordinator: routingCoordinator
+            routingCoordinator: routingCoordinator,
+            operationTimeouts: operationTimeouts
         )
+    }
+
+    @MainActor
+    func testGenerationStartsWithOnlyUnderstandingActive() {
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        )
+
+        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
+
+        XCTAssertEqual(viewModel.generationStages.map(\.status), [
+            .active,
+            .pending,
+            .pending,
+            .pending
+        ])
+        XCTAssertEqual(viewModel.completedGenerationStageCount, 0)
+    }
+
+    @MainActor
+    func testCompletedParsingActivatesLocationWithoutMarkingItCompleted() async {
+        let viewModel = makeViewModel(
+            geocodingService: DelayedGeocodingService(
+                delay: .seconds(5),
+                coordinate: Coordinate(latitude: 51.8666, longitude: 10.6782)
+            ),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        )
+        viewModel.startTextRoute(prompt: "15 km Rundwanderung um Ilsenburg")
+
+        let task = Task { await viewModel.generate() }
+        try? await Task.sleep(for: .milliseconds(80))
+
+        XCTAssertEqual(viewModel.generationStages.map(\.status), [
+            .completed,
+            .active,
+            .pending,
+            .pending
+        ])
+        viewModel.cancelGeneration()
+        task.cancel()
+        await task.value
+    }
+
+    @MainActor
+    func testCancellationBeforeParsingCompletesReturnsHome() async {
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop),
+            intentParsingProvider: DelayedIntentParsingProvider(
+                delay: .seconds(5),
+                ignoresCancellation: false
+            )
+        )
+        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
+
+        let task = Task { await viewModel.generate() }
+        try? await Task.sleep(for: .milliseconds(30))
+        viewModel.cancelGeneration()
+        task.cancel()
+        await task.value
+
+        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertNil(viewModel.generatedRoute)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+        XCTAssertNil(viewModel.generationFailure)
+    }
+
+    @MainActor
+    func testCancellationDuringRoutingReturnsHome() async {
+        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
+        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
+        let router = DelayedRoutingCoordinator(
+            delay: .seconds(5),
+            ignoresCancellation: false,
+            route: MockRoutes.luneburgLoop
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(
+                coordinates: ["Ilsenburg": start, "Schierke": end]
+            ),
+            routingCoordinator: router
+        )
+        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
+
+        let task = Task { await viewModel.generate() }
+        for _ in 0..<20 where !router.didStart {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(router.didStart)
+        viewModel.cancelGeneration()
+        task.cancel()
+        await task.value
+
+        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertNil(viewModel.generatedRoute)
+    }
+
+    @MainActor
+    func testLateRoutingResultIsIgnoredAfterCancellation() async {
+        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
+        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
+        let router = DelayedRoutingCoordinator(
+            delay: .milliseconds(80),
+            ignoresCancellation: true,
+            route: MockRoutes.luneburgLoop
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(
+                coordinates: ["Ilsenburg": start, "Schierke": end]
+            ),
+            routingCoordinator: router
+        )
+        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
+
+        let task = Task { await viewModel.generate() }
+        for _ in 0..<20 where !router.didStart {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        viewModel.cancelGeneration()
+        await task.value
+
+        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertNil(viewModel.generatedRoute)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    @MainActor
+    func testRetryPreservesPromptAndStartsNewRequest() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        )
+        viewModel.startTextRoute(prompt: prompt)
+        await viewModel.generate()
+        let failedRequestID = viewModel.generationRequestID
+
+        XCTAssertNotNil(viewModel.generationFailure)
+        viewModel.retryGeneration()
+
+        XCTAssertEqual(viewModel.prompt, prompt)
+        XCTAssertNotEqual(viewModel.generationRequestID, failedRequestID)
+        XCTAssertNil(viewModel.generationFailure)
+        XCTAssertEqual(viewModel.generationStages.first?.status, .active)
+    }
+
+    @MainActor
+    func testParserTimeoutShowsActionableRecovery() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop),
+            intentParsingProvider: DelayedIntentParsingProvider(
+                delay: .seconds(5),
+                ignoresCancellation: false
+            ),
+            operationTimeouts: .init(parserSeconds: 0.01, geocodingSeconds: 1)
+        )
+        viewModel.startTextRoute(prompt: prompt)
+
+        await viewModel.generate()
+
+        XCTAssertEqual(viewModel.phase, .generating)
+        XCTAssertEqual(viewModel.generationFailure?.stage, .understanding)
+        XCTAssertEqual(
+            viewModel.generationFailure?.message,
+            "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
+        )
+        XCTAssertEqual(viewModel.prompt, prompt)
+    }
+
+    @MainActor
+    func testRoutingTimeoutUsesActionableRecoveryCopy() async {
+        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
+        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(
+                coordinates: ["Ilsenburg": start, "Schierke": end]
+            ),
+            routingCoordinator: StubRoutingCoordinator(
+                result: .failure(GraphHopperError.network(message: "The request timed out."))
+            )
+        )
+        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
+
+        await viewModel.generate()
+
+        XCTAssertEqual(viewModel.generationFailure?.stage, .routing)
+        XCTAssertEqual(
+            viewModel.generationFailure?.message,
+            "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
+        )
+    }
+
+    @MainActor
+    func testEmptyPromptReturnsFriendlyHomeError() {
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        )
+
+        viewModel.startTextRoute(prompt: "   ")
+
+        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertEqual(
+            viewModel.errorMessage,
+            "Describe where you want to go and what kind of route you want."
+        )
+        XCTAssertNil(viewModel.generationRequestID)
     }
 
     @MainActor
@@ -339,7 +610,22 @@ final class PlannerViewModelTests: XCTestCase {
             ]
         )
         let route = MockRoutes.luneburgLoop
-        let router = StubRoutingCoordinator(route: route)
+        let router = StubRoutingCoordinator(
+            result: .success(
+                RoutingResult(
+                    suggestions: RouteSuggestionNormalizer.suggestions(from: [route]),
+                    notice: nil,
+                    loopSearchOutcome: .singleRoute,
+                    loopSearchDiagnostics: LoopSearchDiagnostics(
+                        elapsedMilliseconds: 2_500,
+                        directRouteCount: 1,
+                        fallbackRouteCount: 0,
+                        rejectionCounts: ["duplicate_geometry": 2],
+                        didReachTimeBudget: false
+                    )
+                )
+            )
+        )
         let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
@@ -351,6 +637,8 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.phase, .home)
         XCTAssertEqual(viewModel.generatedRoute?.id, route.id)
         XCTAssertTrue(viewModel.suggestions.isEmpty)
+        XCTAssertEqual(viewModel.generatedRoute?.planningMetadata?.loopSearchOutcome, .singleRoute)
+        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.loopSearchDiagnostics?.directRouteCount, 1)
     }
 
     @MainActor
@@ -400,11 +688,12 @@ final class PlannerViewModelTests: XCTestCase {
         viewModel.startTextRoute(prompt: "mach mir was schönes")
         await viewModel.generate()
 
-        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertEqual(viewModel.phase, .generating)
         XCTAssertEqual(
-            viewModel.errorMessage,
+            viewModel.generationFailure?.message,
             "Which area should I plan around?"
         )
+        XCTAssertEqual(viewModel.generationFailure?.stage, .understanding)
         XCTAssertTrue(geocoder.requests.isEmpty)
         XCTAssertNil(router.intent)
     }
@@ -440,8 +729,8 @@ final class PlannerViewModelTests: XCTestCase {
         viewModel.startTextRoute(prompt: remoteIntent.rawPrompt)
         await viewModel.generate()
 
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertEqual(viewModel.errorMessage, "Where do you want to go?")
+        XCTAssertEqual(viewModel.phase, .generating)
+        XCTAssertEqual(viewModel.generationFailure?.message, "Where do you want to go?")
         XCTAssertTrue(geocoder.requests.isEmpty)
         XCTAssertNil(router.intent)
     }
@@ -467,11 +756,11 @@ final class PlannerViewModelTests: XCTestCase {
         viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
         await viewModel.generate()
 
-        XCTAssertEqual(viewModel.phase, .home)
+        XCTAssertEqual(viewModel.phase, .generating)
         XCTAssertNil(viewModel.generatedRoute)
         XCTAssertEqual(
-            viewModel.errorMessage,
-            "GraphHopper isn’t configured yet. Add your key to Configuration/Local.xcconfig."
+            viewModel.generationFailure?.message,
+            "Live routing isn’t configured yet. Try again after routing setup is complete."
         )
     }
 }
