@@ -44,7 +44,8 @@ function createSessionAuthorizer(options, scope, configuration) {
         installationWindowMs: configuration.installationWindowMs,
         globalMaximumCost: configuration.globalMaximumCost,
         globalWindowMs: configuration.globalWindowMs,
-        globalMaximumConcurrency: configuration.globalMaximumConcurrency
+        globalMaximumConcurrency: configuration.globalMaximumConcurrency,
+        leaseTtlMs: configuration.leaseTtlMs
       });
       return {
         authorized: true,
@@ -66,7 +67,8 @@ export function routeAuthorizationConfiguration(env = process.env) {
     installationWindowMs: integer(env.APP_ATTEST_INSTALLATION_WINDOW_SECONDS, 300, 10, 86_400) * 1_000,
     globalMaximumCost: integer(env.ROUTE_GLOBAL_MAX_COST, 5_000, 1, 1_000_000),
     globalWindowMs: integer(env.ROUTE_GLOBAL_WINDOW_SECONDS, 60, 1, 86_400) * 1_000,
-    globalMaximumConcurrency: integer(env.ROUTE_GLOBAL_MAX_CONCURRENCY, 20, 1, 1_000)
+    globalMaximumConcurrency: integer(env.ROUTE_GLOBAL_MAX_CONCURRENCY, 20, 1, 1_000),
+    leaseTtlMs: integer(env.ROUTE_GLOBAL_LEASE_TTL_SECONDS, 90, 10, 600) * 1_000
   };
 }
 
@@ -78,7 +80,8 @@ export function intentAuthorizationConfiguration(env = process.env) {
     installationWindowMs: integer(env.APP_ATTEST_INTENT_INSTALLATION_WINDOW_SECONDS, 300, 10, 86_400) * 1_000,
     globalMaximumCost: integer(env.INTENT_GLOBAL_MAX_COST, 1_000, 1, 1_000_000),
     globalWindowMs: integer(env.INTENT_GLOBAL_WINDOW_SECONDS, 60, 1, 86_400) * 1_000,
-    globalMaximumConcurrency: integer(env.INTENT_GLOBAL_MAX_CONCURRENCY, 10, 1, 1_000)
+    globalMaximumConcurrency: integer(env.INTENT_GLOBAL_MAX_CONCURRENCY, 10, 1, 1_000),
+    leaseTtlMs: integer(env.INTENT_GLOBAL_LEASE_TTL_SECONDS, 60, 10, 600) * 1_000
   };
 }
 

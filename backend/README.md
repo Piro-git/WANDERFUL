@@ -37,7 +37,7 @@ Secrets should live in `backend/.env`, which is ignored by git.
 
 GraphHopper and App Attest configuration is documented in `config.example.env`. Keep `GRAPHHOPPER_API_KEY` only in the backend environment. To use route or intent endpoints locally without App Attest, explicitly set `ROUTE_ALLOW_INSECURE_LOCAL_ROUTING=true` and `INTENT_ALLOW_INSECURE_LOCAL_PARSING=true` with `NODE_ENV=development`. The in-memory App Attest repository also requires the separate `APP_ATTEST_ALLOW_IN_MEMORY=true` opt-in. Production refuses App Attest, route-session, routing, and remote-intent traffic unless a shared durable repository is injected; see [the datastore decision](docs/app-attest-durable-storage.md).
 
-App Attest uses exact-pinned, Node 20-compatible parsing dependencies: `cbor-x` for strict CBOR decoding, `asn1js` for the Apple nonce extension, and maintained `pkijs` for standards-based X.509 path validation against the pinned Apple App Attestation root. Node's crypto APIs perform SHA-256, P-256 public-key handling, secure randomness, opaque-token hashing, and ECDSA verification. Dependency versions and audit results should be reviewed during normal backend upgrades rather than floated automatically.
+App Attest uses exact-pinned, Node 20-compatible dependencies: `cbor-x` for strict CBOR decoding, `asn1js` for the Apple nonce extension, maintained `pkijs` for standards-based X.509 path validation against the pinned Apple App Attestation root, and `pg` for parameterized PostgreSQL transactions and bounded connection pooling. Node's crypto APIs perform SHA-256, P-256 public-key handling, secure randomness, opaque-token hashing, and ECDSA verification. Dependency versions and audit results should be reviewed during normal backend upgrades rather than floated automatically.
 
 ## Run Locally
 
@@ -51,13 +51,21 @@ npm run build
 npm start
 ```
 
+For a production-capable repository, provision a dedicated PostgreSQL database, set `DATABASE_URL` in the deployment environment, and apply migrations before starting or deploying:
+
+```sh
+DATABASE_URL="postgresql://..." npm run db:migrate
+```
+
+Migration output contains filenames only; connection strings and database records are never printed. Use `TRAILMIND_TEST_DATABASE_URL` only with a disposable dedicated database to run the real PostgreSQL integration suite.
+
 The server listens on `http://localhost:3000` by default. Override with:
 
 ```sh
 PORT=3001 npm start
 ```
 
-`api/index.js` and `vercel.json` adapt the same request handler for Vercel previews. A preview without a durable repository and the required environment configuration exposes only the provider-independent health check; protected intent and routing operations remain fail-closed.
+`api/index.js` and `vercel.json` adapt the same request handler for Vercel previews. A preview without a migrated PostgreSQL `DATABASE_URL` and the required App Attest/provider configuration exposes only the provider-independent health check; protected intent and routing operations remain fail-closed.
 
 ## Example Request
 

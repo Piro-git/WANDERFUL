@@ -1,5 +1,6 @@
 import { createAppAttestEndpoint } from "./appAttestEndpoint.js";
 import { InMemoryAppAttestRepository } from "./appAttestRepository.js";
+import { postgresAppAttestRepositoryFromEnvironment } from "./postgresAppAttestRepository.js";
 import { createAppAttestVerifier, appAttestVerifierConfiguration } from "./appAttestVerifier.js";
 import {
   createIntentSessionAuthorizer,
@@ -9,11 +10,17 @@ import {
 export function createAppAttestRuntime(options = {}) {
   const env = options.env ?? process.env;
   const localEnvironment = env.NODE_ENV === "development" || env.NODE_ENV === "test";
-  const repository = options.appAttestRepository ?? (
-    localEnvironment && env.APP_ATTEST_ALLOW_IN_MEMORY === "true"
-      ? new InMemoryAppAttestRepository(options.appAttestRepositoryOptions)
-      : undefined
-  );
+  let repository = options.appAttestRepository;
+  if (!repository && env.DATABASE_URL) {
+    try {
+      repository = postgresAppAttestRepositoryFromEnvironment(env, { pool: options.postgresPool });
+    } catch {
+      repository = undefined;
+    }
+  }
+  if (!repository && localEnvironment && env.APP_ATTEST_ALLOW_IN_MEMORY === "true") {
+    repository = new InMemoryAppAttestRepository(options.appAttestRepositoryOptions);
+  }
   let verifier = options.appAttestVerifier;
   if (!verifier) {
     try {

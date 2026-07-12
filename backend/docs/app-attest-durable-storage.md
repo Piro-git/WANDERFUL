@@ -2,9 +2,9 @@
 
 ## Status
 
-Production deployment remains intentionally blocked. This repository has no selected durable datastore, and this change does not silently introduce Redis, Supabase, or another vendor.
+The repository now includes a provider-neutral PostgreSQL adapter selected only when `DATABASE_URL` is explicitly configured. Production deployment remains intentionally blocked until a dedicated PostgreSQL database is provisioned, `npm run db:migrate` succeeds, and the adapter passes its integration suite against that database.
 
-`InMemoryAppAttestRepository` exists only for unit tests and explicitly opted-in local development. It is per-process, disappears on restart, and reports `isDurable = false`. Production endpoints reject it.
+`PostgresAppAttestRepository` uses parameterized queries, row locks, atomic upserts, compare-and-set updates, and transaction-scoped advisory locks. `InMemoryAppAttestRepository` remains limited to unit tests and explicitly opted-in local development; production endpoints reject it.
 
 ## Required adapter contract
 
@@ -31,14 +31,14 @@ The adapter must support compare-and-set/conditional writes, server-side time, T
 
 Exact coordinates, prompts, route bodies, session tokens, key IDs, public keys, receipts, assertions, and attestations must not be used as logs, analytics fields, or rate-limit keys. Stored key material and receipts require encryption/access controls appropriate to the selected datastore.
 
-## Deployment compatibility questions
+## Deployment requirements
 
-Before choosing an adapter, confirm:
+Before enabling protected production traffic, confirm:
 
 1. Whether the backend runs as one long-lived Node process, multiple containers, or serverless functions.
-2. Whether the platform provides a transactional database or atomic key-value operations with TTL.
+2. The PostgreSQL service supports transactions, row locks, advisory locks, and the migration schema.
 3. Whether global GraphHopper concurrency can use durable leases with crash expiry.
 4. Expected peak session creation and route cost per minute.
 5. Backup, retention, regional-residency, and deletion requirements for App Attest receipts.
 
-Production can be enabled only after the adapter passes the same counter-replay and concurrent-budget test suite against the real datastore.
+Production can be enabled only after `TRAILMIND_TEST_DATABASE_URL` points to a disposable database and the adapter passes the same counter-replay and concurrent-budget test suite against real PostgreSQL. Expired records should be pruned by calling `PostgresAppAttestRepository.pruneExpired()` from a controlled scheduled job; request paths do not perform unbounded cleanup work.
