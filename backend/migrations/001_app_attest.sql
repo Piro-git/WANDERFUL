@@ -67,3 +67,13 @@ CREATE TABLE IF NOT EXISTS app_attest_provider_leases (
 CREATE INDEX IF NOT EXISTS app_attest_provider_leases_active_idx
     ON app_attest_provider_leases (scope, expires_at)
     WHERE released_at IS NULL;
+
+-- These backend-only security tables live in Supabase's exposed public schema,
+-- so deny Data API access by default. The private database owner used by the
+-- backend and migration runner is not restricted by these owner-level policies.
+ALTER TABLE app_attest_challenges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_attest_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_attest_route_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_attest_request_ids ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_attest_rate_windows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_attest_provider_leases ENABLE ROW LEVEL SECURITY;
