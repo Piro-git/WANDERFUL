@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { handleIntentHttpRequest } from "../src/server.js";
+import vercelHandler, { handleIntentHttpRequest } from "../src/server.js";
 
 describe("intent server", () => {
+  it("exports a Vercel-compatible request handler", () => {
+    assert.equal(typeof vercelHandler, "function");
+  });
+
   it("serves POST /api/parse-intent", async () => {
     const result = await handleIntentHttpRequest(
       {

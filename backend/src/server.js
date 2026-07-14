@@ -213,6 +213,8 @@ function routeBodyLimit(env = process.env) {
   return Number.isInteger(value) && value >= 1_024 && value <= 262_144 ? value : 32_768;
 }
 
+export default createIntentRequestHandler();
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   createIntentServer().listen(PORT, () => {
     console.log(`TrailMind backend listening on http://localhost:${PORT}`);
