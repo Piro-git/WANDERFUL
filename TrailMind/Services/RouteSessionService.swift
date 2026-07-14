@@ -32,7 +32,7 @@ actor RouteSessionService: RouteSessionAuthorizing {
     private let now: @Sendable () -> Date
     private let refreshLeeway: TimeInterval
     private var cachedSession: RouteSession?
-    private var refreshTask: Task<RouteSession, Error>?
+    private var refreshTask: (id: UUID, task: Task<RouteSession, Error>)?
 
     init(
         opener: any RouteSessionOpening,
@@ -56,20 +56,34 @@ actor RouteSessionService: RouteSessionAuthorizing {
             return RouteSessionAuthorization(token: session.token, requestID: UUID())
         }
 
-        let task: Task<RouteSession, Error>
+        let refresh: (id: UUID, task: Task<RouteSession, Error>)
         if let refreshTask {
-            task = refreshTask
+            refresh = refreshTask
         } else {
             let newTask = Task { try await opener.openRouteSession() }
-            refreshTask = newTask
-            task = newTask
+            let newRefresh = (id: UUID(), task: newTask)
+            refreshTask = newRefresh
+            refresh = newRefresh
         }
 
         do {
-            let session = try await task.value
-            refreshTask = nil
+            let openedSession = try await refresh.task.value
+            clearRefreshTask(ifMatching: refresh.id)
             try Task.checkCancellation()
-            guard session.remainingCost >= cost, session.expiresAt > now().addingTimeInterval(refreshLeeway) else {
+            let minimumExpiry = now().addingTimeInterval(refreshLeeway)
+            guard openedSession.remainingCost >= cost, openedSession.expiresAt > minimumExpiry else {
+                throw AppAttestServiceError.invalidResponse
+            }
+            let session: RouteSession
+            if let cachedSession, cachedSession.token == openedSession.token {
+                if cachedSession.remainingCost < cost {
+                    return try await authorization(cost: cost)
+                }
+                session = cachedSession
+            } else {
+                session = openedSession
+            }
+            guard session.expiresAt > minimumExpiry else {
                 throw AppAttestServiceError.invalidResponse
             }
             cachedSession = RouteSession(
@@ -79,7 +93,7 @@ actor RouteSessionService: RouteSessionAuthorizing {
             )
             return RouteSessionAuthorization(token: session.token, requestID: UUID())
         } catch {
-            refreshTask = nil
+            clearRefreshTask(ifMatching: refresh.id)
             throw error
         }
     }
@@ -98,5 +112,10 @@ actor RouteSessionService: RouteSessionAuthorizing {
             return nil
         }
         return cachedSession
+    }
+
+    private func clearRefreshTask(ifMatching id: UUID) {
+        guard refreshTask?.id == id else { return }
+        refreshTask = nil
     }
 }

@@ -196,6 +196,45 @@ final class RouteSessionServiceTests: XCTestCase {
         XCTAssertEqual(openCount, 1)
     }
 
+    func testConcurrentConsumersAggregateTheirCostBeforeReusingSession() async throws {
+        let opener = FakeRouteSessionOpener(
+            sessions: [
+                session(token: "first", cost: 12),
+                session(token: "second", cost: 12)
+            ],
+            delayNanoseconds: 20_000_000
+        )
+        let service = RouteSessionService(opener: opener)
+        async let first = service.authorization(cost: 2)
+        async let second = service.authorization(cost: 2)
+        async let third = service.authorization(cost: 2)
+        let initial = try await [first, second, third]
+
+        XCTAssertEqual(Set(initial.map(\.token)), ["first"])
+        let next = try await service.authorization(cost: 7)
+        let openCount = await opener.openCount()
+        XCTAssertEqual(next.token, "second")
+        XCTAssertEqual(openCount, 2)
+    }
+
+    func testConcurrentConsumersRefreshWhenAggregateCostExceedsSessionBudget() async throws {
+        let opener = FakeRouteSessionOpener(
+            sessions: [
+                session(token: "first", cost: 12),
+                session(token: "second", cost: 12)
+            ],
+            delayNanoseconds: 20_000_000
+        )
+        let service = RouteSessionService(opener: opener)
+        async let first = service.authorization(cost: 7)
+        async let second = service.authorization(cost: 7)
+        let values = try await [first, second]
+
+        XCTAssertEqual(Set(values.map(\.token)), ["first", "second"])
+        let openCount = await opener.openCount()
+        XCTAssertEqual(openCount, 2)
+    }
+
     func testCancellationDoesNotPersistSensitiveSessionDataElsewhere() async throws {
         let opener = FakeRouteSessionOpener(sessions: [session(cost: 12)], delayNanoseconds: 20_000_000)
         let service = RouteSessionService(opener: opener)
