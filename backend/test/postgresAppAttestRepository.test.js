@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { createAppAttestRuntime } from "../src/appAttest/appAttestRuntime.js";
 import { appAttestError } from "../src/appAttest/appAttestErrors.js";
 import {
   PostgresAppAttestRepository,
@@ -7,7 +8,7 @@ import {
 } from "../src/appAttest/postgresAppAttestRepository.js";
 
 describe("PostgreSQL App Attest repository", () => {
-  it("is selected only for an explicit PostgreSQL DATABASE_URL", () => {
+  it("selects an explicit PostgreSQL URL and supports Vercel's managed fallback", () => {
     assert.equal(postgresAppAttestRepositoryFromEnvironment({}, { pool: fakePool() }), undefined);
     assert.throws(
       () => postgresAppAttestRepositoryFromEnvironment(
@@ -21,6 +22,43 @@ describe("PostgreSQL App Attest repository", () => {
       { pool: fakePool() }
     );
     assert.equal(repository.isDurable, true);
+
+    const managedRepository = postgresAppAttestRepositoryFromEnvironment(
+      { POSTGRES_URL: "postgresql://example.invalid/trailmind" },
+      { pool: fakePool() }
+    );
+    assert.equal(managedRepository.isDurable, true);
+
+    const blankCanonicalRepository = postgresAppAttestRepositoryFromEnvironment(
+      {
+        DATABASE_URL: "",
+        POSTGRES_URL: "postgresql://example.invalid/trailmind"
+      },
+      { pool: fakePool() }
+    );
+    assert.equal(blankCanonicalRepository.isDurable, true);
+
+    assert.throws(
+      () => postgresAppAttestRepositoryFromEnvironment(
+        {
+          DATABASE_URL: "https://database.example",
+          POSTGRES_URL: "postgresql://example.invalid/trailmind"
+        },
+        { pool: fakePool() }
+      ),
+      (error) => error.code === "authorization_unavailable"
+    );
+  });
+
+  it("selects the durable repository at runtime from POSTGRES_URL", () => {
+    const runtime = createAppAttestRuntime({
+      env: {
+        NODE_ENV: "production",
+        POSTGRES_URL: "postgresql://example.invalid/trailmind"
+      },
+      postgresPool: fakePool()
+    });
+    assert.equal(runtime.repository?.isDurable, true);
   });
 
   it("uses one checked-out client and always rolls failed transactions back", async () => {

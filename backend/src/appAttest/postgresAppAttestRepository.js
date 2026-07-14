@@ -322,7 +322,7 @@ export class PostgresAppAttestRepository extends AppAttestRepository {
 }
 
 export function postgresAppAttestRepositoryFromEnvironment(env = process.env, options = {}) {
-  const connectionString = requiredPostgresURL(env.DATABASE_URL);
+  const connectionString = requiredPostgresURL(configuredPostgresURL(env));
   if (!connectionString) return undefined;
   const pool = options.pool ?? new Pool({
     connectionString,
@@ -332,6 +332,11 @@ export function postgresAppAttestRepositoryFromEnvironment(env = process.env, op
     allowExitOnIdle: true
   });
   return new PostgresAppAttestRepository({ pool });
+}
+
+function configuredPostgresURL(env) {
+  if (env.DATABASE_URL !== undefined && env.DATABASE_URL !== "") return env.DATABASE_URL;
+  return env.POSTGRES_URL;
 }
 
 async function consumeRateWindow(client, input) {

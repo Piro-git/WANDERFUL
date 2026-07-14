@@ -11,7 +11,7 @@ export function createAppAttestRuntime(options = {}) {
   const env = options.env ?? process.env;
   const localEnvironment = env.NODE_ENV === "development" || env.NODE_ENV === "test";
   let repository = options.appAttestRepository;
-  if (!repository && env.DATABASE_URL) {
+  if (!repository) {
     try {
       repository = postgresAppAttestRepositoryFromEnvironment(env, { pool: options.postgresPool });
     } catch {

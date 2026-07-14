@@ -51,7 +51,7 @@ npm run build
 npm start
 ```
 
-For a production-capable repository, provision a dedicated PostgreSQL database, set `DATABASE_URL` in the deployment environment, and apply migrations before starting or deploying:
+For a production-capable repository, provision a dedicated PostgreSQL database, set `DATABASE_URL` in the deployment environment, and apply migrations before starting or deploying. When Supabase is connected through Vercel Marketplace, the backend also accepts the integration-managed `POSTGRES_URL` automatically; an explicit non-empty `DATABASE_URL` takes precedence.
 
 ```sh
 DATABASE_URL="postgresql://..." npm run db:migrate
@@ -65,7 +65,7 @@ The server listens on `http://localhost:3000` by default. Override with:
 PORT=3001 npm start
 ```
 
-`api/index.js` and `vercel.json` adapt the same request handler for Vercel previews. A preview without a migrated PostgreSQL `DATABASE_URL` and the required App Attest/provider configuration exposes only the provider-independent health check; protected intent and routing operations remain fail-closed.
+`api/index.js` and `vercel.json` adapt the same request handler for Vercel deployments. A deployment without a migrated PostgreSQL `DATABASE_URL` or `POSTGRES_URL` and the required App Attest/provider configuration exposes only the provider-independent health check; protected intent and routing operations remain fail-closed.
 
 ## Example Request
 

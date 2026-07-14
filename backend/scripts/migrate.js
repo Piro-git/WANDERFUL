@@ -5,11 +5,11 @@ import pg from "pg";
 
 const { Pool } = pg;
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) throw new Error("DATABASE_URL is required.");
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+if (!connectionString) throw new Error("DATABASE_URL or POSTGRES_URL is required.");
 const parsed = new URL(connectionString);
 if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
-  throw new Error("DATABASE_URL must use PostgreSQL.");
+  throw new Error("DATABASE_URL or POSTGRES_URL must use PostgreSQL.");
 }
 
 const pool = new Pool({
