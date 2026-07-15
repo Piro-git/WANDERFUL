@@ -128,32 +128,57 @@ enum GraphHopperError: LocalizedError, Sendable {
         case .noRouteFound:
             "GraphHopper couldn’t find a walkable route between these points."
         case let .api(statusCode, message, hints):
-            {
-                if Self.isFlexibleModeMessage(message, hints: hints) {
-                    return "Live loop routing needs GraphHopper flexible mode, which is not available on this API plan."
-                }
-                let detail = ([message] + hints).filter { !$0.isEmpty }.joined(separator: " ")
-                return detail.isEmpty ? "GraphHopper request failed with status \(statusCode)." : detail
-            }()
+            Self.isFlexibleModeMessage(statusCode: statusCode, message: message, hints: hints)
+                ? "Live loop routing needs GraphHopper flexible mode, which is not available on this API plan."
+                : "GraphHopper rejected the route request (status \(statusCode))."
         case let .network(message):
-            "GraphHopper could not be reached. \(message)"
-        case let .decoding(message):
-            "GraphHopper returned an unexpected route format. \(message)"
+            message.localizedCaseInsensitiveContains("timed out")
+                ? "GraphHopper route calculation timed out."
+                : "GraphHopper could not be reached. Please try again."
+        case .decoding:
+            "GraphHopper returned an unexpected route format."
         }
     }
 
     var isFlexibleModeUnavailable: Bool {
         switch self {
-        case let .api(_, message, hints):
-            Self.isFlexibleModeMessage(message, hints: hints)
+        case let .api(statusCode, message, hints):
+            Self.isFlexibleModeMessage(
+                statusCode: statusCode,
+                message: message,
+                hints: hints
+            )
         default:
             false
         }
     }
 
-    private static func isFlexibleModeMessage(_ message: String, hints: [String]) -> Bool {
-        ([message] + hints).contains { value in
-            value.localizedCaseInsensitiveContains("flexible mode")
+    private static func isFlexibleModeMessage(
+        statusCode: Int,
+        message: String,
+        hints: [String]
+    ) -> Bool {
+        guard statusCode == 400 || statusCode == 422 else { return false }
+        let rejectionTerms = [
+            "unavailable", "not available", "unsupported", "not supported",
+            "cannot", "can't", "not allowed", "requires"
+        ]
+        return ([message] + hints).contains { value in
+            let normalized = value.lowercased()
+            let noRouteTerms = ["no route", "cannot find route", "cannot find a route"]
+            guard !noRouteTerms.contains(where: normalized.contains) else { return false }
+
+            if normalized.contains("flexible mode") {
+                return rejectionTerms.contains(where: normalized.contains)
+            }
+            let identifiesCHConfiguration = normalized.contains("ch.disable")
+                || normalized.contains("ch disable")
+            let chRejectionTerms = [
+                "unavailable", "unsupported", "not supported", "not allowed",
+                "cannot use", "can't use", "requires", "must"
+            ]
+            return identifiesCHConfiguration
+                && chRejectionTerms.contains(where: normalized.contains)
         }
     }
 }
@@ -162,26 +187,34 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
     private let session: URLSession
     private let configurationProvider: @Sendable () throws -> GraphHopperConfiguration
     private let gateway: (any BackendRouteGatewayRouting)?
+    private let limits: RouteTransportLimits
 
     init() {
         session = .shared
         configurationProvider = { throw GraphHopperError.missingAPIKey }
         gateway = BackendRouteGateway()
+        limits = .standard
     }
 
     init(
         session: URLSession,
-        configurationProvider: @escaping @Sendable () throws -> GraphHopperConfiguration
+        configurationProvider: @escaping @Sendable () throws -> GraphHopperConfiguration,
+        limits: RouteTransportLimits = .standard
     ) {
         self.session = session
         self.configurationProvider = configurationProvider
         gateway = nil
+        self.limits = limits
     }
 
-    init(gateway: any BackendRouteGatewayRouting) {
+    init(
+        gateway: any BackendRouteGatewayRouting,
+        limits: RouteTransportLimits = .standard
+    ) {
         session = .shared
         configurationProvider = { throw GraphHopperError.missingAPIKey }
         self.gateway = gateway
+        self.limits = limits
     }
 
     func calculateGraphHopperRoute(
@@ -643,12 +676,9 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         planningRequest: RoutePlanningRequest
     ) async throws -> TrailRoute {
         let data = try await gateway.route(request)
-        let response: GraphHopperRouteResponse
-        do {
-            response = try JSONDecoder().decode(GraphHopperRouteResponse.self, from: data)
-        } catch {
-            throw GraphHopperError.decoding(message: "TrailMind’s routing service returned an unexpected response.")
-        }
+        try Task.checkCancellation()
+        let response = try decodeRouteResponse(data, source: .backend)
+        try Task.checkCancellation()
         guard let provider = response.provider else {
             throw GraphHopperError.invalidResponse
         }
@@ -658,7 +688,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         ) else {
             throw GraphHopperError.noRouteFound
         }
-        return try makeTrailRoute(
+        let route = try makeTrailRoute(
             from: path,
             requestedStart: requestedStart,
             requestedEnd: requestedEnd,
@@ -666,6 +696,8 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             provider: provider,
             routingStrategy: .backend
         )
+        try Task.checkCancellation()
+        return route
     }
 
     private func backendPointToPointRequest(
@@ -761,26 +793,31 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         planningRequest: RoutePlanningRequest
     ) async throws -> TrailRoute {
         do {
-            let (data, urlResponse) = try await session.data(for: request)
+            let transport = BoundedRouteHTTPTransport(session: session, limits: limits)
+            let (data, urlResponse) = try await transport.data(for: request)
+            try Task.checkCancellation()
             guard let httpResponse = urlResponse as? HTTPURLResponse else {
                 throw GraphHopperError.invalidResponse
             }
 
             guard (200..<300).contains(httpResponse.statusCode) else {
                 let envelope = try? JSONDecoder().decode(GraphHopperErrorEnvelope.self, from: data)
-                throw GraphHopperError.api(
+                let providerError = GraphHopperError.api(
                     statusCode: httpResponse.statusCode,
                     message: envelope?.message ?? "GraphHopper request failed with status \(httpResponse.statusCode).",
                     hints: envelope?.hints.compactMap(\.displayMessage) ?? []
                 )
+                throw GraphHopperError.api(
+                    statusCode: httpResponse.statusCode,
+                    message: providerError.isFlexibleModeUnavailable
+                        ? "GraphHopper flexible mode is unavailable."
+                        : "GraphHopper rejected the route request.",
+                    hints: []
+                )
             }
 
-            let routeResponse: GraphHopperRouteResponse
-            do {
-                routeResponse = try JSONDecoder().decode(GraphHopperRouteResponse.self, from: data)
-            } catch {
-                throw GraphHopperError.decoding(message: error.localizedDescription)
-            }
+            let routeResponse = try decodeRouteResponse(data, source: .direct)
+            try Task.checkCancellation()
 
             guard let path = Self.bestPath(
                 in: routeResponse.paths,
@@ -788,7 +825,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             ) else {
                 throw GraphHopperError.noRouteFound
             }
-            return try makeTrailRoute(
+            let route = try makeTrailRoute(
                 from: path,
                 requestedStart: requestedStart,
                 requestedEnd: requestedEnd,
@@ -796,17 +833,60 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 provider: .graphHopper,
                 routingStrategy: .directGraphHopper
             )
+            try Task.checkCancellation()
+            return route
         } catch is CancellationError {
             throw CancellationError()
+        } catch RouteTransportValidationError.responseTooLarge {
+            throw GraphHopperError.decoding(
+                message: "The route response exceeded TrailMind’s safety limit."
+            )
         } catch let error as GraphHopperError {
             throw error
         } catch let error as URLError {
             if error.code == .cancelled, Task.isCancelled {
                 throw CancellationError()
             }
-            throw GraphHopperError.network(message: error.localizedDescription)
+            if error.code == .timedOut {
+                throw GraphHopperError.network(message: "The route calculation timed out.")
+            }
+            throw GraphHopperError.network(message: "The route request failed.")
         } catch {
-            throw GraphHopperError.network(message: error.localizedDescription)
+            throw GraphHopperError.network(message: "The route request failed.")
+        }
+    }
+
+    private enum RouteResponseSource {
+        case direct
+        case backend
+    }
+
+    private func decodeRouteResponse(
+        _ data: Data,
+        source: RouteResponseSource
+    ) throws -> GraphHopperRouteResponse {
+        guard data.count <= limits.maximumSuccessBodyBytes else {
+            throw GraphHopperError.decoding(
+                message: "The route response exceeded TrailMind’s safety limit."
+            )
+        }
+
+        let decoder = JSONDecoder()
+        decoder.userInfo[.routeTransportLimits] = limits
+        do {
+            return try decoder.decode(GraphHopperRouteResponse.self, from: data)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch is RouteTransportValidationError {
+            throw GraphHopperError.invalidResponse
+        } catch {
+            let message = switch source {
+            case .direct:
+                "GraphHopper returned an unexpected response."
+            case .backend:
+                "TrailMind’s routing service returned an unexpected response."
+            }
+            throw GraphHopperError.decoding(message: message)
         }
     }
 
@@ -1056,21 +1136,56 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         provider: RouteProviderIdentity,
         routingStrategy: RouteRoutingStrategy
     ) throws -> TrailRoute {
-        let coordinates = path.points?.coordinates.compactMap(Self.decodeCoordinate) ?? []
-        guard coordinates.count >= 2, path.distance >= 10, path.time > 0 else {
+        try Task.checkCancellation()
+        guard
+            path.distance.isFinite,
+            path.distance > 0,
+            path.time > 0,
+            path.ascend.map({ $0.isFinite && $0 >= 0 }) ?? true,
+            path.descend.map({ $0.isFinite && $0 >= 0 }) ?? true
+        else {
+            throw GraphHopperError.invalidResponse
+        }
+        guard path.distance >= 10 else {
             throw GraphHopperError.noRouteFound
         }
-        let verifiedCharacteristics = Self.verifiedCharacteristics(
+        guard let rawCoordinates = path.points?.coordinates else {
+            throw GraphHopperError.invalidResponse
+        }
+        var coordinates: [Coordinate] = []
+        coordinates.reserveCapacity(rawCoordinates.count)
+        for (index, rawCoordinate) in rawCoordinates.enumerated() {
+            if index.isMultiple(of: 4_096) {
+                try Task.checkCancellation()
+            }
+            coordinates.append(try Self.decodeCoordinate(rawCoordinate))
+        }
+        guard
+            coordinates.count >= 2,
+            coordinates.dropFirst().contains(where: {
+                $0.latitude != coordinates[0].latitude || $0.longitude != coordinates[0].longitude
+            })
+        else {
+            throw GraphHopperError.invalidResponse
+        }
+        let verifiedCharacteristics = try Self.verifiedCharacteristics(
             details: path.details,
             coordinates: coordinates
         )
+        try Task.checkCancellation()
 
         let distanceKilometers = path.distance / 1_000
         let durationHours = Double(path.time) / 3_600_000
         let computedGain = Self.elevationChange(in: coordinates, ascending: true)
         let computedLoss = Self.elevationChange(in: coordinates, ascending: false)
-        let elevationGain = Int((path.ascend ?? computedGain).rounded())
-        let elevationLoss = Int((path.descend ?? computedLoss).rounded())
+        guard
+            computedGain.isFinite,
+            computedLoss.isFinite,
+            let elevationGain = Self.nonnegativeRoundedInt(path.ascend ?? computedGain),
+            let elevationLoss = Self.nonnegativeRoundedInt(path.descend ?? computedLoss)
+        else {
+            throw GraphHopperError.invalidResponse
+        }
         let routeInstructions = path.instructions.map { instruction in
             let coordinate = instruction.interval.first.flatMap { index in
                 coordinates.indices.contains(index) ? coordinates[index] : nil
@@ -1084,6 +1199,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 coordinate: coordinate
             )
         }
+        try Task.checkCancellation()
 
         let snappedStart = coordinates.first ?? requestedStart
         let snappedEnd = coordinates.last ?? requestedEnd
@@ -1178,22 +1294,30 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             verifiedCharacteristics: verifiedCharacteristics
         )
         try RouteEligibilityPolicy.validate(route, for: .productionSuccess)
+        try Task.checkCancellation()
         return route
     }
 
-    private static func decodeCoordinate(_ values: [Double]) -> Coordinate? {
+    private static func decodeCoordinate(_ values: [Double]) throws -> Coordinate {
         guard
-            values.count >= 2,
+            values.count == 2 || values.count == 3,
+            values.allSatisfy(\.isFinite),
             (-180...180).contains(values[0]),
-            (-90...90).contains(values[1])
+            (-90...90).contains(values[1]),
+            values.count < 3 || abs(values[2]) <= RouteTransportLimits.standard.maximumAbsoluteElevationMeters
         else {
-            return nil
+            throw GraphHopperError.invalidResponse
         }
         return Coordinate(
             latitude: values[1],
             longitude: values[0],
             elevationMeters: values.count >= 3 ? values[2] : nil
         )
+    }
+
+    private static func nonnegativeRoundedInt(_ value: Double) -> Int? {
+        guard value.isFinite, value >= 0 else { return nil }
+        return Int(exactly: value.rounded())
     }
 
     private static func elevationChange(in coordinates: [Coordinate], ascending: Bool) -> Double {
@@ -1211,22 +1335,23 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
     private static func verifiedCharacteristics(
         details: GraphHopperPathDetails?,
         coordinates: [Coordinate]
-    ) -> VerifiedRouteCharacteristics? {
+    ) throws -> VerifiedRouteCharacteristics? {
         guard let details, coordinates.count >= 2 else { return nil }
+        try Task.checkCancellation()
 
         let segmentDistances = zip(coordinates, coordinates.dropFirst()).map(distanceMeters)
         let routeDistanceMeters = segmentDistances.reduce(0, +)
         guard routeDistanceMeters > 0 else { return nil }
 
-        let surface = characteristicBreakdown(
+        let surface = try characteristicBreakdown(
             details.surface,
             segmentDistances: segmentDistances
         )
-        let roadClass = characteristicBreakdown(
+        let roadClass = try characteristicBreakdown(
             details.roadClass,
             segmentDistances: segmentDistances
         )
-        let hikeRating = characteristicBreakdown(
+        let hikeRating = try characteristicBreakdown(
             details.hikeRating,
             segmentDistances: segmentDistances
         )
@@ -1249,24 +1374,35 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
     private static func characteristicBreakdown(
         _ details: [GraphHopperPathDetail],
         segmentDistances: [Double]
-    ) -> (values: [VerifiedRouteCharacteristicValue], coverage: Double) {
+    ) throws -> (values: [VerifiedRouteCharacteristicValue], coverage: Double) {
         guard !details.isEmpty, !segmentDistances.isEmpty else { return ([], 0) }
 
         var segmentValues = Array<String?>(repeating: nil, count: segmentDistances.count)
-        for detail in details {
+        for (detailIndex, detail) in details.enumerated() {
+            if detailIndex.isMultiple(of: 4_096) {
+                try Task.checkCancellation()
+            }
             guard let value = detail.value?.normalizedValue else { continue }
             let lowerBound = min(max(detail.fromIndex, 0), segmentDistances.count)
             let upperBound = min(max(detail.toIndex, 0), segmentDistances.count)
             guard lowerBound < upperBound else { continue }
 
-            for index in lowerBound..<upperBound where segmentValues[index] == nil {
-                segmentValues[index] = value
+            for index in lowerBound..<upperBound {
+                if index.isMultiple(of: 4_096) {
+                    try Task.checkCancellation()
+                }
+                if segmentValues[index] == nil {
+                    segmentValues[index] = value
+                }
             }
         }
 
         var distancesByValue: [String: Double] = [:]
         var coverage = 0.0
         for (index, value) in segmentValues.enumerated() {
+            if index.isMultiple(of: 4_096) {
+                try Task.checkCancellation()
+            }
             guard let value else { continue }
             let distance = segmentDistances[index]
             distancesByValue[value, default: 0] += distance
@@ -1428,12 +1564,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
 
 private extension GraphHopperError {
     var isFlexibleRoutingFallbackCandidate: Bool {
-        switch self {
-        case .api:
-            true
-        default:
-            false
-        }
+        isFlexibleModeUnavailable
     }
 }
 
@@ -1578,9 +1709,14 @@ private struct GraphHopperRouteResponse: Decodable {
     let paths: [GraphHopperRoutePath]
 
     init(from decoder: Decoder) throws {
+        let limits = decoder.userInfo[.routeTransportLimits] as? RouteTransportLimits ?? .standard
         let container = try decoder.container(keyedBy: CodingKeys.self)
         provider = try container.decodeIfPresent(RouteProviderIdentity.self, forKey: .provider)
-        paths = try container.decodeIfPresent([GraphHopperRoutePath].self, forKey: .paths) ?? []
+        paths = try container.decodeBoundedArray(
+            GraphHopperRoutePath.self,
+            forKey: .paths,
+            maximumCount: limits.maximumPaths
+        )
     }
 
     enum CodingKeys: String, CodingKey {
@@ -1609,14 +1745,38 @@ private struct GraphHopperRoutePath: Decodable {
     }
 
     init(from decoder: Decoder) throws {
+        let limits = decoder.userInfo[.routeTransportLimits] as? RouteTransportLimits ?? .standard
         let container = try decoder.container(keyedBy: CodingKeys.self)
         distance = try container.decode(Double.self, forKey: .distance)
         time = try container.decode(Int64.self, forKey: .time)
         ascend = try container.decodeIfPresent(Double.self, forKey: .ascend)
         descend = try container.decodeIfPresent(Double.self, forKey: .descend)
         points = try container.decodeIfPresent(GraphHopperLineString.self, forKey: .points)
-        instructions = try container.decodeIfPresent([GraphHopperInstruction].self, forKey: .instructions) ?? []
-        details = try? container.decode(GraphHopperPathDetails.self, forKey: .details)
+        instructions = try container.decodeBoundedArray(
+            GraphHopperInstruction.self,
+            forKey: .instructions,
+            maximumCount: limits.maximumInstructionsPerPath
+        )
+        details = try container.decodeIfPresent(GraphHopperPathDetails.self, forKey: .details)
+
+        guard
+            distance.isFinite,
+            distance > 0,
+            time > 0,
+            ascend.map({ $0.isFinite && $0 >= 0 }) ?? true,
+            descend.map({ $0.isFinite && $0 >= 0 }) ?? true
+        else {
+            throw RouteTransportValidationError.invalidMetrics
+        }
+        guard let points else {
+            throw RouteTransportValidationError.invalidGeometry
+        }
+
+        let maximumCoordinateIndex = points.coordinates.count - 1
+        guard instructions.allSatisfy({ $0.isValid(maximumCoordinateIndex: maximumCoordinateIndex) }) else {
+            throw RouteTransportValidationError.invalidInstruction
+        }
+        try details?.validate(segmentCount: maximumCoordinateIndex)
     }
 }
 
@@ -1632,10 +1792,45 @@ private struct GraphHopperPathDetails: Decodable {
     }
 
     init(from decoder: Decoder) throws {
+        let limits = decoder.userInfo[.routeTransportLimits] as? RouteTransportLimits ?? .standard
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        surface = (try? container.decode([GraphHopperPathDetail].self, forKey: .surface)) ?? []
-        roadClass = (try? container.decode([GraphHopperPathDetail].self, forKey: .roadClass)) ?? []
-        hikeRating = (try? container.decode([GraphHopperPathDetail].self, forKey: .hikeRating)) ?? []
+        surface = try container.decodeBoundedArray(
+            GraphHopperPathDetail.self,
+            forKey: .surface,
+            maximumCount: limits.maximumPathDetailsPerPath
+        )
+        roadClass = try container.decodeBoundedArray(
+            GraphHopperPathDetail.self,
+            forKey: .roadClass,
+            maximumCount: limits.maximumPathDetailsPerPath - surface.count
+        )
+        hikeRating = try container.decodeBoundedArray(
+            GraphHopperPathDetail.self,
+            forKey: .hikeRating,
+            maximumCount: limits.maximumPathDetailsPerPath - surface.count - roadClass.count
+        )
+    }
+
+    func validate(segmentCount: Int) throws {
+        guard segmentCount > 0 else {
+            throw RouteTransportValidationError.invalidPathDetail
+        }
+        for collection in [surface, roadClass, hikeRating] {
+            var previousUpperBound = 0
+            for (index, detail) in collection.enumerated() {
+                if index.isMultiple(of: 4_096) {
+                    try Task.checkCancellation()
+                }
+                guard
+                    detail.fromIndex >= previousUpperBound,
+                    detail.fromIndex < detail.toIndex,
+                    detail.toIndex <= segmentCount
+                else {
+                    throw RouteTransportValidationError.invalidPathDetail
+                }
+                previousUpperBound = detail.toIndex
+            }
+        }
     }
 }
 
@@ -1645,36 +1840,37 @@ private struct GraphHopperPathDetail: Decodable {
     let value: GraphHopperPathDetailValue?
 
     init(from decoder: Decoder) throws {
-        guard
-            var container = try? decoder.unkeyedContainer(),
-            let decodedFromIndex = try? container.decode(Int.self),
-            let decodedToIndex = try? container.decode(Int.self)
-        else {
-            fromIndex = 0
-            toIndex = 0
-            value = nil
-            return
-        }
-        fromIndex = decodedFromIndex
-        toIndex = decodedToIndex
+        var container = try decoder.unkeyedContainer()
+        fromIndex = try container.decode(Int.self)
+        toIndex = try container.decode(Int.self)
 
-        if (try? container.decodeNil()) == true {
+        if try container.decodeNil() {
             value = nil
-        } else if let string = try? container.decode(String.self) {
-            value = .string(string)
-        } else if let number = try? container.decode(Double.self) {
-            value = .number(number)
-        } else if let boolean = try? container.decode(Bool.self) {
-            value = .string(boolean ? "true" : "false")
         } else {
-            value = nil
+            value = try container.decode(GraphHopperPathDetailValue.self)
+        }
+        guard container.isAtEnd else {
+            throw RouteTransportValidationError.invalidPathDetail
         }
     }
 }
 
-private enum GraphHopperPathDetailValue {
+private enum GraphHopperPathDetailValue: Decodable {
     case string(String)
     case number(Double)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let string = try? container.decode(String.self) {
+            self = .string(string)
+        } else if let number = try? container.decode(Double.self), number.isFinite {
+            self = .number(number)
+        } else if let boolean = try? container.decode(Bool.self) {
+            self = .string(boolean ? "true" : "false")
+        } else {
+            throw RouteTransportValidationError.invalidPathDetail
+        }
+    }
 
     var normalizedValue: String? {
         switch self {
@@ -1684,7 +1880,8 @@ private enum GraphHopperPathDetailValue {
         case let .number(value):
             guard value.isFinite else { return nil }
             if value.rounded() == value {
-                return String(Int(value))
+                guard let integer = Int(exactly: value) else { return nil }
+                return String(integer)
             }
             return String(value)
         }
@@ -1694,6 +1891,61 @@ private enum GraphHopperPathDetailValue {
 private struct GraphHopperLineString: Decodable {
     let type: String
     let coordinates: [[Double]]
+
+    init(from decoder: Decoder) throws {
+        let limits = decoder.userInfo[.routeTransportLimits] as? RouteTransportLimits ?? .standard
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(String.self, forKey: .type)
+        guard type == "LineString" else {
+            throw RouteTransportValidationError.invalidGeometry
+        }
+        let decodedCoordinates = try container.decodeBoundedArray(
+            GraphHopperRawCoordinate.self,
+            forKey: .coordinates,
+            maximumCount: limits.maximumCoordinatesPerPath
+        )
+        coordinates = decodedCoordinates.map(\.values)
+        guard
+            coordinates.count >= 2,
+            coordinates.dropFirst().contains(where: {
+                $0[0] != coordinates[0][0] || $0[1] != coordinates[0][1]
+            })
+        else {
+            throw RouteTransportValidationError.invalidGeometry
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case coordinates
+    }
+}
+
+private struct GraphHopperRawCoordinate: Decodable {
+    let values: [Double]
+
+    init(from decoder: Decoder) throws {
+        let limits = decoder.userInfo[.routeTransportLimits] as? RouteTransportLimits ?? .standard
+        var container = try decoder.unkeyedContainer()
+        var decoded: [Double] = []
+        decoded.reserveCapacity(3)
+        while !container.isAtEnd {
+            guard decoded.count < 3 else {
+                throw RouteTransportValidationError.invalidGeometry
+            }
+            decoded.append(try container.decode(Double.self))
+        }
+        guard
+            decoded.count == 2 || decoded.count == 3,
+            decoded.allSatisfy(\.isFinite),
+            (-180...180).contains(decoded[0]),
+            (-90...90).contains(decoded[1]),
+            decoded.count < 3 || abs(decoded[2]) <= limits.maximumAbsoluteElevationMeters
+        else {
+            throw RouteTransportValidationError.invalidGeometry
+        }
+        values = decoded
+    }
 }
 
 private struct GraphHopperInstruction: Decodable {
@@ -1711,6 +1963,32 @@ private struct GraphHopperInstruction: Decodable {
         case time
         case interval
         case sign
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        text = try container.decode(String.self, forKey: .text)
+        streetName = try container.decodeIfPresent(String.self, forKey: .streetName)
+        distance = try container.decode(Double.self, forKey: .distance)
+        time = try container.decode(Int64.self, forKey: .time)
+        sign = try container.decode(Int.self, forKey: .sign)
+        interval = try container.decodeBoundedArray(
+            Int.self,
+            forKey: .interval,
+            maximumCount: 2
+        )
+    }
+
+    func isValid(maximumCoordinateIndex: Int) -> Bool {
+        guard
+            distance.isFinite,
+            distance >= 0,
+            time >= 0,
+            interval.count == 2
+        else { return false }
+        return interval[0] >= 0
+            && interval[0] <= interval[1]
+            && interval[1] <= maximumCoordinateIndex
     }
 }
 
@@ -1747,6 +2025,36 @@ private struct GraphHopperErrorHint: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         message = try? container.decode(String.self, forKey: .message)
         details = try? container.decode(String.self, forKey: .details)
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeBoundedArray<Element: Decodable>(
+        _ type: Element.Type,
+        forKey key: Key,
+        maximumCount: Int
+    ) throws -> [Element] {
+        guard contains(key) else { return [] }
+        if try decodeNil(forKey: key) { return [] }
+
+        var container = try nestedUnkeyedContainer(forKey: key)
+        var values: [Element] = []
+        if let count = container.count {
+            guard count <= maximumCount else {
+                throw RouteTransportValidationError.structuralLimitExceeded
+            }
+            values.reserveCapacity(count)
+        }
+        while !container.isAtEnd {
+            guard values.count < maximumCount else {
+                throw RouteTransportValidationError.structuralLimitExceeded
+            }
+            if values.count.isMultiple(of: 4_096) {
+                try Task.checkCancellation()
+            }
+            values.append(try container.decode(Element.self))
+        }
+        return values
     }
 }
 

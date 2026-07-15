@@ -57,15 +57,18 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
     private let baseURL: URL?
     private let session: URLSession
     private let authorizer: any RouteSessionAuthorizing
+    private let limits: RouteTransportLimits
 
     init(
         baseURL: URL? = TrailMindBackendConfiguration.baseURL(),
         session: URLSession = .shared,
-        authorizer: (any RouteSessionAuthorizing)? = nil
+        authorizer: (any RouteSessionAuthorizing)? = nil,
+        limits: RouteTransportLimits = .standard
     ) {
         self.baseURL = baseURL
         self.session = session
         self.authorizer = authorizer ?? TrailMindBackendSecurity.makeSessionAuthorizer(baseURL: baseURL)
+        self.limits = limits
     }
 
     func route(_ routeRequest: BackendRouteRequest) async throws -> Data {
@@ -94,7 +97,8 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
         request.httpBody = try JSONEncoder().encode(routeRequest)
 
         do {
-            let (data, response) = try await session.data(for: request)
+            let transport = BoundedRouteHTTPTransport(session: session, limits: limits)
+            let (data, response) = try await transport.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw GraphHopperError.invalidResponse
             }
@@ -111,9 +115,14 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
                     message: envelope?.error.message
                 )
             }
+            try Task.checkCancellation()
             return data
         } catch is CancellationError {
             throw CancellationError()
+        } catch RouteTransportValidationError.responseTooLarge {
+            throw GraphHopperError.decoding(
+                message: "The route response exceeded TrailMind’s safety limit."
+            )
         } catch let error as BackendRouteGatewayError {
             throw error
         } catch let error as GraphHopperError {
@@ -122,6 +131,9 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
             throw error
         } catch let error as URLError {
             if error.code == .cancelled, Task.isCancelled { throw CancellationError() }
+            if error.code == .timedOut {
+                throw GraphHopperError.network(message: "The route calculation timed out.")
+            }
             throw GraphHopperError.network(message: "TrailMind’s routing service could not be reached.")
         } catch {
             throw GraphHopperError.network(message: "TrailMind’s routing service could not be reached.")
@@ -136,7 +148,7 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
     private nonisolated static func mapError(
         statusCode: Int,
         code: String?,
-        message: String?
+        message _: String?
     ) -> Error {
         switch code {
         case "route_not_found":
@@ -156,7 +168,7 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
         default:
             return GraphHopperError.api(
                 statusCode: statusCode,
-                message: message ?? "TrailMind’s routing service rejected the request.",
+                message: "TrailMind’s routing service rejected the request.",
                 hints: []
             )
         }

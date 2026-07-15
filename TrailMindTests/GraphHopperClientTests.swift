@@ -149,10 +149,10 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
-    func testNullUnknownAndOutOfRangeDetailsDoNotInvalidateRoute() async throws {
+    func testNullAndUnknownDetailsRemainRepresentable() async throws {
         let details = #"""
         {
-          "surface": [["broken"], [-4, 1, "asphalt"], [1, 2, null], [2, 99, "volcanic_glass"], [3, 1, "gravel"]],
+          "surface": [[0, 1, "asphalt"], [1, 2, null], [2, 3, "volcanic_glass"]],
           "road_class": [],
           "hike_rating": []
         }
@@ -260,8 +260,8 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
-    func testCustomModelFailureFallsBackToNormalRouteRequest() async throws {
-        let errorData = Data(#"{"message":"custom model rejected","hints":[]}"#.utf8)
+    func testFlexibleModeFailureFallsBackToNormalRouteRequest() async throws {
+        let errorData = Data(#"{"message":"Free packages cannot use flexible mode","hints":[]}"#.utf8)
         let routeData = try Self.routeResponseData(distanceMeters: 20_300, timeMilliseconds: 14_640_000)
         URLProtocolStub.reset(
             responses: [
@@ -382,6 +382,57 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
+    func testPointToPointRequestBodyKeepsExactCoordinateAndProfileContract() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        distanceMeters: 12_400,
+                        timeMilliseconds: 10_800_000
+                    )
+                )
+            ]
+        )
+        let client = try makeClient()
+        _ = try await client.calculateGraphHopperRoute(
+            request: RoutePlanningRequest(
+                startQuery: "Ilsenburg",
+                endQuery: "Schierke",
+                activityType: .hiking,
+                graphHopperProfile: "foot",
+                targetDistanceKm: nil,
+                targetDurationMinutes: nil,
+                difficulty: nil,
+                desiredFeatures: []
+            ),
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+        )
+
+        let payload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: URLProtocolStub.requestBodies()[0]) as? [String: Any]
+        )
+        let expected: [String: Any] = [
+            "profile": "foot",
+            "points": [[10.6782, 51.8666], [10.6647, 51.7636]],
+            "locale": "de",
+            "elevation": true,
+            "points_encoded": false,
+            "instructions": true,
+            "details": ["surface", "road_class", "hike_rating"],
+            "ch.disable": true,
+            "custom_model": [
+                "priority": [
+                    ["if": "road_class == PRIMARY", "multiply_by": "0.85"],
+                    ["if": "road_class == SECONDARY", "multiply_by": "0.9"]
+                ]
+            ]
+        ]
+        XCTAssertEqual(payload as NSDictionary, expected as NSDictionary)
+    }
+
+    @MainActor
     func testTargetDistanceRequestsAlternativesAndSelectsClosestPath() async throws {
         let routeData = try Self.routeResponseData(
             paths: [
@@ -416,6 +467,16 @@ final class GraphHopperClientTests: XCTestCase {
         let body = String(data: URLProtocolStub.requestBodies()[0], encoding: .utf8)
         XCTAssertTrue(body?.contains(#""algorithm":"alternative_route""#) == true)
         XCTAssertTrue(body?.contains(#""alternative_route.max_paths""#) == true)
+        let payload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: URLProtocolStub.requestBodies()[0]) as? [String: Any]
+        )
+        XCTAssertEqual(payload["algorithm"] as? String, "alternative_route")
+        XCTAssertEqual(payload["alternative_route.max_paths"] as? Int, 3)
+        XCTAssertEqual(payload["alternative_route.max_weight_factor"] as? Double, 1.4)
+        XCTAssertEqual(payload["alternative_route.max_share_factor"] as? Double, 0.65)
+        XCTAssertEqual(payload["ch.disable"] as? Bool, true)
+        XCTAssertNil(payload["round_trip.distance"])
+        XCTAssertNil(payload["round_trip.seed"])
         XCTAssertEqual(route.distanceKilometers, 14.6, accuracy: 0.01)
         XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
     }
@@ -454,6 +515,15 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertTrue(body?.contains(#""ch.disable":true"#) == true)
         let payload = try JSONSerialization.jsonObject(with: URLProtocolStub.requestBodies()[0]) as? [String: Any]
         XCTAssertEqual((payload?["points"] as? [[Double]])?.count, 1)
+        XCTAssertEqual(payload?["profile"] as? String, "foot")
+        XCTAssertEqual(payload?["points"] as? [[Double]], [[10.6782, 51.8666]])
+        XCTAssertEqual(payload?["locale"] as? String, "de")
+        XCTAssertEqual(payload?["elevation"] as? Bool, true)
+        XCTAssertEqual(payload?["points_encoded"] as? Bool, false)
+        XCTAssertEqual(payload?["instructions"] as? Bool, true)
+        XCTAssertEqual(payload?["details"] as? [String], ["surface", "road_class", "hike_rating"])
+        XCTAssertNil(payload?["custom_model"])
+        XCTAssertNil(payload?["alternative_route.max_paths"])
         XCTAssertEqual(route.routeType, .loop)
         XCTAssertEqual(route.title, "15.2 km Hike loop around Ilsenburg")
         XCTAssertEqual(route.planningMetadata?.routeType, .loop)
@@ -505,6 +575,25 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertFalse(body.contains(#""custom_model""#))
         let payload = try JSONSerialization.jsonObject(with: URLProtocolStub.requestBodies()[0]) as? [String: Any]
         XCTAssertEqual((payload?["points"] as? [[Double]])?.count, 4)
+        XCTAssertEqual(payload?["profile"] as? String, "foot")
+        XCTAssertEqual(
+            payload?["points"] as? [[Double]],
+            [
+                [10.6782, 51.8666],
+                [10.72, 51.89],
+                [10.71, 51.84],
+                [10.6782, 51.8666]
+            ]
+        )
+        XCTAssertEqual(payload?["locale"] as? String, "de")
+        XCTAssertEqual(payload?["elevation"] as? Bool, true)
+        XCTAssertEqual(payload?["points_encoded"] as? Bool, false)
+        XCTAssertEqual(payload?["instructions"] as? Bool, true)
+        XCTAssertEqual(payload?["details"] as? [String], ["surface", "road_class", "hike_rating"])
+        XCTAssertEqual(
+            Set(payload?.keys.map { $0 } ?? []),
+            Set(["profile", "points", "locale", "elevation", "points_encoded", "instructions", "details"])
+        )
         XCTAssertEqual(route.routeType, .loop)
         XCTAssertEqual(route.planningMetadata?.seed, 47)
     }
@@ -723,7 +812,387 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
-    private func makeClient() throws -> GraphHopperClient {
+    func testZeroPathsFailsAsNoRoute() async throws {
+        URLProtocolStub.reset(
+            responses: [.init(statusCode: 200, data: Data(#"{"paths":[]}"#.utf8))]
+        )
+
+        do {
+            _ = try await calculateStandardRoute(using: makeClient())
+            XCTFail("An empty provider result must not become a route.")
+        } catch GraphHopperError.noRouteFound {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    @MainActor
+    func testMalformedJSONAndStructuredPayloadsFailClosed() async throws {
+        let payloads = [
+            Data(#"{"paths":["#.utf8),
+            Data(#"{"paths":[{"distance":1000,"time":1000,"points":"not-geometry"}]}"#.utf8)
+        ]
+
+        for payload in payloads {
+            URLProtocolStub.reset(responses: [.init(statusCode: 200, data: payload)])
+            do {
+                _ = try await calculateStandardRoute(using: makeClient())
+                XCTFail("Malformed provider data must fail closed.")
+            } catch let error as GraphHopperError {
+                switch error {
+                case .decoding, .invalidResponse:
+                    break
+                default:
+                    XCTFail("Unexpected GraphHopper error: \(error)")
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testMalformedOutOfRangeAndDegenerateCoordinatesFailClosed() async throws {
+        let coordinatePayloads = [
+            "[10.6], [10.7, 51.7]",
+            "[181, 51.8], [10.7, 51.7]",
+            "[10.6, 91], [10.7, 51.7]",
+            "[10.6, 51.8, 200, 1], [10.7, 51.7, 210]",
+            "[10.6, 51.8], [10.6, 51.8]"
+        ]
+
+        for coordinates in coordinatePayloads {
+            URLProtocolStub.reset(
+                responses: [
+                    .init(
+                        statusCode: 200,
+                        data: try Self.routeResponseWithDetailsData(
+                            coordinates: coordinates,
+                            detailsJSON: "{}"
+                        )
+                    )
+                ]
+            )
+            do {
+                _ = try await calculateStandardRoute(using: makeClient())
+                XCTFail("Invalid coordinates must not be discarded into a successful route.")
+            } catch GraphHopperError.invalidResponse {
+                // Expected.
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    @MainActor
+    func testInvalidMetricsFailClosed() async throws {
+        let payloads = [
+            Self.customRouteResponseData(distance: "0", time: "1000", ascend: "10", descend: "10"),
+            Self.customRouteResponseData(distance: "1000", time: "0", ascend: "10", descend: "10"),
+            Self.customRouteResponseData(distance: "1000", time: "1000", ascend: "-1", descend: "10"),
+            Self.customRouteResponseData(distance: "1000", time: "1000", ascend: "10", descend: "-1"),
+            Self.customRouteResponseData(
+                distance: "1000",
+                time: "1000",
+                ascend: "9223372036854775808",
+                descend: "10"
+            )
+        ]
+
+        for payload in payloads {
+            URLProtocolStub.reset(responses: [.init(statusCode: 200, data: payload)])
+            do {
+                _ = try await calculateStandardRoute(using: makeClient())
+                XCTFail("Invalid route metrics must fail closed.")
+            } catch GraphHopperError.invalidResponse {
+                // Expected.
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    @MainActor
+    func testStructuralCeilingsRejectExcessiveCollections() async throws {
+        let cases: [(Data, RouteTransportLimits)] = [
+            (
+                try Self.routeResponseData(paths: [
+                    (distanceMeters: 1_000, timeMilliseconds: 1_000),
+                    (distanceMeters: 1_100, timeMilliseconds: 1_100),
+                    (distanceMeters: 1_200, timeMilliseconds: 1_200)
+                ]),
+                Self.testLimits(maximumPaths: 2)
+            ),
+            (
+                try Self.routeResponseData(distanceMeters: 1_000, timeMilliseconds: 1_000),
+                Self.testLimits(maximumCoordinatesPerPath: 2)
+            ),
+            (
+                try Self.routeResponseData(distanceMeters: 1_000, timeMilliseconds: 1_000),
+                Self.testLimits(maximumInstructionsPerPath: 0)
+            ),
+            (
+                try Self.routeResponseWithDetailsData(
+                    detailsJSON: #"{"surface":[[0,1,"asphalt"],[1,2,"gravel"]]}"#
+                ),
+                Self.testLimits(maximumPathDetailsPerPath: 1)
+            )
+        ]
+
+        for (payload, limits) in cases {
+            URLProtocolStub.reset(responses: [.init(statusCode: 200, data: payload)])
+            do {
+                _ = try await calculateStandardRoute(using: makeClient(limits: limits))
+                XCTFail("A structural ceiling must fail closed.")
+            } catch GraphHopperError.invalidResponse {
+                // Expected.
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    @MainActor
+    func testMalformedAndOutOfRangePathDetailsFailClosed() async throws {
+        let repeatedOverlappingIntervals = Array(
+            repeating: #"[0,2,"asphalt"]"#,
+            count: 512
+        ).joined(separator: ",")
+        let detailsPayloads = [
+            #"{"surface":[["broken"]]}"#,
+            #"{"surface":[[-1,1,"asphalt"]]}"#,
+            #"{"surface":[[0,99,"asphalt"]]}"#,
+            #"{"surface":[[2,1,"asphalt"]]}"#,
+            "{\"surface\":[\(repeatedOverlappingIntervals)]}"
+        ]
+
+        for details in detailsPayloads {
+            URLProtocolStub.reset(
+                responses: [
+                    .init(
+                        statusCode: 200,
+                        data: try Self.routeResponseWithDetailsData(detailsJSON: details)
+                    )
+                ]
+            )
+            do {
+                _ = try await calculateStandardRoute(using: makeClient())
+                XCTFail("Malformed path details must fail closed.")
+            } catch let error as GraphHopperError {
+                switch error {
+                case .decoding, .invalidResponse:
+                    break
+                default:
+                    XCTFail("Unexpected GraphHopper error: \(error)")
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testUnrepresentableIntegralPathDetailCannotCrashOrBecomeVerifiedData() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseWithDetailsData(
+                        detailsJSON: #"{"hike_rating":[[0,2,9223372036854775808]]}"#
+                    )
+                )
+            ]
+        )
+
+        let route = try await calculateStandardRoute(using: makeClient())
+
+        XCTAssertNil(route.verifiedCharacteristics)
+        XCTAssertTrue(route.isVerifiedRoutedResult)
+    }
+
+    @MainActor
+    func testThreeDimensionalCoordinatesProvideElevationFallback() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: Self.customRouteResponseData(
+                        distance: "2500",
+                        time: "1800000",
+                        ascend: nil,
+                        descend: nil,
+                        coordinates: "[10.6,51.8,100],[10.65,51.75,150],[10.7,51.7,120]"
+                    )
+                )
+            ]
+        )
+
+        let route = try await calculateStandardRoute(using: makeClient())
+
+        XCTAssertEqual(route.elevationGainMeters, 50)
+        XCTAssertEqual(route.elevationLossMeters, 30)
+        XCTAssertEqual(route.path.compactMap(\.elevationMeters), [100, 150, 120])
+        XCTAssertTrue(route.isVerifiedRoutedResult)
+    }
+
+    @MainActor
+    func testAdvertisedOversizedResponseFailsBeforeDecode() async throws {
+        let limits = Self.testLimits(maximumSuccessBodyBytes: 512)
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: Data(#"{"paths":[]}"#.utf8),
+                    headerFields: ["Content-Length": "513"]
+                )
+            ]
+        )
+
+        try await assertOversizedFailure(using: makeClient(limits: limits))
+    }
+
+    @MainActor
+    func testStreamedOversizedResponseWithoutContentLengthFailsOnActualBytes() async throws {
+        let limits = Self.testLimits(maximumSuccessBodyBytes: 512)
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: Data(repeating: 0x20, count: 513),
+                    chunkSize: 31
+                )
+            ]
+        )
+
+        try await assertOversizedFailure(using: makeClient(limits: limits))
+    }
+
+    @MainActor
+    func testMisleadingSmallContentLengthCannotBypassActualByteLimit() async throws {
+        let limits = Self.testLimits(maximumSuccessBodyBytes: 512)
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: Data(repeating: 0x20, count: 513),
+                    headerFields: ["Content-Length": "16"],
+                    chunkSize: 29
+                )
+            ]
+        )
+
+        try await assertOversizedFailure(using: makeClient(limits: limits))
+    }
+
+    @MainActor
+    func testGenericAuthenticationRateLimitAndNoRouteErrorsDoNotRetryFlexibleMode() async throws {
+        let errors = [
+            GraphHopperError.api(statusCode: 401, message: "flexible mode unavailable", hints: []),
+            GraphHopperError.api(statusCode: 429, message: "flexible mode unavailable", hints: []),
+            GraphHopperError.api(statusCode: 400, message: "custom model rejected", hints: []),
+            GraphHopperError.api(statusCode: 400, message: "no route found", hints: []),
+            GraphHopperError.api(statusCode: 400, message: "cannot find a route in flexible mode", hints: [])
+        ]
+        XCTAssertTrue(errors.allSatisfy { !$0.isFlexibleModeUnavailable })
+
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 400,
+                    data: Data(#"{"message":"custom model rejected","hints":[]}"#.utf8)
+                )
+            ]
+        )
+        do {
+            _ = try await calculateStandardRoute(using: makeClient())
+            XCTFail("A generic API rejection must not retry without flexible parameters.")
+        } catch let error as GraphHopperError {
+            guard case .api = error else { return XCTFail("Unexpected error: \(error)") }
+        }
+        XCTAssertEqual(URLProtocolStub.requestBodies().count, 1)
+    }
+
+    @MainActor
+    func testTimeoutFailsSafelyWithoutFallbackRetry() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 0,
+                    data: Data(),
+                    failureCode: .timedOut
+                )
+            ]
+        )
+
+        do {
+            _ = try await calculateStandardRoute(using: makeClient())
+            XCTFail("A timed-out request must fail.")
+        } catch let error as GraphHopperError {
+            guard case let .network(message) = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+            XCTAssertTrue(message.localizedCaseInsensitiveContains("timed out"))
+        }
+        XCTAssertEqual(URLProtocolStub.requestBodies().count, 1)
+    }
+
+    @MainActor
+    func testCallerCancellationStopsTransportAndLateResponseCannotSucceed() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(distanceMeters: 1_000, timeMilliseconds: 1_000),
+                    delay: 0.2,
+                    deliversAfterStop: true
+                )
+            ]
+        )
+        let client = try makeClient()
+        let task = Task { try await self.calculateStandardRoute(using: client) }
+        try await Task.sleep(for: .milliseconds(30))
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Cancellation must not become a late route success.")
+        } catch is CancellationError {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertGreaterThanOrEqual(URLProtocolStub.stopLoadingCount(), 1)
+    }
+
+    @MainActor
+    func testProviderBodyAndRequestSecretsAreNotReturnedInErrors() async throws {
+        let sensitive = "provider-secret test-key exact-payload [10.6782,51.8666]"
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 400,
+                    data: Data("{\"message\":\"\(sensitive)\",\"hints\":[]}".utf8)
+                )
+            ]
+        )
+
+        do {
+            _ = try await calculateStandardRoute(using: makeClient())
+            XCTFail("The request must fail.")
+        } catch let error as GraphHopperError {
+            let description = error.localizedDescription
+            XCTAssertFalse(description.contains(sensitive))
+            XCTAssertFalse(description.contains("test-key"))
+            if case let .api(_, message, hints) = error {
+                XCTAssertFalse(message.contains(sensitive))
+                XCTAssertTrue(hints.isEmpty)
+            }
+        }
+    }
+
+    @MainActor
+    private func makeClient(
+        limits: RouteTransportLimits = .standard
+    ) throws -> GraphHopperClient {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [URLProtocolStub.self]
         let session = URLSession(configuration: configuration)
@@ -734,7 +1203,58 @@ final class GraphHopperClientTests: XCTestCase {
                     apiKey: "test-key",
                     baseURL: URL(string: "https://example.com/api/1")!
                 )
+            },
+            limits: limits
+        )
+    }
+
+    @MainActor
+    private func calculateStandardRoute(using client: GraphHopperClient) async throws -> TrailRoute {
+        try await client.calculateGraphHopperRoute(
+            request: RoutePlanningRequest(
+                startQuery: "Start",
+                endQuery: "Finish",
+                activityType: .hiking,
+                graphHopperProfile: "foot",
+                targetDistanceKm: nil,
+                targetDurationMinutes: nil,
+                difficulty: nil,
+                desiredFeatures: []
+            ),
+            start: Coordinate(latitude: 51.8, longitude: 10.6),
+            end: Coordinate(latitude: 51.7, longitude: 10.7)
+        )
+    }
+
+    @MainActor
+    private func assertOversizedFailure(using client: GraphHopperClient) async {
+        do {
+            _ = try await calculateStandardRoute(using: client)
+            XCTFail("An oversized response must fail closed.")
+        } catch let error as GraphHopperError {
+            guard case .decoding = error else {
+                return XCTFail("Unexpected GraphHopper error: \(error)")
             }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    private static func testLimits(
+        maximumSuccessBodyBytes: Int = 1_024 * 1_024,
+        maximumPaths: Int = 8,
+        maximumCoordinatesPerPath: Int = 100_000,
+        maximumInstructionsPerPath: Int = 25_000,
+        maximumPathDetailsPerPath: Int = 100_000
+    ) -> RouteTransportLimits {
+        RouteTransportLimits(
+            maximumSuccessBodyBytes: maximumSuccessBodyBytes,
+            maximumErrorBodyBytes: 64 * 1_024,
+            maximumPaths: maximumPaths,
+            maximumCoordinatesPerPath: maximumCoordinatesPerPath,
+            maximumInstructionsPerPath: maximumInstructionsPerPath,
+            maximumPathDetailsPerPath: maximumPathDetailsPerPath,
+            maximumAbsoluteElevationMeters: 100_000
         )
     }
 
@@ -790,6 +1310,34 @@ final class GraphHopperClientTests: XCTestCase {
         }
         """
         return Data(json.utf8)
+    }
+
+    private static func customRouteResponseData(
+        distance: String,
+        time: String,
+        ascend: String?,
+        descend: String?,
+        coordinates: String = "[10.6,51.8,200],[10.7,51.7,210]"
+    ) -> Data {
+        let ascendField = ascend.map { "\"ascend\":\($0)," } ?? ""
+        let descendField = descend.map { "\"descend\":\($0)," } ?? ""
+        return Data(
+            """
+            {
+              "paths": [{
+                "distance": \(distance),
+                "time": \(time),
+                \(ascendField)
+                \(descendField)
+                "points": {
+                  "type": "LineString",
+                  "coordinates": [\(coordinates)]
+                },
+                "instructions": []
+              }]
+            }
+            """.utf8
+        )
     }
 
     private static func routeResponseWithDetailsData(
@@ -864,26 +1412,64 @@ final class GraphHopperClientTests: XCTestCase {
     }
 }
 
-private final class URLProtocolStub: URLProtocol {
-    struct Response {
+final class URLProtocolStub: URLProtocol, @unchecked Sendable {
+    struct Response: @unchecked Sendable {
         let statusCode: Int
-        let data: Data
+        let chunks: [Data]
+        let headerFields: [String: String]
+        let delay: TimeInterval
+        let failureCode: URLError.Code?
+        let deliversAfterStop: Bool
+
+        init(
+            statusCode: Int,
+            data: Data,
+            headerFields: [String: String] = [:],
+            chunkSize: Int? = nil,
+            delay: TimeInterval = 0,
+            failureCode: URLError.Code? = nil,
+            deliversAfterStop: Bool = false
+        ) {
+            self.statusCode = statusCode
+            if let chunkSize, chunkSize > 0 {
+                chunks = stride(from: 0, to: data.count, by: chunkSize).map { offset in
+                    data.subdata(in: offset..<min(offset + chunkSize, data.count))
+                }
+            } else {
+                chunks = [data]
+            }
+            self.headerFields = headerFields
+            self.delay = delay
+            self.failureCode = failureCode
+            self.deliversAfterStop = deliversAfterStop
+        }
     }
 
     private static let lock = NSLock()
     private nonisolated(unsafe) static var responses: [Response] = []
     private nonisolated(unsafe) static var bodies: [Data] = []
+    private nonisolated(unsafe) static var stops = 0
+    private let stateLock = NSLock()
+    private var stopped = false
 
     static func reset(responses newResponses: [Response]) {
         lock.lock()
         responses = newResponses
         bodies = []
+        stops = 0
         lock.unlock()
     }
 
     static func requestBodies() -> [Data] {
         lock.lock()
         let value = bodies
+        lock.unlock()
+        return value
+    }
+
+    static func stopLoadingCount() -> Int {
+        lock.lock()
+        let value = stops
         lock.unlock()
         return value
     }
@@ -906,18 +1492,53 @@ private final class URLProtocolStub: URLProtocol {
             : Self.responses.removeFirst()
         Self.lock.unlock()
 
+        let deliver: @Sendable () -> Void = { [weak self] in
+            self?.deliver(response)
+        }
+        if response.delay > 0 {
+            DispatchQueue.global().asyncAfter(
+                deadline: .now() + response.delay,
+                execute: deliver
+            )
+        } else {
+            deliver()
+        }
+    }
+
+    override func stopLoading() {
+        stateLock.lock()
+        stopped = true
+        stateLock.unlock()
+        Self.lock.lock()
+        Self.stops += 1
+        Self.lock.unlock()
+    }
+
+    private func deliver(_ response: Response) {
+        stateLock.lock()
+        let shouldDeliver = !stopped || response.deliversAfterStop
+        stateLock.unlock()
+        guard shouldDeliver else { return }
+
+        if let failureCode = response.failureCode {
+            client?.urlProtocol(self, didFailWithError: URLError(failureCode))
+            return
+        }
         let httpResponse = HTTPURLResponse(
             url: request.url!,
             statusCode: response.statusCode,
             httpVersion: nil,
-            headerFields: ["Content-Type": "application/json"]
+            headerFields: ["Content-Type": "application/json"].merging(
+                response.headerFields,
+                uniquingKeysWith: { _, new in new }
+            )
         )!
         client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: response.data)
+        for chunk in response.chunks {
+            client?.urlProtocol(self, didLoad: chunk)
+        }
         client?.urlProtocolDidFinishLoading(self)
     }
-
-    override func stopLoading() {}
 
     private static func readBodyStream(_ stream: InputStream?) -> Data {
         guard let stream else { return Data() }
