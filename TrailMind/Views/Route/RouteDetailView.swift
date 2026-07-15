@@ -1,9 +1,41 @@
 import SwiftUI
 
+struct RouteDetailPresentation: Equatable {
+    let allowsProductionActions: Bool
+    let requestedDifficultyLabel: String?
+    let verificationTitle: String?
+    let verificationMessage: String?
+
+    init(route: TrailRoute) {
+        allowsProductionActions = route.isVerifiedRoutedResult
+        requestedDifficultyLabel = route.planningMetadata?.requestedDifficultySummary
+
+        guard !route.isVerifiedRoutedResult else {
+            verificationTitle = nil
+            verificationMessage = nil
+            return
+        }
+
+        switch route.provenance {
+        case .routed:
+            verificationTitle = "Route verification failed"
+            verificationMessage = "This result no longer matches its routed geometry or statistics. Save and export are unavailable."
+        case .demo:
+            verificationTitle = "Demo route"
+            verificationMessage = "This fixture is not a verified routing result. Its route facts are for preview or testing only."
+        case .unverified(.legacyRecord):
+            verificationTitle = "Unverified saved route"
+            verificationMessage = "This legacy snapshot remains viewable, but its route facts cannot be verified. Save and export are unavailable."
+        case .unverified(.modifiedWithoutRouting), .unverified(.unknown):
+            verificationTitle = "Unverified route"
+            verificationMessage = "This route was not produced by a current verified routing response. Save and export are unavailable."
+        }
+    }
+}
+
 struct RouteDetailView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
-    @State private var showStartNotice = false
     #if DEBUG
     @State private var showIntentQA = false
     #endif
@@ -20,6 +52,7 @@ struct RouteDetailView: View {
 
                 VStack(alignment: .leading, spacing: TrailSpacing.section) {
                     header
+                    verificationNotice
                     RouteStatsRow(route: route)
                     planningContext
                     verifiedRouteCharacteristics
@@ -35,7 +68,9 @@ struct RouteDetailView: View {
                     }
 
                     safety
-                    export
+                    if presentation.allowsProductionActions {
+                        export
+                    }
                 }
                 .padding(TrailSpacing.page)
             }
@@ -44,27 +79,21 @@ struct RouteDetailView: View {
         .scrollIndicators(.hidden)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task { await appModel.savedRoutes.toggle(route) }
-                } label: {
-                    if appModel.savedRoutes.pendingRouteIDs.contains(route.id) {
-                        ProgressView()
-                    } else {
-                        Image(systemName: appModel.savedRoutes.isSaved(route) ? "bookmark.fill" : "bookmark")
+            if presentation.allowsProductionActions {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await appModel.savedRoutes.toggle(route) }
+                    } label: {
+                        if appModel.savedRoutes.pendingRouteIDs.contains(route.id) {
+                            ProgressView()
+                        } else {
+                            Image(systemName: appModel.savedRoutes.isSaved(route) ? "bookmark.fill" : "bookmark")
+                        }
                     }
+                    .disabled(appModel.savedRoutes.pendingRouteIDs.contains(route.id))
+                    .accessibilityLabel(appModel.savedRoutes.isSaved(route) ? "Remove from saved routes" : "Save route")
                 }
-                .disabled(appModel.savedRoutes.pendingRouteIDs.contains(route.id))
-                .accessibilityLabel(appModel.savedRoutes.isSaved(route) ? "Remove from saved routes" : "Save route")
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            bottomActions
-        }
-        .alert("Navigation foundation ready", isPresented: $showStartNotice) {
-            Button("Got it", role: .cancel) { }
-        } message: {
-            Text("Turn-by-turn guidance will connect here next. Review the full route, current weather and local trail conditions before starting.")
         }
         .alert(
             "Saved Routes",
@@ -76,6 +105,35 @@ struct RouteDetailView: View {
             Button("OK", role: .cancel) { appModel.savedRoutes.clearError() }
         } message: {
             Text(appModel.savedRoutes.errorMessage ?? "Please try again.")
+        }
+    }
+
+    private var presentation: RouteDetailPresentation {
+        RouteDetailPresentation(route: route)
+    }
+
+    @ViewBuilder
+    private var verificationNotice: some View {
+        if let title = presentation.verificationTitle,
+           let message = presentation.verificationMessage
+        {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.shield.fill")
+                    .foregroundStyle(theme.warning)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(theme.graphite)
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(theme.sand.opacity(0.68), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .accessibilityIdentifier("route.unverifiedNotice")
         }
     }
 
@@ -203,8 +261,10 @@ struct RouteDetailView: View {
                             PlanningChip(label: Self.durationHintLabel(minutes: targetDurationMinutes), symbol: "clock")
                         }
 
-                        if let difficulty = metadata.difficulty {
-                            PlanningChip(label: difficulty.rawValue, symbol: difficulty.symbol)
+                        if let requestedDifficultyLabel = presentation.requestedDifficultyLabel,
+                           let difficulty = metadata.difficulty
+                        {
+                            PlanningChip(label: requestedDifficultyLabel, symbol: difficulty.symbol)
                         }
 
                         ForEach(metadata.desiredFeatures, id: \.self) { feature in
@@ -311,38 +371,6 @@ struct RouteDetailView: View {
             }
         }
         .padding(.bottom, 18)
-    }
-
-    private var bottomActions: some View {
-        HStack(spacing: 10) {
-            NavigationLink {
-                RouteEditAIView(route: route)
-            } label: {
-                Label("Edit with AI", systemImage: "sparkles")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(theme.forest)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-            }
-            .buttonStyle(.plain)
-            .trailGlass(cornerRadius: 18, interactive: true)
-            .accessibilityIdentifier("route.editAI")
-
-            Button {
-                showStartNotice = true
-            } label: {
-                Label("Start route", systemImage: "location.fill")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(theme.forest, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, TrailSpacing.page)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
     }
 
     private static func durationHintLabel(minutes: Int) -> String {

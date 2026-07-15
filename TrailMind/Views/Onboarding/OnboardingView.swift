@@ -12,23 +12,23 @@ struct OnboardingView: View {
     @Binding var isComplete: Bool
     @State private var selectedPage = 0
 
-    private let pages = [
+    static let pages = [
         Page(
             eyebrow: "PLAN NATURALLY",
             title: "Say what kind of day you need.",
-            body: "A quiet forest loop. A hard summit. Two days of waterfalls and somewhere warm to sleep.",
+            body: "Describe a same-day hike, trail run or bike route with a start, destination, distance or time.",
             symbol: "waveform"
         ),
         Page(
-            eyebrow: "ROUTES WITH REASONS",
-            title: "Not just a line on a map.",
-            body: "TrailMind balances distance, elevation, highlights, practical stops and the shape of your time.",
+            eyebrow: "REAL ROUTE OPTIONS",
+            title: "Compare mapped routes.",
+            body: "TrailMind calculates route geometry and shows measured distance, duration and elevation for each option.",
             symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
         ),
         Page(
-            eyebrow: "STAY OUTDOOR-SMART",
-            title: "Adventure, with judgment built in.",
-            body: "Every plan includes context to review—conditions, water, exposure and the details that matter outside.",
+            eyebrow: "REVIEW BEFORE YOU GO",
+            title: "Plan with current local information.",
+            body: "TrailMind is a planning aid, not live navigation. Check weather, trail conditions, local rules and water availability.",
             symbol: "shield.lefthalf.filled.badge.checkmark"
         )
     ]
@@ -50,7 +50,7 @@ struct OnboardingView: View {
                 HStack {
                     TrailMindMark()
                     Spacer()
-                    Text("\(selectedPage + 1) / \(pages.count)")
+                    Text("\(selectedPage + 1) / \(Self.pages.count)")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.66))
                 }
@@ -58,22 +58,22 @@ struct OnboardingView: View {
                 .padding(.top, 12)
 
                 TabView(selection: $selectedPage) {
-                    ForEach(pages.indices, id: \.self) { index in
-                        OnboardingPageView(page: pages[index])
+                    ForEach(Self.pages.indices, id: \.self) { index in
+                        OnboardingPageView(page: Self.pages[index])
                             .tag(index)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
                 Button {
-                    if selectedPage < pages.count - 1 {
+                    if selectedPage < Self.pages.count - 1 {
                         withAnimation(.snappy) { selectedPage += 1 }
                     } else {
                         isComplete = true
                     }
                 } label: {
                     HStack {
-                        Text(selectedPage == pages.count - 1 ? "Start planning" : "Continue")
+                        Text(selectedPage == Self.pages.count - 1 ? "Start planning" : "Continue")
                         Spacer()
                         Image(systemName: "arrow.right")
                     }

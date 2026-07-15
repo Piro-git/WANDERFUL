@@ -2,11 +2,13 @@ import CoreLocation
 import Foundation
 import MapKit
 
+#if DEBUG
 protocol AIPlannerService: Sendable {
     func parseAdventurePrompt(prompt: String) async throws -> AdventureIntent
     func generateRouteSuggestions(intent: AdventureIntent) async throws -> [TrailRoute]
     func editRoute(route: TrailRoute, instruction: String) async throws -> TrailRoute
 }
+#endif
 
 protocol RoutingService: Sendable {
     func calculateRoute(waypoints: [Waypoint]) async throws -> TrailRoute
@@ -39,6 +41,7 @@ enum TrailServiceError: LocalizedError {
     }
 }
 
+#if DEBUG
 struct MockAIPlannerService: AIPlannerService {
     func parseAdventurePrompt(prompt: String) async throws -> AdventureIntent {
         // TODO: Replace this deterministic parser with the production AI planner endpoint.
@@ -118,6 +121,7 @@ struct MockRoutingService: RoutingService {
         route.elevationProfile
     }
 }
+#endif
 
 struct DefaultMapService: MapService {
     func getMapPreview(route: TrailRoute) -> MKCoordinateRegion {
@@ -198,6 +202,7 @@ final class DefaultLocationService: NSObject, LocationService, CLLocationManager
     }
 }
 
+#if DEBUG
 private extension TrailRoute {
     func edited(
         title: String? = nil,
@@ -232,3 +237,4 @@ private extension TrailRoute {
         )
     }
 }
+#endif

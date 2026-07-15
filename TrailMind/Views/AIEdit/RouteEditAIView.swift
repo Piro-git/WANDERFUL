@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if DEBUG
 struct RouteEditAIView: View {
     @Environment(TrailTheme.self) private var theme
     @FocusState private var isInputFocused: Bool
@@ -186,3 +187,4 @@ struct QuickActionChip: View {
         .buttonStyle(.plain)
     }
 }
+#endif

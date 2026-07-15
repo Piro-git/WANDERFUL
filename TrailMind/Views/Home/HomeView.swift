@@ -21,11 +21,6 @@ struct PlanFlowView: View {
                                 planner.startPlanning(prompt: prompt)
                             }
                         },
-                        onTextRoute: { prompt in
-                            withAnimation(.smooth) {
-                                planner.startTextRoute(prompt: prompt)
-                            }
-                        },
                         onDismissError: planner.dismissError
                     )
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -56,6 +51,14 @@ struct PlanFlowView: View {
     }
 }
 
+struct HomeRouteExample: Identifiable, Equatable, Sendable {
+    let title: String
+    let prompt: String
+    let symbol: String
+
+    var id: String { title }
+}
+
 struct HomeView: View {
     struct ComposerMode: Identifiable {
         let id = UUID()
@@ -68,14 +71,29 @@ struct HomeView: View {
     let initialPrompt: String
     let errorNotice: String?
     let onPlan: (String) -> Void
-    let onTextRoute: (String) -> Void
     let onDismissError: () -> Void
 
-    private let prompts = [
-        ("2-day Harz hike", "backpack.fill"),
-        ("Forest loop nearby", "tree.fill"),
-        ("Waterfalls + views", "water.waves"),
-        ("Easy sunset walk", "sunset.fill")
+    static let routeExamples = [
+        HomeRouteExample(
+            title: "15 km loop",
+            prompt: "15 km Rundwanderung um Ilsenburg",
+            symbol: "arrow.trianglehead.2.clockwise.rotate.90"
+        ),
+        HomeRouteExample(
+            title: "Ilsenburg to Schierke",
+            prompt: "Plan a hike from Ilsenburg to Schierke",
+            symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
+        ),
+        HomeRouteExample(
+            title: "2-hour trail run",
+            prompt: "Trailrun loop from Ilsenburg for 2 hours",
+            symbol: "figure.run"
+        ),
+        HomeRouteExample(
+            title: "Lüneburg bike route",
+            prompt: "Radroute von Lüneburg nach Amelinghausen",
+            symbol: "figure.outdoor.cycle"
+        )
     ]
 
     var body: some View {
@@ -112,9 +130,9 @@ struct HomeView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
-                            ForEach(prompts, id: \.0) { prompt, symbol in
-                                PromptChip(title: prompt, symbol: symbol) {
-                                    onPlan(expandedPrompt(for: prompt))
+                            ForEach(Self.routeExamples) { example in
+                                PromptChip(title: example.title, symbol: example.symbol) {
+                                    onPlan(example.prompt)
                                 }
                             }
                         }
@@ -123,13 +141,6 @@ struct HomeView: View {
                     .contentMargins(.horizontal, -TrailSpacing.page)
                 }
 
-                VStack(alignment: .leading, spacing: 14) {
-                    SectionHeader(title: "Continue outside", subtitle: "Recent plans, ready when you are.")
-                    NavigationLink(value: MockRoutes.luneburgLoop) {
-                        CompactRouteCard(route: MockRoutes.luneburgLoop)
-                    }
-                    .buttonStyle(.plain)
-                }
             }
             .padding(.horizontal, TrailSpacing.page)
             .padding(.bottom, 30)
@@ -141,7 +152,7 @@ struct HomeView: View {
                 startsListening: mode.startsListening,
                 initialPrompt: initialPrompt,
                 language: $voiceLanguage,
-                onSubmit: onTextRoute
+                onSubmit: onPlan
             )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -159,15 +170,6 @@ struct HomeView: View {
                 }
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.82))
-
-                Spacer()
-
-                Image(systemName: "location.fill")
-                    .font(.caption)
-                    .foregroundStyle(theme.mossSoft)
-                Text("Near you")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.72))
             }
 
             Spacer(minLength: 36)
@@ -177,7 +179,7 @@ struct HomeView: View {
                 .foregroundStyle(.white)
                 .tracking(-1.1)
 
-            Text("Describe your perfect route. TrailMind will shape it.")
+            Text("Describe a route. TrailMind calculates it on mapped paths.")
                 .font(.body)
                 .foregroundStyle(.white.opacity(0.68))
                 .padding(.top, 12)
@@ -191,10 +193,10 @@ struct HomeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Tell me the feeling")
+                    Text("Tell me the route")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text("Place, time, effort—or just a mood.")
+                    Text("Start, destination or loop, plus distance or time.")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.6))
                 }
@@ -232,18 +234,6 @@ struct HomeView: View {
         .padding(.top, 10)
     }
 
-    private func expandedPrompt(for title: String) -> String {
-        switch title {
-        case "2-day Harz hike":
-            "Plan a 2-day Harz hike with waterfalls, forest, wide views and a comfortable place to stay."
-        case "Forest loop nearby":
-            "Plan a relaxed 12 km forest loop near Lüneburg with water and quiet paths."
-        case "Waterfalls + views":
-            "Find me a scenic hike in the Harz with waterfalls and a great viewpoint."
-        default:
-            "I only have 3 hours. Plan an easy sunset walk with a beautiful viewpoint."
-        }
-    }
 }
 
 struct VoiceInputOrb: View {
@@ -291,6 +281,7 @@ struct PromptChip: View {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("home.example.\(title)")
     }
 }
 
@@ -546,36 +537,4 @@ struct PromptComposerView: View {
         onSubmit: { _ in }
     )
     .environment(TrailTheme())
-}
-
-private struct CompactRouteCard: View {
-    @Environment(TrailTheme.self) private var theme
-    let route: TrailRoute
-
-    var body: some View {
-        HStack(spacing: 15) {
-            MiniRouteGlyph(route: route)
-                .frame(width: 92, height: 92)
-                .background(theme.sand.opacity(0.7), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 7) {
-                Text(route.location.uppercased())
-                    .font(.caption2.weight(.bold))
-                    .tracking(0.8)
-                    .foregroundStyle(theme.moss)
-                Text(route.title)
-                    .font(.headline)
-                    .foregroundStyle(theme.graphite)
-                Text("\(route.distanceLabel)  ·  \(route.durationLabel)")
-                    .font(.subheadline)
-                    .foregroundStyle(theme.secondaryText)
-            }
-
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(theme.secondaryText.opacity(0.5))
-        }
-        .trailCard()
-    }
 }

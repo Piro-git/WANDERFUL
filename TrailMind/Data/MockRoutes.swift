@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 enum MockRoutes {
     static let all: [TrailRoute] = [harzWeekend, luneburgLoop, sunsetRidge]
 
@@ -137,3 +138,4 @@ enum MockRoutes {
         ]
     )
 }
+#endif

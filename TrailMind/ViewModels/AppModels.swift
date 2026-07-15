@@ -56,18 +56,11 @@ final class PlannerViewModel {
         case suggestions
     }
 
-    private enum RequestKind {
-        case mockSuggestions
-        case dynamicRoute
-    }
-
-    private let plannerService: any AIPlannerService
     private let intentParsingProvider: any IntentParsingProvider
     private let intentValidationService: IntentValidationService
     private let geocodingService: any GeocodingService
     private let routingCoordinator: any RoutingCoordinating
     private let operationTimeouts: OperationTimeouts
-    private var requestKind: RequestKind = .mockSuggestions
     private var activeRequestID: UUID?
 
     var phase: Phase = .home
@@ -98,23 +91,16 @@ final class PlannerViewModel {
     }
 
     var generationFooter: String {
-        switch requestKind {
-        case .mockSuggestions:
-            "Using mock planning data · no route leaves your device"
-        case .dynamicRoute:
-            "Searching with Apple geocoding · routing with GraphHopper"
-        }
+        "Searching with Apple geocoding · calculating a mapped route"
     }
 
     init(
-        plannerService: any AIPlannerService = MockAIPlannerService(),
         intentParsingProvider: any IntentParsingProvider = IntentParsingProviderFactory.makeDefaultProvider(),
         intentValidationService: IntentValidationService = IntentValidationService(),
         geocodingService: any GeocodingService = NativeGeocodingService(),
         routingCoordinator: any RoutingCoordinating = RoutingCoordinator(),
         operationTimeouts: OperationTimeouts = .production
     ) {
-        self.plannerService = plannerService
         self.intentParsingProvider = intentParsingProvider
         self.intentValidationService = intentValidationService
         self.geocodingService = geocodingService
@@ -123,14 +109,14 @@ final class PlannerViewModel {
     }
 
     func startPlanning(prompt: String) {
-        beginPlanning(prompt: prompt, requestKind: .mockSuggestions)
+        beginPlanning(prompt: prompt)
     }
 
     func startTextRoute(prompt: String) {
-        beginPlanning(prompt: prompt, requestKind: .dynamicRoute)
+        startPlanning(prompt: prompt)
     }
 
-    private func beginPlanning(prompt: String, requestKind: RequestKind) {
+    private func beginPlanning(prompt: String) {
         let cleanPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         self.prompt = cleanPrompt
         guard !cleanPrompt.isEmpty else {
@@ -139,9 +125,8 @@ final class PlannerViewModel {
             return
         }
 
-        self.requestKind = requestKind
         activeRequestID = UUID()
-        generationStages = Self.stageStates(for: requestKind)
+        generationStages = Self.stageStates()
         generationStages[0].status = .active
         generationFailure = nil
         errorMessage = nil
@@ -158,12 +143,7 @@ final class PlannerViewModel {
         guard phase == .generating, let requestID = activeRequestID else { return }
 
         do {
-            switch requestKind {
-            case .mockSuggestions:
-                try await generateMockSuggestions(requestID: requestID)
-            case .dynamicRoute:
-                try await generateDynamicRoute(requestID: requestID)
-            }
+            try await generateDynamicRoute(requestID: requestID)
         } catch is CancellationError {
             return
         } catch {
@@ -178,32 +158,6 @@ final class PlannerViewModel {
             generationDebugError = String(reflecting: error)
 #endif
         }
-    }
-
-    private func generateMockSuggestions(requestID: UUID) async throws {
-        for stage in GenerationStage.allCases {
-            try ensureActive(requestID)
-            try await Task.sleep(for: .milliseconds(stage == .understanding ? 500 : 650))
-            try ensureActive(requestID)
-            complete(stage, requestID: requestID)
-            if let next = GenerationStage(rawValue: stage.rawValue + 1) {
-                activate(next, requestID: requestID)
-            }
-        }
-
-        let intent = try await plannerService.parseAdventurePrompt(prompt: prompt)
-        try ensureActive(requestID)
-        let routes = try await plannerService.generateRouteSuggestions(intent: intent)
-        try ensureActive(requestID)
-        suggestions = routes.enumerated().map { index, route in
-            RouteSuggestion(
-                route: route,
-                matchScore: max(96 - index * 5, 80),
-                explanation: route.whyItMatches
-            )
-        }
-        finishDelivery(requestID: requestID)
-        phase = .suggestions
     }
 
     private func generateDynamicRoute(requestID: UUID) async throws {
@@ -262,6 +216,12 @@ final class PlannerViewModel {
             )
         )
         try ensureActive(requestID)
+        for suggestion in routingResult.suggestions {
+            try RouteEligibilityPolicy.validate(
+                suggestion.route,
+                for: .productionSuccess
+            )
+        }
         complete(.routing, requestID: requestID)
         activate(.preparation, requestID: requestID)
 
@@ -324,7 +284,7 @@ final class PlannerViewModel {
 
     func retryGeneration() {
         guard generationFailure != nil else { return }
-        beginPlanning(prompt: prompt, requestKind: requestKind)
+        beginPlanning(prompt: prompt)
     }
 
     func editRequest() {
@@ -337,7 +297,6 @@ final class PlannerViewModel {
 
     func reset() {
         cancelActiveRequest(clearPrompt: true)
-        requestKind = .mockSuggestions
     }
 
     private var activeGenerationStage: GenerationStage? {
@@ -411,23 +370,13 @@ final class PlannerViewModel {
         }
     }
 
-    private static func stageStates(for requestKind: RequestKind) -> [GenerationStageState] {
-        let titles: [String] = switch requestKind {
-        case .mockSuggestions:
-            [
-                "Understanding your adventure",
-                "Finding scenic paths",
-                "Balancing distance and elevation",
-                "Checking highlights and safety"
-            ]
-        case .dynamicRoute:
-            [
-                "Understanding your route request",
-                "Finding the start and destination",
-                "Calculating the outdoor route",
-                "Preparing the map and route details"
-            ]
-        }
+    private static func stageStates() -> [GenerationStageState] {
+        let titles = [
+            "Understanding your route request",
+            "Finding the start and destination",
+            "Calculating the outdoor route",
+            "Preparing the map and route details"
+        ]
         return zip(GenerationStage.allCases, titles).map {
             GenerationStageState(stage: $0.0, title: $0.1, status: .pending)
         }
@@ -481,6 +430,9 @@ final class PlannerViewModel {
         if error is RoutingError {
             return "TrailMind couldn’t build a useful loop from this start. Try a nearby trailhead or a different distance."
         }
+        if error is RouteEligibilityError {
+            return "TrailMind couldn’t verify the returned route. Try again or edit the request."
+        }
         if let error = error as? URLError {
             return error.code == .timedOut
                 ? "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
@@ -495,6 +447,7 @@ private enum PlannerGenerationIssue: Error {
     case timedOut
 }
 
+#if DEBUG
 @Observable
 final class RouteEditViewModel {
     enum MessageKind {
@@ -544,3 +497,4 @@ final class RouteEditViewModel {
         isWorking = false
     }
 }
+#endif

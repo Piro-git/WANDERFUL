@@ -137,7 +137,7 @@ final class PlannerViewModelTests: XCTestCase {
     func testGenerationStartsWithOnlyUnderstandingActive() {
         let viewModel = makeViewModel(
             geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         )
 
         viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
@@ -158,7 +158,7 @@ final class PlannerViewModelTests: XCTestCase {
                 delay: .seconds(5),
                 coordinate: Coordinate(latitude: 51.8666, longitude: 10.6782)
             ),
-            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         )
         viewModel.startTextRoute(prompt: "15 km Rundwanderung um Ilsenburg")
 
@@ -180,7 +180,7 @@ final class PlannerViewModelTests: XCTestCase {
     func testCancellationBeforeParsingCompletesReturnsHome() async {
         let viewModel = makeViewModel(
             geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop),
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
             intentParsingProvider: DelayedIntentParsingProvider(
                 delay: .seconds(5),
                 ignoresCancellation: false
@@ -207,7 +207,7 @@ final class PlannerViewModelTests: XCTestCase {
         let router = DelayedRoutingCoordinator(
             delay: .seconds(5),
             ignoresCancellation: false,
-            route: MockRoutes.luneburgLoop
+            route: TestRouteFixtures.luneburgLoop
         )
         let viewModel = makeViewModel(
             geocodingService: StubGeocodingService(
@@ -237,7 +237,7 @@ final class PlannerViewModelTests: XCTestCase {
         let router = DelayedRoutingCoordinator(
             delay: .milliseconds(80),
             ignoresCancellation: true,
-            route: MockRoutes.luneburgLoop
+            route: TestRouteFixtures.luneburgLoop
         )
         let viewModel = makeViewModel(
             geocodingService: StubGeocodingService(
@@ -264,7 +264,7 @@ final class PlannerViewModelTests: XCTestCase {
         let prompt = "Ilsenburg nach Schierke"
         let viewModel = makeViewModel(
             geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         )
         viewModel.startTextRoute(prompt: prompt)
         await viewModel.generate()
@@ -284,7 +284,7 @@ final class PlannerViewModelTests: XCTestCase {
         let prompt = "Ilsenburg nach Schierke"
         let viewModel = makeViewModel(
             geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop),
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
             intentParsingProvider: DelayedIntentParsingProvider(
                 delay: .seconds(5),
                 ignoresCancellation: false
@@ -331,7 +331,7 @@ final class PlannerViewModelTests: XCTestCase {
     func testEmptyPromptReturnsFriendlyHomeError() {
         let viewModel = makeViewModel(
             geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         )
 
         viewModel.startTextRoute(prompt: "   ")
@@ -354,7 +354,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Schierke": end
             ]
         )
-        let expectedRoute = MockRoutes.luneburgLoop
+        let expectedRoute = TestRouteFixtures.luneburgLoop
         let router = StubRoutingCoordinator(route: expectedRoute)
         let viewModel = makeViewModel(
             geocodingService: geocoder,
@@ -399,7 +399,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Schierke": end
             ]
         )
-        let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
@@ -423,7 +423,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Amelinghausen": end
             ]
         )
-        let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
@@ -446,7 +446,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Schierke": end
             ]
         )
-        let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
@@ -468,7 +468,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Ilsenburg": start
             ]
         )
-        let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
@@ -496,7 +496,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Schierke": start
             ]
         )
-        let route = MockRoutes.luneburgLoop
+        let route = TestRouteFixtures.luneburgLoop
         let router = StubRoutingCoordinator(route: route)
         let remoteIntent = AdventureIntent(
             rawPrompt: "Ich will eine entspannte 15 km Rundwanderung um Schierke",
@@ -551,7 +551,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Ilsenburg": start
             ]
         )
-        let first = MockRoutes.luneburgLoop.withPlanningMetadata(
+        let first = TestRouteFixtures.luneburgLoop.withPlanningMetadata(
             RoutePlanningMetadata(
                 routeType: .loop,
                 activityType: .hiking,
@@ -564,7 +564,7 @@ final class PlannerViewModelTests: XCTestCase {
                 variantLabel: "Closest Match"
             )
         )
-        let second = MockRoutes.sunsetRidge.withPlanningMetadata(
+        let second = TestRouteFixtures.sunsetRidge.withPlanningMetadata(
             RoutePlanningMetadata(
                 routeType: .loop,
                 activityType: .hiking,
@@ -609,7 +609,7 @@ final class PlannerViewModelTests: XCTestCase {
                 "Ilsenburg": start
             ]
         )
-        let route = MockRoutes.luneburgLoop
+        let route = TestRouteFixtures.luneburgLoop
         let router = StubRoutingCoordinator(
             result: .success(
                 RoutingResult(
@@ -649,11 +649,11 @@ final class PlannerViewModelTests: XCTestCase {
                 "Ilsenburg": start
             ]
         )
-        let route = MockRoutes.luneburgLoop
+        let route = TestRouteFixtures.luneburgLoop
         let router = StubRoutingCoordinator(
             result: .success(
                 RoutingResult(
-                    suggestions: RouteSuggestionNormalizer.suggestions(from: [route, MockRoutes.sunsetRidge]),
+                    suggestions: RouteSuggestionNormalizer.suggestions(from: [route, TestRouteFixtures.sunsetRidge]),
                     notice: "GraphHopper round trips need flexible mode on this API plan, so TrailMind built loop options from normal routed segments."
                 )
             )
@@ -679,7 +679,7 @@ final class PlannerViewModelTests: XCTestCase {
     @MainActor
     func testInvalidPromptStopsBeforeGeocoding() async {
         let geocoder = StubGeocodingService(coordinates: [:])
-        let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         let viewModel = makeViewModel(
             geocodingService: geocoder,
             routingCoordinator: router
@@ -701,7 +701,7 @@ final class PlannerViewModelTests: XCTestCase {
     @MainActor
     func testPointToPointWithoutEndShowsContextualDestinationQuestion() async {
         let geocoder = StubGeocodingService(coordinates: [:])
-        let router = StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         let remoteIntent = AdventureIntent(
             rawPrompt: "Plan a route from Ilsenburg to",
             parserSource: .remoteAI,
@@ -762,5 +762,56 @@ final class PlannerViewModelTests: XCTestCase {
             viewModel.generationFailure?.message,
             "Live routing isn’t configured yet. Try again after routing setup is complete."
         )
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    @MainActor
+    func testEveryHomeExampleUsesTheRealPlanningPipeline() async {
+        let coordinates = [
+            "Ilsenburg": Coordinate(latitude: 51.8666, longitude: 10.6782),
+            "Schierke": Coordinate(latitude: 51.7636, longitude: 10.6647),
+            "Lüneburg": Coordinate(latitude: 53.2487, longitude: 10.4079),
+            "Amelinghausen": Coordinate(latitude: 53.1305, longitude: 10.2147)
+        ]
+
+        for example in HomeView.routeExamples {
+            let geocoder = StubGeocodingService(coordinates: coordinates)
+            let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+            let viewModel = makeViewModel(
+                geocodingService: geocoder,
+                routingCoordinator: router
+            )
+
+            viewModel.startPlanning(prompt: example.prompt)
+            await viewModel.generate()
+
+            XCTAssertNotNil(router.intent, "Example did not reach routing: \(example.title)")
+            XCTAssertNil(viewModel.generationFailure, "Example failed: \(example.title)")
+            XCTAssertEqual(viewModel.generatedRoute?.isVerifiedRoutedResult, true)
+            XCTAssertTrue(viewModel.suggestions.isEmpty)
+        }
+    }
+
+    @MainActor
+    func testUnverifiedRoutingResultRemainsAFailureWithoutMockFallback() async {
+        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
+        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(
+                coordinates: ["Ilsenburg": start, "Schierke": end]
+            ),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        )
+
+        viewModel.startPlanning(prompt: "Ilsenburg nach Schierke")
+        await viewModel.generate()
+
+        XCTAssertEqual(viewModel.phase, .generating)
+        XCTAssertEqual(
+            viewModel.generationFailure?.message,
+            "TrailMind couldn’t verify the returned route. Try again or edit the request."
+        )
+        XCTAssertNil(viewModel.generatedRoute)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
     }
 }
