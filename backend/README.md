@@ -41,15 +41,18 @@ App Attest uses exact-pinned, Node 20-compatible dependencies: `cbor-x` for stri
 
 ## Run Locally
 
+The easiest safe local workflow is:
+
 ```sh
 cd backend
-export NODE_ENV=development
-export ROUTE_ALLOW_INSECURE_LOCAL_ROUTING=true
-export INTENT_ALLOW_INSECURE_LOCAL_PARSING=true
 npm test
 npm run build
-npm start
+npm run start:local
 ```
+
+`start:local` reads provider keys from the gitignored `backend/.env`, disables database/App Attest repository selection, enables the two explicit development-only authorization gates, and binds the server to `127.0.0.1` so it is not exposed to the local network. A Debug build running in iOS Simulator uses a non-secret placeholder session only for exact HTTP loopback URLs. Release builds, physical-device builds, HTTPS URLs, and non-loopback hosts always retain the App Attest path.
+
+If `backend/.env` does not exist yet, copy `config.example.env` to `.env` and add the local `GRAPHHOPPER_API_KEY`. Never commit `.env`.
 
 For a production-capable repository, provision a dedicated PostgreSQL database, set `DATABASE_URL` in the deployment environment, and apply migrations before starting or deploying. When Supabase is connected through Vercel Marketplace, the backend also accepts the integration-managed `POSTGRES_URL` automatically; an explicit non-empty `DATABASE_URL` takes precedence.
 

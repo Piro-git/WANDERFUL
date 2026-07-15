@@ -149,7 +149,7 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
         baseURL: URL? = RemoteAIIntentParsingProvider.defaultBaseURL(),
         userLocationHint: String? = nil,
         debugRecorder: IntentParserDebugRecorder = IntentParserDebugRecorder(),
-        authorizer: any RouteSessionAuthorizing = TrailMindBackendSecurity.sessionAuthorizer,
+        authorizer: (any RouteSessionAuthorizing)? = nil,
         dataLoader: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
             try await URLSession.shared.data(for: request)
         }
@@ -157,7 +157,7 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
         self.baseURL = baseURL
         self.userLocationHint = userLocationHint
         self.debugRecorder = debugRecorder
-        self.authorizer = authorizer
+        self.authorizer = authorizer ?? TrailMindBackendSecurity.makeSessionAuthorizer(baseURL: baseURL)
         self.dataLoader = dataLoader
     }
 

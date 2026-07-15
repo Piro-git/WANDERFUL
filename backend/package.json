@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
+    "start:local": "node --env-file=.env scripts/start-local.js",
     "test": "node --test",
     "build": "node --check api/*.js scripts/*.js src/*.js src/appAttest/*.js src/routing/*.js test/*.js",
     "db:migrate": "node scripts/migrate.js"

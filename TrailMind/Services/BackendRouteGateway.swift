@@ -61,11 +61,11 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
     init(
         baseURL: URL? = TrailMindBackendConfiguration.baseURL(),
         session: URLSession = .shared,
-        authorizer: any RouteSessionAuthorizing = TrailMindBackendSecurity.sessionAuthorizer
+        authorizer: (any RouteSessionAuthorizing)? = nil
     ) {
         self.baseURL = baseURL
         self.session = session
-        self.authorizer = authorizer
+        self.authorizer = authorizer ?? TrailMindBackendSecurity.makeSessionAuthorizer(baseURL: baseURL)
     }
 
     func route(_ routeRequest: BackendRouteRequest) async throws -> Data {

@@ -256,6 +256,71 @@ final class RouteSessionServiceTests: XCTestCase {
     }
 }
 
+#if DEBUG && targetEnvironment(simulator)
+@MainActor
+final class LoopbackDevelopmentSessionAuthorizerTests: XCTestCase {
+    func testExactHTTPLoopbackURLsUseDevelopmentAuthorizationWithoutOpeningAppAttestSession() async throws {
+        for value in [
+            "http://127.0.0.1:3000",
+            "http://localhost:3000",
+            "http://[::1]:3000"
+        ] {
+            let opener = FakeRouteSessionOpener(sessions: [attestedSession()])
+            let authorizer = TrailMindBackendSecurity.makeSessionAuthorizer(
+                baseURL: try XCTUnwrap(URL(string: value)),
+                attestedSessionAuthorizer: RouteSessionService(opener: opener)
+            )
+
+            let authorization = try await authorizer.authorization(cost: 2)
+            let openCount = await opener.openCount()
+
+            XCTAssertEqual(authorization.token, LoopbackDevelopmentSessionAuthorizer.placeholderToken)
+            XCTAssertEqual(openCount, 0)
+        }
+    }
+
+    func testNonLoopbackOrHTTPSURLsRetainAppAttestSessionFlow() async throws {
+        let values: [String?] = [
+            nil,
+            "https://127.0.0.1:3000",
+            "http://127.0.0.2:3000",
+            "http://127.0.0.1.example.com:3000",
+            "https://backend-zeta-amber-69.vercel.app"
+        ]
+
+        for value in values {
+            let opener = FakeRouteSessionOpener(sessions: [attestedSession()])
+            let authorizer = TrailMindBackendSecurity.makeSessionAuthorizer(
+                baseURL: value.flatMap(URL.init(string:)),
+                attestedSessionAuthorizer: RouteSessionService(opener: opener)
+            )
+
+            let authorization = try await authorizer.authorization(cost: 2)
+            let openCount = await opener.openCount()
+
+            XCTAssertEqual(authorization.token, "attested-session")
+            XCTAssertEqual(openCount, 1)
+        }
+    }
+
+    func testDevelopmentAuthorizationRejectsInvalidCost() async {
+        let authorizer = LoopbackDevelopmentSessionAuthorizer()
+
+        await XCTAssertThrowsErrorAsync(try await authorizer.authorization(cost: 0)) { error in
+            XCTAssertEqual(error as? AppAttestServiceError, .invalidResponse)
+        }
+    }
+
+    private func attestedSession() -> RouteSession {
+        RouteSession(
+            token: "attested-session",
+            expiresAt: Date().addingTimeInterval(300),
+            remainingCost: 12
+        )
+    }
+}
+#endif
+
 private actor MemoryInstallationStore: SecureInstallationStoring {
     private var keyID: String?
     init(keyID: String? = nil) { self.keyID = keyID }

@@ -22,10 +22,49 @@ protocol RouteSessionAuthorizing: Sendable {
 
 enum TrailMindBackendSecurity {
     static let appAttestService = AppAttestService()
-    static let sessionAuthorizer: any RouteSessionAuthorizing = RouteSessionService(
+    static let attestedSessionAuthorizer: any RouteSessionAuthorizing = RouteSessionService(
         opener: appAttestService
     )
+
+    static func makeSessionAuthorizer(
+        baseURL: URL?,
+        attestedSessionAuthorizer: any RouteSessionAuthorizing = TrailMindBackendSecurity.attestedSessionAuthorizer
+    ) -> any RouteSessionAuthorizing {
+        #if DEBUG && targetEnvironment(simulator)
+        if LoopbackDevelopmentSessionAuthorizer.supports(baseURL: baseURL) {
+            return LoopbackDevelopmentSessionAuthorizer()
+        }
+        #endif
+        return attestedSessionAuthorizer
+    }
 }
+
+#if DEBUG && targetEnvironment(simulator)
+/// Supplies a non-secret placeholder only to an explicitly insecure backend on this Mac.
+/// Release and physical-device builds do not contain this type.
+struct LoopbackDevelopmentSessionAuthorizer: RouteSessionAuthorizing {
+    static let placeholderToken = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+    static func supports(baseURL: URL?) -> Bool {
+        guard
+            let baseURL,
+            baseURL.scheme?.lowercased() == "http",
+            let host = baseURL.host?.lowercased(),
+            ["127.0.0.1", "localhost", "::1"].contains(host)
+        else {
+            return false
+        }
+        return true
+    }
+
+    func authorization(cost: Int) async throws -> RouteSessionAuthorization {
+        guard cost > 0 else { throw AppAttestServiceError.invalidResponse }
+        return RouteSessionAuthorization(token: Self.placeholderToken, requestID: UUID())
+    }
+
+    func invalidate(token: String) async {}
+}
+#endif
 
 actor RouteSessionService: RouteSessionAuthorizing {
     private let opener: any RouteSessionOpening
