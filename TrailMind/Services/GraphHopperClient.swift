@@ -649,6 +649,9 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         } catch {
             throw GraphHopperError.decoding(message: "TrailMind’s routing service returned an unexpected response.")
         }
+        guard let provider = response.provider else {
+            throw GraphHopperError.invalidResponse
+        }
         guard let path = Self.bestPath(
             in: response.paths,
             targetDistanceKm: planningRequest.targetDistanceKm
@@ -659,7 +662,9 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             from: path,
             requestedStart: requestedStart,
             requestedEnd: requestedEnd,
-            planningRequest: planningRequest
+            planningRequest: planningRequest,
+            provider: provider,
+            routingStrategy: .backend
         )
     }
 
@@ -787,7 +792,9 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 from: path,
                 requestedStart: requestedStart,
                 requestedEnd: requestedEnd,
-                planningRequest: planningRequest
+                planningRequest: planningRequest,
+                provider: .graphHopper,
+                routingStrategy: .directGraphHopper
             )
         } catch is CancellationError {
             throw CancellationError()
@@ -1035,7 +1042,9 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             from: path,
             requestedStart: requestedStart,
             requestedEnd: requestedEnd,
-            planningRequest: planningRequest
+            planningRequest: planningRequest,
+            provider: .graphHopper,
+            routingStrategy: .directGraphHopper
         )
     }
 
@@ -1043,7 +1052,9 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         from path: GraphHopperRoutePath,
         requestedStart: Coordinate,
         requestedEnd: Coordinate,
-        planningRequest: RoutePlanningRequest
+        planningRequest: RoutePlanningRequest,
+        provider: RouteProviderIdentity,
+        routingStrategy: RouteRoutingStrategy
     ) throws -> TrailRoute {
         let coordinates = path.points?.coordinates.compactMap(Self.decodeCoordinate) ?? []
         guard coordinates.count >= 2, path.distance >= 10, path.time > 0 else {
@@ -1079,12 +1090,28 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         let activity = planningRequest.activityType
         let resolvedStartName = planningRequest.startQuery
         let resolvedEndName = planningRequest.endQuery ?? planningRequest.startQuery
-        let computedDifficulty = Self.difficulty(distanceKilometers: distanceKilometers, elevationGainMeters: elevationGain)
-        let routeDifficulty = planningRequest.difficulty ?? computedDifficulty
+        let routeDifficulty = RouteDifficulty.estimated(
+            distanceKilometers: distanceKilometers,
+            elevationGainMeters: elevationGain
+        )
         let routeType = planningRequest.routeType
+        let provenance = RouteProvenance.routingEngineOutput(
+            provider: provider,
+            strategy: routingStrategy,
+            activity: activity,
+            routeType: routeType,
+            distanceKilometers: distanceKilometers,
+            elevationGainMeters: elevationGain,
+            elevationLossMeters: elevationLoss,
+            durationHours: durationHours,
+            difficulty: routeDifficulty,
+            path: coordinates,
+            verifiedCharacteristics: verifiedCharacteristics
+        )
 
-        return TrailRoute(
+        let route = TrailRoute(
             id: UUID(),
+            provenance: provenance,
             title: planningRequest.title(
                 startName: resolvedStartName,
                 endName: resolvedEndName,
@@ -1150,6 +1177,8 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             planningMetadata: planningRequest.metadata,
             verifiedCharacteristics: verifiedCharacteristics
         )
+        try RouteEligibilityPolicy.validate(route, for: .productionSuccess)
+        return route
     }
 
     private static func decodeCoordinate(_ values: [Double]) -> Coordinate? {
@@ -1371,19 +1400,6 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         }
     }
 
-    private static func difficulty(
-        distanceKilometers: Double,
-        elevationGainMeters: Int
-    ) -> RouteDifficulty {
-        if distanceKilometers >= 18 || elevationGainMeters >= 800 {
-            return .challenging
-        }
-        if distanceKilometers >= 10 || elevationGainMeters >= 350 {
-            return .moderate
-        }
-        return .easy
-    }
-
     private static func whyItMatches(
         planningRequest: RoutePlanningRequest,
         distanceKilometers: Double
@@ -1558,14 +1574,17 @@ private struct GraphHopperCustomStatement: Encodable {
 }
 
 private struct GraphHopperRouteResponse: Decodable {
+    let provider: RouteProviderIdentity?
     let paths: [GraphHopperRoutePath]
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try container.decodeIfPresent(RouteProviderIdentity.self, forKey: .provider)
         paths = try container.decodeIfPresent([GraphHopperRoutePath].self, forKey: .paths) ?? []
     }
 
     enum CodingKeys: String, CodingKey {
+        case provider
         case paths
     }
 }

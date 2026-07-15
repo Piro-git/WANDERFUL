@@ -147,6 +147,7 @@ struct DefaultMapService: MapService {
 
 struct DefaultGPXService: GPXService {
     func exportRouteAsGPX(route: TrailRoute) throws -> String {
+        try RouteEligibilityPolicy.validate(route, for: .export)
         // TODO: Add full metadata, timestamps and route-point extensions before file sharing ships.
         let points = route.path.map {
             #"    <trkpt lat="\#($0.latitude)" lon="\#($0.longitude)"></trkpt>"#
@@ -207,6 +208,7 @@ private extension TrailRoute {
     ) -> TrailRoute {
         TrailRoute(
             id: id,
+            provenance: .unverified(.modifiedWithoutRouting),
             title: title ?? self.title,
             location: location,
             activity: activity,

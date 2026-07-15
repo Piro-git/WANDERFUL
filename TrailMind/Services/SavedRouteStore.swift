@@ -24,7 +24,8 @@ protocol SavedRouteStore: Sendable {
 }
 
 actor LocalSavedRouteStore: SavedRouteStore {
-    nonisolated static let currentSchemaVersion = 1
+    nonisolated static let currentSchemaVersion = 2
+    nonisolated private static let supportedSchemaVersions = 1...currentSchemaVersion
 
     private let directoryURL: URL
     private let encoder: JSONEncoder
@@ -59,7 +60,7 @@ actor LocalSavedRouteStore: SavedRouteStore {
             do {
                 let data = try Data(contentsOf: url)
                 let header = try decoder.decode(SchemaHeader.self, from: data)
-                guard header.schemaVersion == Self.currentSchemaVersion else {
+                guard Self.supportedSchemaVersions.contains(header.schemaVersion) else {
                     skipped += 1
                     continue
                 }
@@ -77,6 +78,9 @@ actor LocalSavedRouteStore: SavedRouteStore {
     }
 
     func save(_ route: TrailRoute, at date: Date = Date()) async throws -> SavedRouteSnapshot {
+        try await MainActor.run {
+            try RouteEligibilityPolicy.validate(route, for: .persistence)
+        }
         try createDirectoryIfNeeded()
         let url = recordURL(for: route.id)
         let existing = try? decodeRecord(at: url)
@@ -100,6 +104,9 @@ actor LocalSavedRouteStore: SavedRouteStore {
     }
 
     func encodedSize(of route: TrailRoute, at date: Date = Date()) async throws -> Int {
+        try await MainActor.run {
+            try RouteEligibilityPolicy.validate(route, for: .persistence)
+        }
         let record = await MainActor.run { PersistedRoute(route: route, createdAt: date, savedAt: date) }
         return try encoder.encode(record).count
     }
@@ -136,6 +143,9 @@ actor InMemorySavedRouteStore: SavedRouteStore {
 
     func save(_ route: TrailRoute, at date: Date = Date()) async throws -> SavedRouteSnapshot {
         if let saveError { throw saveError }
+        try await MainActor.run {
+            try RouteEligibilityPolicy.validate(route, for: .persistence)
+        }
         let existing = snapshots[route.id]
         let snapshot = SavedRouteSnapshot(
             route: route,
@@ -164,6 +174,7 @@ nonisolated private struct PersistedRoute: Codable {
     let savedAt: Date
     let createdAt: Date
     let id: UUID
+    let provenance: PersistedRouteProvenance?
     let title: String
     let location: String
     let activity: String
@@ -190,6 +201,7 @@ nonisolated private struct PersistedRoute: Codable {
         self.savedAt = savedAt
         self.createdAt = createdAt
         id = route.id
+        provenance = PersistedRouteProvenance(route.provenance)
         title = route.title
         location = route.location
         activity = route.activity.rawValue
@@ -220,31 +232,49 @@ nonisolated private struct PersistedRoute: Codable {
                 let routeType = TrailRouteType(rawValue: routeType)
             else { throw PersistedRouteError.invalidEnumValue }
 
+            let routeProvenance: RouteProvenance
+            switch schemaVersion {
+            case 1:
+                routeProvenance = .unverified(.legacyRecord)
+            case LocalSavedRouteStore.currentSchemaVersion:
+                guard let provenance else {
+                    throw PersistedRouteError.invalidProvenance
+                }
+                routeProvenance = try provenance.value
+            default:
+                throw PersistedRouteError.unsupportedSchema
+            }
+
+            let route = TrailRoute(
+                id: id,
+                provenance: routeProvenance,
+                title: title,
+                location: location,
+                activity: activity,
+                distanceKilometers: distanceKilometers,
+                elevationGainMeters: elevationGainMeters,
+                elevationLossMeters: elevationLossMeters,
+                durationHours: durationHours,
+                difficulty: difficulty,
+                routeType: routeType,
+                summary: summary,
+                whyItMatches: whyItMatches,
+                highlights: highlights.map(\.value),
+                waypoints: try waypoints.map { try $0.value },
+                days: days.map(\.value),
+                safetyNotes: try safetyNotes.map { try $0.value },
+                elevationProfile: elevationProfile,
+                path: path.map(\.value),
+                routeInstructions: routeInstructions.map(\.value),
+                planningMetadata: try planningMetadata?.value,
+                intentDebugMetadata: nil,
+                verifiedCharacteristics: verifiedCharacteristics?.value
+            )
+            if schemaVersion == LocalSavedRouteStore.currentSchemaVersion {
+                try RouteEligibilityPolicy.validate(route, for: .persistence)
+            }
             return SavedRouteSnapshot(
-                route: TrailRoute(
-                    id: id,
-                    title: title,
-                    location: location,
-                    activity: activity,
-                    distanceKilometers: distanceKilometers,
-                    elevationGainMeters: elevationGainMeters,
-                    elevationLossMeters: elevationLossMeters,
-                    durationHours: durationHours,
-                    difficulty: difficulty,
-                    routeType: routeType,
-                    summary: summary,
-                    whyItMatches: whyItMatches,
-                    highlights: highlights.map(\.value),
-                    waypoints: try waypoints.map { try $0.value },
-                    days: days.map(\.value),
-                    safetyNotes: try safetyNotes.map { try $0.value },
-                    elevationProfile: elevationProfile,
-                    path: path.map(\.value),
-                    routeInstructions: routeInstructions.map(\.value),
-                    planningMetadata: try planningMetadata?.value,
-                    intentDebugMetadata: nil,
-                    verifiedCharacteristics: verifiedCharacteristics?.value
-                ),
+                route: route,
                 savedAt: savedAt,
                 createdAt: createdAt
             )
@@ -254,6 +284,90 @@ nonisolated private struct PersistedRoute: Codable {
 
 nonisolated private enum PersistedRouteError: Error {
     case invalidEnumValue
+    case invalidProvenance
+    case unsupportedSchema
+}
+
+nonisolated private struct PersistedRouteProvenance: Codable {
+    let kind: String
+    let provider: String?
+    let routingStrategy: String?
+    let factFingerprint: String?
+    let demoKind: String?
+    let unverifiedReason: String?
+
+    @MainActor init(_ value: RouteProvenance) {
+        switch value {
+        case let .routed(routed):
+            kind = "routed"
+            provider = routed.provider.rawValue
+            routingStrategy = routed.strategy.rawValue
+            factFingerprint = routed.factFingerprint.rawValue
+            demoKind = nil
+            unverifiedReason = nil
+        case let .demo(demo):
+            kind = "demo"
+            provider = nil
+            routingStrategy = nil
+            factFingerprint = nil
+            demoKind = demo.rawValue
+            unverifiedReason = nil
+        case let .unverified(reason):
+            kind = "unverified"
+            provider = nil
+            routingStrategy = nil
+            factFingerprint = nil
+            demoKind = nil
+            unverifiedReason = reason.rawValue
+        }
+    }
+
+    @MainActor var value: RouteProvenance {
+        get throws {
+            switch kind {
+            case "routed":
+                guard
+                    let provider,
+                    let provider = RouteProviderIdentity(rawValue: provider),
+                    let routingStrategy,
+                    let routingStrategy = RouteRoutingStrategy(rawValue: routingStrategy),
+                    let factFingerprint,
+                    !factFingerprint.isEmpty,
+                    demoKind == nil,
+                    unverifiedReason == nil
+                else { throw PersistedRouteError.invalidProvenance }
+                return .routed(
+                    RoutedRouteProvenance(
+                        provider: provider,
+                        strategy: routingStrategy,
+                        factFingerprint: RouteFactFingerprint(rawValue: factFingerprint)
+                    )
+                )
+            case "demo":
+                guard
+                    provider == nil,
+                    routingStrategy == nil,
+                    factFingerprint == nil,
+                    let demoKind,
+                    let demoKind = RouteDemoKind(rawValue: demoKind),
+                    unverifiedReason == nil
+                else { throw PersistedRouteError.invalidProvenance }
+                return .demo(demoKind)
+            case "unverified":
+                guard
+                    provider == nil,
+                    routingStrategy == nil,
+                    factFingerprint == nil,
+                    demoKind == nil,
+                    let unverifiedReason,
+                    let unverifiedReason = UnverifiedRouteReason(rawValue: unverifiedReason)
+                else { throw PersistedRouteError.invalidProvenance }
+                return .unverified(unverifiedReason)
+            default:
+                throw PersistedRouteError.invalidProvenance
+            }
+        }
+    }
 }
 
 nonisolated private struct PersistedPoint: Codable {

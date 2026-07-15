@@ -424,6 +424,12 @@ final class RoutingFoundationTests: XCTestCase {
 
         XCTAssertEqual(suggestions.map(\.route.distanceKilometers), [20.5, 18, 22])
         XCTAssertEqual(suggestions.count, 3)
+        XCTAssertTrue(suggestions.allSatisfy { suggestion in
+            guard case let .routed(provenance) = suggestion.route.provenance else { return false }
+            return provenance.provider == .graphHopper &&
+                provenance.strategy == .loopFallback &&
+                suggestion.route.isVerifiedRoutedResult
+        })
     }
 
     func testReversedDuplicateSegmentsCountAsOverlap() {
@@ -738,7 +744,8 @@ final class RoutingFoundationTests: XCTestCase {
 
         XCTAssertEqual(explanations.map(\.title), [
             "Close to your target distance",
-            "Loop route"
+            "Loop route",
+            "Calculated from live trail-network data"
         ])
         XCTAssertTrue(explanations.first?.detail?.hasPrefix("Actual 15") == true)
         XCTAssertTrue(explanations.first?.detail?.hasSuffix("vs requested 15 km.") == true)
@@ -807,6 +814,30 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertTrue(explanations.map(\.title).contains("Calculated from live trail-network data"))
     }
 
+    func testCoordinatesAndInstructionsCannotPromoteDemoRouteToVerified() {
+        let route = Self.route(
+            distanceKm: 15,
+            provenanceOverride: .demo(.testFixture),
+            routeInstructions: [
+                RouteInstruction(
+                    text: "Continue",
+                    streetName: nil,
+                    distanceMeters: 1_000,
+                    durationSeconds: 600,
+                    sign: 0,
+                    coordinate: Self.start
+                )
+            ]
+        )
+
+        XCTAssertFalse(route.isVerifiedRoutedResult)
+        XCTAssertFalse(
+            RouteQualityExplanationGenerator.explanations(for: route)
+                .map(\.title)
+                .contains("Calculated from live trail-network data")
+        )
+    }
+
     func testRouteQualityExplanationsKeepRequestedFeaturesOutOfVerifiedClaims() {
         let metadata = RoutePlanningMetadata(
             routeType: .loop,
@@ -865,7 +896,9 @@ final class RoutingFoundationTests: XCTestCase {
         longitudeOffset: Double = 0,
         elevationGainMeters: Int = 120,
         durationHours: Double? = nil,
-        path customPath: [Coordinate]? = nil
+        path customPath: [Coordinate]? = nil,
+        provenanceOverride: RouteProvenance? = nil,
+        routeInstructions: [RouteInstruction] = []
     ) -> TrailRoute {
         let path = customPath ?? (0..<14).map { index in
             let phase = Double(index) / 13
@@ -875,17 +908,36 @@ final class RoutingFoundationTests: XCTestCase {
                 elevationMeters: 200 + Double(index % 4) * 8
             )
         }
+        let durationHours = durationHours ?? max(distanceKm / 4, 0.5)
+        let difficulty = RouteDifficulty.estimated(
+            distanceKilometers: distanceKm,
+            elevationGainMeters: elevationGainMeters
+        )
+        let provenance = RouteProvenance.routingEngineOutput(
+            provider: .graphHopper,
+            strategy: .backend,
+            activity: .hiking,
+            routeType: .loop,
+            distanceKilometers: distanceKm,
+            elevationGainMeters: elevationGainMeters,
+            elevationLossMeters: 118,
+            durationHours: durationHours,
+            difficulty: difficulty,
+            path: path,
+            verifiedCharacteristics: nil
+        )
 
         return TrailRoute(
             id: UUID(),
+            provenance: provenanceOverride ?? provenance,
             title: "\(distanceKm) km Hike loop around Ilsenburg",
             location: "Germany",
             activity: .hiking,
             distanceKilometers: distanceKm,
             elevationGainMeters: elevationGainMeters,
             elevationLossMeters: 118,
-            durationHours: durationHours ?? max(distanceKm / 4, 0.5),
-            difficulty: .moderate,
+            durationHours: durationHours,
+            difficulty: difficulty,
             routeType: .loop,
             summary: "A test loop.",
             whyItMatches: "Test route.",
@@ -895,6 +947,7 @@ final class RoutingFoundationTests: XCTestCase {
             safetyNotes: [],
             elevationProfile: [],
             path: path,
+            routeInstructions: routeInstructions,
             planningMetadata: request(routeType: .loop, endQuery: nil).metadata
         )
     }

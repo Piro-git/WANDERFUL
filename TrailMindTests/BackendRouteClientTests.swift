@@ -34,6 +34,42 @@ final class BackendRouteClientTests: XCTestCase {
         let encoded = try JSONEncoder().encode(captured)
         XCTAssertFalse(String(decoding: encoded, as: UTF8.self).localizedCaseInsensitiveContains("apiKey"))
         XCTAssertEqual(route.distanceKilometers, 12.3, accuracy: 0.01)
+        guard case let .routed(provenance) = route.provenance else {
+            return XCTFail("Backend route must carry decoded routing provenance.")
+        }
+        XCTAssertEqual(provenance.provider, .graphHopper)
+        XCTAssertEqual(provenance.strategy, .backend)
+        XCTAssertTrue(route.isVerifiedRoutedResult)
+    }
+
+    func testBackendResponseWithoutProviderCannotBecomeVerified() async throws {
+        let response = Data(String(decoding: Self.routeResponse, as: UTF8.self)
+            .replacingOccurrences(of: #""provider": "graphhopper","#, with: "")
+            .utf8)
+        let client = GraphHopperClient(gateway: RecordingRouteGateway(response: response))
+        let request = RoutePlanningRequest(
+            startQuery: "Ilsenburg",
+            endQuery: "Schierke",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+
+        do {
+            _ = try await client.calculateGraphHopperRoute(
+                request: request,
+                start: Coordinate(latitude: 51.866, longitude: 10.678),
+                end: Coordinate(latitude: 51.765, longitude: 10.653)
+            )
+            XCTFail("A backend response without provider identity must fail closed.")
+        } catch GraphHopperError.invalidResponse {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     func testConcurrentLoopVariantsUseTheGatewayInParallel() async throws {
@@ -63,6 +99,10 @@ final class BackendRouteClientTests: XCTestCase {
         XCTAssertEqual(requests.compactMap { $0.roundTrip?.seed }.sorted(), [11, 29, 47])
         XCTAssertTrue(requests.allSatisfy { $0.weightedCost == 2 })
         XCTAssertGreaterThan(maximumConcurrentRequests, 1)
+        XCTAssertTrue(routes.allSatisfy { route in
+            guard case let .routed(provenance) = route.provenance else { return false }
+            return provenance.provider == .graphHopper && provenance.strategy == .backend
+        })
     }
 
     private static let routeResponse = Data(#"""

@@ -28,12 +28,210 @@ enum RouteDifficulty: String, CaseIterable, Hashable, Sendable {
         case .challenging: "bolt.fill"
         }
     }
+
+    static func estimated(
+        distanceKilometers: Double,
+        elevationGainMeters: Int
+    ) -> RouteDifficulty {
+        if distanceKilometers >= 18 || elevationGainMeters >= 800 {
+            return .challenging
+        }
+        if distanceKilometers >= 10 || elevationGainMeters >= 350 {
+            return .moderate
+        }
+        return .easy
+    }
 }
 
 enum TrailRouteType: String, Hashable, Sendable {
     case loop = "Loop"
     case pointToPoint = "Point to point"
     case multiDay = "Multi-day"
+}
+
+enum RouteProviderIdentity: String, Decodable, Hashable, Sendable {
+    case graphHopper = "graphhopper"
+}
+
+enum RouteRoutingStrategy: String, Hashable, Sendable {
+    case backend
+    case directGraphHopper
+    case loopFallback
+}
+
+enum RouteDemoKind: String, Hashable, Sendable {
+    case mock
+    case preview
+    case testFixture
+}
+
+enum UnverifiedRouteReason: String, Hashable, Sendable {
+    case legacyRecord
+    case modifiedWithoutRouting
+    case unknown
+}
+
+struct RouteFactFingerprint: Hashable, Sendable {
+    let rawValue: String
+
+    init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+
+    static func make(
+        activity: ActivityType,
+        routeType: TrailRouteType,
+        distanceKilometers: Double,
+        elevationGainMeters: Int,
+        elevationLossMeters: Int?,
+        durationHours: Double,
+        difficulty: RouteDifficulty,
+        path: [GeoPoint],
+        verifiedCharacteristics: VerifiedRouteCharacteristics?
+    ) -> RouteFactFingerprint {
+        var hasher = StableRouteFactHasher()
+        hasher.combine("trailmind-route-facts-v2")
+        hasher.combine(activity.rawValue)
+        hasher.combine(routeType.rawValue)
+        hasher.combine(distanceKilometers.bitPattern)
+        hasher.combine(elevationGainMeters)
+        if let elevationLossMeters {
+            hasher.combine(UInt8(1))
+            hasher.combine(elevationLossMeters)
+        } else {
+            hasher.combine(UInt8(0))
+        }
+        hasher.combine(durationHours.bitPattern)
+        hasher.combine(difficulty.rawValue)
+        hasher.combine(path.count)
+        for point in path {
+            hasher.combine(point.latitude.bitPattern)
+            hasher.combine(point.longitude.bitPattern)
+            if let elevationMeters = point.elevationMeters {
+                hasher.combine(UInt8(1))
+                hasher.combine(elevationMeters.bitPattern)
+            } else {
+                hasher.combine(UInt8(0))
+            }
+        }
+        if let verifiedCharacteristics {
+            hasher.combine(UInt8(1))
+            hasher.combine(verifiedCharacteristics.routeDistanceMeters.bitPattern)
+            combine(
+                verifiedCharacteristics.surfaceBreakdown,
+                into: &hasher
+            )
+            combine(
+                verifiedCharacteristics.roadClassBreakdown,
+                into: &hasher
+            )
+            combine(
+                verifiedCharacteristics.hikeRatingBreakdown,
+                into: &hasher
+            )
+            hasher.combine(verifiedCharacteristics.surfaceCoverageMeters.bitPattern)
+            hasher.combine(verifiedCharacteristics.roadClassCoverageMeters.bitPattern)
+            hasher.combine(verifiedCharacteristics.hikeRatingCoverageMeters.bitPattern)
+        } else {
+            hasher.combine(UInt8(0))
+        }
+        return RouteFactFingerprint(rawValue: String(hasher.value, radix: 16))
+    }
+
+    private static func combine(
+        _ values: [VerifiedRouteCharacteristicValue],
+        into hasher: inout StableRouteFactHasher
+    ) {
+        let canonicalValues = values.sorted { left, right in
+            if left.value != right.value {
+                return left.value < right.value
+            }
+            return left.distanceMeters.bitPattern < right.distanceMeters.bitPattern
+        }
+        hasher.combine(canonicalValues.count)
+        for value in canonicalValues {
+            hasher.combine(value.value)
+            hasher.combine(value.distanceMeters.bitPattern)
+        }
+    }
+}
+
+private struct StableRouteFactHasher {
+    private(set) var value: UInt64 = 14_695_981_039_346_656_037
+
+    mutating func combine(_ value: String) {
+        combine(value.utf8.count)
+        for byte in value.utf8 {
+            combine(byte)
+        }
+    }
+
+    mutating func combine(_ value: Int) {
+        combine(UInt64(bitPattern: Int64(value)))
+    }
+
+    mutating func combine(_ value: UInt64) {
+        for shift in stride(from: 56, through: 0, by: -8) {
+            combine(UInt8((value >> UInt64(shift)) & 0xff))
+        }
+    }
+
+    mutating func combine(_ byte: UInt8) {
+        value ^= UInt64(byte)
+        value &*= 1_099_511_628_211
+    }
+}
+
+struct RoutedRouteProvenance: Hashable, Sendable {
+    let provider: RouteProviderIdentity
+    let strategy: RouteRoutingStrategy
+    let factFingerprint: RouteFactFingerprint
+
+    func withStrategy(_ strategy: RouteRoutingStrategy) -> RoutedRouteProvenance {
+        RoutedRouteProvenance(
+            provider: provider,
+            strategy: strategy,
+            factFingerprint: factFingerprint
+        )
+    }
+}
+
+enum RouteProvenance: Hashable, Sendable {
+    case routed(RoutedRouteProvenance)
+    case demo(RouteDemoKind)
+    case unverified(UnverifiedRouteReason)
+
+    static func routingEngineOutput(
+        provider: RouteProviderIdentity,
+        strategy: RouteRoutingStrategy,
+        activity: ActivityType,
+        routeType: TrailRouteType,
+        distanceKilometers: Double,
+        elevationGainMeters: Int,
+        elevationLossMeters: Int?,
+        durationHours: Double,
+        difficulty: RouteDifficulty,
+        path: [GeoPoint],
+        verifiedCharacteristics: VerifiedRouteCharacteristics?
+    ) -> RouteProvenance {
+        .routed(
+            RoutedRouteProvenance(
+                provider: provider,
+                strategy: strategy,
+                factFingerprint: RouteFactFingerprint.make(
+                    activity: activity,
+                    routeType: routeType,
+                    distanceKilometers: distanceKilometers,
+                    elevationGainMeters: elevationGainMeters,
+                    elevationLossMeters: elevationLossMeters,
+                    durationHours: durationHours,
+                    difficulty: difficulty,
+                    path: path,
+                    verifiedCharacteristics: verifiedCharacteristics
+                )
+            )
+        )
+    }
 }
 
 enum DesiredFeature: String, CaseIterable, Hashable, Sendable {
@@ -350,6 +548,10 @@ struct RoutePlanningMetadata: Hashable, Sendable {
         variantLabel == nil &&
         loopSearchOutcome == nil &&
         routeShapingSummary == nil
+    }
+
+    var requestedDifficultySummary: String? {
+        difficulty.map { "Requested: \($0.rawValue)" }
     }
 
     init(
@@ -679,7 +881,7 @@ enum RouteQualityExplanationGenerator {
             )
         }
 
-        if hasLiveRoutingEvidence(route: route, debugMetadata: debugMetadata) {
+        if route.isVerifiedRoutedResult {
             explanations.append(
                 RouteQualityExplanation(
                     title: "Calculated from live trail-network data",
@@ -774,17 +976,6 @@ enum RouteQualityExplanationGenerator {
         default:
             break
         }
-    }
-
-    private static func hasLiveRoutingEvidence(
-        route: TrailRoute,
-        debugMetadata: RouteSuggestionDebugMetadata?
-    ) -> Bool {
-        if !route.routeInstructions.isEmpty {
-            return true
-        }
-
-        return debugMetadata?.provider == "LoopFallbackProvider"
     }
 
     private static func unique(_ explanations: [RouteQualityExplanation]) -> [RouteQualityExplanation] {
@@ -1128,6 +1319,7 @@ enum IntentDebugFormatter {
 
 struct TrailRoute: Identifiable, Hashable {
     let id: UUID
+    let provenance: RouteProvenance
     let title: String
     let location: String
     let activity: ActivityType
@@ -1152,6 +1344,7 @@ struct TrailRoute: Identifiable, Hashable {
 
     init(
         id: UUID,
+        provenance: RouteProvenance,
         title: String,
         location: String,
         activity: ActivityType,
@@ -1175,6 +1368,7 @@ struct TrailRoute: Identifiable, Hashable {
         verifiedCharacteristics: VerifiedRouteCharacteristics? = nil
     ) {
         self.id = id
+        self.provenance = provenance
         self.title = title
         self.location = location
         self.activity = activity
@@ -1222,6 +1416,7 @@ struct TrailRoute: Identifiable, Hashable {
     func withPlanningMetadata(_ metadata: RoutePlanningMetadata?) -> TrailRoute {
         TrailRoute(
             id: id,
+            provenance: provenance,
             title: title,
             location: location,
             activity: activity,
@@ -1249,6 +1444,7 @@ struct TrailRoute: Identifiable, Hashable {
     func withIntentDebugMetadata(_ metadata: RouteIntentDebugMetadata?) -> TrailRoute {
         TrailRoute(
             id: id,
+            provenance: provenance,
             title: title,
             location: location,
             activity: activity,
@@ -1271,6 +1467,158 @@ struct TrailRoute: Identifiable, Hashable {
             intentDebugMetadata: metadata,
             verifiedCharacteristics: verifiedCharacteristics
         )
+    }
+
+    func withRoutingStrategy(_ strategy: RouteRoutingStrategy) throws -> TrailRoute {
+        guard case let .routed(routedProvenance) = provenance else {
+            throw RouteEligibilityError.unverified(
+                purpose: .productionSuccess,
+                provenance: provenance
+            )
+        }
+        return TrailRoute(
+            id: id,
+            provenance: .routed(routedProvenance.withStrategy(strategy)),
+            title: title,
+            location: location,
+            activity: activity,
+            distanceKilometers: distanceKilometers,
+            elevationGainMeters: elevationGainMeters,
+            elevationLossMeters: elevationLossMeters,
+            durationHours: durationHours,
+            difficulty: difficulty,
+            routeType: routeType,
+            summary: summary,
+            whyItMatches: whyItMatches,
+            highlights: highlights,
+            waypoints: waypoints,
+            days: days,
+            safetyNotes: safetyNotes,
+            elevationProfile: elevationProfile,
+            path: path,
+            routeInstructions: routeInstructions,
+            planningMetadata: planningMetadata,
+            intentDebugMetadata: intentDebugMetadata,
+            verifiedCharacteristics: verifiedCharacteristics
+        )
+    }
+
+    var isVerifiedRoutedResult: Bool {
+        (try? RouteEligibilityPolicy.validate(self, for: .productionSuccess)) != nil
+    }
+}
+
+enum RouteEligibilityPurpose: String, Hashable, Sendable {
+    case productionSuccess
+    case persistence
+    case export
+}
+
+enum RouteEligibilityError: LocalizedError, Sendable {
+    case unverified(purpose: RouteEligibilityPurpose, provenance: RouteProvenance)
+    case invalidGeometry(purpose: RouteEligibilityPurpose)
+    case invalidQuantitativeFacts(purpose: RouteEligibilityPurpose)
+    case factualDifficultyMismatch(
+        purpose: RouteEligibilityPurpose,
+        expected: RouteDifficulty,
+        actual: RouteDifficulty
+    )
+    case routedFactsChanged(purpose: RouteEligibilityPurpose)
+
+    var errorDescription: String? {
+        switch self {
+        case let .unverified(purpose, _):
+            "Only verified routing-engine results are eligible for \(purpose.label)."
+        case let .invalidGeometry(purpose):
+            "This route does not have valid routed geometry for \(purpose.label)."
+        case let .invalidQuantitativeFacts(purpose):
+            "This route does not have valid routed statistics for \(purpose.label)."
+        case let .factualDifficultyMismatch(purpose, _, _):
+            "This route’s factual difficulty does not match its routed statistics for \(purpose.label)."
+        case let .routedFactsChanged(purpose):
+            "This route’s geometry or statistics changed without a new routing response, so it cannot be used for \(purpose.label)."
+        }
+    }
+}
+
+private extension RouteEligibilityPurpose {
+    nonisolated var label: String {
+        switch self {
+        case .productionSuccess: "route success"
+        case .persistence: "saving"
+        case .export: "export"
+        }
+    }
+}
+
+enum RouteEligibilityPolicy {
+    static func validate(
+        _ route: TrailRoute,
+        for purpose: RouteEligibilityPurpose
+    ) throws {
+        guard case let .routed(routedProvenance) = route.provenance else {
+            throw RouteEligibilityError.unverified(
+                purpose: purpose,
+                provenance: route.provenance
+            )
+        }
+
+        guard hasValidGeometry(route.path) else {
+            throw RouteEligibilityError.invalidGeometry(purpose: purpose)
+        }
+        guard
+            route.distanceKilometers.isFinite,
+            route.distanceKilometers > 0,
+            route.durationHours.isFinite,
+            route.durationHours > 0,
+            route.elevationGainMeters >= 0,
+            route.elevationLossMeters.map({ $0 >= 0 }) ?? true
+        else {
+            throw RouteEligibilityError.invalidQuantitativeFacts(purpose: purpose)
+        }
+
+        let expectedDifficulty = RouteDifficulty.estimated(
+            distanceKilometers: route.distanceKilometers,
+            elevationGainMeters: route.elevationGainMeters
+        )
+        guard route.difficulty == expectedDifficulty else {
+            throw RouteEligibilityError.factualDifficultyMismatch(
+                purpose: purpose,
+                expected: expectedDifficulty,
+                actual: route.difficulty
+            )
+        }
+
+        let actualFingerprint = RouteFactFingerprint.make(
+            activity: route.activity,
+            routeType: route.routeType,
+            distanceKilometers: route.distanceKilometers,
+            elevationGainMeters: route.elevationGainMeters,
+            elevationLossMeters: route.elevationLossMeters,
+            durationHours: route.durationHours,
+            difficulty: route.difficulty,
+            path: route.path,
+            verifiedCharacteristics: route.verifiedCharacteristics
+        )
+        guard routedProvenance.factFingerprint == actualFingerprint else {
+            throw RouteEligibilityError.routedFactsChanged(purpose: purpose)
+        }
+    }
+
+    private static func hasValidGeometry(_ path: [GeoPoint]) -> Bool {
+        guard path.count >= 2 else { return false }
+        guard path.allSatisfy({ point in
+            point.latitude.isFinite &&
+                point.longitude.isFinite &&
+                (-90...90).contains(point.latitude) &&
+                (-180...180).contains(point.longitude) &&
+                (point.elevationMeters?.isFinite ?? true)
+        }) else { return false }
+
+        let first = path[0]
+        return path.dropFirst().contains { point in
+            point.latitude != first.latitude || point.longitude != first.longitude
+        }
     }
 }
 

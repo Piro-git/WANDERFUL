@@ -5,6 +5,7 @@ enum MockRoutes {
 
     static let harzWeekend = TrailRoute(
         id: UUID(uuidString: "29EE13DB-1808-42BD-9BDF-F8B991A2E811")!,
+        provenance: .demo(.mock),
         title: "Harz Waterfall Weekend",
         location: "Harz, Germany",
         activity: .hiking,
@@ -55,6 +56,7 @@ enum MockRoutes {
 
     static let luneburgLoop = TrailRoute(
         id: UUID(uuidString: "B7B60C6A-612F-48A6-B5A4-4277162F4F69")!,
+        provenance: .demo(.mock),
         title: "Lüneburg Forest Loop",
         location: "Lüneburg, Germany",
         activity: .hiking,
@@ -96,6 +98,7 @@ enum MockRoutes {
 
     static let sunsetRidge = TrailRoute(
         id: UUID(uuidString: "7724094B-DC78-4B55-8F78-488FE0579A1B")!,
+        provenance: .demo(.mock),
         title: "Sunset Ridge Walk",
         location: "Harz Foothills",
         activity: .hiking,

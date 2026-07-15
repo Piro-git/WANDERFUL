@@ -163,6 +163,7 @@ final class RouteQualityEvaluationTests: XCTestCase {
         let routePath = path ?? cleanLoopPath()
         return TrailRoute(
             id: UUID(),
+            provenance: .demo(.testFixture),
             title: "Test loop",
             location: "Germany",
             activity: activity,

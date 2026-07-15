@@ -51,6 +51,50 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(route.planningMetadata?.targetDurationMinutes, 120)
         XCTAssertEqual(route.planningMetadata?.desiredFeatures, [.viewpoint, .quiet])
         XCTAssertTrue(route.whyItMatches.contains("Requested: Views, Quiet route"))
+        guard case let .routed(provenance) = route.provenance else {
+            return XCTFail("Point-to-point GraphHopper output must be explicitly routed.")
+        }
+        XCTAssertEqual(provenance.provider, .graphHopper)
+        XCTAssertEqual(provenance.strategy, .directGraphHopper)
+        XCTAssertTrue(route.isVerifiedRoutedResult)
+    }
+
+    @MainActor
+    func testRequestedEasyDoesNotOverrideChallengingReturnedFacts() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        distanceMeters: 20_000,
+                        timeMilliseconds: 18_000_000
+                    )
+                )
+            ]
+        )
+        let client = try makeClient()
+        let request = RoutePlanningRequest(
+            startQuery: "Ilsenburg",
+            endQuery: "Schierke",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: .easy,
+            desiredFeatures: [],
+            avoidFeatures: [.steepClimbs]
+        )
+
+        let route = try await client.calculateGraphHopperRoute(
+            request: request,
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+        )
+
+        XCTAssertEqual(route.difficulty, .challenging)
+        XCTAssertEqual(route.planningMetadata?.difficulty, .easy)
+        XCTAssertEqual(route.planningMetadata?.requestedDifficultySummary, "Requested: Easy")
+        XCTAssertTrue(route.isVerifiedRoutedResult)
     }
 
     @MainActor
@@ -414,6 +458,12 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(route.title, "15.2 km Hike loop around Ilsenburg")
         XCTAssertEqual(route.planningMetadata?.routeType, .loop)
         XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
+        guard case let .routed(provenance) = route.provenance else {
+            return XCTFail("Round-trip GraphHopper output must be explicitly routed.")
+        }
+        XCTAssertEqual(provenance.provider, .graphHopper)
+        XCTAssertEqual(provenance.strategy, .directGraphHopper)
+        XCTAssertTrue(route.isVerifiedRoutedResult)
     }
 
     @MainActor

@@ -34,6 +34,7 @@ final class SavedRouteStoreTests: XCTestCase {
         XCTAssertEqual(result.snapshots.first?.savedAt, savedAt)
         XCTAssertEqual(restored.id, route.id)
         XCTAssertEqual(restored.title, route.title)
+        XCTAssertEqual(restored.provenance, route.provenance)
         XCTAssertEqual(restored.location, route.location)
         XCTAssertEqual(restored.activity, route.activity)
         XCTAssertEqual(restored.routeType, route.routeType)
@@ -53,6 +54,106 @@ final class SavedRouteStoreTests: XCTestCase {
         XCTAssertEqual(restored.days, route.days)
         XCTAssertEqual(restored.highlights, route.highlights)
         XCTAssertNil(restored.intentDebugMetadata)
+        XCTAssertTrue(restored.isVerifiedRoutedResult)
+    }
+
+    @MainActor
+    func testDemoRouteCannotBeSavedOrExported() async throws {
+        let route = MockRoutes.luneburgLoop
+
+        do {
+            _ = try await makeStore().save(route, at: Date())
+            XCTFail("Demo routes must not be persisted as normal saved routes.")
+        } catch let error as RouteEligibilityError {
+            guard case let .unverified(purpose, provenance) = error else {
+                return XCTFail("Unexpected eligibility error: \(error)")
+            }
+            XCTAssertEqual(purpose, .persistence)
+            XCTAssertEqual(provenance, .demo(.mock))
+        }
+
+        XCTAssertThrowsError(try DefaultGPXService().exportRouteAsGPX(route: route)) { error in
+            guard
+                let eligibilityError = error as? RouteEligibilityError,
+                case let .unverified(purpose, provenance) = eligibilityError
+            else { return XCTFail("Unexpected export error: \(error)") }
+            XCTAssertEqual(purpose, .export)
+            XCTAssertEqual(provenance, .demo(.mock))
+        }
+    }
+
+    @MainActor
+    func testChangedMetricsInvalidateOriginalRoutedEvidence() async throws {
+        let route = makeCompleteRoute()
+        let changedRoute = copy(route, distanceKilometers: route.distanceKilometers + 1)
+
+        XCTAssertThrowsError(
+            try RouteEligibilityPolicy.validate(changedRoute, for: .productionSuccess)
+        ) { error in
+            guard
+                let eligibilityError = error as? RouteEligibilityError,
+                case let .routedFactsChanged(purpose) = eligibilityError
+            else { return XCTFail("Unexpected truth error: \(error)") }
+            XCTAssertEqual(purpose, .productionSuccess)
+        }
+        do {
+            _ = try await makeStore().save(changedRoute, at: Date())
+            XCTFail("Changed facts must require a fresh routing response before saving.")
+        } catch let error as RouteEligibilityError {
+            guard case let .routedFactsChanged(purpose) = error else {
+                return XCTFail("Unexpected save error: \(error)")
+            }
+            XCTAssertEqual(purpose, .persistence)
+        }
+    }
+
+    @MainActor
+    func testChangedVerifiedCharacteristicsInvalidateOriginalRoutedEvidence() throws {
+        let route = makeCompleteRoute()
+        let characteristics = try XCTUnwrap(route.verifiedCharacteristics)
+        let changedCharacteristics = VerifiedRouteCharacteristics(
+            routeDistanceMeters: characteristics.routeDistanceMeters,
+            surfaceBreakdown: [
+                VerifiedRouteCharacteristicValue(
+                    value: "unpaved",
+                    distanceMeters: 11_999
+                )
+            ],
+            roadClassBreakdown: characteristics.roadClassBreakdown,
+            hikeRatingBreakdown: characteristics.hikeRatingBreakdown,
+            surfaceCoverageMeters: characteristics.surfaceCoverageMeters,
+            roadClassCoverageMeters: characteristics.roadClassCoverageMeters,
+            hikeRatingCoverageMeters: characteristics.hikeRatingCoverageMeters
+        )
+        let changedRoute = copy(
+            route,
+            verifiedCharacteristics: changedCharacteristics
+        )
+
+        XCTAssertFalse(changedRoute.isVerifiedRoutedResult)
+        XCTAssertThrowsError(
+            try RouteEligibilityPolicy.validate(changedRoute, for: .productionSuccess)
+        ) { error in
+            guard
+                let eligibilityError = error as? RouteEligibilityError,
+                case let .routedFactsChanged(purpose) = eligibilityError
+            else { return XCTFail("Unexpected truth error: \(error)") }
+            XCTAssertEqual(purpose, .productionSuccess)
+        }
+    }
+
+    @MainActor
+    func testGeometryFreeMockEditIsExplicitlyUnverified() async throws {
+        let route = makeCompleteRoute()
+        let edited = try await MockAIPlannerService().editRoute(
+            route: route,
+            instruction: "Make it shorter"
+        )
+
+        XCTAssertEqual(edited.provenance, .unverified(.modifiedWithoutRouting))
+        XCTAssertEqual(edited.path, route.path)
+        XCTAssertNotEqual(edited.distanceKilometers, route.distanceKilometers)
+        XCTAssertFalse(edited.isVerifiedRoutedResult)
     }
 
     @MainActor
@@ -105,6 +206,29 @@ final class SavedRouteStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testVersionTwoRecordWithMismatchedFactsIsSkippedSafely() async throws {
+        let directory = makeDirectoryURL()
+        let route = makeCompleteRoute()
+        let store = LocalSavedRouteStore(directoryURL: directory)
+        _ = try await store.save(route, at: Date())
+
+        let url = directory
+            .appendingPathComponent(route.id.uuidString)
+            .appendingPathExtension("json")
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        )
+        object["distanceKilometers"] = route.distanceKilometers + 1
+        try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+            .write(to: url, options: .atomic)
+
+        let result = try await LocalSavedRouteStore(directoryURL: directory).load()
+
+        XCTAssertTrue(result.snapshots.isEmpty)
+        XCTAssertEqual(result.skippedRecordCount, 1)
+    }
+
+    @MainActor
     func testUnsupportedSchemaIsSkippedSafely() async throws {
         let directory = makeDirectoryURL()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -114,6 +238,43 @@ final class SavedRouteStoreTests: XCTestCase {
         let result = try await LocalSavedRouteStore(directoryURL: directory).load()
         XCTAssertTrue(result.snapshots.isEmpty)
         XCTAssertEqual(result.skippedRecordCount, 1)
+    }
+
+    @MainActor
+    func testLegacySchemaMigratesConservativelyWithoutDataLoss() async throws {
+        let directory = makeDirectoryURL()
+        let route = makeCompleteRoute()
+        let store = LocalSavedRouteStore(directoryURL: directory)
+        _ = try await store.save(route, at: Date(timeIntervalSince1970: 123))
+
+        let url = directory
+            .appendingPathComponent(route.id.uuidString)
+            .appendingPathExtension("json")
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        )
+        object["schemaVersion"] = 1
+        object.removeValue(forKey: "provenance")
+        try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+            .write(to: url, options: .atomic)
+
+        let result = try await LocalSavedRouteStore(directoryURL: directory).load()
+        let restored = try XCTUnwrap(result.snapshots.first?.route)
+
+        XCTAssertEqual(result.skippedRecordCount, 0)
+        XCTAssertEqual(restored.id, route.id)
+        XCTAssertEqual(restored.path, route.path)
+        XCTAssertEqual(restored.distanceKilometers, route.distanceKilometers)
+        XCTAssertEqual(restored.provenance, .unverified(.legacyRecord))
+        XCTAssertFalse(restored.isVerifiedRoutedResult)
+        XCTAssertThrowsError(try DefaultGPXService().exportRouteAsGPX(route: restored)) { error in
+            guard
+                let eligibilityError = error as? RouteEligibilityError,
+                case let .unverified(purpose, provenance) = eligibilityError
+            else { return XCTFail("Unexpected legacy export error: \(error)") }
+            XCTAssertEqual(purpose, .export)
+            XCTAssertEqual(provenance, .unverified(.legacyRecord))
+        }
     }
 
     @MainActor
@@ -215,9 +376,23 @@ final class SavedRouteStoreTests: XCTestCase {
             roadClassCoverageMeters: 14_500,
             hikeRatingCoverageMeters: 10_000
         )
+        let provenance = RouteProvenance.routingEngineOutput(
+            provider: .graphHopper,
+            strategy: .backend,
+            activity: .hiking,
+            routeType: .loop,
+            distanceKilometers: 15.2,
+            elevationGainMeters: 430,
+            elevationLossMeters: 425,
+            durationHours: 3.75,
+            difficulty: .moderate,
+            path: path,
+            verifiedCharacteristics: characteristics
+        )
 
         return TrailRoute(
             id: id,
+            provenance: provenance,
             title: "15.2 km Hike loop around Ilsenburg",
             location: "Ilsenburg, Harz",
             activity: .hiking,
@@ -238,6 +413,39 @@ final class SavedRouteStoreTests: XCTestCase {
             routeInstructions: [RouteInstruction(text: "Continue on the trail", streetName: "Harzweg", distanceMeters: 850, durationSeconds: 600, sign: 0, coordinate: path[0])],
             planningMetadata: metadata,
             verifiedCharacteristics: characteristics
+        )
+    }
+
+    @MainActor
+    private func copy(
+        _ route: TrailRoute,
+        distanceKilometers: Double? = nil,
+        verifiedCharacteristics: VerifiedRouteCharacteristics? = nil
+    ) -> TrailRoute {
+        TrailRoute(
+            id: route.id,
+            provenance: route.provenance,
+            title: route.title,
+            location: route.location,
+            activity: route.activity,
+            distanceKilometers: distanceKilometers ?? route.distanceKilometers,
+            elevationGainMeters: route.elevationGainMeters,
+            elevationLossMeters: route.elevationLossMeters,
+            durationHours: route.durationHours,
+            difficulty: route.difficulty,
+            routeType: route.routeType,
+            summary: route.summary,
+            whyItMatches: route.whyItMatches,
+            highlights: route.highlights,
+            waypoints: route.waypoints,
+            days: route.days,
+            safetyNotes: route.safetyNotes,
+            elevationProfile: route.elevationProfile,
+            path: route.path,
+            routeInstructions: route.routeInstructions,
+            planningMetadata: route.planningMetadata,
+            intentDebugMetadata: route.intentDebugMetadata,
+            verifiedCharacteristics: verifiedCharacteristics ?? route.verifiedCharacteristics
         )
     }
 }

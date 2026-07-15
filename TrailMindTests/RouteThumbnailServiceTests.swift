@@ -66,6 +66,7 @@ private extension TrailRoute {
     func withPath(_ path: [Coordinate]) -> TrailRoute {
         TrailRoute(
             id: id,
+            provenance: .demo(.testFixture),
             title: title,
             location: location,
             activity: activity,

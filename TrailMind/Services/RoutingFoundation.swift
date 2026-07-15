@@ -141,6 +141,7 @@ struct RoutingCoordinator: RoutingCoordinating {
             : intent
         do {
             let primarySuggestions = try await primaryProvider.routeSuggestions(for: routingIntent)
+            try Self.validateProductionSuggestions(primarySuggestions)
             guard routingIntent.request.routeType == .loop else {
                 return RoutingResult(suggestions: primarySuggestions, notice: nil)
             }
@@ -269,13 +270,28 @@ struct RoutingCoordinator: RoutingCoordinating {
         excluding signatures: [String]
     ) async throws -> LoopFallbackSearchResult {
         if let provider = loopFallbackProvider as? LoopFallbackProvider {
-            return try await provider.search(for: intent, excluding: Set(signatures))
+            let result = try await provider.search(for: intent, excluding: Set(signatures))
+            try Self.validateProductionSuggestions(result.suggestions)
+            return result
         }
+        let suggestions = try await loopFallbackProvider.routeSuggestions(for: intent)
+        try Self.validateProductionSuggestions(suggestions)
         return LoopFallbackSearchResult(
-            suggestions: try await loopFallbackProvider.routeSuggestions(for: intent),
+            suggestions: suggestions,
             rejectionCounts: [:],
             didReachTimeBudget: intent.hasExpiredLoopSearchBudget
         )
+    }
+
+    private static func validateProductionSuggestions(
+        _ suggestions: [RouteSuggestion]
+    ) throws {
+        for suggestion in suggestions {
+            try RouteEligibilityPolicy.validate(
+                suggestion.route,
+                for: .productionSuccess
+            )
+        }
     }
 
     private func loopResult(
@@ -373,6 +389,10 @@ struct GraphHopperRoutingProvider: RoutingProvider {
                     end: end
                 )
             ]
+        }
+
+        for route in routes {
+            try RouteEligibilityPolicy.validate(route, for: .productionSuccess)
         }
 
         return RouteSuggestionNormalizer.suggestions(from: routes)
@@ -774,14 +794,14 @@ struct LoopFallbackProvider: RoutingProvider {
         intent: RouteIntent
     ) async -> Result<TrailRoute, Error> {
         do {
-            return .success(
-                try await client.calculateGraphHopperRoute(
-                    waypoints: candidate.waypoints,
-                    request: intent.request,
-                    seed: candidate.seed,
-                    deadline: intent.loopSearchDeadline
-                )
+            let route = try await client.calculateGraphHopperRoute(
+                waypoints: candidate.waypoints,
+                request: intent.request,
+                seed: candidate.seed,
+                deadline: intent.loopSearchDeadline
             )
+            try RouteEligibilityPolicy.validate(route, for: .productionSuccess)
+            return .success(try route.withRoutingStrategy(.loopFallback))
         } catch {
             return .failure(error)
         }
