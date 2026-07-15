@@ -10,17 +10,129 @@ struct SavedRouteSnapshot: Identifiable, Hashable, Sendable {
     let createdAt: Date
 
     var id: UUID { route.id }
+
+    static func newestFirst(_ lhs: SavedRouteSnapshot, _ rhs: SavedRouteSnapshot) -> Bool {
+        if lhs.savedAt == rhs.savedAt {
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+        return lhs.savedAt > rhs.savedAt
+    }
 }
 
-struct SavedRouteLoadResult: Sendable {
+nonisolated struct SavedRouteRecoveryReport: Equatable, Sendable {
+    static let none = SavedRouteRecoveryReport()
+
+    let recoveredLegacyRecordCount: Int
+    let corruptRecordCount: Int
+    let invalidRecordCount: Int
+    let unsupportedSchemaRecordCount: Int
+
+    init(
+        recoveredLegacyRecordCount: Int = 0,
+        corruptRecordCount: Int = 0,
+        invalidRecordCount: Int = 0,
+        unsupportedSchemaRecordCount: Int = 0
+    ) {
+        self.recoveredLegacyRecordCount = recoveredLegacyRecordCount
+        self.corruptRecordCount = corruptRecordCount
+        self.invalidRecordCount = invalidRecordCount
+        self.unsupportedSchemaRecordCount = unsupportedSchemaRecordCount
+    }
+
+    var unusableRecordCount: Int {
+        corruptRecordCount + invalidRecordCount + unsupportedSchemaRecordCount
+    }
+
+    var hasNotice: Bool {
+        recoveredLegacyRecordCount > 0 || unusableRecordCount > 0
+    }
+
+    var removingUnusableRecords: SavedRouteRecoveryReport {
+        SavedRouteRecoveryReport(recoveredLegacyRecordCount: recoveredLegacyRecordCount)
+    }
+
+    var removingRecoveredLegacyRecord: SavedRouteRecoveryReport {
+        SavedRouteRecoveryReport(
+            recoveredLegacyRecordCount: max(0, recoveredLegacyRecordCount - 1),
+            corruptRecordCount: corruptRecordCount,
+            invalidRecordCount: invalidRecordCount,
+            unsupportedSchemaRecordCount: unsupportedSchemaRecordCount
+        )
+    }
+}
+
+nonisolated struct SavedRouteLoadResult: Sendable {
     let snapshots: [SavedRouteSnapshot]
-    let skippedRecordCount: Int
+    let recoveryReport: SavedRouteRecoveryReport
+
+    var skippedRecordCount: Int { recoveryReport.unusableRecordCount }
+}
+
+nonisolated enum SavedRouteStoreError: LocalizedError, Equatable, Sendable {
+    case unreadableStore
+    case writeFailed
+    case deleteFailed
+    case deleteAllFailed
+    case recoveryCleanupUnavailable
+    case recoveryCleanupFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .unreadableStore:
+            "Saved route data could not be read. No saved data was replaced."
+        case .writeFailed:
+            "The saved route data could not be written."
+        case .deleteFailed:
+            "The saved route could not be removed."
+        case .deleteAllFailed:
+            "Saved route data could not be cleared."
+        case .recoveryCleanupUnavailable:
+            "Saved route cleanup requires a successful reload first."
+        case .recoveryCleanupFailed:
+            "Unusable saved route data could not be removed."
+        }
+    }
+}
+
+nonisolated protocol SavedRouteRecordWriting: Sendable {
+    func writeAtomically(_ data: Data, to url: URL) throws
+}
+
+nonisolated struct AtomicSavedRouteRecordWriter: SavedRouteRecordWriting {
+    func writeAtomically(_ data: Data, to url: URL) throws {
+        try data.write(
+            to: url,
+            options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+        )
+    }
+}
+
+nonisolated protocol SavedRouteRecordReading: Sendable {
+    func read(from url: URL) throws -> Data
+}
+
+nonisolated struct FileSavedRouteRecordReader: SavedRouteRecordReading {
+    func read(from url: URL) throws -> Data {
+        try Data(contentsOf: url)
+    }
+}
+
+nonisolated protocol SavedRouteRecordRemoving: Sendable {
+    func remove(at url: URL) throws
+}
+
+nonisolated struct FileSavedRouteRecordRemover: SavedRouteRecordRemoving {
+    func remove(at url: URL) throws {
+        try FileManager.default.removeItem(at: url)
+    }
 }
 
 protocol SavedRouteStore: Sendable {
     func load() async throws -> SavedRouteLoadResult
     func save(_ route: TrailRoute, at date: Date) async throws -> SavedRouteSnapshot
     func remove(routeID: UUID) async throws
+    func removeAll() async throws
+    func discardUnusableRecords() async throws
 }
 
 actor LocalSavedRouteStore: SavedRouteStore {
@@ -30,80 +142,230 @@ actor LocalSavedRouteStore: SavedRouteStore {
     private let directoryURL: URL
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
+    private let recordReader: any SavedRouteRecordReading
+    private let recordRemover: any SavedRouteRecordRemoving
+    private let recordWriter: any SavedRouteRecordWriting
+    private var unusableRecordURLs: Set<URL> = []
+    private var hasCurrentCleanupInventory = false
+    private var isOperationInProgress = false
+    private var operationWaiters: [CheckedContinuation<Void, Never>] = []
 
     static func applicationStore() -> LocalSavedRouteStore {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return LocalSavedRouteStore(directoryURL: baseURL.appendingPathComponent("SavedRoutes", isDirectory: true))
     }
 
-    init(directoryURL: URL) {
+    init(
+        directoryURL: URL,
+        recordReader: any SavedRouteRecordReading = FileSavedRouteRecordReader(),
+        recordRemover: any SavedRouteRecordRemoving = FileSavedRouteRecordRemover(),
+        recordWriter: any SavedRouteRecordWriting = AtomicSavedRouteRecordWriter()
+    ) {
         self.directoryURL = directoryURL
+        self.recordReader = recordReader
+        self.recordRemover = recordRemover
+        self.recordWriter = recordWriter
         encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(SavedRouteDateCoding.string(from: date))
+        }
         encoder.outputFormatting = [.sortedKeys]
         decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            guard let date = SavedRouteDateCoding.date(from: value) else {
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Invalid saved-route timestamp."
+                )
+            }
+            return date
+        }
     }
 
     func load() async throws -> SavedRouteLoadResult {
-        let fileManager = FileManager.default
-        try createDirectoryIfNeeded()
-        let urls = try fileManager.contentsOfDirectory(
-            at: directoryURL,
-            includingPropertiesForKeys: nil,
-            options: [.skipsHiddenFiles]
-        ).filter { $0.pathExtension == "json" }
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+        hasCurrentCleanupInventory = false
 
-        var snapshots: [SavedRouteSnapshot] = []
-        var skipped = 0
-        for url in urls {
-            do {
-                let data = try Data(contentsOf: url)
-                let header = try decoder.decode(SchemaHeader.self, from: data)
-                guard Self.supportedSchemaVersions.contains(header.schemaVersion) else {
-                    skipped += 1
-                    continue
-                }
-                let record = try decoder.decode(PersistedRoute.self, from: data)
-                snapshots.append(try await MainActor.run { try record.snapshot })
-            } catch {
-                skipped += 1
-            }
+        let fileManager = FileManager.default
+        let urls: [URL]
+        do {
+            try createDirectoryIfNeeded()
+            urls = try fileManager.contentsOfDirectory(
+                at: directoryURL,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            )
+            .filter { $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        } catch {
+            unusableRecordURLs = []
+            throw SavedRouteStoreError.unreadableStore
         }
 
+        var snapshots: [SavedRouteSnapshot] = []
+        var recoveredLegacyRecordCount = 0
+        var corruptRecordCount = 0
+        var invalidRecordCount = 0
+        var unsupportedSchemaRecordCount = 0
+        var recoveredUnusableURLs: Set<URL> = []
+        for url in urls {
+            do {
+                let loadedRecord = try await loadRecord(at: url)
+                snapshots.append(loadedRecord.snapshot)
+                if loadedRecord.wasMigratedFromLegacySchema {
+                    recoveredLegacyRecordCount += 1
+                }
+            } catch let error as SavedRouteRecordLoadError {
+                switch error {
+                case .unreadable:
+                    unusableRecordURLs = []
+                    throw SavedRouteStoreError.unreadableStore
+                case .corrupt:
+                    recoveredUnusableURLs.insert(url)
+                    corruptRecordCount += 1
+                case .invalid:
+                    recoveredUnusableURLs.insert(url)
+                    invalidRecordCount += 1
+                case .unsupportedSchema:
+                    recoveredUnusableURLs.insert(url)
+                    unsupportedSchemaRecordCount += 1
+                }
+            } catch {
+                unusableRecordURLs = []
+                throw SavedRouteStoreError.unreadableStore
+            }
+        }
+        unusableRecordURLs = recoveredUnusableURLs
+        hasCurrentCleanupInventory = true
+
+        let sortedSnapshots = await MainActor.run {
+            snapshots.sorted(by: SavedRouteSnapshot.newestFirst)
+        }
         return SavedRouteLoadResult(
-            snapshots: snapshots.sorted { $0.savedAt > $1.savedAt },
-            skippedRecordCount: skipped
+            snapshots: sortedSnapshots,
+            recoveryReport: SavedRouteRecoveryReport(
+                recoveredLegacyRecordCount: recoveredLegacyRecordCount,
+                corruptRecordCount: corruptRecordCount,
+                invalidRecordCount: invalidRecordCount,
+                unsupportedSchemaRecordCount: unsupportedSchemaRecordCount
+            )
         )
     }
 
     func save(_ route: TrailRoute, at date: Date = Date()) async throws -> SavedRouteSnapshot {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
         try await MainActor.run {
             try RouteEligibilityPolicy.validate(route, for: .persistence)
         }
-        try createDirectoryIfNeeded()
+        do {
+            try createDirectoryIfNeeded()
+        } catch {
+            throw SavedRouteStoreError.writeFailed
+        }
         let url = recordURL(for: route.id)
-        let existing = try? decodeRecord(at: url)
+        let existing: PersistedRoute?
+        if FileManager.default.fileExists(atPath: url.path) {
+            do {
+                let record = try decodeSupportedRecord(at: url)
+                guard record.schemaVersion == Self.currentSchemaVersion else {
+                    throw PersistedRouteError.unsupportedSchema
+                }
+                _ = try await MainActor.run { try record.snapshot }
+                existing = record
+            } catch {
+                throw SavedRouteStoreError.writeFailed
+            }
+        } else {
+            existing = nil
+        }
         let record = await MainActor.run {
             PersistedRoute(
                 route: route,
                 createdAt: existing?.createdAt ?? date,
-                savedAt: existing?.savedAt ?? date
+                savedAt: date
             )
         }
-        let data = try encoder.encode(record)
-        try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-        return try await MainActor.run { try record.snapshot }
+        do {
+            let data = try encoder.encode(record)
+            try recordWriter.writeAtomically(data, to: url)
+        } catch {
+            throw SavedRouteStoreError.writeFailed
+        }
+        unusableRecordURLs.remove(url)
+        return SavedRouteSnapshot(
+            route: route,
+            savedAt: date,
+            createdAt: existing?.createdAt ?? date
+        )
     }
 
     func remove(routeID: UUID) async throws {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
         let fileManager = FileManager.default
         let url = recordURL(for: routeID)
         guard fileManager.fileExists(atPath: url.path) else { return }
-        try fileManager.removeItem(at: url)
+        do {
+            try fileManager.removeItem(at: url)
+            unusableRecordURLs.remove(url)
+        } catch {
+            throw SavedRouteStoreError.deleteFailed
+        }
+    }
+
+    func removeAll() async throws {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: directoryURL.path) else {
+            unusableRecordURLs = []
+            hasCurrentCleanupInventory = true
+            return
+        }
+        do {
+            try fileManager.removeItem(at: directoryURL)
+            unusableRecordURLs = []
+            hasCurrentCleanupInventory = true
+        } catch {
+            throw SavedRouteStoreError.deleteAllFailed
+        }
+    }
+
+    func discardUnusableRecords() async throws {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
+        guard hasCurrentCleanupInventory else {
+            throw SavedRouteStoreError.recoveryCleanupUnavailable
+        }
+
+        let fileManager = FileManager.default
+        for url in unusableRecordURLs.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            guard fileManager.fileExists(atPath: url.path) else {
+                unusableRecordURLs.remove(url)
+                continue
+            }
+            do {
+                try recordRemover.remove(at: url)
+                unusableRecordURLs.remove(url)
+            } catch {
+                throw SavedRouteStoreError.recoveryCleanupFailed
+            }
+        }
     }
 
     func encodedSize(of route: TrailRoute, at date: Date = Date()) async throws -> Int {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
         try await MainActor.run {
             try RouteEligibilityPolicy.validate(route, for: .persistence)
         }
@@ -111,8 +373,53 @@ actor LocalSavedRouteStore: SavedRouteStore {
         return try encoder.encode(record).count
     }
 
-    private func decodeRecord(at url: URL) throws -> PersistedRoute {
-        try decoder.decode(PersistedRoute.self, from: Data(contentsOf: url))
+    private func loadRecord(at url: URL) async throws -> LoadedSavedRouteRecord {
+        let data: Data
+        let header: SchemaHeader
+        let record: PersistedRoute
+        do {
+            data = try recordReader.read(from: url)
+        } catch {
+            throw SavedRouteRecordLoadError.unreadable
+        }
+        do {
+            header = try decoder.decode(SchemaHeader.self, from: data)
+        } catch {
+            throw SavedRouteRecordLoadError.corrupt
+        }
+        guard Self.supportedSchemaVersions.contains(header.schemaVersion) else {
+            throw SavedRouteRecordLoadError.unsupportedSchema
+        }
+        do {
+            record = try decoder.decode(PersistedRoute.self, from: data)
+        } catch {
+            throw SavedRouteRecordLoadError.corrupt
+        }
+        let snapshot: SavedRouteSnapshot
+        do {
+            snapshot = try await MainActor.run { try record.snapshot }
+        } catch {
+            throw SavedRouteRecordLoadError.invalid
+        }
+        let filenameMatchesIdentity = await MainActor.run {
+            url.deletingPathExtension().lastPathComponent.caseInsensitiveCompare(snapshot.id.uuidString) == .orderedSame
+        }
+        guard filenameMatchesIdentity else {
+            throw SavedRouteRecordLoadError.invalid
+        }
+        return LoadedSavedRouteRecord(
+            snapshot: snapshot,
+            wasMigratedFromLegacySchema: header.schemaVersion == 1
+        )
+    }
+
+    private func decodeSupportedRecord(at url: URL) throws -> PersistedRoute {
+        let data = try recordReader.read(from: url)
+        let header = try decoder.decode(SchemaHeader.self, from: data)
+        guard Self.supportedSchemaVersions.contains(header.schemaVersion) else {
+            throw PersistedRouteError.unsupportedSchema
+        }
+        return try decoder.decode(PersistedRoute.self, from: data)
     }
 
     private func createDirectoryIfNeeded() throws {
@@ -123,33 +430,77 @@ actor LocalSavedRouteStore: SavedRouteStore {
     private func recordURL(for id: UUID) -> URL {
         directoryURL.appendingPathComponent(id.uuidString).appendingPathExtension("json")
     }
+
+    private func beginSerializedOperation() async {
+        guard isOperationInProgress else {
+            isOperationInProgress = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            operationWaiters.append(continuation)
+        }
+    }
+
+    private func finishSerializedOperation() {
+        guard !operationWaiters.isEmpty else {
+            isOperationInProgress = false
+            return
+        }
+        operationWaiters.removeFirst().resume()
+    }
 }
 
 actor InMemorySavedRouteStore: SavedRouteStore {
     private var snapshots: [UUID: SavedRouteSnapshot]
+    private var recoveryReport: SavedRouteRecoveryReport
+    var loadError: Error?
     var saveError: Error?
     var removeError: Error?
+    var removeAllError: Error?
+    var recoveryCleanupError: Error?
+    private var hasCurrentCleanupInventory = false
+    private var isOperationInProgress = false
+    private var operationWaiters: [CheckedContinuation<Void, Never>] = []
 
-    init(snapshots: [SavedRouteSnapshot] = []) {
+    init(
+        snapshots: [SavedRouteSnapshot] = [],
+        recoveryReport: SavedRouteRecoveryReport = .none
+    ) {
         self.snapshots = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.id, $0) })
+        self.recoveryReport = recoveryReport
     }
 
     func load() async throws -> SavedRouteLoadResult {
-        SavedRouteLoadResult(
-            snapshots: snapshots.values.sorted { $0.savedAt > $1.savedAt },
-            skippedRecordCount: 0
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
+        if let loadError {
+            hasCurrentCleanupInventory = false
+            throw loadError
+        }
+        let unsortedSnapshots = Array(snapshots.values)
+        let sortedSnapshots = await MainActor.run {
+            unsortedSnapshots.sorted(by: SavedRouteSnapshot.newestFirst)
+        }
+        hasCurrentCleanupInventory = true
+        return SavedRouteLoadResult(
+            snapshots: sortedSnapshots,
+            recoveryReport: recoveryReport
         )
     }
 
     func save(_ route: TrailRoute, at date: Date = Date()) async throws -> SavedRouteSnapshot {
-        if let saveError { throw saveError }
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
         try await MainActor.run {
             try RouteEligibilityPolicy.validate(route, for: .persistence)
         }
+        if let saveError { throw saveError }
         let existing = snapshots[route.id]
         let snapshot = SavedRouteSnapshot(
             route: route,
-            savedAt: existing?.savedAt ?? date,
+            savedAt: date,
             createdAt: existing?.createdAt ?? date
         )
         snapshots[route.id] = snapshot
@@ -157,16 +508,94 @@ actor InMemorySavedRouteStore: SavedRouteStore {
     }
 
     func remove(routeID: UUID) async throws {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
         if let removeError { throw removeError }
         snapshots.removeValue(forKey: routeID)
     }
 
+    func removeAll() async throws {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
+        if let removeAllError { throw removeAllError }
+        snapshots = [:]
+        recoveryReport = .none
+        hasCurrentCleanupInventory = true
+    }
+
+    func discardUnusableRecords() async throws {
+        await beginSerializedOperation()
+        defer { finishSerializedOperation() }
+
+        guard hasCurrentCleanupInventory else {
+            throw SavedRouteStoreError.recoveryCleanupUnavailable
+        }
+        if let recoveryCleanupError { throw recoveryCleanupError }
+        recoveryReport = recoveryReport.removingUnusableRecords
+    }
+
+    func setLoadError(_ error: Error?) { loadError = error }
     func setSaveError(_ error: Error?) { saveError = error }
     func setRemoveError(_ error: Error?) { removeError = error }
+    func setRemoveAllError(_ error: Error?) { removeAllError = error }
+    func setRecoveryCleanupError(_ error: Error?) { recoveryCleanupError = error }
+
+    private func beginSerializedOperation() async {
+        guard isOperationInProgress else {
+            isOperationInProgress = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            operationWaiters.append(continuation)
+        }
+    }
+
+    private func finishSerializedOperation() {
+        guard !operationWaiters.isEmpty else {
+            isOperationInProgress = false
+            return
+        }
+        operationWaiters.removeFirst().resume()
+    }
+}
+
+nonisolated private struct LoadedSavedRouteRecord: Sendable {
+    let snapshot: SavedRouteSnapshot
+    let wasMigratedFromLegacySchema: Bool
+}
+
+nonisolated private enum SavedRouteRecordLoadError: Error {
+    case unreadable
+    case corrupt
+    case invalid
+    case unsupportedSchema
 }
 
 nonisolated private struct SchemaHeader: Decodable {
     let schemaVersion: Int
+}
+
+nonisolated private enum SavedRouteDateCoding {
+    static func string(from date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter.string(from: date)
+    }
+
+    static func date(from value: String) -> Date? {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+
+        let legacyFormatter = ISO8601DateFormatter()
+        legacyFormatter.formatOptions = [.withInternetDateTime]
+        return legacyFormatter.date(from: value)
+    }
 }
 
 nonisolated private struct PersistedRoute: Codable {
@@ -270,6 +699,7 @@ nonisolated private struct PersistedRoute: Codable {
                 intentDebugMetadata: nil,
                 verifiedCharacteristics: verifiedCharacteristics?.value
             )
+            try PersistedRouteValidator.validate(route)
             if schemaVersion == LocalSavedRouteStore.currentSchemaVersion {
                 try RouteEligibilityPolicy.validate(route, for: .persistence)
             }
@@ -284,8 +714,59 @@ nonisolated private struct PersistedRoute: Codable {
 
 nonisolated private enum PersistedRouteError: Error {
     case invalidEnumValue
+    case invalidRecord
     case invalidProvenance
     case unsupportedSchema
+}
+
+private enum PersistedRouteValidator {
+    static func validate(_ route: TrailRoute) throws {
+        guard
+            route.distanceKilometers.isFinite,
+            route.distanceKilometers > 0,
+            route.durationHours.isFinite,
+            route.durationHours > 0,
+            route.elevationGainMeters >= 0,
+            route.elevationLossMeters.map({ $0 >= 0 }) ?? true,
+            route.elevationProfile.allSatisfy(\.isFinite),
+            hasValidGeometry(route.path),
+            route.waypoints.allSatisfy({ waypoint in
+                waypoint.distanceKilometers.isFinite &&
+                    waypoint.distanceKilometers >= 0 &&
+                    isValid(waypoint.coordinate)
+            }),
+            route.days.allSatisfy({ day in
+                day.distanceKilometers.isFinite &&
+                    day.distanceKilometers >= 0 &&
+                    day.elevationGainMeters >= 0 &&
+                    day.durationHours.isFinite &&
+                    day.durationHours >= 0
+            }),
+            route.routeInstructions.allSatisfy({ instruction in
+                instruction.distanceMeters.isFinite &&
+                    instruction.distanceMeters >= 0 &&
+                    instruction.durationSeconds.isFinite &&
+                    instruction.durationSeconds >= 0 &&
+                    instruction.coordinate.map(isValid) ?? true
+            })
+        else { throw PersistedRouteError.invalidRecord }
+    }
+
+    private static func hasValidGeometry(_ path: [GeoPoint]) -> Bool {
+        guard path.count >= 2, path.allSatisfy(isValid) else { return false }
+        let first = path[0]
+        return path.dropFirst().contains { point in
+            point.latitude != first.latitude || point.longitude != first.longitude
+        }
+    }
+
+    private static func isValid(_ point: GeoPoint) -> Bool {
+        point.latitude.isFinite &&
+            point.longitude.isFinite &&
+            (-90...90).contains(point.latitude) &&
+            (-180...180).contains(point.longitude) &&
+            (point.elevationMeters?.isFinite ?? true)
+    }
 }
 
 nonisolated private struct PersistedRouteProvenance: Codable {
