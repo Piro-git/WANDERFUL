@@ -5,6 +5,8 @@ struct TrailMindApp: App {
     @AppStorage("hasCompletedTrailMindOnboarding") private var hasCompletedOnboarding = false
     @State private var theme = TrailTheme()
     @State private var appModel = AppModel()
+    @State private var sessionStartup = TrailMindSessionStartupState()
+    private let gpxService = DefaultGPXService()
 
     var body: some Scene {
         WindowGroup {
@@ -20,9 +22,25 @@ struct TrailMindApp: App {
             .tint(theme.forestBright)
             .preferredColorScheme(.light)
             .task {
-                await appModel.savedRoutes.loadIfNeeded()
+                if sessionStartup.claimGPXRecovery() {
+                    async let savedRoutesLoad: Void = appModel.savedRoutes.loadIfNeeded()
+                    async let abandonedExportRecovery: Bool = gpxService.recoverAbandonedExports()
+                    _ = await (savedRoutesLoad, abandonedExportRecovery)
+                } else {
+                    await appModel.savedRoutes.loadIfNeeded()
+                }
             }
         }
+    }
+}
+
+struct TrailMindSessionStartupState: Equatable {
+    private(set) var hasClaimedGPXRecovery = false
+
+    mutating func claimGPXRecovery() -> Bool {
+        guard !hasClaimedGPXRecovery else { return false }
+        hasClaimedGPXRecovery = true
+        return true
     }
 }
 

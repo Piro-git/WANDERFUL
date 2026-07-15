@@ -20,10 +20,6 @@ protocol MapService: Sendable {
     func getRoutePolyline(route: TrailRoute) -> MKPolyline
 }
 
-protocol GPXService: Sendable {
-    func exportRouteAsGPX(route: TrailRoute) throws -> String
-}
-
 protocol LocationService: AnyObject {
     func requestLocationPermission()
     func getCurrentLocation() -> CLLocation?
@@ -146,26 +142,6 @@ struct DefaultMapService: MapService {
     func getRoutePolyline(route: TrailRoute) -> MKPolyline {
         let coordinates = route.path.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
         return MKPolyline(coordinates: coordinates, count: coordinates.count)
-    }
-}
-
-struct DefaultGPXService: GPXService {
-    func exportRouteAsGPX(route: TrailRoute) throws -> String {
-        try RouteEligibilityPolicy.validate(route, for: .export)
-        // TODO: Add full metadata, timestamps and route-point extensions before file sharing ships.
-        let points = route.path.map {
-            #"    <trkpt lat="\#($0.latitude)" lon="\#($0.longitude)"></trkpt>"#
-        }.joined(separator: "\n")
-
-        return """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <gpx version="1.1" creator="TrailMind">
-          <metadata><name>\(route.title)</name></metadata>
-          <trk><name>\(route.title)</name><trkseg>
-        \(points)
-          </trkseg></trk>
-        </gpx>
-        """
     }
 }
 

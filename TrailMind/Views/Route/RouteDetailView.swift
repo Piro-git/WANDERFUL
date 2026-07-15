@@ -1,4 +1,210 @@
 import SwiftUI
+import UIKit
+
+enum GPXShareOutcome: Equatable, Sendable {
+    case completed
+    case cancelled
+    case failed
+}
+
+struct GPXCleanupContext: Equatable, Sendable {
+    let export: PreparedGPXExport
+    let completionErrorMessage: String?
+    let cleanupFailureMessage: String
+}
+
+struct GPXPendingCleanup: Equatable {
+    let context: GPXCleanupContext
+    var isRetrying: Bool
+    var isAlertPresented: Bool
+}
+
+struct GPXExportFlow: Equatable {
+    enum State: Equatable {
+        case idle
+        case preparing
+        case sharing(PreparedGPXExport, isPresented: Bool)
+        case cleaning(GPXCleanupContext)
+        case cleanupPending(GPXPendingCleanup)
+        case failed(String)
+    }
+
+    private(set) var state: State = .idle
+
+    var isPreparing: Bool {
+        state == .preparing
+    }
+
+    var isCleanupRetrying: Bool {
+        guard case let .cleanupPending(pending) = state else { return false }
+        return pending.isRetrying
+    }
+
+    var activeExport: PreparedGPXExport? {
+        switch state {
+        case let .sharing(export, _):
+            return export
+        case let .cleaning(context):
+            return context.export
+        case let .cleanupPending(pending):
+            return pending.context.export
+        case .idle, .preparing, .failed:
+            return nil
+        }
+    }
+
+    var presentedExport: PreparedGPXExport? {
+        guard case let .sharing(export, isPresented: true) = state else { return nil }
+        return export
+    }
+
+    var errorMessage: String? {
+        switch state {
+        case let .failed(message):
+            return message
+        case let .cleanupPending(pending) where pending.isAlertPresented:
+            return pending.context.cleanupFailureMessage
+        case .idle, .preparing, .sharing, .cleaning, .cleanupPending:
+            return nil
+        }
+    }
+
+    var cleanupPendingMessage: String? {
+        guard case let .cleanupPending(pending) = state else { return nil }
+        return pending.context.cleanupFailureMessage
+    }
+
+    var hasPendingCleanup: Bool {
+        if case .cleanupPending = state { return true }
+        return false
+    }
+
+    mutating func begin() -> Bool {
+        switch state {
+        case .idle, .failed:
+            state = .preparing
+            return true
+        case .preparing, .sharing, .cleaning, .cleanupPending:
+            return false
+        }
+    }
+
+    @discardableResult
+    mutating func didPrepare(_ export: PreparedGPXExport) -> Bool {
+        guard state == .preparing else { return false }
+        state = .sharing(export, isPresented: true)
+        return true
+    }
+
+    mutating func didFail(_ error: Error) {
+        guard state == .preparing else { return }
+        state = .failed(GPXExportError.userMessage(for: error))
+    }
+
+    mutating func dismissError() {
+        switch state {
+        case .failed:
+            state = .idle
+        case var .cleanupPending(pending):
+            pending.isAlertPresented = false
+            state = .cleanupPending(pending)
+        case .idle, .preparing, .sharing, .cleaning:
+            break
+        }
+    }
+
+    mutating func cancelPreparation() {
+        guard state == .preparing else { return }
+        state = .idle
+    }
+
+    mutating func didDismissShareSheet() {
+        guard case let .sharing(export, isPresented: true) = state else { return }
+        state = .sharing(export, isPresented: false)
+    }
+
+    @discardableResult
+    mutating func beginFinishingSharing(
+        _ export: PreparedGPXExport,
+        outcome: GPXShareOutcome
+    ) -> GPXCleanupContext? {
+        guard
+            case let .sharing(activeExport, _) = state,
+            activeExport.id == export.id
+        else { return nil }
+
+        let completionErrorMessage = outcome == .failed
+            ? GPXExportError.userMessage(for: GPXExportError.shareFailed)
+            : nil
+        let cleanupFailureMessage = outcome == .failed
+            ? "TrailMind could not share the GPX file or remove its temporary copy. Retry cleanup before exporting again."
+            : GPXExportError.userMessage(for: GPXExportError.cleanupFailed)
+        let context = GPXCleanupContext(
+            export: export,
+            completionErrorMessage: completionErrorMessage,
+            cleanupFailureMessage: cleanupFailureMessage
+        )
+        state = .cleaning(context)
+        return context
+    }
+
+    @discardableResult
+    mutating func beginFinishingDismissedShare(exportID: UUID) -> GPXCleanupContext? {
+        guard
+            case let .sharing(export, _) = state,
+            export.id == exportID
+        else { return nil }
+        return beginFinishingSharing(export, outcome: .cancelled)
+    }
+
+    mutating func requireCleanup(_ context: GPXCleanupContext) {
+        state = .cleanupPending(
+            GPXPendingCleanup(
+                context: context,
+                isRetrying: false,
+                isAlertPresented: true
+            )
+        )
+    }
+
+    @discardableResult
+    mutating func finishCleanup(
+        _ context: GPXCleanupContext,
+        succeeded: Bool
+    ) -> Bool {
+        let matchesCurrentState: Bool
+        switch state {
+        case let .cleaning(activeContext):
+            matchesCurrentState = activeContext.export.id == context.export.id
+        case let .cleanupPending(pending):
+            matchesCurrentState = pending.context.export.id == context.export.id
+        case .idle, .preparing, .sharing, .failed:
+            matchesCurrentState = false
+        }
+        guard matchesCurrentState else { return false }
+
+        if succeeded {
+            if let completionErrorMessage = context.completionErrorMessage {
+                state = .failed(completionErrorMessage)
+            } else {
+                state = .idle
+            }
+        } else {
+            requireCleanup(context)
+        }
+        return true
+    }
+
+    mutating func beginCleanupRetry() -> GPXCleanupContext? {
+        guard case var .cleanupPending(pending) = state, !pending.isRetrying else {
+            return nil
+        }
+        pending.isRetrying = true
+        pending.isAlertPresented = false
+        state = .cleanupPending(pending)
+        return pending.context
+    }
+}
 
 struct RouteDetailPresentation: Equatable {
     let allowsProductionActions: Bool
@@ -36,11 +242,21 @@ struct RouteDetailPresentation: Equatable {
 struct RouteDetailView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
+    @State private var exportFlow = GPXExportFlow()
     #if DEBUG
     @State private var showIntentQA = false
     #endif
 
     let route: TrailRoute
+    private let gpxService: any GPXService
+
+    init(
+        route: TrailRoute,
+        gpxService: any GPXService = DefaultGPXService()
+    ) {
+        self.route = route
+        self.gpxService = gpxService
+    }
 
     var body: some View {
         ScrollView {
@@ -90,7 +306,10 @@ struct RouteDetailView: View {
                             Image(systemName: appModel.savedRoutes.isSaved(route) ? "bookmark.fill" : "bookmark")
                         }
                     }
-                    .disabled(appModel.savedRoutes.pendingRouteIDs.contains(route.id))
+                    .disabled(
+                        appModel.savedRoutes.pendingRouteIDs.contains(route.id)
+                            || appModel.savedRoutes.isPerformingAnyOperation
+                    )
                     .accessibilityLabel(appModel.savedRoutes.isSaved(route) ? "Remove from saved routes" : "Save route")
                 }
             }
@@ -105,6 +324,17 @@ struct RouteDetailView: View {
             Button("OK", role: .cancel) { appModel.savedRoutes.clearError() }
         } message: {
             Text(appModel.savedRoutes.errorMessage ?? "Please try again.")
+        }
+        .sheet(item: presentedExportBinding) { export in
+            GPXActivityView(
+                export: export,
+                onComplete: { outcome in
+                    finishSharing(export, outcome: outcome)
+                },
+                onTeardown: { exportID in
+                    finishSharingAfterSheetTeardown(exportID: exportID)
+                }
+            )
         }
     }
 
@@ -361,16 +591,194 @@ struct RouteDetailView: View {
     private var export: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Take it with you")
-            ShareLink(item: (try? DefaultGPXService().exportRouteAsGPX(route: route)) ?? "") {
-                Label("Export GPX", systemImage: "square.and.arrow.up")
+            Button(action: beginExport) {
+                Group {
+                    if exportFlow.isPreparing {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("Preparing GPX")
+                        }
+                    } else {
+                        Label("Export GPX", systemImage: "square.and.arrow.up")
+                    }
+                }
                     .font(.headline)
                     .foregroundStyle(theme.forest)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
+            .buttonStyle(.plain)
+            .disabled(exportFlow.isPreparing || exportFlow.activeExport != nil)
+            .accessibilityLabel("Export GPX")
+            .accessibilityValue(
+                exportFlow.isPreparing
+                    ? "Preparing GPX"
+                    : (
+                        exportFlow.hasPendingCleanup
+                            ? "Temporary file cleanup required"
+                            : (exportFlow.activeExport == nil ? "Ready" : "Sharing GPX")
+                    )
+            )
+            .accessibilityIdentifier("route.exportGPX")
+
+            if let cleanupMessage = exportFlow.cleanupPendingMessage {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.shield.fill")
+                        .foregroundStyle(theme.warning)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(cleanupMessage)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button {
+                            requestCleanupRetry()
+                        } label: {
+                            if exportFlow.isCleanupRetrying {
+                                Label("Retrying cleanup", systemImage: "arrow.triangle.2.circlepath")
+                            } else {
+                                Label("Retry cleanup", systemImage: "trash.slash")
+                            }
+                        }
+                        .font(.caption.weight(.bold))
+                        .disabled(exportFlow.isCleanupRetrying)
+                        .accessibilityIdentifier("route.exportCleanup.retry")
+                    }
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(theme.sand.opacity(0.68), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .accessibilityIdentifier("route.exportCleanup.pending")
+            }
         }
         .padding(.bottom, 18)
+        .task(id: exportFlow.isPreparing) {
+            await prepareExportIfNeeded()
+        }
+        .alert(
+            "Couldn’t Export GPX",
+            isPresented: Binding(
+                get: { exportFlow.errorMessage != nil },
+                set: { if !$0 { exportFlow.dismissError() } }
+            )
+        ) {
+            if exportFlow.hasPendingCleanup {
+                Button("Retry Cleanup") { requestCleanupRetry() }
+                    .accessibilityIdentifier("route.exportCleanup.alertRetry")
+                Button("Later", role: .cancel) { exportFlow.dismissError() }
+                    .accessibilityIdentifier("route.exportError.dismiss")
+            } else {
+                Button("Dismiss", role: .cancel) { exportFlow.dismissError() }
+                    .accessibilityIdentifier("route.exportError.dismiss")
+            }
+        } message: {
+            Text(exportFlow.errorMessage ?? "Please try again.")
+                .accessibilityIdentifier("route.exportError")
+        }
+    }
+
+    private var presentedExportBinding: Binding<PreparedGPXExport?> {
+        Binding(
+            get: { exportFlow.presentedExport },
+            set: { newValue in
+                if newValue == nil {
+                    exportFlow.didDismissShareSheet()
+                }
+            }
+        )
+    }
+
+    private func beginExport() {
+        _ = exportFlow.begin()
+    }
+
+    @MainActor
+    private func prepareExportIfNeeded() async {
+        guard exportFlow.isPreparing else { return }
+        await Task.yield()
+        guard !Task.isCancelled else {
+            exportFlow.cancelPreparation()
+            return
+        }
+
+        do {
+            let export = try await gpxService.prepareExport(route: route)
+            guard !Task.isCancelled, exportFlow.didPrepare(export) else {
+                await recoverCancelledExport(export)
+                return
+            }
+        } catch let cleanupRequired as GPXCleanupRequiredError {
+            await recoverCleanupRequired(cleanupRequired)
+        } catch is CancellationError {
+            exportFlow.cancelPreparation()
+        } catch {
+            guard !Task.isCancelled else {
+                exportFlow.cancelPreparation()
+                return
+            }
+            exportFlow.didFail(error)
+        }
+    }
+
+    private func finishSharing(_ export: PreparedGPXExport, outcome: GPXShareOutcome) {
+        guard let context = exportFlow.beginFinishingSharing(export, outcome: outcome) else {
+            return
+        }
+        startCleanup(context)
+    }
+
+    private func finishSharingAfterSheetTeardown(exportID: UUID) {
+        guard let context = exportFlow.beginFinishingDismissedShare(exportID: exportID) else {
+            return
+        }
+        startCleanup(context)
+    }
+
+    private func startCleanup(_ context: GPXCleanupContext) {
+        Task { @MainActor in
+            let cleanupSucceeded = await gpxService.cleanup(context.export)
+            guard exportFlow.finishCleanup(context, succeeded: cleanupSucceeded) else { return }
+            if !cleanupSucceeded {
+                await retryPendingCleanup()
+            }
+        }
+    }
+
+    @MainActor
+    private func recoverCancelledExport(_ export: PreparedGPXExport) async {
+        let context = GPXCleanupContext(
+            export: export,
+            completionErrorMessage: nil,
+            cleanupFailureMessage: "TrailMind could not remove the cancelled temporary GPX file. Retry cleanup before exporting again."
+        )
+        exportFlow.requireCleanup(context)
+        await retryPendingCleanup()
+    }
+
+    @MainActor
+    private func recoverCleanupRequired(_ error: GPXCleanupRequiredError) async {
+        let context = GPXCleanupContext(
+            export: error.export,
+            completionErrorMessage: error.primaryError.map {
+                GPXExportError.userMessage(for: $0)
+            },
+            cleanupFailureMessage: GPXExportError.userMessage(for: error)
+        )
+        exportFlow.requireCleanup(context)
+        await retryPendingCleanup()
+    }
+
+    private func requestCleanupRetry() {
+        Task { @MainActor in
+            await retryPendingCleanup()
+        }
+    }
+
+    @MainActor
+    private func retryPendingCleanup() async {
+        guard let context = exportFlow.beginCleanupRetry() else { return }
+        let cleanupSucceeded = await gpxService.cleanup(context.export)
+        _ = exportFlow.finishCleanup(context, succeeded: cleanupSucceeded)
     }
 
     private static func durationHintLabel(minutes: Int) -> String {
@@ -380,6 +788,131 @@ struct RouteDetailView: View {
             return "ca. \(remainder) min"
         }
         return remainder == 0 ? "ca. \(hours) hr" : "ca. \(hours) hr \(remainder) min"
+    }
+}
+
+nonisolated protocol GPXMainActorDispatching: Sendable {
+    func dispatch(_ operation: @escaping @MainActor @Sendable () -> Void)
+}
+
+nonisolated struct GPXTaskMainActorDispatcher: GPXMainActorDispatching {
+    func dispatch(_ operation: @escaping @MainActor @Sendable () -> Void) {
+        Task { @MainActor in
+            operation()
+        }
+    }
+}
+
+@MainActor
+private final class GPXShareLifecycleCallbacks {
+    let onComplete: @MainActor (GPXShareOutcome) -> Void
+    let onTeardown: @MainActor (UUID) -> Void
+
+    init(
+        onComplete: @escaping @MainActor (GPXShareOutcome) -> Void,
+        onTeardown: @escaping @MainActor (UUID) -> Void
+    ) {
+        self.onComplete = onComplete
+        self.onTeardown = onTeardown
+    }
+}
+
+nonisolated final class GPXShareLifecycleCoordinator: @unchecked Sendable {
+    let exportID: UUID
+
+    private let lock = NSLock()
+    private let callbacks: GPXShareLifecycleCallbacks
+    private let dispatcher: any GPXMainActorDispatching
+    private var isResolved = false
+
+    @MainActor
+    init(
+        exportID: UUID,
+        onComplete: @escaping @MainActor (GPXShareOutcome) -> Void,
+        onTeardown: @escaping @MainActor (UUID) -> Void,
+        dispatcher: any GPXMainActorDispatching = GPXTaskMainActorDispatcher()
+    ) {
+        self.exportID = exportID
+        self.callbacks = GPXShareLifecycleCallbacks(
+            onComplete: onComplete,
+            onTeardown: onTeardown
+        )
+        self.dispatcher = dispatcher
+    }
+
+    func receiveCompletion(_ outcome: GPXShareOutcome) {
+        guard claimResolution() else { return }
+        let callbacks = callbacks
+        dispatcher.dispatch {
+            callbacks.onComplete(outcome)
+        }
+    }
+
+    func tearDown() {
+        guard claimResolution() else { return }
+        let callbacks = callbacks
+        let exportID = exportID
+        dispatcher.dispatch {
+            callbacks.onTeardown(exportID)
+        }
+    }
+
+    private func claimResolution() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !isResolved else { return false }
+        isResolved = true
+        return true
+    }
+}
+
+private struct GPXActivityView: UIViewControllerRepresentable {
+    let export: PreparedGPXExport
+    let onComplete: @MainActor (GPXShareOutcome) -> Void
+    let onTeardown: @MainActor (UUID) -> Void
+
+    func makeCoordinator() -> GPXShareLifecycleCoordinator {
+        GPXShareLifecycleCoordinator(
+            exportID: export.id,
+            onComplete: onComplete,
+            onTeardown: onTeardown
+        )
+    }
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let itemProvider = NSItemProvider()
+        itemProvider.suggestedName = export.filename
+        itemProvider.registerFileRepresentation(
+            for: export.contentType,
+            visibility: .all,
+            openInPlace: false
+        ) { completion in
+            completion(export.fileURL, false, nil)
+            return nil
+        }
+
+        let items = UIActivityItemsConfiguration(itemProviders: [itemProvider])
+        let controller = UIActivityViewController(activityItemsConfiguration: items)
+        let lifecycleCoordinator = context.coordinator
+        controller.completionWithItemsHandler = { _, completed, _, activityError in
+            let outcome: GPXShareOutcome
+            if activityError != nil {
+                outcome = .failed
+            } else {
+                outcome = completed ? .completed : .cancelled
+            }
+            lifecycleCoordinator.receiveCompletion(outcome)
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+
+    static func dismantleUIViewController(
+        _ uiViewController: UIActivityViewController,
+        coordinator: GPXShareLifecycleCoordinator
+    ) {
+        coordinator.tearDown()
     }
 }
 
