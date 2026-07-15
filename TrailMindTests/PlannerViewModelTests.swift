@@ -2,816 +2,1098 @@ import XCTest
 @testable import TrailMind
 
 @MainActor
+private struct FixedIntentParsingProvider: IntentParsingProvider, IntentParsingDebugProviding {
+    nonisolated let parserSource: IntentParserSource
+    let intent: AdventureIntent
+    let debugInfo: IntentParserDebugInfo?
+
+    init(intent: AdventureIntent, debugInfo: IntentParserDebugInfo? = nil) {
+        parserSource = intent.parserSource
+        self.intent = intent
+        self.debugInfo = debugInfo
+    }
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent { intent }
+    func intentParserDebugInfo() async -> IntentParserDebugInfo? { debugInfo }
+}
+
+private struct UnavailableIntentParsingProvider: IntentParsingProvider {
+    let parserSource: IntentParserSource = .remoteAI
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
+        throw RemoteAIIntentParsingProvider.ProviderError.notConfigured
+    }
+}
+
+private struct SlowIntentParsingProvider: IntentParsingProvider {
+    let parserSource: IntentParserSource
+    let intent: AdventureIntent
+    let delay: Duration
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
+        try await Task.sleep(for: delay)
+        return intent
+    }
+}
+
+@MainActor
+private final class ControlledIntentParsingProvider: IntentParsingProvider {
+    nonisolated let parserSource: IntentParserSource = .localRuleBased
+    private(set) var prompts: [String] = []
+    private(set) var completedRequestIDs: Set<Int> = []
+    private var continuations: [Int: CheckedContinuation<AdventureIntent, Error>] = [:]
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
+        let requestID = prompts.count
+        prompts.append(rawPrompt)
+        let intent = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<AdventureIntent, Error>) in
+            continuations[requestID] = continuation
+        }
+        completedRequestIDs.insert(requestID)
+        return intent
+    }
+
+    func succeed(requestID: Int, with intent: AdventureIntent) {
+        continuations.removeValue(forKey: requestID)?.resume(returning: intent)
+    }
+}
+
+@MainActor
+private final class HangingDebugIntentParsingProvider: IntentParsingProvider, IntentParsingDebugProviding {
+    nonisolated let parserSource: IntentParserSource
+    let intent: AdventureIntent
+    private(set) var debugRequestCount = 0
+    private var debugContinuation: CheckedContinuation<IntentParserDebugInfo?, Never>?
+
+    init(intent: AdventureIntent) {
+        parserSource = intent.parserSource
+        self.intent = intent
+    }
+
+    func parseIntent(rawPrompt: String) async throws -> AdventureIntent { intent }
+
+    func intentParserDebugInfo() async -> IntentParserDebugInfo? {
+        debugRequestCount += 1
+        return await withCheckedContinuation { continuation in
+            debugContinuation = continuation
+        }
+    }
+
+    func finishDebugInfo(_ debugInfo: IntentParserDebugInfo? = nil) {
+        debugContinuation?.resume(returning: debugInfo)
+        debugContinuation = nil
+    }
+}
+
+@MainActor
 private final class StubGeocodingService: GeocodingService {
     struct Request {
         let query: String
         let preferredCoordinate: Coordinate?
     }
 
-    var requests: [Request] = []
-    var coordinates: [String: Coordinate]
+    private var outcomes: [String: [Result<Coordinate, GeocodingServiceError>]]
+    private(set) var requests: [Request] = []
 
     init(coordinates: [String: Coordinate]) {
-        self.coordinates = coordinates
+        outcomes = coordinates.mapValues { [.success($0)] }
+    }
+
+    init(outcomes: [String: [Result<Coordinate, GeocodingServiceError>]]) {
+        self.outcomes = outcomes
     }
 
     func geocodeLocation(_ query: String, near preferredCoordinate: Coordinate?) async throws -> Coordinate {
         requests.append(Request(query: query, preferredCoordinate: preferredCoordinate))
-        guard let coordinate = coordinates[query] else {
+        guard var queryOutcomes = outcomes[query], !queryOutcomes.isEmpty else {
             throw GeocodingServiceError.noResults(query: query)
         }
+        let outcome = queryOutcomes.removeFirst()
+        outcomes[query] = queryOutcomes
+        return try outcome.get()
+    }
+}
+
+@MainActor
+private final class ControlledGeocodingService: GeocodingService {
+    struct Request {
+        let query: String
+        let preferredCoordinate: Coordinate?
+    }
+
+    private(set) var requests: [Request] = []
+    private(set) var completedRequestIDs: Set<Int> = []
+    private var continuations: [Int: CheckedContinuation<Coordinate, Error>] = [:]
+
+    func geocodeLocation(_ query: String, near preferredCoordinate: Coordinate?) async throws -> Coordinate {
+        let requestID = requests.count
+        requests.append(Request(query: query, preferredCoordinate: preferredCoordinate))
+        let coordinate = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Coordinate, Error>) in
+            continuations[requestID] = continuation
+        }
+        completedRequestIDs.insert(requestID)
         return coordinate
+    }
+
+    func succeed(requestID: Int, with coordinate: Coordinate) {
+        continuations.removeValue(forKey: requestID)?.resume(returning: coordinate)
     }
 }
 
 @MainActor
 private final class StubRoutingCoordinator: RoutingCoordinating {
-    var intent: RouteIntent?
-    var result: Result<RoutingResult, Error>
+    private var results: [Result<RoutingResult, Error>]
+    private(set) var intents: [RouteIntent] = []
 
-    init(result: Result<RoutingResult, Error>) {
-        self.result = result
+    init(results: [Result<RoutingResult, Error>]) {
+        self.results = results
+    }
+
+    convenience init(routes: [TrailRoute], notice: String? = nil) {
+        self.init(
+            results: [
+                .success(
+                    RoutingResult(
+                        suggestions: RouteSuggestionNormalizer.suggestions(from: routes),
+                        notice: notice
+                    )
+                )
+            ]
+        )
     }
 
     convenience init(route: TrailRoute) {
-        self.init(
-            result: .success(
-                RoutingResult(
-                    suggestions: RouteSuggestionNormalizer.suggestions(from: [route]),
-                    notice: nil
-                )
+        self.init(routes: [route])
+    }
+
+    func routeSuggestions(for intent: RouteIntent) async throws -> RoutingResult {
+        intents.append(intent)
+        guard !results.isEmpty else { throw GraphHopperError.noRouteFound }
+        return try results.removeFirst().get()
+    }
+}
+
+@MainActor
+private final class ControlledRoutingCoordinator: RoutingCoordinating {
+    private(set) var intents: [RouteIntent] = []
+    private(set) var completedRequestIDs: Set<Int> = []
+    private var continuations: [Int: CheckedContinuation<RoutingResult, Error>] = [:]
+
+    func routeSuggestions(for intent: RouteIntent) async throws -> RoutingResult {
+        let requestID = intents.count
+        intents.append(intent)
+        let result = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<RoutingResult, Error>) in
+            continuations[requestID] = continuation
+        }
+        completedRequestIDs.insert(requestID)
+        return result
+    }
+
+    func succeed(requestID: Int, routes: [TrailRoute]) {
+        continuations.removeValue(forKey: requestID)?.resume(
+            returning: RoutingResult(
+                suggestions: RouteSuggestionNormalizer.suggestions(from: routes),
+                notice: nil
             )
         )
     }
-
-    func routeSuggestions(for intent: RouteIntent) async throws -> RoutingResult {
-        self.intent = intent
-        return try result.get()
-    }
-}
-
-private struct FixedIntentParsingProvider: IntentParsingProvider {
-    let parserSource: IntentParserSource
-    let intent: AdventureIntent
-
-    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
-        intent
-    }
-}
-
-private struct DelayedIntentParsingProvider: IntentParsingProvider {
-    let parserSource: IntentParserSource = .localRuleBased
-    let delay: Duration
-    let ignoresCancellation: Bool
-
-    func parseIntent(rawPrompt: String) async throws -> AdventureIntent {
-        do {
-            try await Task.sleep(for: delay)
-        } catch {
-            if !ignoresCancellation { throw error }
-        }
-        return try await LocalIntentParsingProvider().parseIntent(rawPrompt: rawPrompt)
-    }
 }
 
 @MainActor
-private final class DelayedRoutingCoordinator: RoutingCoordinating {
-    let delay: Duration
-    let ignoresCancellation: Bool
-    let result: RoutingResult
-    private(set) var didStart = false
-
-    init(delay: Duration, ignoresCancellation: Bool, route: TrailRoute) {
-        self.delay = delay
-        self.ignoresCancellation = ignoresCancellation
-        result = RoutingResult(
-            suggestions: RouteSuggestionNormalizer.suggestions(from: [route]),
-            notice: nil
-        )
-    }
-
-    func routeSuggestions(for intent: RouteIntent) async throws -> RoutingResult {
-        didStart = true
-        do {
-            try await Task.sleep(for: delay)
-        } catch {
-            if !ignoresCancellation { throw error }
-        }
-        return result
-    }
-}
-
-@MainActor
-private final class DelayedGeocodingService: GeocodingService {
-    let delay: Duration
-    let coordinate: Coordinate
-
-    init(delay: Duration, coordinate: Coordinate) {
-        self.delay = delay
-        self.coordinate = coordinate
-    }
-
-    func geocodeLocation(_ query: String, near preferredCoordinate: Coordinate?) async throws -> Coordinate {
-        try await Task.sleep(for: delay)
-        return coordinate
-    }
-}
-
 final class PlannerViewModelTests: XCTestCase {
-    @MainActor
+    private let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
+    private let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
+
     private func makeViewModel(
         geocodingService: any GeocodingService,
         routingCoordinator: any RoutingCoordinating,
         intentParsingProvider: any IntentParsingProvider = LocalIntentParsingProvider(),
-        operationTimeouts: PlannerViewModel.OperationTimeouts = .production
+        operationTimeouts: PlannerViewModel.OperationTimeouts = .production,
+        attemptIDProvider: @escaping @MainActor () -> UUID = { UUID() }
     ) -> PlannerViewModel {
         PlannerViewModel(
             intentParsingProvider: intentParsingProvider,
             geocodingService: geocodingService,
             routingCoordinator: routingCoordinator,
-            operationTimeouts: operationTimeouts
+            operationTimeouts: operationTimeouts,
+            attemptIDProvider: attemptIDProvider
         )
     }
 
-    @MainActor
-    func testGenerationStartsWithOnlyUnderstandingActive() {
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+    private func makeIntent(
+        rawPrompt: String,
+        parserSource: IntentParserSource = .remoteAI,
+        activity: ActivityType = .hiking,
+        routeType: TrailRouteType = .pointToPoint,
+        start: String? = "Ilsenburg",
+        end: String? = "Schierke",
+        region: String? = nil,
+        distance: Double? = nil,
+        duration: Int? = nil,
+        difficulty: RouteDifficulty? = nil,
+        desired: [DesiredFeature] = [],
+        avoid: [AvoidFeature] = []
+    ) -> AdventureIntent {
+        AdventureIntent(
+            rawPrompt: rawPrompt,
+            parserSource: parserSource,
+            confidence: 0.82,
+            activityType: activity,
+            routeType: routeType,
+            startLocationQuery: start,
+            endLocationQuery: end,
+            regionQuery: region,
+            targetDistanceKm: distance,
+            targetDurationMinutes: duration,
+            difficulty: difficulty,
+            desiredFeatures: desired,
+            avoidFeatures: avoid
         )
-
-        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
-
-        XCTAssertEqual(viewModel.generationStages.map(\.status), [
-            .active,
-            .pending,
-            .pending,
-            .pending
-        ])
-        XCTAssertEqual(viewModel.completedGenerationStageCount, 0)
     }
 
-    @MainActor
-    func testCompletedParsingActivatesLocationWithoutMarkingItCompleted() async {
-        let viewModel = makeViewModel(
-            geocodingService: DelayedGeocodingService(
-                delay: .seconds(5),
-                coordinate: Coordinate(latitude: 51.8666, longitude: 10.6782)
-            ),
-            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+    private func verifiedRoute(
+        basedOn base: TrailRoute = TestRouteFixtures.luneburgLoop,
+        activity: ActivityType = .hiking,
+        routeType: TrailRouteType
+    ) -> TrailRoute {
+        let difficulty = RouteDifficulty.estimated(
+            distanceKilometers: base.distanceKilometers,
+            elevationGainMeters: base.elevationGainMeters
         )
-        viewModel.startTextRoute(prompt: "15 km Rundwanderung um Ilsenburg")
-
-        let task = Task { await viewModel.generate() }
-        try? await Task.sleep(for: .milliseconds(80))
-
-        XCTAssertEqual(viewModel.generationStages.map(\.status), [
-            .completed,
-            .active,
-            .pending,
-            .pending
-        ])
-        viewModel.cancelGeneration()
-        task.cancel()
-        await task.value
+        let provenance = RouteProvenance.routingEngineOutput(
+            provider: .graphHopper,
+            strategy: .backend,
+            activity: activity,
+            routeType: routeType,
+            distanceKilometers: base.distanceKilometers,
+            elevationGainMeters: base.elevationGainMeters,
+            elevationLossMeters: base.elevationLossMeters,
+            durationHours: base.durationHours,
+            difficulty: difficulty,
+            path: base.path,
+            verifiedCharacteristics: base.verifiedCharacteristics
+        )
+        return TrailRoute(
+            id: base.id,
+            provenance: provenance,
+            title: base.title,
+            location: base.location,
+            activity: activity,
+            distanceKilometers: base.distanceKilometers,
+            elevationGainMeters: base.elevationGainMeters,
+            elevationLossMeters: base.elevationLossMeters,
+            durationHours: base.durationHours,
+            difficulty: difficulty,
+            routeType: routeType,
+            summary: base.summary,
+            whyItMatches: base.whyItMatches,
+            highlights: base.highlights,
+            waypoints: base.waypoints,
+            days: base.days,
+            safetyNotes: base.safetyNotes,
+            elevationProfile: base.elevationProfile,
+            path: base.path,
+            routeInstructions: base.routeInstructions,
+            planningMetadata: nil,
+            intentDebugMetadata: nil,
+            verifiedCharacteristics: base.verifiedCharacteristics
+        )
     }
 
-    @MainActor
-    func testCancellationBeforeParsingCompletesReturnsHome() async {
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
-            intentParsingProvider: DelayedIntentParsingProvider(
-                delay: .seconds(5),
-                ignoresCancellation: false
-            )
-        )
-        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
-
-        let task = Task { await viewModel.generate() }
-        try? await Task.sleep(for: .milliseconds(30))
-        viewModel.cancelGeneration()
-        task.cancel()
-        await task.value
-
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertNil(viewModel.generatedRoute)
-        XCTAssertTrue(viewModel.suggestions.isEmpty)
-        XCTAssertNil(viewModel.generationFailure)
-    }
-
-    @MainActor
-    func testCancellationDuringRoutingReturnsHome() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
-        let router = DelayedRoutingCoordinator(
-            delay: .seconds(5),
-            ignoresCancellation: false,
-            route: TestRouteFixtures.luneburgLoop
-        )
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(
-                coordinates: ["Ilsenburg": start, "Schierke": end]
-            ),
-            routingCoordinator: router
-        )
-        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
-
-        let task = Task { await viewModel.generate() }
-        for _ in 0..<20 where !router.didStart {
-            try? await Task.sleep(for: .milliseconds(10))
+    private func waitUntil(
+        _ description: String,
+        iterations: Int = 2_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async -> Bool {
+        for _ in 0..<iterations {
+            if condition() { return true }
+            await Task.yield()
         }
-        XCTAssertTrue(router.didStart)
-        viewModel.cancelGeneration()
-        task.cancel()
-        await task.value
-
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertNil(viewModel.generatedRoute)
+        XCTFail("Timed out waiting for \(description)")
+        return false
     }
 
-    @MainActor
-    func testLateRoutingResultIsIgnoredAfterCancellation() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
-        let router = DelayedRoutingCoordinator(
-            delay: .milliseconds(80),
-            ignoresCancellation: true,
-            route: TestRouteFixtures.luneburgLoop
-        )
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(
-                coordinates: ["Ilsenburg": start, "Schierke": end]
-            ),
-            routingCoordinator: router
-        )
-        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
+    private func drainTasks(iterations: Int = 30) async {
+        for _ in 0..<iterations { await Task.yield() }
+    }
 
-        let task = Task { await viewModel.generate() }
-        for _ in 0..<20 where !router.didStart {
-            try? await Task.sleep(for: .milliseconds(10))
+    func testIdleSubmitGenerationProducesOneVerifiedSuggestion() async throws {
+        let geocoder = StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end])
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .pointToPoint))
+        let viewModel = makeViewModel(geocodingService: geocoder, routingCoordinator: router)
+
+        XCTAssertEqual(viewModel.state, .idle(prompt: ""))
+        viewModel.startPlanning(prompt: "Ilsenburg nach Schierke")
+        guard case let .understanding(attempt) = viewModel.state else {
+            return XCTFail("Submission must synchronously enter understanding.")
         }
-        viewModel.cancelGeneration()
-        await task.value
-
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertNil(viewModel.generatedRoute)
-        XCTAssertTrue(viewModel.suggestions.isEmpty)
-    }
-
-    @MainActor
-    func testRetryPreservesPromptAndStartsNewRequest() async {
-        let prompt = "Ilsenburg nach Schierke"
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
-        )
-        viewModel.startTextRoute(prompt: prompt)
-        await viewModel.generate()
-        let failedRequestID = viewModel.generationRequestID
-
-        XCTAssertNotNil(viewModel.generationFailure)
-        viewModel.retryGeneration()
-
-        XCTAssertEqual(viewModel.prompt, prompt)
-        XCTAssertNotEqual(viewModel.generationRequestID, failedRequestID)
-        XCTAssertNil(viewModel.generationFailure)
-        XCTAssertEqual(viewModel.generationStages.first?.status, .active)
-    }
-
-    @MainActor
-    func testParserTimeoutShowsActionableRecovery() async {
-        let prompt = "Ilsenburg nach Schierke"
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
-            intentParsingProvider: DelayedIntentParsingProvider(
-                delay: .seconds(5),
-                ignoresCancellation: false
-            ),
-            operationTimeouts: .init(parserSeconds: 0.01, geocodingSeconds: 1)
-        )
-        viewModel.startTextRoute(prompt: prompt)
+        XCTAssertEqual(attempt.originalPrompt, "Ilsenburg nach Schierke")
 
         await viewModel.generate()
 
-        XCTAssertEqual(viewModel.phase, .generating)
-        XCTAssertEqual(viewModel.generationFailure?.stage, .understanding)
-        XCTAssertEqual(
-            viewModel.generationFailure?.message,
-            "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
-        )
-        XCTAssertEqual(viewModel.prompt, prompt)
-    }
-
-    @MainActor
-    func testRoutingTimeoutUsesActionableRecoveryCopy() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(
-                coordinates: ["Ilsenburg": start, "Schierke": end]
-            ),
-            routingCoordinator: StubRoutingCoordinator(
-                result: .failure(GraphHopperError.network(message: "The request timed out."))
-            )
-        )
-        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
-
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.generationFailure?.stage, .routing)
-        XCTAssertEqual(
-            viewModel.generationFailure?.message,
-            "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
-        )
-    }
-
-    @MainActor
-    func testEmptyPromptReturnsFriendlyHomeError() {
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(coordinates: [:]),
-            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
-        )
-
-        viewModel.startTextRoute(prompt: "   ")
-
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertEqual(
-            viewModel.errorMessage,
-            "Describe where you want to go and what kind of route you want."
-        )
-        XCTAssertNil(viewModel.generationRequestID)
-    }
-
-    @MainActor
-    func testTextRouteOrchestratesParsingGeocodingAndRouting() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start,
-                "Schierke": end
-            ]
-        )
-        let expectedRoute = TestRouteFixtures.luneburgLoop
-        let router = StubRoutingCoordinator(route: expectedRoute)
-        let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
-        )
-
-        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(viewModel.generatedRoute?.id, expectedRoute.id)
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("A verified single route must enter suggestionsReady.")
+        }
+        XCTAssertEqual(success.originalPrompt, "Ilsenburg nach Schierke")
+        XCTAssertEqual(success.suggestions.count, 1)
+        XCTAssertTrue(try XCTUnwrap(success.suggestions.first).route.isVerifiedRoutedResult)
+        XCTAssertEqual(success.suggestions.first?.route.activity, .hiking)
+        XCTAssertEqual(success.suggestions.first?.route.routeType, .pointToPoint)
         XCTAssertEqual(geocoder.requests.map(\.query), ["Ilsenburg", "Schierke"])
         XCTAssertNil(geocoder.requests.first?.preferredCoordinate)
         XCTAssertEqual(geocoder.requests.last?.preferredCoordinate, start)
-        XCTAssertEqual(router.intent?.start, start)
-        XCTAssertEqual(router.intent?.end, end)
-        XCTAssertEqual(router.intent?.request.graphHopperProfile, "foot")
-        XCTAssertEqual(router.intent?.request.startQuery, "Ilsenburg")
-        XCTAssertEqual(router.intent?.request.endQuery, "Schierke")
-        XCTAssertEqual(router.intent?.request.activityType, .hiking)
-        XCTAssertEqual(router.intent?.parsedIntent?.rawPrompt, "Ilsenburg nach Schierke")
-        XCTAssertEqual(router.intent?.parsedIntent?.parserSource, .localRuleBased)
-        XCTAssertEqual(router.intent?.parsedIntent?.startLocationQuery, "Ilsenburg")
-        XCTAssertEqual(router.intent?.parsedIntent?.endLocationQuery, "Schierke")
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.intent.rawPrompt, "Ilsenburg nach Schierke")
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.intent.parserSource, .localRuleBased)
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.validationStatus, "valid")
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.localFallbackUsed, true)
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.repaired, false)
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.geocodedStartLabel, "Ilsenburg")
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.geocodedEndLabel, "Schierke")
+        XCTAssertEqual(router.intents.first?.request.graphHopperProfile, "foot")
+        XCTAssertEqual(router.intents.first?.parsedIntent?.rawPrompt, "Ilsenburg nach Schierke")
+        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent.rawPrompt, "Ilsenburg nach Schierke")
+        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.localFallbackUsed, true)
     }
 
-    @MainActor
-    func testIntentHintsMapIntoPlanningRequest() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
+    func testMultipleVerifiedSuggestionsRemainInOneSuccessState() async {
+        let prompt = "15 km Rundwanderung um Ilsenburg"
+        let intent = makeIntent(
+            rawPrompt: prompt,
+            routeType: .loop,
+            start: "Ilsenburg",
+            end: nil,
+            distance: 15
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start]),
+            routingCoordinator: StubRoutingCoordinator(
+                routes: [TestRouteFixtures.luneburgLoop, TestRouteFixtures.sunsetRidge]
+            ),
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("Expected multiple suggestions.")
+        }
+        XCTAssertEqual(success.suggestions.map(\.route.id), [
+            TestRouteFixtures.luneburgLoop.id,
+            TestRouteFixtures.sunsetRidge.id
+        ])
+        XCTAssertTrue(success.suggestions.allSatisfy { $0.route.isVerifiedRoutedResult })
+    }
+
+    func testMissingLoopStartClarifiesThenGeneratesWithoutChangingPrompt() async throws {
+        let prompt = "Plan a 12 km loop"
+        let intent = makeIntent(
+            rawPrompt: prompt,
+            activity: .trailRunning,
+            routeType: .loop,
+            start: nil,
+            end: nil,
+            region: nil,
+            distance: 12
+        )
+        let geocoder = StubGeocodingService(coordinates: ["Ilsenburg": start])
+        let router = StubRoutingCoordinator(
+            route: verifiedRoute(activity: .trailRunning, routeType: .loop)
+        )
+        let viewModel = makeViewModel(
+            geocodingService: geocoder,
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        let clarification = try XCTUnwrap(viewModel.currentClarification)
+        XCTAssertEqual(clarification.originalPrompt, prompt)
+        XCTAssertEqual(clarification.kind, .location(.startLocationQuery))
+        XCTAssertEqual(viewModel.prompt, prompt)
+
+        viewModel.submitClarification(.text("  Ilsenburg  "))
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("Clarified loop must generate.")
+        }
+        XCTAssertEqual(success.originalPrompt, prompt)
+        XCTAssertEqual(router.intents.first?.request.startQuery, "Ilsenburg")
+        XCTAssertEqual(router.intents.first?.request.activityType, .trailRunning)
+        XCTAssertEqual(router.intents.first?.request.targetDistanceKm, 12)
+        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent.rawPrompt, prompt)
+    }
+
+    func testPointToPointMissingOriginThenDestinationClarifiesInOrderAndGenerates() async throws {
+        let prompt = "Plan a hiking route"
+        let intent = makeIntent(rawPrompt: prompt, start: nil, end: nil)
+        let geocoder = StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end])
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .pointToPoint))
+        let viewModel = makeViewModel(
+            geocodingService: geocoder,
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+        XCTAssertEqual(try XCTUnwrap(viewModel.currentClarification).kind, .location(.startLocationQuery))
+
+        viewModel.answerClarification(.text("Ilsenburg"))
+        XCTAssertEqual(try XCTUnwrap(viewModel.currentClarification).kind, .location(.endLocationQuery))
+        XCTAssertEqual(viewModel.prompt, prompt)
+
+        viewModel.answerClarification(.text("Schierke"))
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("Both clarified endpoints must generate.")
+        }
+        XCTAssertEqual(success.originalPrompt, prompt)
+        XCTAssertEqual(router.intents.first?.request.startQuery, "Ilsenburg")
+        XCTAssertEqual(router.intents.first?.request.endQuery, "Schierke")
+        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent.rawPrompt, prompt)
+    }
+
+    func testClarificationMergesOnlyTargetFieldAndPreservesOriginalIntent() async throws {
+        let prompt = "Bike 42 km from Ilsenburg with views and no major roads"
+        let intent = makeIntent(
+            rawPrompt: prompt,
+            activity: .biking,
+            start: "Ilsenburg",
+            end: nil,
+            distance: 42,
+            duration: 180,
+            difficulty: .challenging,
+            desired: [.viewpoint, .forest],
+            avoid: [.majorRoads, .repeatedPath]
+        )
+        let debugInfo = IntentParserDebugInfo(
+            remoteAttempted: true,
+            remoteSucceeded: true,
+            remoteFailureReason: nil,
+            remoteStatusCode: 200,
+            remoteValidationError: nil,
+            backendBaseURL: nil,
+            parserMode: .remoteWithLocalFallback
+        )
+        let router = StubRoutingCoordinator(
+            route: verifiedRoute(activity: .biking, routeType: .pointToPoint)
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end]),
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent, debugInfo: debugInfo)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+        viewModel.submitClarification(.text("Schierke"))
+        await viewModel.generate()
+
+        let routedIntent = try XCTUnwrap(router.intents.first?.parsedIntent)
+        XCTAssertEqual(routedIntent.rawPrompt, prompt)
+        XCTAssertEqual(routedIntent.activityType, .biking)
+        XCTAssertEqual(routedIntent.routeType, .pointToPoint)
+        XCTAssertEqual(routedIntent.startLocationQuery, "Ilsenburg")
+        XCTAssertEqual(routedIntent.endLocationQuery, "Schierke")
+        XCTAssertNil(routedIntent.regionQuery)
+        XCTAssertEqual(routedIntent.targetDistanceKm, 42)
+        XCTAssertEqual(routedIntent.targetDurationMinutes, 180)
+        XCTAssertEqual(routedIntent.difficulty, .challenging)
+        XCTAssertEqual(routedIntent.desiredFeatures, [.viewpoint, .forest])
+        XCTAssertEqual(routedIntent.avoidFeatures, [.majorRoads, .repeatedPath])
+        XCTAssertEqual(routedIntent.transportMode, .cycling)
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("Clarified request must succeed.")
+        }
+        XCTAssertEqual(success.originalPrompt, prompt)
+        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent, routedIntent)
+        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.parserDebugInfo, debugInfo)
+    }
+
+    func testMalformedValidatedIntentIsRecoverableWithoutGeocodingOrRouting() async {
+        let prompt = "1000 km loop around Ilsenburg"
+        let intent = makeIntent(
+            rawPrompt: prompt,
+            routeType: .loop,
+            start: "Ilsenburg",
+            end: nil,
+            distance: 1_000
+        )
+        let geocoder = StubGeocodingService(coordinates: [:])
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+        let viewModel = makeViewModel(
+            geocodingService: geocoder,
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Invalid intent must be recoverable.")
+        }
+        XCTAssertEqual(recovery.kind, .malformedIntent)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(geocoder.requests.isEmpty)
+        XCTAssertTrue(router.intents.isEmpty)
+    }
+
+    func testUnavailableIntentProviderIsRecoverable() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let geocoder = StubGeocodingService(coordinates: [:])
+        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+        let viewModel = makeViewModel(
+            geocodingService: geocoder,
+            routingCoordinator: router,
+            intentParsingProvider: UnavailableIntentParsingProvider()
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Unavailable provider must be recoverable.")
+        }
+        XCTAssertEqual(recovery.kind, .intentUnavailable)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(geocoder.requests.isEmpty)
+        XCTAssertTrue(router.intents.isEmpty)
+    }
+
+    func testExplicitEmptyRoutingResultEntersNoRoutes() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let router = StubRoutingCoordinator(
+            results: [.success(RoutingResult(suggestions: [], notice: nil))]
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end]),
+            routingCoordinator: router
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .noRoutes(recovery) = viewModel.state else {
+            return XCTFail("An empty verified result must be an explicit no-routes state.")
+        }
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertEqual(recovery.kind, .routing)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    func testUnverifiedRouteCannotReachSuccess() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end]),
+            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Unverified output must fail closed.")
+        }
+        XCTAssertEqual(recovery.kind, .unverified)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    func testVerifiedActivityMismatchCannotReachSuccessEvenBesideAValidSuggestion() async {
+        let prompt = "Plan a biking loop around Ilsenburg"
+        let intent = makeIntent(
+            rawPrompt: prompt,
+            activity: .biking,
+            routeType: .loop,
+            start: "Ilsenburg",
+            end: nil
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start]),
+            routingCoordinator: StubRoutingCoordinator(
+                routes: [
+                    verifiedRoute(activity: .biking, routeType: .loop),
+                    TestRouteFixtures.sunsetRidge
+                ]
+            ),
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("A mixed-activity routed result must fail closed.")
+        }
+        XCTAssertEqual(recovery.kind, .unverified)
+        XCTAssertEqual(recovery.stage, .preparation)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    func testVerifiedRouteTypeMismatchCannotReachSuccess() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(
+                coordinates: ["Ilsenburg": start, "Schierke": end]
+            ),
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("A loop result must not satisfy a point-to-point request.")
+        }
+        XCTAssertEqual(recovery.kind, .unverified)
+        XCTAssertEqual(recovery.stage, .preparation)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    func testGeocodingFailurePreservesPromptAndRetryUsesFreshAttemptThenSucceeds() async throws {
+        let prompt = "12 km loop around Ilsenburg"
+        let intent = makeIntent(
+            rawPrompt: prompt,
+            routeType: .loop,
+            start: "Ilsenburg",
+            end: nil,
+            distance: 12
+        )
         let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start,
-                "Schierke": end
+            outcomes: [
+                "Ilsenburg": [
+                    .failure(.network),
+                    .success(start)
+                ]
             ]
         )
         let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
         let viewModel = makeViewModel(
             geocodingService: geocoder,
-            routingCoordinator: router
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent)
         )
 
-        viewModel.startTextRoute(prompt: "Plane eine schöne Wanderung von Ilsenburg nach Schierke mit Aussicht, ca. 15 km")
+        viewModel.startPlanning(prompt: prompt)
         await viewModel.generate()
 
-        XCTAssertEqual(router.intent?.request.targetDistanceKm, 15)
-        XCTAssertEqual(router.intent?.request.desiredFeatures, [.viewpoint])
-        XCTAssertEqual(router.intent?.request.graphHopperProfile, "foot")
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Geocoding failure must be recoverable.")
+        }
+        XCTAssertEqual(recovery.kind, .geocoding)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertEqual(viewModel.prompt, prompt)
+        let failedAttemptID = try XCTUnwrap(recovery.preparedAttempt?.id)
+
+        viewModel.retryGeneration()
+        guard case let .resolvingLocations(retryAttempt) = viewModel.state else {
+            return XCTFail("Retry must start a fresh prepared attempt.")
+        }
+        XCTAssertNotEqual(retryAttempt.id, failedAttemptID)
+        XCTAssertEqual(retryAttempt.originalPrompt, prompt)
+
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("Fresh retry must be able to succeed.")
+        }
+        XCTAssertEqual(success.originalPrompt, prompt)
+        XCTAssertEqual(viewModel.prompt, prompt)
+        XCTAssertEqual(geocoder.requests.map(\.query), ["Ilsenburg", "Ilsenburg"])
+        XCTAssertEqual(router.intents.count, 1)
     }
 
-    @MainActor
-    func testBikePromptUsesBikeProfile() async {
-        let start = Coordinate(latitude: 53.2487, longitude: 10.4079)
-        let end = Coordinate(latitude: 53.1305, longitude: 10.2147)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Lüneburg": start,
-                "Amelinghausen": end
-            ]
-        )
-        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+    func testRoutingUnavailableIsRecoverableWithoutSuccess() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let router = StubRoutingCoordinator(results: [.failure(GraphHopperError.missingAPIKey)])
         let viewModel = makeViewModel(
-            geocodingService: geocoder,
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end]),
             routingCoordinator: router
         )
 
-        viewModel.startTextRoute(prompt: "Radroute von Lüneburg nach Amelinghausen")
+        viewModel.startPlanning(prompt: prompt)
         await viewModel.generate()
 
-        XCTAssertEqual(router.intent?.request.activityType, .biking)
-        XCTAssertEqual(router.intent?.request.graphHopperProfile, "bike")
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Unavailable routing must be recoverable.")
+        }
+        XCTAssertEqual(recovery.kind, .routing)
+        XCTAssertEqual(recovery.stage, .routing)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
     }
 
-    @MainActor
-    func testTrailRunPromptUsesFootProfileWithTrailRunActivity() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start,
-                "Schierke": end
-            ]
-        )
-        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+    func testSlowIntentOperationTimesOutWithPromptPreserved() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let intent = makeIntent(rawPrompt: prompt)
         let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
+            intentParsingProvider: SlowIntentParsingProvider(
+                parserSource: .localRuleBased,
+                intent: intent,
+                delay: .seconds(30)
+            ),
+            operationTimeouts: .init(
+                parserSeconds: 0.005,
+                geocodingSeconds: 1,
+                routingSeconds: 1
+            )
         )
 
-        viewModel.startTextRoute(prompt: "Trailrun from Ilsenburg to Schierke for 2 hours")
+        viewModel.startPlanning(prompt: prompt)
         await viewModel.generate()
 
-        XCTAssertEqual(router.intent?.request.activityType, .trailRunning)
-        XCTAssertEqual(router.intent?.request.graphHopperProfile, "foot")
-        XCTAssertEqual(router.intent?.request.targetDurationMinutes, 120)
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Slow parsing must time out recoverably.")
+        }
+        XCTAssertEqual(recovery.kind, .timedOut)
+        XCTAssertEqual(recovery.stage, .understanding)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertEqual(viewModel.prompt, prompt)
     }
 
-    @MainActor
-    func testLoopPromptGeocodesStartOnlyAndCallsRoundTrip() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start
-            ]
-        )
-        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+    func testCancellationIgnoringIntentOperationHardTimesOutAndLateResultIsIgnored() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let parser = ControlledIntentParsingProvider()
         let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
+            intentParsingProvider: parser,
+            operationTimeouts: .init(
+                parserSeconds: 0.01,
+                geocodingSeconds: 1,
+                routingSeconds: 1
+            )
         )
 
-        viewModel.startTextRoute(prompt: "15 km Rundwanderung um Ilsenburg")
+        viewModel.startPlanning(prompt: prompt)
+        guard await waitUntil("cancellation-ignoring parser request", condition: { parser.prompts.count == 1 }) else {
+            return
+        }
         await viewModel.generate()
 
-        XCTAssertEqual(geocoder.requests.map(\.query), ["Ilsenburg"])
-        XCTAssertEqual(router.intent?.start, start)
-        XCTAssertNil(router.intent?.end)
-        XCTAssertEqual(router.intent?.request.routeType, .loop)
-        XCTAssertEqual(router.intent?.request.startQuery, "Ilsenburg")
-        XCTAssertNil(router.intent?.request.endQuery)
-        XCTAssertEqual(router.intent?.request.targetDistanceKm, 15)
-        XCTAssertEqual(router.intent?.parsedIntent?.routeType, .loop)
-        XCTAssertEqual(router.intent?.parsedIntent?.startOrRegionQuery, "Ilsenburg")
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("A cancellation-ignoring parser must still time out.")
+        }
+        XCTAssertEqual(recovery.kind, .timedOut)
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+
+        parser.succeed(requestID: 0, with: makeIntent(rawPrompt: prompt))
+        guard await waitUntil(
+            "late parser cleanup after timeout",
+            condition: { parser.completedRequestIDs.contains(0) }
+        ) else { return }
+        await drainTasks()
+
+        guard case let .recoverableError(finalRecovery) = viewModel.state else {
+            return XCTFail("A late parser result overwrote the timeout recovery state.")
+        }
+        XCTAssertEqual(finalRecovery.kind, .timedOut)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
     }
 
-    @MainActor
-    func testRepairedRemoteLoopIntentRoutesThroughExistingCoordinator() async {
-        let start = Coordinate(latitude: 51.765, longitude: 10.664)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Schierke": start
-            ]
+    func testSlowParserDebugMetadataIsBestEffortAndCannotBlockPlanning() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let parser = HangingDebugIntentParsingProvider(intent: makeIntent(rawPrompt: prompt))
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end]),
+            routingCoordinator: StubRoutingCoordinator(
+                route: verifiedRoute(routeType: .pointToPoint)
+            ),
+            intentParsingProvider: parser,
+            operationTimeouts: .init(
+                parserSeconds: 0.01,
+                geocodingSeconds: 1,
+                routingSeconds: 1
+            )
         )
-        let route = TestRouteFixtures.luneburgLoop
-        let router = StubRoutingCoordinator(route: route)
-        let remoteIntent = AdventureIntent(
-            rawPrompt: "Ich will eine entspannte 15 km Rundwanderung um Schierke",
-            parserSource: .remoteAI,
-            confidence: 0.78,
-            activityType: .hiking,
-            routeType: .pointToPoint,
-            startLocationQuery: "Schierke",
-            endLocationQuery: nil,
-            regionQuery: nil,
-            targetDistanceKm: 15,
-            targetDurationMinutes: nil,
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            parser.finishDebugInfo()
+            return XCTFail("Optional parser diagnostics must not gate verified suggestions.")
+        }
+        XCTAssertEqual(parser.debugRequestCount, 1)
+        XCTAssertEqual(success.originalPrompt, prompt)
+
+        parser.finishDebugInfo()
+        await drainTasks()
+        guard case .suggestionsReady = viewModel.state else {
+            return XCTFail("Late optional diagnostics changed planning state.")
+        }
+    }
+
+    func testEmptyPromptIsAnExplicitRecoverableInvalidPrompt() {
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: [:]),
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+        )
+
+        viewModel.startPlanning(prompt: "   ")
+
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Empty prompt must not start an attempt.")
+        }
+        XCTAssertEqual(recovery.kind, .invalidPrompt)
+        XCTAssertEqual(recovery.stage, .understanding)
+        XCTAssertNil(viewModel.generationRequestID)
+    }
+
+    func testAllSupportedActivitiesReachRoutingWithTheirTruthfulProfiles() async {
+        for activity in ActivityType.allCases {
+            let prompt = "Plan a loop for \(activity.rawValue) around Ilsenburg"
+            let intent = makeIntent(
+                rawPrompt: prompt,
+                activity: activity,
+                routeType: .loop,
+                start: "Ilsenburg",
+                end: nil,
+                distance: 10
+            )
+            let router = StubRoutingCoordinator(
+                route: verifiedRoute(activity: activity, routeType: .loop)
+            )
+            let viewModel = makeViewModel(
+                geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start]),
+                routingCoordinator: router,
+                intentParsingProvider: FixedIntentParsingProvider(intent: intent)
+            )
+
+            viewModel.startPlanning(prompt: prompt)
+            await viewModel.generate()
+
+            guard case let .suggestionsReady(success) = viewModel.state else {
+                XCTFail("\(activity.rawValue) did not reach suggestions.")
+                continue
+            }
+            XCTAssertTrue(success.suggestions.allSatisfy { suggestion in
+                suggestion.route.activity == activity && suggestion.route.routeType == .loop
+            })
+            XCTAssertEqual(router.intents.first?.request.activityType, activity)
+            XCTAssertEqual(
+                router.intents.first?.request.graphHopperProfile,
+                activity == .biking ? "bike" : "foot"
+            )
+            XCTAssertEqual(
+                router.intents.first?.parsedIntent?.transportMode,
+                activity == .biking ? .cycling : .walking
+            )
+        }
+    }
+
+    func testRequestedPreferencesRemainExplicitlyRequestedOnSuccess() async throws {
+        let prompt = "Easy 14 km loop near Ilsenburg with views, forest and quiet paths"
+        let intent = makeIntent(
+            rawPrompt: prompt,
+            routeType: .loop,
+            start: "Ilsenburg",
+            end: nil,
+            distance: 14,
             difficulty: .easy,
-            desiredFeatures: [],
-            avoidFeatures: []
+            desired: [.viewpoint, .forest, .quiet],
+            avoid: [.steepClimbs]
         )
+        let routeWithoutRequestMetadata = TestRouteFixtures.luneburgLoop.withPlanningMetadata(nil)
         let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router,
-            intentParsingProvider: FixedIntentParsingProvider(
-                parserSource: .remoteAI,
-                intent: remoteIntent
-            )
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start]),
+            routingCoordinator: StubRoutingCoordinator(route: routeWithoutRequestMetadata),
+            intentParsingProvider: FixedIntentParsingProvider(intent: intent)
         )
 
-        viewModel.startTextRoute(prompt: remoteIntent.rawPrompt)
+        viewModel.startPlanning(prompt: prompt)
         await viewModel.generate()
 
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(geocoder.requests.map(\.query), ["Schierke"])
-        XCTAssertEqual(router.intent?.request.routeType, .loop)
-        XCTAssertEqual(router.intent?.request.startQuery, "Schierke")
-        XCTAssertNil(router.intent?.request.endQuery)
-        XCTAssertEqual(router.intent?.request.targetDistanceKm, 15)
-        XCTAssertEqual(router.intent?.parsedIntent?.parserSource, .remoteAI)
-        XCTAssertEqual(router.intent?.parsedIntent?.routeType, .loop)
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.validationStatus, "repaired")
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.localFallbackUsed, false)
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.repaired, true)
-        XCTAssertEqual(
-            viewModel.generatedRoute?.intentDebugMetadata?.repairReason,
-            "Repaired pointToPoint intent without an end location to loop based on loop wording."
-        )
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("Requested preferences must survive successful planning.")
+        }
+        let metadata = try XCTUnwrap(success.suggestions.first?.route.planningMetadata)
+        XCTAssertEqual(metadata.desiredFeatures, [.viewpoint, .forest, .quiet])
+        XCTAssertEqual(metadata.requestedFeatureSummary, "Requested: Views, Forest, Quiet route")
+        XCTAssertEqual(metadata.requestedDifficultySummary, "Requested: Easy")
+        XCTAssertTrue(metadata.requestedFeatureSummary?.hasPrefix("Requested:") == true)
+        XCTAssertTrue(success.suggestions.first?.route.isVerifiedRoutedResult == true)
     }
 
-    @MainActor
-    func testMultipleLoopVariantsShowSuggestions() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start
-            ]
-        )
-        let first = TestRouteFixtures.luneburgLoop.withPlanningMetadata(
-            RoutePlanningMetadata(
-                routeType: .loop,
-                activityType: .hiking,
-                targetDistanceKm: 15,
-                targetDurationMinutes: nil,
-                difficulty: nil,
-                desiredFeatures: [],
-                avoidFeatures: [],
-                seed: 11,
-                variantLabel: "Closest Match"
-            )
-        )
-        let second = TestRouteFixtures.sunsetRidge.withPlanningMetadata(
-            RoutePlanningMetadata(
-                routeType: .loop,
-                activityType: .hiking,
-                targetDistanceKm: 15,
-                targetDurationMinutes: nil,
-                difficulty: nil,
-                desiredFeatures: [],
-                avoidFeatures: [],
-                seed: 29,
-                variantLabel: "Shorter Loop"
-            )
-        )
-        let router = StubRoutingCoordinator(
-            result: .success(
-                RoutingResult(
-                    suggestions: RouteSuggestionNormalizer.suggestions(from: [first, second]),
-                    notice: nil
-                )
-            )
-        )
+    func testCancellationDuringParsingRejectsLateSuccess() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let parser = ControlledIntentParsingProvider()
         let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end]),
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
+            intentParsingProvider: parser
         )
 
-        viewModel.startTextRoute(prompt: "15 km Rundwanderung um Ilsenburg")
-        await viewModel.generate()
+        viewModel.startPlanning(prompt: prompt)
+        guard await waitUntil("controlled parser request", condition: { parser.prompts.count == 1 }) else { return }
+        viewModel.cancelGeneration()
+        guard case let .cancelled(recovery) = viewModel.state else {
+            return XCTFail("Cancellation must be observable.")
+        }
+        XCTAssertEqual(recovery.originalPrompt, prompt)
 
-        XCTAssertEqual(viewModel.phase, .suggestions)
-        XCTAssertNil(viewModel.generatedRoute)
-        XCTAssertEqual(viewModel.suggestions.map(\.route.id), [first.id, second.id])
-        XCTAssertEqual(viewModel.suggestions.first?.explanation, "Closest Match")
-        XCTAssertEqual(viewModel.suggestions.first?.route.intentDebugMetadata?.intent.routeType, .loop)
-        XCTAssertEqual(viewModel.suggestions.first?.route.intentDebugMetadata?.geocodedStartLabel, "Ilsenburg")
-    }
+        parser.succeed(requestID: 0, with: makeIntent(rawPrompt: prompt))
+        guard await waitUntil(
+            "cancelled parser completion",
+            condition: { parser.completedRequestIDs.contains(0) }
+        ) else { return }
+        await drainTasks()
 
-    @MainActor
-    func testSingleLoopVariantStillOpensDetailDirectly() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start
-            ]
-        )
-        let route = TestRouteFixtures.luneburgLoop
-        let router = StubRoutingCoordinator(
-            result: .success(
-                RoutingResult(
-                    suggestions: RouteSuggestionNormalizer.suggestions(from: [route]),
-                    notice: nil,
-                    loopSearchOutcome: .singleRoute,
-                    loopSearchDiagnostics: LoopSearchDiagnostics(
-                        elapsedMilliseconds: 2_500,
-                        directRouteCount: 1,
-                        fallbackRouteCount: 0,
-                        rejectionCounts: ["duplicate_geometry": 2],
-                        didReachTimeBudget: false
-                    )
-                )
-            )
-        )
-        let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
-        )
-
-        viewModel.startTextRoute(prompt: "15 km Rundwanderung um Ilsenburg")
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.phase, .home)
-        XCTAssertEqual(viewModel.generatedRoute?.id, route.id)
-        XCTAssertTrue(viewModel.suggestions.isEmpty)
-        XCTAssertEqual(viewModel.generatedRoute?.planningMetadata?.loopSearchOutcome, .singleRoute)
-        XCTAssertEqual(viewModel.generatedRoute?.intentDebugMetadata?.loopSearchDiagnostics?.directRouteCount, 1)
-    }
-
-    @MainActor
-    func testCoordinatorNoticeShowsOnLoopFallbackSuggestions() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start
-            ]
-        )
-        let route = TestRouteFixtures.luneburgLoop
-        let router = StubRoutingCoordinator(
-            result: .success(
-                RoutingResult(
-                    suggestions: RouteSuggestionNormalizer.suggestions(from: [route, TestRouteFixtures.sunsetRidge]),
-                    notice: "GraphHopper round trips need flexible mode on this API plan, so TrailMind built loop options from normal routed segments."
-                )
-            )
-        )
-        let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
-        )
-
-        viewModel.startTextRoute(prompt: "15 km Rundwanderung um Ilsenburg")
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.phase, .suggestions)
-        XCTAssertNil(viewModel.generatedRoute)
-        XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(viewModel.suggestions.count, 2)
-        XCTAssertEqual(
-            viewModel.suggestionNotice,
-            "GraphHopper round trips need flexible mode on this API plan, so TrailMind built loop options from normal routed segments."
-        )
-    }
-
-    @MainActor
-    func testInvalidPromptStopsBeforeGeocoding() async {
-        let geocoder = StubGeocodingService(coordinates: [:])
-        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
-        let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
-        )
-
-        viewModel.startTextRoute(prompt: "mach mir was schönes")
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.phase, .generating)
-        XCTAssertEqual(
-            viewModel.generationFailure?.message,
-            "Which area should I plan around?"
-        )
-        XCTAssertEqual(viewModel.generationFailure?.stage, .understanding)
-        XCTAssertTrue(geocoder.requests.isEmpty)
-        XCTAssertNil(router.intent)
-    }
-
-    @MainActor
-    func testPointToPointWithoutEndShowsContextualDestinationQuestion() async {
-        let geocoder = StubGeocodingService(coordinates: [:])
-        let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
-        let remoteIntent = AdventureIntent(
-            rawPrompt: "Plan a route from Ilsenburg to",
-            parserSource: .remoteAI,
-            confidence: 0.52,
-            activityType: .hiking,
-            routeType: .pointToPoint,
-            startLocationQuery: "Ilsenburg",
-            endLocationQuery: nil,
-            regionQuery: nil,
-            targetDistanceKm: nil,
-            targetDurationMinutes: nil,
-            difficulty: nil,
-            desiredFeatures: [],
-            avoidFeatures: []
-        )
-        let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router,
-            intentParsingProvider: FixedIntentParsingProvider(
-                parserSource: .remoteAI,
-                intent: remoteIntent
-            )
-        )
-
-        viewModel.startTextRoute(prompt: remoteIntent.rawPrompt)
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.phase, .generating)
-        XCTAssertEqual(viewModel.generationFailure?.message, "Where do you want to go?")
-        XCTAssertTrue(geocoder.requests.isEmpty)
-        XCTAssertNil(router.intent)
-    }
-
-    @MainActor
-    func testRoutingFailureReturnsFriendlyErrorWithoutRoute() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
-        let geocoder = StubGeocodingService(
-            coordinates: [
-                "Ilsenburg": start,
-                "Schierke": end
-            ]
-        )
-        let router = StubRoutingCoordinator(
-            result: .failure(GraphHopperError.missingAPIKey)
-        )
-        let viewModel = makeViewModel(
-            geocodingService: geocoder,
-            routingCoordinator: router
-        )
-
-        viewModel.startTextRoute(prompt: "Ilsenburg nach Schierke")
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.phase, .generating)
-        XCTAssertNil(viewModel.generatedRoute)
-        XCTAssertEqual(
-            viewModel.generationFailure?.message,
-            "Live routing isn’t configured yet. Try again after routing setup is complete."
-        )
+        guard case let .cancelled(finalRecovery) = viewModel.state else {
+            return XCTFail("Late parser success overwrote cancellation.")
+        }
+        XCTAssertEqual(finalRecovery.originalPrompt, prompt)
         XCTAssertTrue(viewModel.suggestions.isEmpty)
     }
 
-    @MainActor
-    func testEveryHomeExampleUsesTheRealPlanningPipeline() async {
+    func testCancellationDuringGeocodingRejectsLateSuccess() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let geocoder = ControlledGeocodingService()
+        let viewModel = makeViewModel(
+            geocodingService: geocoder,
+            routingCoordinator: StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop),
+            intentParsingProvider: FixedIntentParsingProvider(intent: makeIntent(rawPrompt: prompt))
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        guard await waitUntil("controlled geocoder request", condition: { geocoder.requests.count == 1 }) else { return }
+        viewModel.cancelGeneration()
+        geocoder.succeed(requestID: 0, with: start)
+        guard await waitUntil(
+            "cancelled geocoder completion",
+            condition: { geocoder.completedRequestIDs.contains(0) }
+        ) else { return }
+        await drainTasks()
+
+        guard case let .cancelled(recovery) = viewModel.state else {
+            return XCTFail("Late geocoding success overwrote cancellation.")
+        }
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    func testCancellationDuringRoutingRejectsLateSuccess() async {
+        let prompt = "Ilsenburg nach Schierke"
+        let router = ControlledRoutingCoordinator()
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end]),
+            routingCoordinator: router,
+            intentParsingProvider: FixedIntentParsingProvider(intent: makeIntent(rawPrompt: prompt))
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        guard await waitUntil("controlled routing request", condition: { router.intents.count == 1 }) else { return }
+        viewModel.cancelGeneration()
+        router.succeed(requestID: 0, routes: [TestRouteFixtures.luneburgLoop])
+        guard await waitUntil(
+            "cancelled routing completion",
+            condition: { router.completedRequestIDs.contains(0) }
+        ) else { return }
+        await drainTasks()
+
+        guard case let .cancelled(recovery) = viewModel.state else {
+            return XCTFail("Late routing success overwrote cancellation.")
+        }
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+
+    func testOlderRequestCompletingAfterNewerSuccessIsIgnored() async {
+        let oldPrompt = "Old route from Ilsenburg to Schierke"
+        let newPrompt = "New route from Lüneburg to Amelinghausen"
+        let newStart = Coordinate(latitude: 53.2487, longitude: 10.4079)
+        let newEnd = Coordinate(latitude: 53.1305, longitude: 10.2147)
+        let parser = ControlledIntentParsingProvider()
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .pointToPoint))
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(
+                coordinates: ["Lüneburg": newStart, "Amelinghausen": newEnd]
+            ),
+            routingCoordinator: router,
+            intentParsingProvider: parser
+        )
+
+        viewModel.startPlanning(prompt: oldPrompt)
+        guard await waitUntil("old parser request", condition: { parser.prompts.count == 1 }) else { return }
+
+        viewModel.startPlanning(prompt: newPrompt)
+        guard await waitUntil("new parser request", condition: { parser.prompts.count == 2 }) else { return }
+        parser.succeed(
+            requestID: 1,
+            with: makeIntent(
+                rawPrompt: newPrompt,
+                start: "Lüneburg",
+                end: "Amelinghausen"
+            )
+        )
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(newSuccess) = viewModel.state else {
+            return XCTFail("New request must finish first.")
+        }
+        XCTAssertEqual(newSuccess.originalPrompt, newPrompt)
+
+        parser.succeed(requestID: 0, with: makeIntent(rawPrompt: oldPrompt))
+        guard await waitUntil(
+            "old parser late completion",
+            condition: { parser.completedRequestIDs.contains(0) }
+        ) else { return }
+        await drainTasks()
+
+        guard case let .suggestionsReady(finalSuccess) = viewModel.state else {
+            return XCTFail("Old completion replaced the new result.")
+        }
+        XCTAssertEqual(finalSuccess.originalPrompt, newPrompt)
+        XCTAssertEqual(router.intents.count, 1)
+        XCTAssertEqual(router.intents.first?.parsedIntent?.rawPrompt, newPrompt)
+    }
+
+    func testEveryHomeExampleUsesTheSameRealCoordinator() async {
         let coordinates = [
-            "Ilsenburg": Coordinate(latitude: 51.8666, longitude: 10.6782),
-            "Schierke": Coordinate(latitude: 51.7636, longitude: 10.6647),
+            "Ilsenburg": start,
+            "Schierke": end,
             "Lüneburg": Coordinate(latitude: 53.2487, longitude: 10.4079),
             "Amelinghausen": Coordinate(latitude: 53.1305, longitude: 10.2147)
         ]
 
         for example in HomeView.routeExamples {
-            let geocoder = StubGeocodingService(coordinates: coordinates)
-            let router = StubRoutingCoordinator(route: TestRouteFixtures.luneburgLoop)
+            let matchingRoute: TrailRoute
+            switch example.id {
+            case "loop":
+                matchingRoute = verifiedRoute(routeType: .loop)
+            case "pointToPoint":
+                matchingRoute = verifiedRoute(routeType: .pointToPoint)
+            case "trailRun":
+                matchingRoute = verifiedRoute(activity: .trailRunning, routeType: .loop)
+            case "bike":
+                matchingRoute = verifiedRoute(activity: .biking, routeType: .pointToPoint)
+            default:
+                XCTFail("Add a semantically matching fixture for \(example.id).")
+                continue
+            }
+            let router = StubRoutingCoordinator(route: matchingRoute)
             let viewModel = makeViewModel(
-                geocodingService: geocoder,
+                geocodingService: StubGeocodingService(coordinates: coordinates),
                 routingCoordinator: router
             )
 
             viewModel.startPlanning(prompt: example.prompt)
             await viewModel.generate()
 
-            XCTAssertNotNil(router.intent, "Example did not reach routing: \(example.title)")
-            XCTAssertNil(viewModel.generationFailure, "Example failed: \(example.title)")
-            XCTAssertEqual(viewModel.generatedRoute?.isVerifiedRoutedResult, true)
-            XCTAssertTrue(viewModel.suggestions.isEmpty)
+            XCTAssertEqual(router.intents.count, 1, "Example did not reach routing: \(example.title)")
+            guard case let .suggestionsReady(success) = viewModel.state else {
+                XCTFail("Example did not reach verified suggestions: \(example.title)")
+                continue
+            }
+            XCTAssertEqual(success.originalPrompt, example.prompt)
+            XCTAssertTrue(success.suggestions.allSatisfy { $0.route.isVerifiedRoutedResult })
         }
-    }
-
-    @MainActor
-    func testUnverifiedRoutingResultRemainsAFailureWithoutMockFallback() async {
-        let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
-        let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
-        let viewModel = makeViewModel(
-            geocodingService: StubGeocodingService(
-                coordinates: ["Ilsenburg": start, "Schierke": end]
-            ),
-            routingCoordinator: StubRoutingCoordinator(route: MockRoutes.luneburgLoop)
-        )
-
-        viewModel.startPlanning(prompt: "Ilsenburg nach Schierke")
-        await viewModel.generate()
-
-        XCTAssertEqual(viewModel.phase, .generating)
-        XCTAssertEqual(
-            viewModel.generationFailure?.message,
-            "TrailMind couldn’t verify the returned route. Try again or edit the request."
-        )
-        XCTAssertNil(viewModel.generatedRoute)
-        XCTAssertTrue(viewModel.suggestions.isEmpty)
     }
 }

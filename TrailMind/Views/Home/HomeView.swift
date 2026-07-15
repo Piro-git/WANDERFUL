@@ -3,60 +3,97 @@ import UIKit
 
 struct PlanFlowView: View {
     @Environment(TrailTheme.self) private var theme
-    @State private var planner = PlannerViewModel()
+    @State private var planner: PlannerViewModel
     @State private var path: [TrailRoute] = []
+
+    init(planner: PlannerViewModel = PlannerViewModel()) {
+        _planner = State(initialValue: planner)
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
                 TrailBackground()
 
-                switch planner.phase {
-                case .home:
+                switch planner.state {
+                case .idle, .editing:
                     HomeView(
                         initialPrompt: planner.prompt,
-                        errorNotice: planner.errorMessage,
-                        onPlan: { prompt in
-                            withAnimation(.smooth) {
-                                planner.startPlanning(prompt: prompt)
-                            }
-                        },
-                        onDismissError: planner.dismissError
+                        automaticallyPresentsComposer: planner.isEditing,
+                        onPlan: startPlanning
                     )
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
-                case .generating:
+                case .understanding, .resolvingLocations, .generatingRoutes, .preparingSuggestions:
                     GeneratingRouteView(planner: planner)
                         .transition(.opacity)
 
-                case .suggestions:
+                case let .awaitingClarification(clarification):
+                    PlanningClarificationView(
+                        clarification: clarification,
+                        onSubmit: planner.submitClarification,
+                        onCancel: planner.cancelGeneration,
+                        onEditPrompt: planner.editRequest
+                    )
+                    .id(clarification.id)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+
+                case let .suggestionsReady(success):
                     RouteSuggestionsView(
-                        prompt: planner.prompt,
-                        suggestions: planner.suggestions,
-                        notice: planner.suggestionNotice,
+                        prompt: success.originalPrompt,
+                        suggestions: success.suggestions,
+                        notice: success.notice,
                         onStartOver: planner.reset
                     )
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
+
+                case let .noRoutes(recovery):
+                    PlanningRecoveryView(
+                        recovery: recovery,
+                        presentation: .noRoutes,
+                        onRetry: planner.retryGeneration,
+                        onEditPrompt: planner.editRequest
+                    )
+                    .transition(.opacity)
+
+                case let .recoverableError(recovery):
+                    PlanningRecoveryView(
+                        recovery: recovery,
+                        presentation: .error,
+                        onRetry: planner.retryGeneration,
+                        onEditPrompt: planner.editRequest
+                    )
+                    .transition(.opacity)
+
+                case let .cancelled(recovery):
+                    PlanningRecoveryView(
+                        recovery: recovery,
+                        presentation: .cancelled,
+                        onRetry: planner.retryGeneration,
+                        onEditPrompt: planner.editRequest
+                    )
+                    .transition(.opacity)
                 }
             }
             .animation(.smooth, value: planner.phase)
             .navigationDestination(for: TrailRoute.self) { route in
                 RouteDetailView(route: route)
             }
-            .onChange(of: planner.generatedRoute?.id) {
-                guard let route = planner.consumeGeneratedRoute() else { return }
-                path.append(route)
-            }
+        }
+    }
+
+    private func startPlanning(_ prompt: String) {
+        withAnimation(.smooth) {
+            planner.startPlanning(prompt: prompt)
         }
     }
 }
 
 struct HomeRouteExample: Identifiable, Equatable, Sendable {
+    let id: String
     let title: String
     let prompt: String
     let symbol: String
-
-    var id: String { title }
 }
 
 struct HomeView: View {
@@ -66,30 +103,33 @@ struct HomeView: View {
     }
 
     @Environment(TrailTheme.self) private var theme
+    let initialPrompt: String
+    let automaticallyPresentsComposer: Bool
+    let onPlan: (String) -> Void
     @State private var composerMode: ComposerMode?
     @State private var voiceLanguage = VoicePlanningLanguage.deviceDefault
-    let initialPrompt: String
-    let errorNotice: String?
-    let onPlan: (String) -> Void
-    let onDismissError: () -> Void
 
     static let routeExamples = [
         HomeRouteExample(
+            id: "loop",
             title: "15 km loop",
             prompt: "15 km Rundwanderung um Ilsenburg",
             symbol: "arrow.trianglehead.2.clockwise.rotate.90"
         ),
         HomeRouteExample(
+            id: "pointToPoint",
             title: "Ilsenburg to Schierke",
             prompt: "Plan a hike from Ilsenburg to Schierke",
             symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
         ),
         HomeRouteExample(
+            id: "trailRun",
             title: "2-hour trail run",
             prompt: "Trailrun loop from Ilsenburg for 2 hours",
             symbol: "figure.run"
         ),
         HomeRouteExample(
+            id: "bike",
             title: "Lüneburg bike route",
             prompt: "Radroute von Lüneburg nach Amelinghausen",
             symbol: "figure.outdoor.cycle"
@@ -101,37 +141,17 @@ struct HomeView: View {
             VStack(spacing: TrailSpacing.section) {
                 hero
 
-                if let errorNotice {
-                    HStack(alignment: .top, spacing: 11) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(theme.warning)
-                        Text(errorNotice)
-                            .font(.footnote)
-                            .foregroundStyle(theme.graphite)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Button(action: onDismissError) {
-                            Image(systemName: "xmark")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(theme.secondaryText)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Dismiss error")
-                    }
-                    .padding(14)
-                    .background(
-                        theme.sand.opacity(0.68),
-                        in: RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    )
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-
                 VStack(alignment: .leading, spacing: 14) {
                     SectionHeader(title: "Start with a thought", subtitle: "Tap an idea and make it yours.")
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
                             ForEach(Self.routeExamples) { example in
-                                PromptChip(title: example.title, symbol: example.symbol) {
+                                PromptChip(
+                                    title: example.title,
+                                    symbol: example.symbol,
+                                    accessibilityID: "home.example.\(example.id)"
+                                ) {
                                     onPlan(example.prompt)
                                 }
                             }
@@ -158,6 +178,7 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.warmWhite)
         }
+        .onAppear(perform: presentComposerForEditingIfNeeded)
     }
 
     private var hero: some View {
@@ -234,6 +255,11 @@ struct HomeView: View {
         .padding(.top, 10)
     }
 
+    private func presentComposerForEditingIfNeeded() {
+        guard automaticallyPresentsComposer, composerMode == nil else { return }
+        composerMode = ComposerMode(startsListening: false)
+    }
+
 }
 
 struct VoiceInputOrb: View {
@@ -266,6 +292,7 @@ struct PromptChip: View {
     @Environment(TrailTheme.self) private var theme
     let title: String
     let symbol: String
+    let accessibilityID: String
     let action: () -> Void
 
     var body: some View {
@@ -281,7 +308,7 @@ struct PromptChip: View {
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("home.example.\(title)")
+        .accessibilityIdentifier(accessibilityID)
     }
 }
 
@@ -350,7 +377,7 @@ struct PromptComposerView: View {
                         .focused($isFocused)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
-                        .accessibilityIdentifier("composer.prompt")
+                        .accessibilityIdentifier(PlanningAccessibilityID.promptInput)
                 }
                 .frame(minHeight: 155)
                 .background(theme.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -369,7 +396,7 @@ struct PromptComposerView: View {
                 }
                 .disabled(!voiceModel.canSubmit)
                 .opacity(voiceModel.canSubmit ? 1 : 0.45)
-                .accessibilityIdentifier("composer.submit")
+                .accessibilityIdentifier(PlanningAccessibilityID.submit)
 
                 Spacer()
             }
