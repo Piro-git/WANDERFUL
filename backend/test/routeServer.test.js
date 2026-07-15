@@ -22,7 +22,13 @@ describe("route HTTP server", () => {
       method: "POST",
       url: "/api/parse-intent",
       body: { prompt: "15 km Rundwanderung um Ilsenburg", locale: "de" }
-    }, { env: { NODE_ENV: "test", INTENT_ALLOW_INSECURE_LOCAL_PARSING: "true" } });
+    }, {
+      env: {
+        NODE_ENV: "test",
+        INTENT_ALLOW_INSECURE_LOCAL_PARSING: "true",
+        INTENT_ALLOW_DETERMINISTIC_MOCK: "true"
+      }
+    });
     assert.equal(result.statusCode, 200);
     assert.equal(result.payload.routeType, "loop");
     assert.equal("geometry" in result.payload, false);

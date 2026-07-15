@@ -3,7 +3,11 @@ import {
   createIntentSessionAuthorizer,
   intentAuthorizationConfiguration
 } from "./routeSessionAuthorizer.js";
-import { IntentParseError, parseIntentEndpoint } from "../parseIntent.js";
+import {
+  intentError,
+  intentErrorResult,
+  parseIntentEndpoint
+} from "../parseIntent.js";
 
 export function createIntentSessionEndpoint(options = {}) {
   const env = options.env ?? process.env;
@@ -13,30 +17,46 @@ export function createIntentSessionEndpoint(options = {}) {
   });
   const configuration = intentAuthorizationConfiguration(env);
   const parseIntent = options.parseIntent ?? parseIntentEndpoint;
+  const logger = options.logger ?? { warn() {} };
   const insecureLocalParsing =
     (env.NODE_ENV === "development" || env.NODE_ENV === "test") &&
     env.INTENT_ALLOW_INSECURE_LOCAL_PARSING === "true";
 
   return async function intentSessionEndpoint(body, context = {}) {
     let access;
+    let result;
     try {
+      if (context.signal?.aborted) throw intentError("request_cancelled");
       if (!insecureLocalParsing) {
         access = await authorizer.authorize({
           headers: context.headers,
-          cost: configuration.requestCost
+          cost: configuration.requestCost,
+          signal: context.signal
         });
       }
+      if (context.signal?.aborted) throw intentError("request_cancelled");
       const payload = await parseIntent(body, { ...options, signal: context.signal });
-      return { statusCode: 200, payload };
+      if (context.signal?.aborted) throw intentError("request_cancelled");
+      result = { statusCode: 200, payload };
     } catch (error) {
-      if (error instanceof AppAttestError) return appAttestErrorResult(error);
-      const statusCode = error instanceof IntentParseError ? error.statusCode : 500;
-      return {
-        statusCode,
-        payload: { error: error instanceof Error ? error.message : "Unknown error" }
-      };
+      result = error instanceof AppAttestError
+        ? appAttestErrorResult(error)
+        : intentErrorResult(error);
     } finally {
-      await access?.release?.();
+      try {
+        await access?.release?.();
+      } catch {
+        try {
+          logger.warn({ event: "intent_lease_release_failed" });
+        } catch {
+          // Operational logging must never alter or expose an intent response.
+        }
+      }
     }
+
+    if (result.statusCode === 200 && context.signal?.aborted) {
+      return intentErrorResult(intentError("request_cancelled"));
+    }
+    return result;
   };
 }

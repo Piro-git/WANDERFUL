@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { AppAttestError, appAttestErrorResult } from "./appAttest/appAttestErrors.js";
 import { createAppAttestRuntime } from "./appAttest/appAttestRuntime.js";
 import { createIntentSessionEndpoint } from "./appAttest/intentSessionEndpoint.js";
-import { IntentParseError } from "./parseIntent.js";
+import { intentError, intentErrorResult } from "./parseIntent.js";
 import { createRouteEndpoint } from "./routing/routeEndpoint.js";
 import { RouteError, routeError, routeErrorResult } from "./routing/routeErrors.js";
 
@@ -27,16 +27,19 @@ export function createIntentRequestHandler(options = {}) {
   });
   return async function intentRequestHandler(request, response) {
     const cancellation = new AbortController();
-    request.on("aborted", () => cancellation.abort());
-    response.on("close", () => {
+    const abortFromRequest = () => cancellation.abort();
+    const abortFromResponse = () => {
       if (!response.writableEnded) cancellation.abort();
-    });
+    };
+    request.once("aborted", abortFromRequest);
+    response.once("close", abortFromResponse);
 
     try {
       const knownPostRoute = request.method === "POST" && isKnownPostPath(request.url);
       let body = {};
       if (knownPostRoute) {
         if (!isJsonMediaType(request.headers["content-type"])) {
+          if (request.url === "/api/parse-intent") throw intentError("invalid_request");
           throw routeError("invalid_request", { message: "Content-Type must be application/json." });
         }
         body = await readJsonBody(
@@ -66,10 +69,14 @@ export function createIntentRequestHandler(options = {}) {
         const result = routeErrorResult(error);
         return sendJson(response, result.statusCode, result.payload);
       }
-      const statusCode = error instanceof IntentParseError ? error.statusCode : 500;
-      return sendJson(response, statusCode, {
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
+      if (request.url === "/api/parse-intent") {
+        const result = intentErrorResult(error);
+        return sendJson(response, result.statusCode, result.payload);
+      }
+      return sendJson(response, 500, { error: "Internal server error" });
+    } finally {
+      request.removeListener("aborted", abortFromRequest);
+      response.removeListener("close", abortFromResponse);
     }
   };
 }
@@ -108,13 +115,10 @@ export async function handleIntentHttpRequest(request, options = {}) {
       signal: request.signal
     });
   } catch (error) {
-    const statusCode = error instanceof IntentParseError ? error.statusCode : 500;
-    return {
-      statusCode,
-      payload: {
-        error: error instanceof Error ? error.message : "Unknown error"
-      }
-    };
+    if (request.url === "/api/parse-intent") return intentErrorResult(error);
+    if (error instanceof AppAttestError) return appAttestErrorResult(error);
+    if (error instanceof RouteError) return routeErrorResult(error);
+    return { statusCode: 500, payload: { error: "Internal server error" } };
   }
 }
 
@@ -143,7 +147,7 @@ function readJsonBody(request, maxBytes, routeErrorContract) {
           reject,
           routeErrorContract
             ? routeError("request_too_large")
-            : new IntentParseError("Request body is too large.", 413)
+            : intentError("invalid_request", { statusCode: 413 })
         );
         request.resume();
         return;
@@ -158,7 +162,7 @@ function readJsonBody(request, maxBytes, routeErrorContract) {
           reject,
           routeErrorContract
             ? routeError("invalid_request", { message: "Request body must be valid JSON." })
-            : new IntentParseError("Request body must be valid JSON.", 400)
+            : intentError("invalid_request")
         );
       }
     };
@@ -167,7 +171,7 @@ function readJsonBody(request, maxBytes, routeErrorContract) {
       reject,
       routeErrorContract
         ? routeError("request_cancelled")
-        : new IntentParseError("Request was cancelled.", 400)
+        : intentError("request_cancelled")
     );
 
     request.setEncoding("utf8");

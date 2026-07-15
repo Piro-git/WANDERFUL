@@ -7,14 +7,19 @@ import {
 } from "../src/intentSchema.js";
 
 describe("parseIntentEndpoint", () => {
-  it("parses a German loop prompt with mock fallback", async () => {
+  it("parses a German loop prompt with an explicit deterministic fixture", async () => {
     const intent = await parseIntentEndpoint(
       {
         prompt:
           "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück",
         locale: "de"
       },
-      { env: {} }
+      {
+        env: {
+          NODE_ENV: "test",
+          INTENT_ALLOW_DETERMINISTIC_MOCK: "true"
+        }
+      }
     );
 
     assert.equal(intent.activityType, "hiking");
@@ -24,7 +29,7 @@ describe("parseIntentEndpoint", () => {
     assert.equal(intent.targetDistanceKm, 15);
     assert.equal(intent.difficulty, "easy");
     assert.deepEqual(intent.avoidFeatures, ["repeatedPath"]);
-    assert.equal(intent.parserSource, "remoteAI");
+    assert.equal(intent.parserSource, "localRuleBased");
     assert.ok(intent.confidence > 0.5);
   });
 
@@ -66,13 +71,18 @@ describe("parseIntentEndpoint", () => {
     assert.equal(repaired.transportMode, "walking");
   });
 
-  it("parses an English point-to-point prompt with mock fallback", async () => {
+  it("parses an English point-to-point prompt with an explicit deterministic fixture", async () => {
     const intent = await parseIntentEndpoint(
       {
         prompt: "Plan a hike from Ilsenburg to Schierke with forest paths",
         locale: "en"
       },
-      { env: {} }
+      {
+        env: {
+          NODE_ENV: "test",
+          INTENT_ALLOW_DETERMINISTIC_MOCK: "true"
+        }
+      }
     );
 
     assert.equal(intent.activityType, "hiking");
@@ -88,7 +98,12 @@ describe("parseIntentEndpoint", () => {
         prompt: "I want something beautiful and relaxed",
         locale: "en"
       },
-      { env: {} }
+      {
+        env: {
+          NODE_ENV: "test",
+          INTENT_ALLOW_DETERMINISTIC_MOCK: "true"
+        }
+      }
     );
 
     assert.equal(intent.routeType, null);
@@ -177,7 +192,7 @@ describe("parseIntentEndpoint", () => {
           },
           "15 km loop around Schierke"
         ),
-      /forbidden field: geometry/
+      (error) => error?.code === "invalid_provider_response"
     );
   });
 
@@ -185,35 +200,30 @@ describe("parseIntentEndpoint", () => {
     const fetchCalls = [];
     const fetchImpl = async (url, init) => {
       fetchCalls.push({ url, init });
-      return {
-        ok: true,
-        async json() {
-          return {
-            choices: [
-              {
-                message: {
-                  content: JSON.stringify({
-                    activityType: "hiking",
-                    routeType: "pointToPoint",
-                    startLocationQuery: "Ilsenburg",
-                    endLocationQuery: "Schierke",
-                    regionQuery: null,
-                    targetDistanceKm: null,
-                    targetDurationMinutes: null,
-                    difficulty: null,
-                    desiredFeatures: [],
-                    avoidFeatures: [],
-                    transportMode: "walking",
-                    rawPrompt: "Ilsenburg to Schierke",
-                    parserSource: "remoteAI",
-                    confidence: 0.8
-                  })
-                }
-              }
-            ]
-          };
-        }
-      };
+      return jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                activityType: "hiking",
+                routeType: "pointToPoint",
+                startLocationQuery: "Ilsenburg",
+                endLocationQuery: "Schierke",
+                regionQuery: null,
+                targetDistanceKm: null,
+                targetDurationMinutes: null,
+                difficulty: null,
+                desiredFeatures: [],
+                avoidFeatures: [],
+                transportMode: "walking",
+                rawPrompt: "Ilsenburg to Schierke",
+                parserSource: "remoteAI",
+                confidence: 0.8
+              })
+            }
+          }
+        ]
+      });
     };
 
     const intent = await parseIntentEndpoint(
@@ -244,34 +254,29 @@ describe("parseIntentEndpoint", () => {
       "Ich will eine entspannte Runde bei Ilsenburg, ca. 3 Stunden",
       "Mach mir eine kurze Wanderung bei Lüneburg, eher easy"
     ].join("\n");
-    const fetchImpl = async () => ({
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  activityType: null,
-                  routeType: "loop",
-                  startLocationQuery: null,
-                  endLocationQuery: null,
-                  regionQuery: null,
-                  targetDistanceKm: null,
-                  targetDurationMinutes: null,
-                  difficulty: null,
-                  desiredFeatures: [],
-                  avoidFeatures: [],
-                  transportMode: null,
-                  rawPrompt: prompt,
-                  parserSource: "remoteAI",
-                  confidence: 0.42
-                })
-              }
-            }
-          ]
-        };
-      }
+    const fetchImpl = async () => jsonResponse({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              activityType: null,
+              routeType: "loop",
+              startLocationQuery: null,
+              endLocationQuery: null,
+              regionQuery: null,
+              targetDistanceKm: null,
+              targetDurationMinutes: null,
+              difficulty: null,
+              desiredFeatures: [],
+              avoidFeatures: [],
+              transportMode: null,
+              rawPrompt: prompt,
+              parserSource: "remoteAI",
+              confidence: 0.42
+            })
+          }
+        }
+      ]
     });
 
     const intent = await parseIntentEndpoint(
@@ -296,34 +301,29 @@ describe("parseIntentEndpoint", () => {
 
   it("repairs point-to-point remoteAI output with locations but missing activity", async () => {
     const prompt = "Lüneburg bis Bardowick";
-    const fetchImpl = async () => ({
-      ok: true,
-      async json() {
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  activityType: null,
-                  routeType: "pointToPoint",
-                  startLocationQuery: "Lüneburg",
-                  endLocationQuery: "Bardowick",
-                  regionQuery: null,
-                  targetDistanceKm: null,
-                  targetDurationMinutes: null,
-                  difficulty: null,
-                  desiredFeatures: [],
-                  avoidFeatures: [],
-                  transportMode: null,
-                  rawPrompt: prompt,
-                  parserSource: "remoteAI",
-                  confidence: 0.9
-                })
-              }
-            }
-          ]
-        };
-      }
+    const fetchImpl = async () => jsonResponse({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              activityType: null,
+              routeType: "pointToPoint",
+              startLocationQuery: "Lüneburg",
+              endLocationQuery: "Bardowick",
+              regionQuery: null,
+              targetDistanceKm: null,
+              targetDurationMinutes: null,
+              difficulty: null,
+              desiredFeatures: [],
+              avoidFeatures: [],
+              transportMode: null,
+              rawPrompt: prompt,
+              parserSource: "remoteAI",
+              confidence: 0.9
+            })
+          }
+        }
+      ]
     });
 
     const intent = await parseIntentEndpoint(
@@ -349,30 +349,25 @@ describe("parseIntentEndpoint", () => {
     const fetchCalls = [];
     const fetchImpl = async (url, init) => {
       fetchCalls.push({ url, init });
-      return {
-        ok: true,
-        async json() {
-          return {
-            output_text: JSON.stringify({
-              activityType: "hiking",
-              routeType: "loop",
-              startLocationQuery: "Schierke",
-              endLocationQuery: null,
-              regionQuery: null,
-              targetDistanceKm: 15,
-              targetDurationMinutes: null,
-              difficulty: "easy",
-              desiredFeatures: [],
-              avoidFeatures: ["repeatedPath"],
-              transportMode: "walking",
-              rawPrompt:
-                "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück",
-              parserSource: "remoteAI",
-              confidence: 0.87
-            })
-          };
-        }
-      };
+      return jsonResponse({
+        output_text: JSON.stringify({
+          activityType: "hiking",
+          routeType: "loop",
+          startLocationQuery: "Schierke",
+          endLocationQuery: null,
+          regionQuery: null,
+          targetDistanceKm: 15,
+          targetDurationMinutes: null,
+          difficulty: "easy",
+          desiredFeatures: [],
+          avoidFeatures: ["repeatedPath"],
+          transportMode: "walking",
+          rawPrompt:
+            "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück",
+          parserSource: "remoteAI",
+          confidence: 0.87
+        })
+      });
     };
 
     const intent = await parseIntentEndpoint(
@@ -405,40 +400,35 @@ describe("parseIntentEndpoint", () => {
   });
 
   it("parses Google Gemini Interactions API model_output steps", async () => {
-    const fetchImpl = async () => ({
-      ok: true,
-      async json() {
-        return {
-          steps: [
-            { type: "thought", signature: "redacted" },
+    const fetchImpl = async () => jsonResponse({
+      steps: [
+        { type: "thought", signature: "redacted" },
+        {
+          type: "model_output",
+          content: [
             {
-              type: "model_output",
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify({
-                    activityType: "hiking",
-                    routeType: "loop",
-                    startLocationQuery: "Schierke",
-                    endLocationQuery: null,
-                    regionQuery: null,
-                    targetDistanceKm: 15,
-                    targetDurationMinutes: null,
-                    difficulty: "easy",
-                    desiredFeatures: ["lowRepeat"],
-                    avoidFeatures: ["repeatedPath"],
-                    transportMode: "walking",
-                    rawPrompt:
-                      "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück",
-                    parserSource: "remoteAI",
-                    confidence: 0.95
-                  })
-                }
-              ]
+              type: "text",
+              text: JSON.stringify({
+                activityType: "hiking",
+                routeType: "loop",
+                startLocationQuery: "Schierke",
+                endLocationQuery: null,
+                regionQuery: null,
+                targetDistanceKm: 15,
+                targetDurationMinutes: null,
+                difficulty: "easy",
+                desiredFeatures: ["lowRepeat"],
+                avoidFeatures: ["repeatedPath"],
+                transportMode: "walking",
+                rawPrompt:
+                  "Ich will eine entspannte 15 km Rundwanderung um Schierke mit wenig gleicher Strecke zurück",
+                parserSource: "remoteAI",
+                confidence: 0.95
+              })
             }
           ]
-        };
-      }
+        }
+      ]
     });
 
     const intent = await parseIntentEndpoint(
@@ -463,11 +453,8 @@ describe("parseIntentEndpoint", () => {
   });
 
   it("gracefully handles malformed OpenRouter JSON", async () => {
-    const fetchImpl = async () => ({
-      ok: true,
-      async json() {
-        return { choices: [{ message: { content: "{not-json" } }] };
-      }
+    const fetchImpl = async () => jsonResponse({
+      choices: [{ message: { content: "{not-json" } }]
     });
 
     await assert.rejects(
@@ -476,17 +463,12 @@ describe("parseIntentEndpoint", () => {
           { prompt: "Ilsenburg to Schierke" },
           { env: { OPENROUTER_API_KEY: "test-key" }, fetchImpl }
         ),
-      /malformed intent JSON/
+      (error) => error?.code === "invalid_provider_response"
     );
   });
 
   it("gracefully handles malformed Google Gemini JSON", async () => {
-    const fetchImpl = async () => ({
-      ok: true,
-      async json() {
-        return { output_text: "{not-json" };
-      }
-    });
+    const fetchImpl = async () => jsonResponse({ output_text: "{not-json" });
 
     await assert.rejects(
       () =>
@@ -501,7 +483,13 @@ describe("parseIntentEndpoint", () => {
             fetchImpl
           }
         ),
-      /malformed intent JSON/
+      (error) => error?.code === "invalid_provider_response"
     );
   });
 });
+
+function jsonResponse(payload) {
+  return new Response(JSON.stringify(payload), {
+    headers: { "Content-Type": "application/json" }
+  });
+}

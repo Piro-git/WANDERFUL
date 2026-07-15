@@ -58,12 +58,53 @@ const FORBIDDEN_OUTPUT_KEYS = new Set([
   "trailStatus"
 ]);
 
+const DEFAULT_PROVIDER_TIMEOUT_MS = 15_000;
+const MIN_PROVIDER_TIMEOUT_MS = 1_000;
+const MAX_PROVIDER_TIMEOUT_MS = 30_000;
+const DEFAULT_PROVIDER_MAX_RESPONSE_BYTES = 65_536;
+const MIN_PROVIDER_MAX_RESPONSE_BYTES = 1_024;
+const MAX_PROVIDER_MAX_RESPONSE_BYTES = 262_144;
+const DEFAULT_INTENT_LEASE_TTL_MS = 60_000;
+const MIN_INTENT_LEASE_TTL_MS = 10_000;
+const MAX_INTENT_LEASE_TTL_MS = 600_000;
+const LEASE_TIMEOUT_MARGIN_MS = 1_000;
+
+const INTENT_ERROR_DEFINITIONS = Object.freeze({
+  invalid_request: [400, "The intent request is invalid."],
+  invalid_provider_response: [502, "The intent provider returned an invalid response."],
+  intent_unavailable: [503, "Intent parsing is temporarily unavailable. Please try again."],
+  rate_limited: [503, "Intent parsing is temporarily busy. Please try again later."],
+  configuration_unavailable: [503, "Intent parsing is not configured on this server."],
+  intent_timed_out: [504, "Intent parsing timed out. Please try again."],
+  request_cancelled: [499, "The intent request was cancelled."]
+});
+
 export class IntentParseError extends Error {
-  constructor(message, statusCode = 500) {
-    super(message);
+  constructor(code, options = {}) {
+    const definition = INTENT_ERROR_DEFINITIONS[code] ?? INTENT_ERROR_DEFINITIONS.intent_unavailable;
+    super(definition[1], { cause: options.cause });
     this.name = "IntentParseError";
-    this.statusCode = statusCode;
+    this.code = INTENT_ERROR_DEFINITIONS[code] ? code : "intent_unavailable";
+    this.statusCode = options.statusCode ?? definition[0];
   }
+}
+
+export function intentError(code, options) {
+  return new IntentParseError(code, options);
+}
+
+export function intentErrorResult(error) {
+  const safeError =
+    error instanceof IntentParseError ? error : intentError("intent_unavailable", { cause: error });
+  return {
+    statusCode: safeError.statusCode,
+    payload: {
+      error: {
+        code: safeError.code,
+        message: safeError.message
+      }
+    }
+  };
 }
 
 export async function parseIntentEndpoint(input, options = {}) {
@@ -71,125 +112,179 @@ export async function parseIntentEndpoint(input, options = {}) {
   const env = options.env ?? process.env;
   const provider = selectedProvider(env);
 
-  if (provider === "google" && env.GOOGLE_API_KEY) {
+  const googleApiKey = credential(env.GOOGLE_API_KEY);
+  const openRouterApiKey = credential(env.OPENROUTER_API_KEY);
+
+  if (provider === "google" && googleApiKey) {
     return parseWithGoogle(request, env, options);
   }
 
-  if (provider === "openrouter" && env.OPENROUTER_API_KEY) {
+  if (provider === "openrouter" && openRouterApiKey) {
     return parseWithOpenRouter(request, env, options);
   }
 
-  if (env.GOOGLE_API_KEY) {
+  if (googleApiKey) {
     return parseWithGoogle(request, env, options);
   }
 
-  if (env.OPENROUTER_API_KEY) {
+  if (openRouterApiKey) {
     return parseWithOpenRouter(request, env, options);
   }
 
-  if (!env.GOOGLE_API_KEY && !env.OPENROUTER_API_KEY) {
-    return sanitizeIntent(mockIntent(request), request.prompt);
+  if (deterministicMockAllowed(env)) {
+    return sanitizeIntent(mockIntent(request), request.prompt, {
+      parserSource: "localRuleBased"
+    });
   }
+
+  throw intentError("configuration_unavailable");
 }
 
 async function parseWithOpenRouter(request, env, options = {}) {
-  const apiKey = env.OPENROUTER_API_KEY;
-  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
-  if (typeof fetchImpl !== "function") {
-    throw new IntentParseError("Fetch is not available in this runtime.");
-  }
-
+  const apiKey = credential(env.OPENROUTER_API_KEY);
   const model = env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL;
-  const response = await fetchImpl(OPENROUTER_CHAT_COMPLETIONS_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://trailmind.local",
-      "X-Title": "TrailMind"
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt(request) }
-      ],
-      temperature: 0.1,
-      max_tokens: 500,
-      provider: {
-        require_parameters: true
+  return executeProviderRequest({
+    request,
+    env,
+    options,
+    url: OPENROUTER_CHAT_COMPLETIONS_URL,
+    init: {
+      method: "POST",
+      redirect: "manual",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://trailmind.local",
+        "X-Title": "TrailMind"
       },
-      response_format: responseFormat
-    })
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt(request) }
+        ],
+        temperature: 0.1,
+        max_tokens: 500,
+        provider: {
+          require_parameters: true
+        },
+        response_format: responseFormat
+      })
+    },
+    responseText(payload) {
+      return payload?.choices?.[0]?.message?.content;
+    }
   });
-
-  if (!response.ok) {
-    const message = await safeResponseText(response);
-    throw new IntentParseError(
-      `OpenRouter intent parsing failed (${response.status}): ${message}`,
-      502
-    );
-  }
-
-  const payload = await response.json();
-  const content = payload?.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || content.trim().length === 0) {
-    throw new IntentParseError("OpenRouter returned an empty intent response.", 502);
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    throw new IntentParseError("OpenRouter returned malformed intent JSON.", 502);
-  }
-
-  return sanitizeIntent(repairIntent(parsed, request.prompt), request.prompt);
 }
 
 async function parseWithGoogle(request, env, options = {}) {
-  const apiKey = env.GOOGLE_API_KEY;
-  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
-  if (typeof fetchImpl !== "function") {
-    throw new IntentParseError("Fetch is not available in this runtime.");
-  }
-
+  const apiKey = credential(env.GOOGLE_API_KEY);
   const model = env.GOOGLE_MODEL || DEFAULT_GOOGLE_MODEL;
-  const response = await fetchImpl(GOOGLE_INTERACTIONS_URL, {
-    method: "POST",
-    headers: {
-      "x-goog-api-key": apiKey,
-      "Content-Type": "application/json"
+  return executeProviderRequest({
+    request,
+    env,
+    options,
+    url: GOOGLE_INTERACTIONS_URL,
+    init: {
+      method: "POST",
+      redirect: "manual",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        input: `${SYSTEM_PROMPT}\n\nInput:\n${userPrompt(request)}`,
+        response_format: googleResponseFormat
+      })
     },
-    body: JSON.stringify({
-      model,
-      input: `${SYSTEM_PROMPT}\n\nInput:\n${userPrompt(request)}`,
-      response_format: googleResponseFormat
-    })
+    responseText: googleResponseText
   });
+}
 
-  if (!response.ok) {
-    const message = await safeResponseText(response);
-    throw new IntentParseError(
-      `Google Gemini intent parsing failed (${response.status}): ${message}`,
-      502
-    );
+async function executeProviderRequest({ request, env, options, url, init, responseText }) {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  const setTimeoutImpl = options.setTimeoutImpl ?? setTimeout;
+  const clearTimeoutImpl = options.clearTimeoutImpl ?? clearTimeout;
+  if (typeof fetchImpl !== "function") throw intentError("configuration_unavailable");
+  if (typeof setTimeoutImpl !== "function" || typeof clearTimeoutImpl !== "function") {
+    throw intentError("configuration_unavailable");
   }
 
-  const payload = await response.json();
-  const content = googleResponseText(payload);
-  if (typeof content !== "string" || content.trim().length === 0) {
-    throw new IntentParseError("Google Gemini returned an empty intent response.", 502);
-  }
+  const configuration = providerExecutionConfiguration(env);
+  const callerSignal = options.signal;
+  const controller = new AbortController();
+  let abortCode;
+  let timeout;
+  const abortUpstream = (code) => {
+    if (abortCode) return;
+    abortCode = code;
+    controller.abort();
+  };
+  const abortFromCaller = () => abortUpstream("request_cancelled");
+  const throwIfAborted = () => {
+    if (abortCode) throw intentError(abortCode);
+    if (callerSignal?.aborted) throw intentError("request_cancelled");
+  };
 
-  let parsed;
+  if (callerSignal?.aborted) throw intentError("request_cancelled");
+  callerSignal?.addEventListener("abort", abortFromCaller, { once: true });
+  if (callerSignal?.aborted) abortFromCaller();
+
   try {
-    parsed = JSON.parse(content);
-  } catch {
-    throw new IntentParseError("Google Gemini returned malformed intent JSON.", 502);
-  }
+    throwIfAborted();
+    timeout = setTimeoutImpl(
+      () => abortUpstream("intent_timed_out"),
+      configuration.timeoutMs
+    );
+    throwIfAborted();
 
-  return sanitizeIntent(repairIntent(parsed, request.prompt), request.prompt);
+    const response = await fetchImpl(url, { ...init, signal: controller.signal });
+    throwIfAborted();
+    if (!isProviderResponse(response)) throw intentError("invalid_provider_response");
+    if (!response.ok) {
+      cancelProviderBody(response);
+      throw providerHttpError(response.status);
+    }
+
+    const payload = await readBoundedProviderJson(
+      response,
+      configuration.maxResponseBytes,
+      controller.signal
+    );
+    throwIfAborted();
+    let content;
+    try {
+      content = responseText(payload);
+    } catch (error) {
+      throw intentError("invalid_provider_response", { cause: error });
+    }
+    if (typeof content !== "string" || content.trim().length === 0) {
+      throw intentError("invalid_provider_response");
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (error) {
+      throw intentError("invalid_provider_response", { cause: error });
+    }
+
+    throwIfAborted();
+    const result = sanitizeIntent(repairIntent(parsed, request.prompt), request.prompt, {
+      parserSource: "remoteAI"
+    });
+    throwIfAborted();
+    return result;
+  } catch (error) {
+    if (abortCode) throw intentError(abortCode, { cause: error });
+    if (callerSignal?.aborted) throw intentError("request_cancelled", { cause: error });
+    if (error instanceof IntentParseError) throw error;
+    throw intentError("intent_unavailable", { cause: error });
+  } finally {
+    if (timeout !== undefined) clearTimeoutImpl(timeout);
+    callerSignal?.removeEventListener("abort", abortFromCaller);
+  }
 }
 
 function googleResponseText(payload) {
@@ -211,16 +306,159 @@ function googleResponseText(payload) {
   return modelOutput;
 }
 
+function providerExecutionConfiguration(env) {
+  const timeoutMs = boundedInteger(
+    env.INTENT_PROVIDER_TIMEOUT_MS,
+    DEFAULT_PROVIDER_TIMEOUT_MS,
+    MIN_PROVIDER_TIMEOUT_MS,
+    MAX_PROVIDER_TIMEOUT_MS
+  );
+  const maxResponseBytes = boundedInteger(
+    env.INTENT_PROVIDER_MAX_RESPONSE_BYTES,
+    DEFAULT_PROVIDER_MAX_RESPONSE_BYTES,
+    MIN_PROVIDER_MAX_RESPONSE_BYTES,
+    MAX_PROVIDER_MAX_RESPONSE_BYTES
+  );
+  const leaseTtlMs = boundedInteger(
+    env.INTENT_GLOBAL_LEASE_TTL_SECONDS,
+    DEFAULT_INTENT_LEASE_TTL_MS / 1_000,
+    MIN_INTENT_LEASE_TTL_MS / 1_000,
+    MAX_INTENT_LEASE_TTL_MS / 1_000
+  ) * 1_000;
+  if (timeoutMs > leaseTtlMs - LEASE_TIMEOUT_MARGIN_MS) {
+    throw intentError("configuration_unavailable");
+  }
+  return { timeoutMs, maxResponseBytes };
+}
+
+function boundedInteger(rawValue, fallback, minimum, maximum) {
+  if (rawValue === undefined || rawValue === "") return fallback;
+  const value = Number(rawValue);
+  if (!Number.isInteger(value) || value < minimum || value > maximum) {
+    throw intentError("configuration_unavailable");
+  }
+  return value;
+}
+
+function providerHttpError(status) {
+  if (status === 401 || status === 403) return intentError("configuration_unavailable");
+  if (status === 429) return intentError("rate_limited");
+  if (status >= 500) return intentError("intent_unavailable");
+  return intentError("invalid_provider_response");
+}
+
+function isProviderResponse(response) {
+  return Boolean(
+    response && typeof response === "object" &&
+    typeof response.status === "number" && typeof response.ok === "boolean"
+  );
+}
+
+async function readBoundedProviderJson(response, maxBytes, signal) {
+  const declaredLength = providerContentLength(response);
+  if (declaredLength !== null && declaredLength > maxBytes) {
+    cancelProviderBody(response);
+    throw intentError("invalid_provider_response");
+  }
+
+  const text = await readBoundedProviderText(response, maxBytes, signal);
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw intentError("invalid_provider_response", { cause: error });
+  }
+}
+
+async function readBoundedProviderText(response, maxBytes, signal) {
+  if (response.body && typeof response.body.getReader === "function") {
+    const reader = response.body.getReader();
+    const chunks = [];
+    let byteCount = 0;
+    const cancelForAbort = () => cancelReader(reader);
+    signal?.addEventListener("abort", cancelForAbort, { once: true });
+    try {
+      while (true) {
+        if (signal?.aborted) throw signal.reason ?? new Error("Provider response read aborted.");
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!(value instanceof Uint8Array)) {
+          cancelReader(reader);
+          throw intentError("invalid_provider_response");
+        }
+        byteCount += value.byteLength;
+        if (byteCount > maxBytes) {
+          cancelReader(reader);
+          throw intentError("invalid_provider_response");
+        }
+        chunks.push(value);
+      }
+      if (signal?.aborted) throw signal.reason ?? new Error("Provider response read aborted.");
+      const bytes = new Uint8Array(byteCount);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch (error) {
+      if (error instanceof IntentParseError) throw error;
+      if (signal?.aborted) throw error;
+      throw intentError("invalid_provider_response", { cause: error });
+    } finally {
+      signal?.removeEventListener("abort", cancelForAbort);
+      try {
+        reader.releaseLock();
+      } catch {
+        // The body is already cancelled or consumed.
+      }
+    }
+  }
+
+  throw intentError("invalid_provider_response");
+}
+
+function providerContentLength(response) {
+  const rawValue = response.headers?.get?.("content-length");
+  if (typeof rawValue !== "string" || !/^\d+$/.test(rawValue)) return null;
+  const value = Number(rawValue);
+  return Number.isSafeInteger(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function cancelReader(reader) {
+  try {
+    Promise.resolve(reader.cancel()).catch(() => {});
+  } catch {
+    // A provider body is intentionally discarded without surfacing its details.
+  }
+}
+
+function cancelProviderBody(response) {
+  try {
+    Promise.resolve(response.body?.cancel?.()).catch(() => {});
+  } catch {
+    // A provider error body is intentionally discarded without reading it.
+  }
+}
+
+function deterministicMockAllowed(env) {
+  return (env.NODE_ENV === "development" || env.NODE_ENV === "test") &&
+    env.INTENT_ALLOW_DETERMINISTIC_MOCK === "true";
+}
+
+function credential(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export function validateRequest(input) {
   if (!input || typeof input !== "object") {
-    throw new IntentParseError("Request body must be a JSON object.", 400);
+    throw intentError("invalid_request");
   }
   const prompt = cleanString(input.prompt);
   if (!prompt) {
-    throw new IntentParseError("prompt is required.", 400);
+    throw intentError("invalid_request");
   }
   if (prompt.length > 1000) {
-    throw new IntentParseError("prompt is too long.", 400);
+    throw intentError("invalid_request");
   }
 
   const locale = input.locale === "de" || input.locale === "en" ? input.locale : undefined;
@@ -239,14 +477,14 @@ function selectedProvider(env) {
   return null;
 }
 
-export function sanitizeIntent(rawIntent, rawPrompt) {
+export function sanitizeIntent(rawIntent, rawPrompt, options = {}) {
   if (!rawIntent || typeof rawIntent !== "object" || Array.isArray(rawIntent)) {
-    throw new IntentParseError("Intent response must be an object.", 502);
+    throw intentError("invalid_provider_response");
   }
 
   for (const key of Object.keys(rawIntent)) {
     if (FORBIDDEN_OUTPUT_KEYS.has(key)) {
-      throw new IntentParseError(`Intent response included forbidden field: ${key}`, 502);
+      throw intentError("invalid_provider_response");
     }
   }
 
@@ -280,7 +518,7 @@ export function sanitizeIntent(rawIntent, rawPrompt) {
     avoidFeatures: uniqueAllowed(repairedIntent.avoidFeatures, ALLOWED_AVOID_FEATURES),
     transportMode: enumOrNull(repairedIntent.transportMode, ALLOWED_TRANSPORT_MODES),
     rawPrompt,
-    parserSource: "remoteAI",
+    parserSource: options.parserSource === "localRuleBased" ? "localRuleBased" : "remoteAI",
     confidence
   };
 }
@@ -402,7 +640,7 @@ function mockIntent(request) {
     avoidFeatures,
     transportMode: activityType === "biking" ? "cycling" : "walking",
     rawPrompt: request.prompt,
-    parserSource: "remoteAI",
+    parserSource: "localRuleBased",
     confidence: routeType && (startLocationQuery || regionQuery) ? 0.78 : 0.25
   };
 }
@@ -567,13 +805,4 @@ function durationMinutes(text) {
   const match = text.match(/(\d+(?:[,.]\d+)?)\s*(?:h|std\.?|stunden?|hours?|hrs?)\b/i);
   if (!match) return null;
   return Math.round(Number(match[1].replace(",", ".")) * 60);
-}
-
-async function safeResponseText(response) {
-  try {
-    const text = await response.text();
-    return text.slice(0, 400);
-  } catch {
-    return "No response body";
-  }
 }

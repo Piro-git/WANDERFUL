@@ -31,7 +31,16 @@ export OPENROUTER_MODEL="openai/gpt-4o-mini"
 export AI_PROVIDER="openrouter"
 ```
 
-If neither `GOOGLE_API_KEY` nor `OPENROUTER_API_KEY` is set, the endpoint returns a deterministic mock response for local development and tests.
+If neither `GOOGLE_API_KEY` nor `OPENROUTER_API_KEY` is set, intent parsing fails closed with `configuration_unavailable`. A deterministic local/test fixture is available only when both conditions below are explicit:
+
+```sh
+NODE_ENV=development
+INTENT_ALLOW_DETERMINISTIC_MOCK=true
+```
+
+`NODE_ENV=test` is also accepted for automated tests. Production never enables the fixture, even when the flag is present. Fixture responses report `parserSource: "localRuleBased"`; only genuine Google/OpenRouter success reports `remoteAI`.
+
+Provider execution is bounded without retries. `INTENT_PROVIDER_TIMEOUT_MS` defaults to 15000 and accepts 1000–30000 milliseconds. It must remain at least one second below `INTENT_GLOBAL_LEASE_TTL_SECONDS`; invalid combinations fail closed. `INTENT_PROVIDER_MAX_RESPONSE_BYTES` defaults to 65536 and accepts 1024–262144 bytes. The streamed byte count remains authoritative when `Content-Length` is absent or inaccurate.
 
 Secrets should live in `backend/.env`, which is ignored by git.
 
@@ -51,6 +60,8 @@ npm run start:local
 ```
 
 `start:local` reads provider keys from the gitignored `backend/.env`, disables database/App Attest repository selection, enables the two explicit development-only authorization gates, and binds the server to `127.0.0.1` so it is not exposed to the local network. A Debug build running in iOS Simulator uses a non-secret placeholder session only for exact HTTP loopback URLs. Release builds, physical-device builds, HTTPS URLs, and non-loopback hosts always retain the App Attest path.
+
+To use deterministic intent fixtures without an AI provider during local development, add `INTENT_ALLOW_DETERMINISTIC_MOCK=true` to the local environment. The insecure-local-parsing authorization flag does not enable fixture behavior by itself.
 
 If `backend/.env` does not exist yet, copy `config.example.env` to `.env` and add the local `GRAPHHOPPER_API_KEY`. Never commit `.env`.
 

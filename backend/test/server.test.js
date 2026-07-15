@@ -18,7 +18,13 @@ describe("intent server", () => {
           locale: "de"
         }
       },
-      { env: { NODE_ENV: "test", INTENT_ALLOW_INSECURE_LOCAL_PARSING: "true" } }
+      {
+        env: {
+          NODE_ENV: "test",
+          INTENT_ALLOW_INSECURE_LOCAL_PARSING: "true",
+          INTENT_ALLOW_DETERMINISTIC_MOCK: "true"
+        }
+      }
     );
 
     assert.equal(result.statusCode, 200);
