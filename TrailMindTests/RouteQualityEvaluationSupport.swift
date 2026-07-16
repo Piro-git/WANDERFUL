@@ -139,6 +139,7 @@ struct RouteQualityResult: Sendable {
     let hardFailures: [String]
     let warnings: [String]
     let routingError: String?
+    let providerProof: Bool
 
     var passed: Bool { hardFailures.isEmpty }
 }
@@ -154,6 +155,8 @@ struct RouteQualitySummary: Sendable {
     var comparisonCount: Int { results.filter { ($0.metrics?.comparisonCount ?? 0) >= 2 }.count }
     var directRouteCount: Int { results.reduce(0) { $0 + ($1.metrics?.directRouteCount ?? 0) } }
     var fallbackRouteCount: Int { results.reduce(0) { $0 + ($1.metrics?.fallbackRouteCount ?? 0) } }
+    var providerProofCount: Int { results.filter(\.providerProof).count }
+    var hasCompleteProviderProof: Bool { total > 0 && providerProofCount == total }
 
     var mostCommonHardFailures: [(String, Int)] {
         commonCategories { $0.hardFailures }
@@ -185,7 +188,7 @@ struct RouteQualitySummary: Sendable {
             "cases:"
         ]
 
-        for result in results.prefix(maxCases) {
+        for (index, result) in results.prefix(maxCases).enumerated() {
             let state = result.passed ? (result.warnings.isEmpty ? "PASS" : "WARN") : "FAIL"
             let details = ([
                 result.metrics.map { "routes=\($0.routeCount)" },
@@ -194,9 +197,9 @@ struct RouteQualitySummary: Sendable {
                 result.metrics?.elapsedMilliseconds.map { "time=\($0)ms" },
                 !result.hardFailures.isEmpty ? "fail=\(result.hardFailures.joined(separator: ","))" : nil,
                 !result.warnings.isEmpty ? "warn=\(result.warnings.joined(separator: ","))" : nil,
-                result.routingError.map { "error=\($0)" }
+                result.routingError.map { _ in "error=redacted" }
             ] as [String?]).compactMap(\.self).joined(separator: " · ")
-            lines.append("- [\(state)] \(result.fixture.id) \(details)")
+            lines.append("- [\(state)] case_\(String(format: "%03d", index + 1)) \(details)")
         }
 
         return lines.joined(separator: "\n")
@@ -262,7 +265,9 @@ struct RouteQualityEvaluator {
                 metrics: metrics,
                 hardFailures: hardFailures(for: intent, result: result, metrics: metrics),
                 warnings: warnings(for: fixture, intent: intent, result: result, metrics: metrics),
-                routingError: nil
+                routingError: nil,
+                providerProof: !result.suggestions.isEmpty
+                    && result.suggestions.allSatisfy { $0.route.isVerifiedRoutedResult }
             )
         } catch {
             return RouteQualityResult(
@@ -270,7 +275,8 @@ struct RouteQualityEvaluator {
                 metrics: nil,
                 hardFailures: ["routing_error"],
                 warnings: [],
-                routingError: String(describing: error)
+                routingError: String(describing: error),
+                providerProof: false
             )
         }
     }

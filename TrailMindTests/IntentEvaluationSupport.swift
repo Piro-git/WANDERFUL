@@ -1,6 +1,59 @@
 import Foundation
 @testable import TrailMind
 
+struct LiveEvaluationMachineSummary: Encodable, Sendable {
+    static let markerPrefix = "TRAILMIND_EVAL_MACHINE_SUMMARY:"
+
+    let schemaVersion: Int
+    let evaluation: String
+    let totalCount: Int
+    let passedCount: Int
+    let failedCount: Int
+    let skippedCount: Int
+    let providerProof: Bool
+
+    init(
+        evaluation: String,
+        totalCount: Int,
+        passedCount: Int,
+        failedCount: Int,
+        skippedCount: Int,
+        providerProof: Bool
+    ) {
+        schemaVersion = 1
+        self.evaluation = evaluation
+        self.totalCount = totalCount
+        self.passedCount = passedCount
+        self.failedCount = failedCount
+        self.skippedCount = skippedCount
+        self.providerProof = providerProof
+    }
+
+    func emit() throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let data = try encoder.encode(self)
+        guard let json = String(data: data, encoding: .utf8) else {
+            throw LiveEvaluationMachineSummaryError.invalidUTF8
+        }
+        print("\(Self.markerPrefix)\(json)")
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case evaluation
+        case totalCount = "total_count"
+        case passedCount = "passed_count"
+        case failedCount = "failed_count"
+        case skippedCount = "skipped_count"
+        case providerProof = "provider_proof"
+    }
+}
+
+private enum LiveEvaluationMachineSummaryError: Error {
+    case invalidUTF8
+}
+
 struct IntentEvalFixture: Decodable, Sendable {
     let prompt: String
     let activityType: String?
@@ -97,16 +150,16 @@ struct IntentEvalSummary: Sendable {
             lines.append("most common failed fields: \(fields)")
         }
 
-        let failures = results.filter { !$0.passed }.prefix(maxFailures)
+        let failures = results.enumerated().filter { !$0.element.passed }.prefix(maxFailures)
         if failures.isEmpty {
             lines.append("failures: none")
         } else {
             lines.append("failures:")
-            for failure in failures {
+            for (index, failure) in failures {
                 let fields = failure.failedFields.isEmpty ? "unknown" : failure.failedFields.joined(separator: ", ")
-                lines.append("- \(failure.fixture.prompt) [\(fields)]")
-                if let parseError = failure.parseError {
-                    lines.append("  parseError: \(parseError)")
+                lines.append("- case_\(String(format: "%03d", index + 1)) [\(fields)]")
+                if failure.parseError != nil {
+                    lines.append("  provider error redacted")
                 }
             }
         }

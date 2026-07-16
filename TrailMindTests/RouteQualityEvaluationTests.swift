@@ -135,22 +135,120 @@ final class RouteQualityEvaluationTests: XCTestCase {
         XCTAssertTrue(output.contains("candidate_rejections"))
     }
 
+    func testEvaluationSummaryRedactsFixtureAndProviderError() {
+        let fixture = RouteQualityFixture(
+            id: "private-fixture-identifier",
+            region: "private region",
+            startName: "private start",
+            endName: nil,
+            start: .init(latitude: 12.345678, longitude: 87.654321),
+            end: nil,
+            activityType: ActivityType.hiking.rawValue,
+            routeType: TrailRouteType.loop.rawValue,
+            targetDistanceKm: 10,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            avoidFeatures: [],
+            expectedRouteCountCategory: "singleAcceptable"
+        )
+        let summary = RouteQualitySummary(
+            label: "redaction test",
+            results: [RouteQualityResult(
+                fixture: fixture,
+                metrics: nil,
+                hardFailures: ["routing_error"],
+                warnings: [],
+                routingError: "private raw provider response",
+                providerProof: false
+            )]
+        )
+
+        let output = summary.formatted()
+        XCTAssertFalse(output.contains(fixture.id))
+        XCTAssertFalse(output.contains("12.345678"))
+        XCTAssertFalse(output.contains("private raw provider response"))
+        XCTAssertTrue(output.contains("case_001"))
+        XCTAssertTrue(output.contains("error=redacted"))
+    }
+
+    func testEvaluationHarnessControl() throws {
+        switch ProcessInfo.processInfo.environment["TRAILMIND_EVAL_HARNESS_MODE"] {
+        case nil:
+            return
+        case "pass":
+            try LiveEvaluationMachineSummary(
+                evaluation: "route-quality",
+                totalCount: 1,
+                passedCount: 1,
+                failedCount: 0,
+                skippedCount: 0,
+                providerProof: false
+            ).emit()
+        case "skip":
+            try LiveEvaluationMachineSummary(
+                evaluation: "route-quality",
+                totalCount: 1,
+                passedCount: 0,
+                failedCount: 0,
+                skippedCount: 1,
+                providerProof: false
+            ).emit()
+            throw XCTSkip("Controlled evaluation harness skip.")
+        case "fail":
+            try LiveEvaluationMachineSummary(
+                evaluation: "route-quality",
+                totalCount: 1,
+                passedCount: 0,
+                failedCount: 1,
+                skippedCount: 0,
+                providerProof: false
+            ).emit()
+            XCTFail("Controlled evaluation harness failure.")
+        default:
+            XCTFail("Unsupported controlled evaluation harness mode.")
+        }
+    }
+
     func testLiveRouteQualityEvalWhenEnabled() async throws {
-        guard ProcessInfo.processInfo.environment["TRAILMIND_RUN_ROUTE_QUALITY_EVAL"] == "1" else {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["TRAILMIND_RUN_ROUTE_QUALITY_EVAL"] == "1" else {
             throw XCTSkip("Set TRAILMIND_RUN_ROUTE_QUALITY_EVAL=1 to run live GraphHopper route-quality evaluation.")
         }
-        do {
-            _ = try GraphHopperConfiguration.local()
-        } catch {
-            throw XCTSkip("GraphHopper is not configured for this test environment.")
+        guard environment["TRAILMIND_EVAL_CREDENTIALS_CONTAINED"] == "1",
+              environment["TRAILMIND_EVAL_PROVIDER_USAGE_AUTHORIZED"] == "1" else {
+            throw XCTSkip("Credential containment and provider usage authorization are required.")
         }
 
+        let fixtures = try RouteQualityFixture.load()
+        guard fixtures.count == 20 else {
+            try LiveEvaluationMachineSummary(
+                evaluation: "route-quality",
+                totalCount: fixtures.count,
+                passedCount: 0,
+                failedCount: fixtures.count,
+                skippedCount: 0,
+                providerProof: false
+            ).emit()
+            XCTFail("The authorized route-quality baseline requires exactly 20 fixtures.")
+            return
+        }
         let summary = await RouteQualityEvaluator().evaluate(
-            fixtures: try RouteQualityFixture.load(),
-            label: "live GraphHopper"
+            fixtures: fixtures,
+            label: "live backend routing"
         )
+        let providerProof = summary.hasCompleteProviderProof
+        try LiveEvaluationMachineSummary(
+            evaluation: "route-quality",
+            totalCount: summary.total,
+            passedCount: summary.passed,
+            failedCount: summary.failed,
+            skippedCount: 0,
+            providerProof: providerProof
+        ).emit()
         print("\n\(summary.formatted())")
 
+        XCTAssertEqual(summary.total, 20)
+        XCTAssertTrue(providerProof, "Not every fixture produced verified routed provider output.")
         XCTAssertEqual(summary.failed, 0, summary.formatted())
     }
 

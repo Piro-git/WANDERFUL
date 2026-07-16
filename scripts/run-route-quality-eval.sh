@@ -1,13 +1,18 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
+# Live provider usage is intentionally double-gated. Before running, a human
+# must confirm credential containment and available provider quota/cost, then
+# set TRAILMIND_EVAL_CREDENTIALS_CONTAINED=1 and
+# TRAILMIND_EVAL_PROVIDER_USAGE_AUTHORIZED=1. With neither flag, this command
+# writes a not_run report and exits nonzero.
+
 cd "$(dirname "$0")/.."
+source scripts/evaluation-harness.sh
 
-SIMULATOR_NAME="${TRAILMIND_EVAL_SIMULATOR_NAME:-iPhone 17}"
-
-TRAILMIND_RUN_ROUTE_QUALITY_EVAL=1 xcodebuild test \
-  -project TrailMind.xcodeproj \
-  -scheme TrailMind \
-  -configuration Debug \
-  -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}" \
-  -only-testing:TrailMindTests/RouteQualityEvaluationTests/testLiveRouteQualityEvalWhenEnabled
+run_trailmind_evaluation \
+  "route-quality" \
+  "RouteQualityEvaluationTests" \
+  "testLiveRouteQualityEvalWhenEnabled" \
+  "TRAILMIND_RUN_ROUTE_QUALITY_EVAL" \
+  20
