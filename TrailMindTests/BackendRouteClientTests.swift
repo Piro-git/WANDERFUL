@@ -156,6 +156,143 @@ final class BackendRouteClientTests: XCTestCase {
         XCTAssertTrue(route.isVerifiedRoutedResult)
     }
 
+    func testBackendClientPointToPointVariantsPreserveProviderOrderAndProvenance() async throws {
+        let gateway = RecordingRouteGateway(
+            response: Self.backendRouteResponse(
+                paths: [
+                    (distanceMeters: 22_000, timeMilliseconds: 18_000_000),
+                    (distanceMeters: 14_600, timeMilliseconds: 13_200_000),
+                    (distanceMeters: 10_000, timeMilliseconds: 9_000_000)
+                ]
+            )
+        )
+        let client = GraphHopperClient(gateway: gateway)
+
+        let routes = try await client.calculatePointToPointRouteVariants(
+            request: Self.pointToPointRequest(targetDistanceKm: 15),
+            start: Coordinate(latitude: 51.866, longitude: 10.678),
+            end: Coordinate(latitude: 51.765, longitude: 10.653)
+        )
+
+        XCTAssertEqual(routes.map(\.distanceKilometers), [22, 14.6, 10])
+        XCTAssertTrue(routes.allSatisfy {
+            $0.path.compactMap(\.elevationMeters) == [250, 410, 280]
+        })
+        XCTAssertTrue(routes.allSatisfy { route in
+            guard case let .routed(provenance) = route.provenance else { return false }
+            return provenance.provider == .graphHopper
+                && provenance.strategy == .backend
+                && route.isVerifiedRoutedResult
+        })
+        let capturedRequests = await gateway.requests()
+        let captured = try XCTUnwrap(capturedRequests.first)
+        XCTAssertEqual(captured.algorithm, "alternative_route")
+        XCTAssertEqual(captured.alternativeRoute?.maxPaths, 3)
+        XCTAssertEqual(captured.alternativeRoute?.maxWeightFactor, 1.4)
+        XCTAssertEqual(captured.alternativeRoute?.maxShareFactor, 0.65)
+    }
+
+    func testBackendClientPointToPointVariantsRejectWholeEnvelopeWhenOnePathIsInvalid() async throws {
+        let gateway = RecordingRouteGateway(
+            response: Self.backendRouteResponse(
+                paths: [
+                    (distanceMeters: 12_000, timeMilliseconds: 9_000_000),
+                    (distanceMeters: 5, timeMilliseconds: 1_000)
+                ]
+            )
+        )
+
+        do {
+            _ = try await GraphHopperClient(gateway: gateway).calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.866, longitude: 10.678),
+                end: Coordinate(latitude: 51.765, longitude: 10.653)
+            )
+            XCTFail("A backend alternative cannot be silently isolated from its envelope.")
+        } catch GraphHopperError.noRouteFound {
+            // Existing too-short path contract, applied to the complete envelope.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testBackendClientPointToPointVariantsPreserveFlexibleFallback() async throws {
+        let gateway = SequencedRouteGateway(
+            outcomes: [
+                .failure(
+                    .api(
+                        statusCode: 400,
+                        message: "flexible mode unavailable",
+                        hints: []
+                    )
+                ),
+                .success(
+                    Self.backendRouteResponse(
+                        paths: [
+                            (distanceMeters: 16_000, timeMilliseconds: 12_000_000),
+                            (distanceMeters: 13_000, timeMilliseconds: 10_000_000)
+                        ]
+                    )
+                )
+            ]
+        )
+
+        let routes = try await GraphHopperClient(gateway: gateway).calculatePointToPointRouteVariants(
+            request: Self.pointToPointRequest(targetDistanceKm: 15),
+            start: Coordinate(latitude: 51.866, longitude: 10.678),
+            end: Coordinate(latitude: 51.765, longitude: 10.653)
+        )
+
+        XCTAssertEqual(routes.map(\.distanceKilometers), [16, 13])
+        XCTAssertTrue(routes.allSatisfy {
+            $0.planningMetadata?.routeShapingSummary?.applied == [.activityProfile]
+                && $0.planningMetadata?.routeShapingSummary?.requestedOnly == [.targetDistance]
+        })
+        let requests = await gateway.requests()
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests[0].algorithm, "alternative_route")
+        XCTAssertNotNil(requests[0].alternativeRoute)
+        XCTAssertNil(requests[1].algorithm)
+        XCTAssertNil(requests[1].alternativeRoute)
+    }
+
+    func testBackendClientPointToPointVariantsRespectPathLimit() async throws {
+        let gateway = RecordingRouteGateway(
+            response: Self.backendRouteResponse(
+                paths: [
+                    (distanceMeters: 12_000, timeMilliseconds: 9_000_000),
+                    (distanceMeters: 13_000, timeMilliseconds: 10_000_000),
+                    (distanceMeters: 14_000, timeMilliseconds: 11_000_000)
+                ]
+            )
+        )
+        let limits = RouteTransportLimits(
+            maximumSuccessBodyBytes: 1_024 * 1_024,
+            maximumErrorBodyBytes: 64 * 1_024,
+            maximumPaths: 2,
+            maximumCoordinatesPerPath: 100_000,
+            maximumInstructionsPerPath: 25_000,
+            maximumPathDetailsPerPath: 100_000,
+            maximumAbsoluteElevationMeters: 100_000
+        )
+
+        do {
+            _ = try await GraphHopperClient(
+                gateway: gateway,
+                limits: limits
+            ).calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.866, longitude: 10.678),
+                end: Coordinate(latitude: 51.765, longitude: 10.653)
+            )
+            XCTFail("The backend variants API must retain the provider path ceiling.")
+        } catch GraphHopperError.invalidResponse {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testBackendResponseWithoutProviderCannotBecomeVerified() async throws {
         let response = Data(String(decoding: Self.routeResponse, as: UTF8.self)
             .replacingOccurrences(of: #""provider": "graphhopper","#, with: "")
@@ -228,6 +365,45 @@ final class BackendRouteClientTests: XCTestCase {
         }
     }
 
+    func testBackendPointToPointVariantsRejectLateSuccessFromCancellationIgnoringGateway() async throws {
+        let gateway = CancellationIgnoringRouteGateway(
+            response: Self.backendRouteResponse(
+                paths: [
+                    (distanceMeters: 12_000, timeMilliseconds: 9_000_000),
+                    (distanceMeters: 14_000, timeMilliseconds: 10_000_000)
+                ]
+            )
+        )
+        let client = GraphHopperClient(gateway: gateway)
+        let task = Task {
+            try await client.calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.866, longitude: 10.678),
+                end: Coordinate(latitude: 51.765, longitude: 10.653)
+            )
+        }
+
+        var gatewayStarted = false
+        for _ in 0..<1_000 {
+            if await gateway.hasStarted() {
+                gatewayStarted = true
+                break
+            }
+            await Task.yield()
+        }
+        XCTAssertTrue(gatewayStarted)
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Variants cancellation must not become a verified late success.")
+        } catch is CancellationError {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testConcurrentLoopVariantsUseTheGatewayInParallel() async throws {
         let gateway = RecordingRouteGateway(response: Self.routeResponse, delayNanoseconds: 20_000_000)
         let client = GraphHopperClient(gateway: gateway)
@@ -259,6 +435,51 @@ final class BackendRouteClientTests: XCTestCase {
             guard case let .routed(provenance) = route.provenance else { return false }
             return provenance.provider == .graphHopper && provenance.strategy == .backend
         })
+    }
+
+    private static func pointToPointRequest(
+        targetDistanceKm: Double?
+    ) -> RoutePlanningRequest {
+        RoutePlanningRequest(
+            routeType: .pointToPoint,
+            startQuery: "Ilsenburg",
+            endQuery: "Schierke",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+    }
+
+    private static func backendRouteResponse(
+        paths: [(distanceMeters: Int, timeMilliseconds: Int)]
+    ) -> Data {
+        let pathsJSON = paths.map { path in
+            """
+            {
+              "distance": \(path.distanceMeters),
+              "time": \(path.timeMilliseconds),
+              "ascend": 320,
+              "descend": 315,
+              "points": {
+                "type": "LineString",
+                "coordinates": [[10.678, 51.866, 250], [10.700, 51.820, 410], [10.653, 51.765, 280]]
+              },
+              "instructions": [],
+              "details": { "surface": [], "road_class": [], "hike_rating": [] }
+            }
+            """
+        }.joined(separator: ",")
+        return Data(
+            """
+            {
+              "provider": "graphhopper",
+              "paths": [\(pathsJSON)]
+            }
+            """.utf8
+        )
     }
 
     private static let routeResponse = Data(#"""
@@ -356,6 +577,35 @@ private actor RecordingRouteGateway: BackendRouteGatewayRouting {
 
     func requests() -> [BackendRouteRequest] { capturedRequests }
     func maximumConcurrentRequests() -> Int { maximumActiveRequests }
+}
+
+private actor SequencedRouteGateway: BackendRouteGatewayRouting {
+    enum Outcome: Sendable {
+        case success(Data)
+        case failure(GraphHopperError)
+    }
+
+    private var outcomes: [Outcome]
+    private var capturedRequests: [BackendRouteRequest] = []
+
+    init(outcomes: [Outcome]) {
+        self.outcomes = outcomes
+    }
+
+    func route(_ request: BackendRouteRequest) async throws -> Data {
+        capturedRequests.append(request)
+        guard !outcomes.isEmpty else {
+            throw GraphHopperError.noRouteFound
+        }
+        switch outcomes.removeFirst() {
+        case let .success(data):
+            return data
+        case let .failure(error):
+            throw error
+        }
+    }
+
+    func requests() -> [BackendRouteRequest] { capturedRequests }
 }
 
 private actor CancellationIgnoringRouteGateway: BackendRouteGatewayRouting {

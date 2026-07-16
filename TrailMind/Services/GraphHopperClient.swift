@@ -7,6 +7,12 @@ protocol GraphHopperRouteCalculating {
         end: Coordinate
     ) async throws -> TrailRoute
 
+    func calculatePointToPointRouteVariants(
+        request: RoutePlanningRequest,
+        start: Coordinate,
+        end: Coordinate
+    ) async throws -> [TrailRoute]
+
     func calculateRoundTripRoute(
         start: Coordinate,
         request: RoutePlanningRequest,
@@ -29,6 +35,23 @@ protocol GraphHopperRouteCalculating {
 }
 
 extension GraphHopperRouteCalculating {
+    /// Compatibility seam for clients and test doubles that only support one
+    /// point-to-point route. Production GraphHopperClient overrides this to
+    /// expose every validated provider path without fabricating alternatives.
+    func calculatePointToPointRouteVariants(
+        request: RoutePlanningRequest,
+        start: Coordinate,
+        end: Coordinate
+    ) async throws -> [TrailRoute] {
+        [
+            try await calculateGraphHopperRoute(
+                request: request,
+                start: start,
+                end: end
+            )
+        ]
+    }
+
     func calculateGraphHopperRoute(
         start: Coordinate,
         end: Coordinate,
@@ -398,9 +421,28 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         start: Coordinate,
         end: Coordinate
     ) async throws -> TrailRoute {
+        let routes = try await calculatePointToPointRouteVariants(
+            request: planningRequest,
+            start: start,
+            end: end
+        )
+        guard let route = Self.bestRoute(
+            in: routes,
+            targetDistanceKm: planningRequest.targetDistanceKm
+        ) else {
+            throw GraphHopperError.noRouteFound
+        }
+        return route
+    }
+
+    func calculatePointToPointRouteVariants(
+        request planningRequest: RoutePlanningRequest,
+        start: Coordinate,
+        end: Coordinate
+    ) async throws -> [TrailRoute] {
         let routePreferences = GraphHopperRoutePreferences.conservative(for: planningRequest)
         if let gateway {
-            return try await calculateGatewayPointToPointRoute(
+            return try await calculateGatewayPointToPointRouteVariants(
                 gateway: gateway,
                 planningRequest: planningRequest,
                 start: start,
@@ -418,21 +460,23 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         )
 
         do {
-            let route = try await execute(
+            let routes = try await executePointToPointRouteVariants(
                 request: request,
                 requestedStart: start,
                 requestedEnd: end,
                 planningRequest: planningRequest
             )
-            return route.withPlanningMetadata(
-                route.planningMetadata?.withRouteShapingSummary(
-                    .pointToPoint(
-                        request: planningRequest,
-                        customModelApplied: routePreferences.customModel != nil,
-                        alternativeRoutesApplied: routePreferences.alternativeRoute != nil
+            return routes.map { route in
+                route.withPlanningMetadata(
+                    route.planningMetadata?.withRouteShapingSummary(
+                        .pointToPoint(
+                            request: planningRequest,
+                            customModelApplied: routePreferences.customModel != nil,
+                            alternativeRoutesApplied: routePreferences.alternativeRoute != nil
+                        )
                     )
                 )
-            )
+            }
         } catch let error as GraphHopperError {
             guard routePreferences.usesFlexibleRouting, error.isFlexibleRoutingFallbackCandidate else {
                 throw error
@@ -445,21 +489,23 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 planningRequest: planningRequest,
                 routePreferences: nil
             )
-            let route = try await execute(
+            let routes = try await executePointToPointRouteVariants(
                 request: fallbackRequest,
                 requestedStart: start,
                 requestedEnd: end,
                 planningRequest: planningRequest
             )
-            return route.withPlanningMetadata(
-                route.planningMetadata?.withRouteShapingSummary(
-                    .pointToPoint(
-                        request: planningRequest,
-                        customModelApplied: false,
-                        alternativeRoutesApplied: false
+            return routes.map { route in
+                route.withPlanningMetadata(
+                    route.planningMetadata?.withRouteShapingSummary(
+                        .pointToPoint(
+                            request: planningRequest,
+                            customModelApplied: false,
+                            alternativeRoutesApplied: false
+                        )
                     )
                 )
-            )
+            }
         }
     }
 
@@ -520,15 +566,15 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         return route.withPlanningMetadata(route.planningMetadata?.withVariant(seed: seed, label: nil))
     }
 
-    private func calculateGatewayPointToPointRoute(
+    private func calculateGatewayPointToPointRouteVariants(
         gateway: any BackendRouteGatewayRouting,
         planningRequest: RoutePlanningRequest,
         start: Coordinate,
         end: Coordinate,
         routePreferences: GraphHopperRoutePreferences
-    ) async throws -> TrailRoute {
+    ) async throws -> [TrailRoute] {
         do {
-            let route = try await executeGateway(
+            let routes = try await executeGatewayPointToPointRouteVariants(
                 gateway: gateway,
                 request: backendPointToPointRequest(
                     start: start,
@@ -540,20 +586,22 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 requestedEnd: end,
                 planningRequest: planningRequest
             )
-            return route.withPlanningMetadata(
-                route.planningMetadata?.withRouteShapingSummary(
-                    .pointToPoint(
-                        request: planningRequest,
-                        customModelApplied: routePreferences.customModel != nil,
-                        alternativeRoutesApplied: routePreferences.alternativeRoute != nil
+            return routes.map { route in
+                route.withPlanningMetadata(
+                    route.planningMetadata?.withRouteShapingSummary(
+                        .pointToPoint(
+                            request: planningRequest,
+                            customModelApplied: routePreferences.customModel != nil,
+                            alternativeRoutesApplied: routePreferences.alternativeRoute != nil
+                        )
                     )
                 )
-            )
+            }
         } catch let error as GraphHopperError {
             guard routePreferences.usesFlexibleRouting, error.isFlexibleRoutingFallbackCandidate else {
                 throw error
             }
-            let route = try await executeGateway(
+            let routes = try await executeGatewayPointToPointRouteVariants(
                 gateway: gateway,
                 request: backendPointToPointRequest(
                     start: start,
@@ -565,15 +613,17 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 requestedEnd: end,
                 planningRequest: planningRequest
             )
-            return route.withPlanningMetadata(
-                route.planningMetadata?.withRouteShapingSummary(
-                    .pointToPoint(
-                        request: planningRequest,
-                        customModelApplied: false,
-                        alternativeRoutesApplied: false
+            return routes.map { route in
+                route.withPlanningMetadata(
+                    route.planningMetadata?.withRouteShapingSummary(
+                        .pointToPoint(
+                            request: planningRequest,
+                            customModelApplied: false,
+                            alternativeRoutesApplied: false
+                        )
                     )
                 )
-            )
+            }
         }
     }
 
@@ -698,6 +748,30 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         )
         try Task.checkCancellation()
         return route
+    }
+
+    private func executeGatewayPointToPointRouteVariants(
+        gateway: any BackendRouteGatewayRouting,
+        request: BackendRouteRequest,
+        requestedStart: Coordinate,
+        requestedEnd: Coordinate,
+        planningRequest: RoutePlanningRequest
+    ) async throws -> [TrailRoute] {
+        let data = try await gateway.route(request)
+        try Task.checkCancellation()
+        let response = try decodeRouteResponse(data, source: .backend)
+        try Task.checkCancellation()
+        guard let provider = response.provider else {
+            throw GraphHopperError.invalidResponse
+        }
+        return try makeTrailRoutes(
+            from: response.paths,
+            requestedStart: requestedStart,
+            requestedEnd: requestedEnd,
+            planningRequest: planningRequest,
+            provider: provider,
+            routingStrategy: .backend
+        )
     }
 
     private func backendPointToPointRequest(
@@ -835,6 +909,67 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             )
             try Task.checkCancellation()
             return route
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch RouteTransportValidationError.responseTooLarge {
+            throw GraphHopperError.decoding(
+                message: "The route response exceeded TrailMind’s safety limit."
+            )
+        } catch let error as GraphHopperError {
+            throw error
+        } catch let error as URLError {
+            if error.code == .cancelled, Task.isCancelled {
+                throw CancellationError()
+            }
+            if error.code == .timedOut {
+                throw GraphHopperError.network(message: "The route calculation timed out.")
+            }
+            throw GraphHopperError.network(message: "The route request failed.")
+        } catch {
+            throw GraphHopperError.network(message: "The route request failed.")
+        }
+    }
+
+    private func executePointToPointRouteVariants(
+        request: URLRequest,
+        requestedStart: Coordinate,
+        requestedEnd: Coordinate,
+        planningRequest: RoutePlanningRequest
+    ) async throws -> [TrailRoute] {
+        do {
+            let transport = BoundedRouteHTTPTransport(session: session, limits: limits)
+            let (data, urlResponse) = try await transport.data(for: request)
+            try Task.checkCancellation()
+            guard let httpResponse = urlResponse as? HTTPURLResponse else {
+                throw GraphHopperError.invalidResponse
+            }
+
+            guard (200..<300).contains(httpResponse.statusCode) else {
+                let envelope = try? JSONDecoder().decode(GraphHopperErrorEnvelope.self, from: data)
+                let providerError = GraphHopperError.api(
+                    statusCode: httpResponse.statusCode,
+                    message: envelope?.message ?? "GraphHopper request failed with status \(httpResponse.statusCode).",
+                    hints: envelope?.hints.compactMap(\.displayMessage) ?? []
+                )
+                throw GraphHopperError.api(
+                    statusCode: httpResponse.statusCode,
+                    message: providerError.isFlexibleModeUnavailable
+                        ? "GraphHopper flexible mode is unavailable."
+                        : "GraphHopper rejected the route request.",
+                    hints: []
+                )
+            }
+
+            let response = try decodeRouteResponse(data, source: .direct)
+            try Task.checkCancellation()
+            return try makeTrailRoutes(
+                from: response.paths,
+                requestedStart: requestedStart,
+                requestedEnd: requestedEnd,
+                planningRequest: planningRequest,
+                provider: .graphHopper,
+                routingStrategy: .directGraphHopper
+            )
         } catch is CancellationError {
             throw CancellationError()
         } catch RouteTransportValidationError.responseTooLarge {
@@ -1097,6 +1232,40 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
     private func requestTimeout(until deadline: Date?) -> TimeInterval {
         guard let deadline else { return 30 }
         return min(max(deadline.timeIntervalSinceNow, 0.5), 30)
+    }
+
+    /// Provider alternatives are an integrity unit: every path must become a
+    /// verified route or the entire envelope fails. This prevents a malformed
+    /// alternative from being silently hidden behind a partial success.
+    private func makeTrailRoutes(
+        from paths: [GraphHopperRoutePath],
+        requestedStart: Coordinate,
+        requestedEnd: Coordinate,
+        planningRequest: RoutePlanningRequest,
+        provider: RouteProviderIdentity,
+        routingStrategy: RouteRoutingStrategy
+    ) throws -> [TrailRoute] {
+        guard !paths.isEmpty else {
+            throw GraphHopperError.noRouteFound
+        }
+
+        var routes: [TrailRoute] = []
+        routes.reserveCapacity(paths.count)
+        for path in paths {
+            try Task.checkCancellation()
+            routes.append(
+                try makeTrailRoute(
+                    from: path,
+                    requestedStart: requestedStart,
+                    requestedEnd: requestedEnd,
+                    planningRequest: planningRequest,
+                    provider: provider,
+                    routingStrategy: routingStrategy
+                )
+            )
+        }
+        try Task.checkCancellation()
+        return routes
     }
 
     private func makeTrailRoute(
@@ -1450,6 +1619,25 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         return paths.min { lhs, rhs in
             abs((lhs.distance / 1_000) - targetDistanceKm) < abs((rhs.distance / 1_000) - targetDistanceKm)
         }
+    }
+
+    private static func bestRoute(
+        in routes: [TrailRoute],
+        targetDistanceKm: Double?
+    ) -> TrailRoute? {
+        guard let first = routes.first, let targetDistanceKm else {
+            return routes.first
+        }
+        var best = first
+        var bestDifference = abs(first.distanceKilometers - targetDistanceKm)
+        for route in routes.dropFirst() {
+            let difference = abs(route.distanceKilometers - targetDistanceKm)
+            if difference < bestDifference {
+                best = route
+                bestDifference = difference
+            }
+        }
+        return best
     }
 
     private static func rankedLoopVariants(

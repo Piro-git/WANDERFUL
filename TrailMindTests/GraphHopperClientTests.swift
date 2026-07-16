@@ -433,6 +433,238 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
+    func testLegacySingleRouteCalculatorGetsSafeVariantCompatibilityDefault() async throws {
+        let expected = TestRouteFixtures.luneburgLoop
+        let calculator: any GraphHopperRouteCalculating = LegacySingleRouteCalculator(route: expected)
+
+        let routes = try await calculator.calculatePointToPointRouteVariants(
+            request: Self.pointToPointRequest(targetDistanceKm: 15),
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+        )
+
+        XCTAssertEqual(routes.map(\.id), [expected.id])
+    }
+
+    @MainActor
+    func testPointToPointVariantsExposeOneTwoAndThreePathsInProviderOrder() async throws {
+        let cases: [[(distanceMeters: Int, timeMilliseconds: Int)]] = [
+            [(distanceMeters: 12_000, timeMilliseconds: 9_000_000)],
+            [
+                (distanceMeters: 18_000, timeMilliseconds: 13_000_000),
+                (distanceMeters: 11_500, timeMilliseconds: 8_500_000)
+            ],
+            [
+                (distanceMeters: 22_000, timeMilliseconds: 18_000_000),
+                (distanceMeters: 14_600, timeMilliseconds: 13_200_000),
+                (distanceMeters: 10_000, timeMilliseconds: 9_000_000)
+            ]
+        ]
+
+        for paths in cases {
+            URLProtocolStub.reset(
+                responses: [
+                    .init(statusCode: 200, data: try Self.routeResponseData(paths: paths))
+                ]
+            )
+
+            let routes = try await makeClient().calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+                end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+            )
+
+            XCTAssertEqual(
+                routes.map(\.distanceKilometers),
+                paths.map { Double($0.distanceMeters) / 1_000 }
+            )
+            XCTAssertTrue(routes.allSatisfy {
+                $0.path.compactMap(\.elevationMeters) == [250, 420, 600]
+                    && $0.routeInstructions.count == 1
+            })
+            XCTAssertTrue(routes.allSatisfy { route in
+                guard case let .routed(provenance) = route.provenance else { return false }
+                return provenance.provider == .graphHopper
+                    && provenance.strategy == .directGraphHopper
+                    && route.isVerifiedRoutedResult
+            })
+        }
+    }
+
+    @MainActor
+    func testLegacySingleRouteWithoutTargetKeepsFirstProviderPath() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        paths: [
+                            (distanceMeters: 22_000, timeMilliseconds: 18_000_000),
+                            (distanceMeters: 11_000, timeMilliseconds: 9_000_000)
+                        ]
+                    )
+                )
+            ]
+        )
+
+        let route = try await makeClient().calculateGraphHopperRoute(
+            request: Self.pointToPointRequest(targetDistanceKm: nil),
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+        )
+
+        XCTAssertEqual(route.distanceKilometers, 22)
+    }
+
+    @MainActor
+    func testPointToPointVariantsRejectWholeEnvelopeWhenOneAlternativeIsInvalid() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        paths: [
+                            (distanceMeters: 12_000, timeMilliseconds: 9_000_000),
+                            (distanceMeters: 5, timeMilliseconds: 1_000)
+                        ]
+                    )
+                )
+            ]
+        )
+
+        do {
+            _ = try await makeClient().calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+                end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+            )
+            XCTFail("An invalid alternative must reject the complete provider envelope.")
+        } catch GraphHopperError.noRouteFound {
+            // Existing too-short path contract, applied strictly to every path.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    @MainActor
+    func testPointToPointVariantsRejectWholeEnvelopeWhenOneAlternativeIsMalformed() async throws {
+        let response = Data(
+            #"""
+            {
+              "paths": [
+                {
+                  "distance": 12000,
+                  "time": 9000000,
+                  "ascend": 300,
+                  "descend": 250,
+                  "points": {
+                    "type": "LineString",
+                    "coordinates": [[10.6782, 51.8666], [10.6700, 51.8200], [10.6647, 51.7636]]
+                  },
+                  "instructions": []
+                },
+                {
+                  "distance": 14000,
+                  "time": 10000000,
+                  "ascend": 320,
+                  "descend": 270,
+                  "points": {
+                    "type": "LineString",
+                    "coordinates": [[10.6782, 51.8666], [10.6782, 51.8666]]
+                  },
+                  "instructions": []
+                }
+              ]
+            }
+            """#.utf8
+        )
+        URLProtocolStub.reset(responses: [.init(statusCode: 200, data: response)])
+
+        do {
+            _ = try await makeClient().calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+                end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+            )
+            XCTFail("A malformed alternative must reject the complete provider envelope.")
+        } catch GraphHopperError.invalidResponse {
+            // Strict decoder validates every alternative before exposing any.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    @MainActor
+    func testPointToPointVariantsPreserveFallbackPathsAndFallbackMetadata() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 400,
+                    data: Data(#"{"message":"flexible mode unavailable","hints":[]}"#.utf8)
+                ),
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        paths: [
+                            (distanceMeters: 16_000, timeMilliseconds: 12_000_000),
+                            (distanceMeters: 13_000, timeMilliseconds: 10_000_000)
+                        ]
+                    )
+                )
+            ]
+        )
+
+        let routes = try await makeClient().calculatePointToPointRouteVariants(
+            request: Self.pointToPointRequest(targetDistanceKm: 15),
+            start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+            end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+        )
+
+        XCTAssertEqual(routes.map(\.distanceKilometers), [16, 13])
+        XCTAssertTrue(routes.allSatisfy {
+            $0.planningMetadata?.routeShapingSummary?.applied == [.activityProfile]
+                && $0.planningMetadata?.routeShapingSummary?.requestedOnly == [.targetDistance]
+        })
+        let bodies = URLProtocolStub.requestBodies()
+        XCTAssertEqual(bodies.count, 2)
+        XCTAssertTrue(String(decoding: bodies[0], as: UTF8.self).contains(#""algorithm":"alternative_route""#))
+        XCTAssertFalse(String(decoding: bodies[1], as: UTF8.self).contains(#""algorithm":"alternative_route""#))
+    }
+
+    @MainActor
+    func testPointToPointVariantsRespectProviderPathLimit() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        paths: [
+                            (distanceMeters: 12_000, timeMilliseconds: 9_000_000),
+                            (distanceMeters: 13_000, timeMilliseconds: 10_000_000),
+                            (distanceMeters: 14_000, timeMilliseconds: 11_000_000)
+                        ]
+                    )
+                )
+            ]
+        )
+
+        do {
+            _ = try await makeClient(
+                limits: Self.testLimits(maximumPaths: 2)
+            ).calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+                end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+            )
+            XCTFail("The variants API must retain the provider path ceiling.")
+        } catch GraphHopperError.invalidResponse {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    @MainActor
     func testTargetDistanceRequestsAlternativesAndSelectsClosestPath() async throws {
         let routeData = try Self.routeResponseData(
             paths: [
@@ -1164,6 +1396,47 @@ final class GraphHopperClientTests: XCTestCase {
     }
 
     @MainActor
+    func testPointToPointVariantsCancellationStopsTransportAndRejectsLateSuccess() async throws {
+        URLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try Self.routeResponseData(
+                        paths: [
+                            (distanceMeters: 12_000, timeMilliseconds: 9_000_000),
+                            (distanceMeters: 14_000, timeMilliseconds: 10_000_000)
+                        ]
+                    ),
+                    delay: 0.2,
+                    deliversAfterStop: true
+                )
+            ]
+        )
+        let client = try makeClient()
+        let task = Task {
+            try await client.calculatePointToPointRouteVariants(
+                request: Self.pointToPointRequest(targetDistanceKm: 15),
+                start: Coordinate(latitude: 51.8666, longitude: 10.6782),
+                end: Coordinate(latitude: 51.7636, longitude: 10.6647)
+            )
+        }
+        try await Task.sleep(for: .milliseconds(30))
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Variants cancellation must not become a late route success.")
+        } catch is CancellationError {
+            // Expected.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertGreaterThanOrEqual(URLProtocolStub.stopLoadingCount(), 1)
+    }
+
+    @MainActor
     func testProviderBodyAndRequestSecretsAreNotReturnedInErrors() async throws {
         let sensitive = "provider-secret test-key exact-payload [10.6782,51.8666]"
         URLProtocolStub.reset(
@@ -1205,6 +1478,23 @@ final class GraphHopperClientTests: XCTestCase {
                 )
             },
             limits: limits
+        )
+    }
+
+    @MainActor
+    private static func pointToPointRequest(
+        targetDistanceKm: Double?
+    ) -> RoutePlanningRequest {
+        RoutePlanningRequest(
+            routeType: .pointToPoint,
+            startQuery: "Ilsenburg",
+            endQuery: "Schierke",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
         )
     }
 
@@ -1409,6 +1699,18 @@ final class GraphHopperClientTests: XCTestCase {
         }
         """
         return Data(json.utf8)
+    }
+}
+
+private struct LegacySingleRouteCalculator: GraphHopperRouteCalculating {
+    let route: TrailRoute
+
+    func calculateGraphHopperRoute(
+        request: RoutePlanningRequest,
+        start: Coordinate,
+        end: Coordinate
+    ) async throws -> TrailRoute {
+        route
     }
 }
 
