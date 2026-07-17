@@ -417,6 +417,13 @@ struct PromptComposerView: View {
                         dismiss()
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isFocused = false
+                    }
+                    .accessibilityIdentifier("composer.keyboardDone")
+                }
             }
             .task {
                 if startsListening {

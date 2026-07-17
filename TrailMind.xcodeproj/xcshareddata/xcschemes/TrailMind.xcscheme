@@ -35,6 +35,20 @@
                ReferencedContainer = "container:TrailMind.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A10000000000000000000033"
+               BuildableName = "TrailMindUITests.xctest"
+               BlueprintName = "TrailMindUITests"
+               ReferencedContainer = "container:TrailMind.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -51,6 +65,17 @@
                BlueprintIdentifier = "A10000000000000000000026"
                BuildableName = "TrailMindTests.xctest"
                BlueprintName = "TrailMindTests"
+               ReferencedContainer = "container:TrailMind.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A10000000000000000000033"
+               BuildableName = "TrailMindUITests.xctest"
+               BlueprintName = "TrailMindUITests"
                ReferencedContainer = "container:TrailMind.xcodeproj">
             </BuildableReference>
          </TestableReference>

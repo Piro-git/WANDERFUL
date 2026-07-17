@@ -81,6 +81,7 @@ struct SavedRoutesView: View {
                         }
                         .disabled(appModel.savedRoutes.isPerformingAnyOperation)
                         .accessibilityLabel("Delete all saved routes")
+                        .accessibilityIdentifier("saved.deleteAll")
                     }
                 }
             }
@@ -340,6 +341,7 @@ private struct SavedRouteRow: View {
                 RouteCard(route: snapshot.route)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("saved.route.\(snapshot.id.uuidString.lowercased())")
 
             HStack(spacing: 12) {
                 Label {
@@ -357,6 +359,7 @@ private struct SavedRouteRow: View {
                 }
                 .font(.caption.weight(.semibold))
                 .disabled(isPending)
+                .accessibilityIdentifier("saved.remove.\(snapshot.id.uuidString.lowercased())")
             }
             .padding(.horizontal, 6)
         }

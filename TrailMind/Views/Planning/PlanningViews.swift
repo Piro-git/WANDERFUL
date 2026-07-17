@@ -134,6 +134,7 @@ struct GeneratingRouteView: View {
 
 struct PlanningClarificationView: View {
     @Environment(TrailTheme.self) private var theme
+    @FocusState private var isTextAnswerFocused: Bool
     let clarification: PlannerViewModel.PendingClarification
     let onSubmit: (PlannerViewModel.ClarificationAnswer) -> Void
     let onCancel: () -> Void
@@ -188,6 +189,15 @@ struct PlanningClarificationView: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Clarify route")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isTextAnswerFocused = false
+                }
+                .accessibilityIdentifier("composer.keyboardDone")
+            }
+        }
     }
 
     @ViewBuilder
@@ -195,6 +205,7 @@ struct PlanningClarificationView: View {
         switch clarification.kind {
         case .location:
             TextField("Enter a place or trailhead", text: $textAnswer)
+                .focused($isTextAnswerFocused)
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
                 .padding(.horizontal, 15)

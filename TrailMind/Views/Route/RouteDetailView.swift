@@ -311,6 +311,7 @@ struct RouteDetailView: View {
                             || appModel.savedRoutes.isPerformingAnyOperation
                     )
                     .accessibilityLabel(appModel.savedRoutes.isSaved(route) ? "Remove from saved routes" : "Save route")
+                    .accessibilityIdentifier("route.saveToggle")
                 }
             }
         }
@@ -335,7 +336,10 @@ struct RouteDetailView: View {
                     finishSharingAfterSheetTeardown(exportID: exportID)
                 }
             )
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("route.gpxShareSheet")
         }
+        .accessibilityIdentifier("route.detail")
     }
 
     private var presentation: RouteDetailPresentation {

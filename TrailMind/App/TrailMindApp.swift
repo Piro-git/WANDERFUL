@@ -4,18 +4,28 @@ import SwiftUI
 struct TrailMindApp: App {
     @AppStorage("hasCompletedTrailMindOnboarding") private var hasCompletedOnboarding = false
     @State private var theme = TrailTheme()
-    @State private var appModel = AppModel()
+    @State private var appModel: AppModel
     @State private var sessionStartup = TrailMindSessionStartupState()
+    #if DEBUG && targetEnvironment(simulator)
+    @State private var hasCompletedUITestOnboarding = false
+    private let uiTestComposition: UITestLaunchComposition?
+    #endif
     private let gpxService = DefaultGPXService()
+
+    init() {
+        #if DEBUG && targetEnvironment(simulator)
+        let uiTestComposition = UITestLaunchComposition.resolve()
+        self.uiTestComposition = uiTestComposition
+        _appModel = State(initialValue: uiTestComposition?.appModel ?? AppModel())
+        #else
+        _appModel = State(initialValue: AppModel())
+        #endif
+    }
 
     var body: some Scene {
         WindowGroup {
             Group {
-                if hasCompletedOnboarding {
-                    AppShellView()
-                } else {
-                    OnboardingView(isComplete: $hasCompletedOnboarding)
-                }
+                rootView
             }
             .environment(theme)
             .environment(appModel)
@@ -30,6 +40,37 @@ struct TrailMindApp: App {
                     await appModel.savedRoutes.loadIfNeeded()
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var rootView: some View {
+        #if DEBUG && targetEnvironment(simulator)
+        if let uiTestComposition {
+            switch uiTestComposition.startDestination {
+            case .onboarding:
+                if hasCompletedUITestOnboarding {
+                    AppShellView(planner: uiTestComposition.planner)
+                } else {
+                    OnboardingView(isComplete: $hasCompletedUITestOnboarding)
+                }
+            case .appShell:
+                AppShellView(planner: uiTestComposition.planner)
+            }
+        } else {
+            productionRootView
+        }
+        #else
+        productionRootView
+        #endif
+    }
+
+    @ViewBuilder
+    private var productionRootView: some View {
+        if hasCompletedOnboarding {
+            AppShellView()
+        } else {
+            OnboardingView(isComplete: $hasCompletedOnboarding)
         }
     }
 }
@@ -52,11 +93,16 @@ enum AppTab: Hashable, CaseIterable {
 
 struct AppShellView: View {
     @State private var selectedTab: AppTab = .plan
+    private let planner: PlannerViewModel
+
+    init(planner: PlannerViewModel = PlannerViewModel()) {
+        self.planner = planner
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Plan", systemImage: "sparkles", value: .plan) {
-                PlanFlowView()
+                PlanFlowView(planner: planner)
             }
 
             Tab("Saved", systemImage: "bookmark.fill", value: .saved) {
