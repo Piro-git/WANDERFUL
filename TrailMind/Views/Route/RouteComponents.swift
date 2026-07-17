@@ -334,7 +334,9 @@ struct RouteThumbnailView: View {
                 RouteThumbnailPlaceholder()
             }
         }
-        .accessibilityLabel("Route preview")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(route.routeType == .loop ? "Loop route preview" : "Point-to-point route preview")
+        .accessibilityValue("\(route.distanceLabel), \(route.durationLabel), \(route.elevationLabel) climb")
     }
 
     private var thumbnailBackground: some View {
@@ -431,15 +433,16 @@ struct MapPreviewView: View {
     @Environment(TrailTheme.self) private var theme
     let route: TrailRoute
 
-    private var coordinates: [CLLocationCoordinate2D] {
-        route.path.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-    }
-
     @ViewBuilder
     var body: some View {
+        let displayGeometry = RouteThumbnailService.shared.geometry(for: route)
+        let coordinates = displayGeometry.mapPoints.map {
+            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+        }
+
         if coordinates.count >= 2 {
             Map(
-                initialPosition: .region(DefaultMapService().getMapPreview(route: route)),
+                initialPosition: .region(DefaultMapService.region(for: displayGeometry.bounds)),
                 interactionModes: [.pan, .zoom]
             ) {
                 MapPolyline(coordinates: coordinates)
@@ -528,6 +531,9 @@ struct ElevationProfileView: View {
                         .stroke(theme.forestBright, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
                 }
                 .frame(height: 120)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Elevation profile")
+                .accessibilityValue(elevationAccessibilityValue)
 
             HStack {
                 Text("Start")
@@ -538,6 +544,16 @@ struct ElevationProfileView: View {
             .foregroundStyle(theme.secondaryText)
         }
         .trailCard()
+    }
+
+    private var elevationAccessibilityValue: String {
+        guard
+            let minimum = route.elevationProfile.min(),
+            let maximum = route.elevationProfile.max()
+        else {
+            return "No elevation samples available"
+        }
+        return "\(Int(minimum.rounded()).formatted()) to \(Int(maximum.rounded()).formatted()) meters over \(route.distanceLabel); total climb \(route.elevationLabel)"
     }
 }
 

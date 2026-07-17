@@ -2,16 +2,16 @@ import SwiftUI
 import UIKit
 
 struct PlanFlowView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(TrailTheme.self) private var theme
     @State private var planner: PlannerViewModel
-    @State private var path: [TrailRoute] = []
 
     init(planner: PlannerViewModel = PlannerViewModel()) {
         _planner = State(initialValue: planner)
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             ZStack {
                 TrailBackground()
 
@@ -75,15 +75,12 @@ struct PlanFlowView: View {
                     .transition(.opacity)
                 }
             }
-            .animation(.smooth, value: planner.phase)
-            .navigationDestination(for: TrailRoute.self) { route in
-                RouteDetailView(route: route)
-            }
+            .animation(reduceMotion ? nil : .smooth, value: planner.phase)
         }
     }
 
     private func startPlanning(_ prompt: String) {
-        withAnimation(.smooth) {
+        withAnimation(reduceMotion ? nil : .smooth) {
             planner.startPlanning(prompt: prompt)
         }
     }
@@ -230,7 +227,8 @@ struct HomeView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 48)
+                    .padding(.vertical, 13)
+                    .frame(minHeight: 48)
             }
             .buttonStyle(.plain)
             .trailGlass(cornerRadius: 16, interactive: true)
@@ -301,7 +299,8 @@ struct PromptChip: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(theme.graphite)
                 .padding(.horizontal, 14)
-                .frame(height: 44)
+                .padding(.vertical, 11)
+                .frame(minHeight: 44)
                 .background(theme.surface, in: Capsule())
                 .overlay {
                     Capsule().stroke(theme.forest.opacity(0.08), lineWidth: 1)
@@ -316,6 +315,7 @@ struct PromptComposerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(TrailTheme.self) private var theme
     @FocusState private var isFocused: Bool
     @State private var voiceModel: VoicePlanningModel
@@ -345,7 +345,8 @@ struct PromptComposerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(title)
                         .font(.trailTitle)
@@ -369,6 +370,7 @@ struct PromptComposerView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 18)
                             .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
 
                     TextEditor(text: $voiceModel.prompt)
@@ -377,6 +379,8 @@ struct PromptComposerView: View {
                         .focused($isFocused)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
+                        .accessibilityLabel("Route request")
+                        .accessibilityHint("Describe a start, destination or loop, plus distance or time.")
                         .accessibilityIdentifier(PlanningAccessibilityID.promptInput)
                 }
                 .frame(minHeight: 155)
@@ -398,9 +402,10 @@ struct PromptComposerView: View {
                 .opacity(voiceModel.canSubmit ? 1 : 0.45)
                 .accessibilityIdentifier(PlanningAccessibilityID.submit)
 
-                Spacer()
+                }
+                .padding(TrailSpacing.page)
             }
-            .padding(TrailSpacing.page)
+            .scrollDismissesKeyboard(.interactively)
             .background(TrailBackground())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -471,9 +476,7 @@ struct PromptComposerView: View {
 
         case .listening:
             HStack(spacing: 12) {
-                Image(systemName: "mic.fill")
-                    .foregroundStyle(theme.warning)
-                    .symbolEffect(.pulse)
+                listeningIcon
                 Text("Listening…")
                     .font(.subheadline.weight(.bold))
                 Spacer()
@@ -521,6 +524,18 @@ struct PromptComposerView: View {
             Label("Finishing transcription…", systemImage: "stop.circle")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(theme.secondaryText)
+        }
+    }
+
+    @ViewBuilder
+    private var listeningIcon: some View {
+        if reduceMotion {
+            Image(systemName: "mic.fill")
+                .foregroundStyle(theme.warning)
+        } else {
+            Image(systemName: "mic.fill")
+                .foregroundStyle(theme.warning)
+                .symbolEffect(.pulse)
         }
     }
 

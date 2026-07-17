@@ -51,6 +51,15 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     }
 
     @MainActor
+    func testComposerExposesADescriptiveRouteRequestElement() {
+        let app = launch(.core)
+        let prompt = openComposer(in: app)
+
+        XCTAssertEqual(prompt.label, "Route request")
+        XCTAssertTrue(prompt.isHittable)
+    }
+
+    @MainActor
     func testLoopPlanningShowsThreeDistinctMappedOptions() {
         let app = launch(.core)
 

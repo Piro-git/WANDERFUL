@@ -113,26 +113,30 @@ struct MockRoutingService: RoutingService {
 
 struct DefaultMapService: MapService {
     func getMapPreview(route: TrailRoute) -> MKCoordinateRegion {
-        guard let first = route.path.first else {
+        Self.region(for: RouteThumbnailService.coordinateBounds(for: route.path))
+    }
+
+    static func region(for bounds: RouteCoordinateBounds?) -> MKCoordinateRegion {
+        guard let bounds else {
             return MKCoordinateRegion(center: .init(latitude: 51.16, longitude: 10.45), span: .init(latitudeDelta: 2, longitudeDelta: 2))
         }
-
-        let latitudes = route.path.map(\.latitude)
-        let longitudes = route.path.map(\.longitude)
         let center = CLLocationCoordinate2D(
-            latitude: (latitudes.min()! + latitudes.max()!) / 2,
-            longitude: (longitudes.min()! + longitudes.max()!) / 2
+            latitude: (bounds.minimumLatitude + bounds.maximumLatitude) / 2,
+            longitude: (bounds.minimumLongitude + bounds.maximumLongitude) / 2
         )
         let span = MKCoordinateSpan(
-            latitudeDelta: max((latitudes.max()! - latitudes.min()!) * 1.65, 0.03),
-            longitudeDelta: max((longitudes.max()! - longitudes.min()!) * 1.65, 0.03)
+            latitudeDelta: max((bounds.maximumLatitude - bounds.minimumLatitude) * 1.65, 0.03),
+            longitudeDelta: max((bounds.maximumLongitude - bounds.minimumLongitude) * 1.65, 0.03)
         )
-        _ = first
         return MKCoordinateRegion(center: center, span: span)
     }
 
     func getRoutePolyline(route: TrailRoute) -> MKPolyline {
-        let coordinates = route.path.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        let displayPoints = RouteThumbnailService.displayPoints(
+            for: route.path,
+            maximumCount: RouteThumbnailService.maximumMapPointCount
+        )
+        let coordinates = displayPoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
         return MKPolyline(coordinates: coordinates, count: coordinates.count)
     }
 }

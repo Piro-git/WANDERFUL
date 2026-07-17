@@ -23,9 +23,9 @@ enum TrailSpacing {
 }
 
 extension Font {
-    static let trailHero = Font.system(size: 42, weight: .bold, design: .rounded)
-    static let trailTitle = Font.system(size: 30, weight: .bold, design: .rounded)
-    static let trailSection = Font.system(size: 20, weight: .bold, design: .rounded)
+    static let trailHero = Font.system(.largeTitle, design: .rounded, weight: .bold)
+    static let trailTitle = Font.system(.title, design: .rounded, weight: .bold)
+    static let trailSection = Font.system(.title3, design: .rounded, weight: .bold)
 }
 
 struct TrailCardModifier: ViewModifier {

@@ -18,6 +18,7 @@ enum PlanningAccessibilityID {
 }
 
 struct GeneratingRouteView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(TrailTheme.self) private var theme
     let planner: PlannerViewModel
 
@@ -38,7 +39,10 @@ struct GeneratingRouteView: View {
                     )
                     .frame(width: 170, height: 170)
                     .rotationEffect(.degrees(-90))
-                    .animation(.smooth(duration: 0.6), value: planner.completedGenerationStageCount)
+                    .animation(
+                        reduceMotion ? nil : .smooth(duration: 0.6),
+                        value: planner.completedGenerationStageCount
+                    )
 
                 Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
                     .font(.system(size: 46, weight: .medium))
@@ -209,7 +213,8 @@ struct PlanningClarificationView: View {
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
                 .padding(.horizontal, 15)
-                .frame(height: 52)
+                .padding(.vertical, 14)
+                .frame(minHeight: 52)
                 .background(theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -298,7 +303,8 @@ private struct ClarificationChoiceButton: View {
             }
             .foregroundStyle(theme.graphite)
             .padding(.horizontal, 15)
-            .frame(height: 52)
+            .padding(.vertical, 14)
+            .frame(minHeight: 52)
             .background(
                 isSelected ? theme.mossSoft.opacity(0.7) : theme.surface,
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -309,6 +315,8 @@ private struct ClarificationChoiceButton: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
     }
 }
 
@@ -444,7 +452,9 @@ struct RouteSuggestionsView: View {
                 }
 
                 ForEach(suggestions) { suggestion in
-                    NavigationLink(value: suggestion.route) {
+                    NavigationLink {
+                        RouteDetailView(route: suggestion.route)
+                    } label: {
                         RouteCard(
                             route: suggestion.route,
                             comparisonLabel: suggestion.explanation,

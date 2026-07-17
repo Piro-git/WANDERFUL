@@ -213,10 +213,11 @@ struct RouteDetailPresentation: Equatable {
     let verificationMessage: String?
 
     init(route: TrailRoute) {
-        allowsProductionActions = route.isVerifiedRoutedResult
+        let isVerified = route.isVerifiedRoutedResult
+        allowsProductionActions = isVerified
         requestedDifficultyLabel = route.planningMetadata?.requestedDifficultySummary
 
-        guard !route.isVerifiedRoutedResult else {
+        guard !isVerified else {
             verificationTitle = nil
             verificationMessage = nil
             return
@@ -249,6 +250,7 @@ struct RouteDetailView: View {
 
     let route: TrailRoute
     private let gpxService: any GPXService
+    private let presentation: RouteDetailPresentation
 
     init(
         route: TrailRoute,
@@ -256,6 +258,7 @@ struct RouteDetailView: View {
     ) {
         self.route = route
         self.gpxService = gpxService
+        presentation = RouteDetailPresentation(route: route)
     }
 
     var body: some View {
@@ -340,10 +343,6 @@ struct RouteDetailView: View {
             .accessibilityIdentifier("route.gpxShareSheet")
         }
         .accessibilityIdentifier("route.detail")
-    }
-
-    private var presentation: RouteDetailPresentation {
-        RouteDetailPresentation(route: route)
     }
 
     @ViewBuilder
@@ -616,7 +615,8 @@ struct RouteDetailView: View {
                     .font(.headline)
                     .foregroundStyle(theme.forest)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 54)
+                    .padding(.vertical, 15)
+                    .frame(minHeight: 54)
                     .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .buttonStyle(.plain)

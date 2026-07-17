@@ -70,9 +70,6 @@ struct SavedRoutesView: View {
             }
             .navigationTitle("Saved")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: TrailRoute.self) { route in
-                RouteDetailView(route: route)
-            }
             .toolbar {
                 if !appModel.savedRoutes.snapshots.isEmpty || appModel.savedRoutes.recoveryReport.hasNotice {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -337,7 +334,9 @@ private struct SavedRouteRow: View {
                     .accessibilityIdentifier(SavedRoutesViewContent.stateAccessibilityIdentifiers[5])
             }
 
-            NavigationLink(value: snapshot.route) {
+            NavigationLink {
+                RouteDetailView(route: snapshot.route)
+            } label: {
                 RouteCard(route: snapshot.route)
             }
             .buttonStyle(.plain)

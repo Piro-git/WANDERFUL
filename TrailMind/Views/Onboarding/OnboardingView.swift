@@ -9,6 +9,7 @@ struct OnboardingView: View {
     }
 
     @Environment(TrailTheme.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var isComplete: Bool
     @State private var selectedPage = 0
 
@@ -67,7 +68,7 @@ struct OnboardingView: View {
 
                 Button {
                     if selectedPage < Self.pages.count - 1 {
-                        withAnimation(.snappy) { selectedPage += 1 }
+                        withAnimation(reduceMotion ? nil : .snappy) { selectedPage += 1 }
                     } else {
                         isComplete = true
                     }
@@ -80,7 +81,8 @@ struct OnboardingView: View {
                     .font(.headline)
                     .foregroundStyle(theme.forest)
                     .padding(.horizontal, 20)
-                    .frame(height: 58)
+                    .padding(.vertical, 16)
+                    .frame(minHeight: 58)
                     .background(theme.warmWhite, in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -96,43 +98,51 @@ private struct OnboardingPageView: View {
     let page: OnboardingView.Page
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            Spacer()
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    Spacer(minLength: 20)
 
-            ZStack {
-                Circle()
-                    .fill(theme.moss.opacity(0.24))
-                    .frame(width: 180, height: 180)
-                Circle()
-                    .stroke(.white.opacity(0.16), lineWidth: 1)
-                    .frame(width: 142, height: 142)
-                Image(systemName: page.symbol)
-                    .font(.system(size: 58, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(theme.sand)
+                    ZStack {
+                        Circle()
+                            .fill(theme.moss.opacity(0.24))
+                            .frame(width: 180, height: 180)
+                        Circle()
+                            .stroke(.white.opacity(0.16), lineWidth: 1)
+                            .frame(width: 142, height: 142)
+                        Image(systemName: page.symbol)
+                            .font(.system(size: 58, weight: .medium))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(theme.sand)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHidden(true)
+
+                    Spacer(minLength: 20)
+
+                    Text(page.eyebrow)
+                        .font(.caption.weight(.bold))
+                        .tracking(1.5)
+                        .foregroundStyle(theme.mossSoft)
+
+                    Text(page.title)
+                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(page.body)
+                        .font(.title3)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
             }
-            .frame(maxWidth: .infinity)
-
-            Spacer()
-
-            Text(page.eyebrow)
-                .font(.caption.weight(.bold))
-                .tracking(1.5)
-                .foregroundStyle(theme.mossSoft)
-
-            Text(page.title)
-                .font(.system(size: 40, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(page.body)
-                .font(.title3)
-                .foregroundStyle(.white.opacity(0.7))
-                .lineSpacing(5)
-                .fixedSize(horizontal: false, vertical: true)
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollIndicators(.hidden)
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 14)
     }
 }
 

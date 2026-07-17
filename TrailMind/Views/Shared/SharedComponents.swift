@@ -17,7 +17,8 @@ struct PrimaryButton: View {
             .font(.headline)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .padding(.vertical, 16)
+            .frame(minHeight: 56)
             .background(theme.forest, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -41,7 +42,8 @@ struct SecondaryButton: View {
             .font(.headline)
             .foregroundStyle(theme.forest)
             .frame(maxWidth: .infinity)
-            .frame(height: 54)
+            .padding(.vertical, 15)
+            .frame(minHeight: 54)
             .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
