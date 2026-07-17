@@ -52,6 +52,9 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(route.planningMetadata?.targetDurationMinutes, 120)
         XCTAssertEqual(route.planningMetadata?.desiredFeatures, [.viewpoint, .quiet])
         XCTAssertTrue(route.whyItMatches.contains("Requested: Views, Quiet route"))
+        XCTAssertTrue(route.whyItMatches.contains("route instructions returned by GraphHopper"))
+        XCTAssertFalse(route.whyItMatches.localizedCaseInsensitiveContains("German instructions"))
+        XCTAssertEqual(route.highlights.last?.title, "Route directions")
         guard case let .routed(provenance) = route.provenance else {
             return XCTFail("Point-to-point GraphHopper output must be explicitly routed.")
         }
@@ -457,7 +460,7 @@ final class GraphHopperClientTests: XCTestCase {
         let expected: [String: Any] = [
             "profile": "foot",
             "points": [[10.6782, 51.8666], [10.6647, 51.7636]],
-            "locale": "de",
+            "locale": "en",
             "elevation": true,
             "points_encoded": false,
             "instructions": true,
@@ -790,7 +793,7 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual((payload?["points"] as? [[Double]])?.count, 1)
         XCTAssertEqual(payload?["profile"] as? String, "foot")
         XCTAssertEqual(payload?["points"] as? [[Double]], [[10.6782, 51.8666]])
-        XCTAssertEqual(payload?["locale"] as? String, "de")
+        XCTAssertEqual(payload?["locale"] as? String, "en")
         XCTAssertEqual(payload?["elevation"] as? Bool, true)
         XCTAssertEqual(payload?["points_encoded"] as? Bool, false)
         XCTAssertEqual(payload?["instructions"] as? Bool, true)
@@ -859,7 +862,7 @@ final class GraphHopperClientTests: XCTestCase {
                 [10.6782, 51.8666]
             ]
         )
-        XCTAssertEqual(payload?["locale"] as? String, "de")
+        XCTAssertEqual(payload?["locale"] as? String, "en")
         XCTAssertEqual(payload?["elevation"] as? Bool, true)
         XCTAssertEqual(payload?["points_encoded"] as? Bool, false)
         XCTAssertEqual(payload?["instructions"] as? Bool, true)

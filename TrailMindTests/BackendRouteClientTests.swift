@@ -19,6 +19,7 @@ final class BackendRouteClientTests: XCTestCase {
         )
         XCTAssertEqual(object["profile"] as? String, "foot")
         XCTAssertEqual(object["routeType"] as? String, "pointToPoint")
+        XCTAssertEqual(object["locale"] as? String, "en")
         let points = try XCTUnwrap(object["points"] as? [[String: Double]])
         XCTAssertEqual(points, [
             ["latitude": 51.866, "longitude": 10.678],
@@ -143,6 +144,7 @@ final class BackendRouteClientTests: XCTestCase {
         XCTAssertEqual(captured.points[0].latitude, 51.866)
         XCTAssertEqual(captured.points[0].longitude, 10.678)
         XCTAssertEqual(captured.routeType, "pointToPoint")
+        XCTAssertEqual(captured.locale, "en")
         XCTAssertEqual(captured.preferences?.avoid, ["majorRoads"])
         XCTAssertEqual(captured.weightedCost, 2)
         let encoded = try JSONEncoder().encode(captured)
@@ -250,6 +252,7 @@ final class BackendRouteClientTests: XCTestCase {
         })
         let requests = await gateway.requests()
         XCTAssertEqual(requests.count, 2)
+        XCTAssertTrue(requests.allSatisfy { $0.locale == "en" })
         XCTAssertEqual(requests[0].algorithm, "alternative_route")
         XCTAssertNotNil(requests[0].alternativeRoute)
         XCTAssertNil(requests[1].algorithm)
@@ -428,6 +431,7 @@ final class BackendRouteClientTests: XCTestCase {
         let requests = await gateway.requests()
         let maximumConcurrentRequests = await gateway.maximumConcurrentRequests()
         XCTAssertEqual(routes.count, 3)
+        XCTAssertTrue(requests.allSatisfy { $0.locale == "en" })
         XCTAssertEqual(requests.compactMap { $0.roundTrip?.seed }.sorted(), [11, 29, 47])
         XCTAssertTrue(requests.allSatisfy { $0.weightedCost == 2 })
         XCTAssertGreaterThan(maximumConcurrentRequests, 1)
@@ -435,6 +439,40 @@ final class BackendRouteClientTests: XCTestCase {
             guard case let .routed(provenance) = route.provenance else { return false }
             return provenance.provider == .graphHopper && provenance.strategy == .backend
         })
+    }
+
+    func testBackendMultiPointFallbackUsesEnglishInstructions() async throws {
+        let gateway = RecordingRouteGateway(response: Self.routeResponse)
+        let request = RoutePlanningRequest(
+            routeType: .loop,
+            startQuery: "Ilsenburg",
+            endQuery: nil,
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+        let waypoints = [
+            Coordinate(latitude: 51.866, longitude: 10.678),
+            Coordinate(latitude: 51.89, longitude: 10.72),
+            Coordinate(latitude: 51.84, longitude: 10.71),
+            Coordinate(latitude: 51.866, longitude: 10.678)
+        ]
+
+        _ = try await GraphHopperClient(gateway: gateway).calculateGraphHopperRoute(
+            waypoints: waypoints,
+            request: request,
+            seed: 47
+        )
+
+        let capturedRequests = await gateway.requests()
+        let captured = try XCTUnwrap(capturedRequests.first)
+        XCTAssertEqual(captured.locale, "en")
+        XCTAssertEqual(captured.routeType, "loop")
+        XCTAssertEqual(captured.points.count, 4)
+        XCTAssertNil(captured.algorithm)
     }
 
     private static func pointToPointRequest(
@@ -510,7 +548,7 @@ final class BackendRouteClientTests: XCTestCase {
         algorithm: nil,
         roundTrip: nil,
         alternativeRoute: nil,
-        locale: "de",
+        locale: "en",
         includeElevation: true,
         includeInstructions: true,
         includePathDetails: ["surface", "road_class", "hike_rating"],

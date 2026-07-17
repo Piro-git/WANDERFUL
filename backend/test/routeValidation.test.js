@@ -29,6 +29,21 @@ describe("route request validation", () => {
     assert.equal(request.profile, "bike");
   });
 
+  it("defaults routing instructions to English", () => {
+    const request = pointToPointRequest();
+    delete request.locale;
+    assert.equal(validateRouteRequest(request).locale, "en");
+  });
+
+  it("accepts English and legacy German instruction locales", () => {
+    assert.equal(validateRouteRequest(pointToPointRequest({ locale: "en" })).locale, "en");
+    assert.equal(validateRouteRequest(pointToPointRequest({ locale: "de" })).locale, "de");
+  });
+
+  it("rejects unsupported instruction locales", () => {
+    assertRouteError(pointToPointRequest({ locale: "fr" }), "invalid_request");
+  });
+
   it("accepts a valid foot round-trip request", () => {
     const request = validateRouteRequest(loopRequest());
     assert.equal(request.roundTrip.distanceMeters, 15_000);

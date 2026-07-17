@@ -19,7 +19,7 @@ Supported values:
 - Profiles: `foot`, `bike`. Hiking and trail running use `foot`; biking uses `bike`.
 - Route types: `pointToPoint`, `loop`.
 - Algorithms: omit `algorithm` for normal point-to-point routing; use `alternative_route` for bounded alternatives; use `round_trip` for loops.
-- Locale: `de` only.
+- Locale: `en` or `de`; omitted locale defaults to `en`.
 - Path details: `surface`, `road_class`, `hike_rating` only.
 - Points: exactly one point for a GraphHopper `round_trip` loop; 2–25 points for `pointToPoint`.
 - Existing fallback compatibility: a standard loop may omit `algorithm` only when it contains 3–25 points and its final point closes back to its first point. Flexible settings and typed preferences are forbidden on this fallback shape.
@@ -44,7 +44,7 @@ Unknown properties are rejected. The client cannot provide a provider URL, key, 
     "maxWeightFactor": 1.4,
     "maxShareFactor": 0.65
   },
-  "locale": "de",
+  "locale": "en",
   "includeElevation": true,
   "includeInstructions": true,
   "includePathDetails": ["surface", "road_class", "hike_rating"]
@@ -67,7 +67,7 @@ For a normal route, omit both `algorithm` and `alternativeRoute`.
     "distanceMeters": 15000,
     "seed": 11
   },
-  "locale": "de",
+  "locale": "en",
   "includeElevation": true,
   "includeInstructions": true,
   "includePathDetails": ["surface", "road_class", "hike_rating"]

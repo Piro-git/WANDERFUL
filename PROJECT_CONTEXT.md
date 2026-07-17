@@ -223,7 +223,7 @@ GraphHopper client supports:
 * `elevation: true`
 * `points_encoded: false`
 * `instructions: true`
-* `locale: de`
+* `locale: en` for shipping English route instructions; backend validation also accepts `de`
 * path details foundation
 * distance decoding
 * duration decoding
@@ -381,7 +381,7 @@ GraphHopper round_trip request uses:
 * `elevation: true`
 * `points_encoded: false`
 * `instructions: true`
-* `locale: de`
+* `locale: en` for shipping English route instructions
 
 Seeds currently used:
 

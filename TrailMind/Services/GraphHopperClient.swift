@@ -207,6 +207,8 @@ enum GraphHopperError: LocalizedError, Sendable {
 }
 
 struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopperMultiPointRouteCalculating, ConcurrentGraphHopperMultiPointRouteCalculating {
+    private static let routingInstructionLocale = "en"
+
     private let session: URLSession
     private let configurationProvider: @Sendable () throws -> GraphHopperConfiguration
     private let gateway: (any BackendRouteGatewayRouting)?
@@ -793,7 +795,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                     maxShareFactor: $0.maxShareFactor
                 )
             },
-            locale: "de",
+            locale: Self.routingInstructionLocale,
             includeElevation: true,
             includeInstructions: true,
             includePathDetails: ["surface", "road_class", "hike_rating"],
@@ -815,7 +817,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             algorithm: "round_trip",
             roundTrip: .init(distanceMeters: targetDistance * 1_000, seed: seed),
             alternativeRoute: nil,
-            locale: "de",
+            locale: Self.routingInstructionLocale,
             includeElevation: true,
             includeInstructions: true,
             includePathDetails: ["surface", "road_class", "hike_rating"],
@@ -834,7 +836,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             algorithm: nil,
             roundTrip: nil,
             alternativeRoute: nil,
-            locale: "de",
+            locale: Self.routingInstructionLocale,
             includeElevation: true,
             includeInstructions: true,
             includePathDetails: ["surface", "road_class", "hike_rating"],
@@ -1106,7 +1108,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 [start.longitude, start.latitude],
                 [end.longitude, end.latitude]
             ],
-            locale: "de",
+            locale: Self.routingInstructionLocale,
             elevation: true,
             pointsEncoded: false,
             instructions: true,
@@ -1153,7 +1155,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         let payload = GraphHopperRouteRequest(
             profile: planningRequest.graphHopperProfile,
             points: waypoints.map { [$0.longitude, $0.latitude] },
-            locale: "de",
+            locale: Self.routingInstructionLocale,
             elevation: true,
             pointsEncoded: false,
             instructions: true,
@@ -1205,7 +1207,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             points: [
                 [start.longitude, start.latitude]
             ],
-            locale: "de",
+            locale: Self.routingInstructionLocale,
             elevation: true,
             pointsEncoded: false,
             instructions: true,
@@ -1422,7 +1424,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             highlights: [
                 Highlight(title: "Live trail geometry", subtitle: "\(coordinates.count.formatted()) mapped route points", symbol: "point.bottomleft.forward.to.point.topright.scurvepath"),
                 Highlight(title: "Elevation-aware", subtitle: "+\(elevationGain.formatted()) m ascent · −\(elevationLoss.formatted()) m descent", symbol: "mountain.2.fill"),
-                Highlight(title: "German directions", subtitle: "\(routeInstructions.count.formatted()) route instructions", symbol: "signpost.right.fill")
+                Highlight(title: "Route directions", subtitle: "\(routeInstructions.count.formatted()) route instructions", symbol: "signpost.right.fill")
             ],
             waypoints: [
                 Waypoint(
@@ -1743,7 +1745,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         planningRequest: RoutePlanningRequest,
         distanceKilometers: Double
     ) -> String {
-        var parts = ["Live route geometry, elevation and German instructions returned by GraphHopper."]
+        var parts = ["Live route geometry, elevation and route instructions returned by GraphHopper."]
         if let requestedFeatureSummary = planningRequest.metadata.requestedFeatureSummary {
             parts.append(requestedFeatureSummary)
         }

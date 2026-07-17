@@ -4,7 +4,7 @@ export const ROUTE_PROFILES = Object.freeze(["foot", "bike"]);
 export const ROUTE_TYPES = Object.freeze(["loop", "pointToPoint"]);
 export const ROUTE_ALGORITHMS = Object.freeze(["alternative_route", "round_trip"]);
 export const ROUTE_PATH_DETAILS = Object.freeze(["surface", "road_class", "hike_rating"]);
-export const ROUTE_LOCALES = Object.freeze(["de"]);
+export const ROUTE_LOCALES = Object.freeze(["en", "de"]);
 
 const TOP_LEVEL_FIELDS = new Set([
   "profile", "routeType", "points", "algorithm", "roundTrip", "alternativeRoute",
@@ -41,7 +41,7 @@ export function validateRouteRequest(input, limits = {}) {
   const alternativeRoute = validateAlternativeRoute(input.alternativeRoute);
   validateModeFields({ routeType, points, algorithm, roundTrip, alternativeRoute });
 
-  const locale = input.locale ?? "de";
+  const locale = input.locale ?? "en";
   if (!ROUTE_LOCALES.includes(locale)) {
     throw routeError("invalid_request", { message: "The requested locale is not supported." });
   }

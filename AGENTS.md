@@ -231,7 +231,7 @@ Current GraphHopper client supports:
 - `elevation: true`
 - `points_encoded: false`
 - `instructions: true`
-- `locale: de`
+- `locale: en` for shipping English route instructions; the backend retains `de` compatibility
 - path details foundation
 - distance decoding
 - duration decoding

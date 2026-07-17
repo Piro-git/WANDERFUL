@@ -25,19 +25,19 @@ enum GeocodingServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .emptyQuery:
-            "Bitte gib einen Ortsnamen ein."
+            "Enter a place name."
         case let .noResults(query):
-            "„\(query)“ konnte nicht gefunden werden. Bitte prüfe den Ortsnamen."
+            "“\(query)” could not be found. Check the place name and try again."
         case .requestInProgress:
-            "Die Ortssuche läuft bereits. Bitte versuche es gleich noch einmal."
+            "Place search is already in progress. Try again in a moment."
         case .endpointsTooClose:
-            "Start und Ziel konnten nicht eindeutig unterschieden werden. Bitte verwende genauere Ortsnamen."
+            "Start and destination could not be distinguished. Use more specific place names."
         case .network:
-            "Die Ortssuche ist gerade nicht erreichbar. Bitte prüfe deine Verbindung."
+            "Place search is unavailable right now. Check your connection and try again."
         case .unavailable:
-            "Die Ortssuche ist auf diesem Gerät gerade nicht verfügbar."
-        case let .failed(message):
-            "Die Ortssuche ist fehlgeschlagen. \(message)"
+            "Place search is not available on this device right now."
+        case .failed:
+            "Place search failed. Try again."
         }
     }
 }
@@ -55,11 +55,24 @@ final class NativeGeocodingService: GeocodingService {
     private var contextByCoordinate: [String: PlacemarkContext] = [:]
     private var lastRequestDate: Date?
 
-    private let germanyRegion = CLCircularRegion(
-        center: CLLocationCoordinate2D(latitude: 51.1657, longitude: 10.4515),
-        radius: 700_000,
-        identifier: "Germany"
-    )
+    /// Unqualified place names are intentionally biased toward TrailMind's
+    /// Germany-first beta region. This is a search hint, not a location claim.
+    static let germanyBiasCenter = Coordinate(latitude: 51.1657, longitude: 10.4515)
+    static let germanyBiasRadiusMeters: CLLocationDistance = 700_000
+    static let nearbyBiasRadiusMeters: CLLocationDistance = 150_000
+    private static let germanyRegionCode = "DE"
+    private static let countryRegionCodeByName: [String: String] = {
+        let displayLocales = [Locale(identifier: "en"), Locale(identifier: "de")]
+        return Locale.Region.isoRegions.reduce(into: [:]) { namesByCode, region in
+            let regionCode = region.identifier.uppercased()
+            namesByCode[normalizedCountryComponent(regionCode)] = regionCode
+            for locale in displayLocales {
+                if let name = locale.localizedString(forRegionCode: regionCode) {
+                    namesByCode[normalizedCountryComponent(name)] = regionCode
+                }
+            }
+        }
+    }()
 
     func geocodeLocation(_ query: String, near preferredCoordinate: Coordinate?) async throws -> Coordinate {
         let cleanQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -69,7 +82,7 @@ final class NativeGeocodingService: GeocodingService {
 
         let normalizedQuery = cleanQuery.folding(
             options: [.caseInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "de_DE")
+            locale: Locale(identifier: "en_US_POSIX")
         )
         let cacheKey = if let preferredCoordinate {
             "\(normalizedQuery)|\(Int(preferredCoordinate.latitude * 10)),\(Int(preferredCoordinate.longitude * 10))"
@@ -96,23 +109,13 @@ final class NativeGeocodingService: GeocodingService {
         let nearbyContext = preferredCoordinate.flatMap {
             contextByCoordinate[coordinateCacheKey($0)]
         }
-        let germanyBiasedQuery = contextualizedQuery(
+        let germanyBiasedQuery = Self.contextualizedQuery(
             cleanQuery,
-            nearbyContext: nearbyContext
+            locality: nearbyContext?.locality,
+            subAdministrativeArea: nearbyContext?.subAdministrativeArea,
+            administrativeArea: nearbyContext?.administrativeArea
         )
-        let searchRegion: CLRegion
-        if let preferredCoordinate {
-            searchRegion = CLCircularRegion(
-                center: CLLocationCoordinate2D(
-                    latitude: preferredCoordinate.latitude,
-                    longitude: preferredCoordinate.longitude
-                ),
-                radius: 150_000,
-                identifier: "RouteStartBias"
-            )
-        } else {
-            searchRegion = germanyRegion
-        }
+        let searchRegion = Self.searchRegion(for: cleanQuery, near: preferredCoordinate)
 
         do {
             let placemarks = try await geocoder.geocodeAddressString(
@@ -122,7 +125,8 @@ final class NativeGeocodingService: GeocodingService {
             try Task.checkCancellation()
 
             let selectedPlacemark: CLPlacemark?
-            if let preferredCoordinate {
+            if let preferredCoordinate,
+               Self.shouldPreferNearbyResults(for: cleanQuery, near: preferredCoordinate) {
                 let preferredLocation = CLLocation(
                     latitude: preferredCoordinate.latitude,
                     longitude: preferredCoordinate.longitude
@@ -174,45 +178,94 @@ final class NativeGeocodingService: GeocodingService {
         }
     }
 
-    private func contextualizedQuery(
+    static func contextualizedQuery(
         _ query: String,
-        nearbyContext: PlacemarkContext?
+        locality: String? = nil,
+        subAdministrativeArea: String? = nil,
+        administrativeArea: String? = nil
     ) -> String {
         guard !isAlreadyCountryQualified(query) else { return query }
 
         var components = [query]
-        if let nearbyContext {
-            if let subAdministrativeArea = nearbyContext.subAdministrativeArea {
-                components.append(subAdministrativeArea)
-            } else if let locality = nearbyContext.locality {
-                components.append(locality)
-            }
-            if let administrativeArea = nearbyContext.administrativeArea {
-                components.append(administrativeArea)
-            }
+        if let subAdministrativeArea {
+            components.append(subAdministrativeArea)
+        } else if let locality {
+            components.append(locality)
         }
-        components.append("Deutschland")
+        if let administrativeArea {
+            components.append(administrativeArea)
+        }
+        components.append("Germany")
 
         var seen: Set<String> = []
         return components.filter { component in
             let normalized = component.folding(
                 options: [.caseInsensitive, .diacriticInsensitive],
-                locale: Locale(identifier: "de_DE")
+                locale: Locale(identifier: "en_US_POSIX")
             )
             return seen.insert(normalized).inserted
         }
         .joined(separator: ", ")
     }
 
+    static func searchRegion(
+        for query: String,
+        near preferredCoordinate: Coordinate?
+    ) -> CLCircularRegion? {
+        if let countryRegionCode = explicitCountryRegionCode(in: query),
+           countryRegionCode != germanyRegionCode {
+            return nil
+        }
+        if let preferredCoordinate {
+            return CLCircularRegion(
+                center: CLLocationCoordinate2D(
+                    latitude: preferredCoordinate.latitude,
+                    longitude: preferredCoordinate.longitude
+                ),
+                radius: nearbyBiasRadiusMeters,
+                identifier: "RouteStartBias"
+            )
+        }
+        return CLCircularRegion(
+            center: CLLocationCoordinate2D(
+                latitude: germanyBiasCenter.latitude,
+                longitude: germanyBiasCenter.longitude
+            ),
+            radius: germanyBiasRadiusMeters,
+            identifier: "GermanyBias"
+        )
+    }
+
+    static func shouldPreferNearbyResults(
+        for query: String,
+        near preferredCoordinate: Coordinate?
+    ) -> Bool {
+        guard preferredCoordinate != nil else { return false }
+        guard let countryRegionCode = explicitCountryRegionCode(in: query) else { return true }
+        return countryRegionCode == germanyRegionCode
+    }
+
     private func coordinateCacheKey(_ coordinate: Coordinate) -> String {
         "\(Int(coordinate.latitude * 1_000)),\(Int(coordinate.longitude * 1_000))"
     }
 
-    private func isAlreadyCountryQualified(_ query: String) -> Bool {
-        let normalized = query.folding(
-            options: [.caseInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "de_DE")
-        )
-        return normalized.contains("deutschland") || normalized.contains("germany")
+    private static func isAlreadyCountryQualified(_ query: String) -> Bool {
+        explicitCountryRegionCode(in: query) != nil
+    }
+
+    private static func explicitCountryRegionCode(in query: String) -> String? {
+        guard query.contains(","),
+              let finalComponent = query.split(separator: ",", omittingEmptySubsequences: false).last else {
+            return nil
+        }
+        return countryRegionCodeByName[normalizedCountryComponent(String(finalComponent))]
+    }
+
+    private static func normalizedCountryComponent(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: Locale(identifier: "en_US_POSIX")
+            )
     }
 }
