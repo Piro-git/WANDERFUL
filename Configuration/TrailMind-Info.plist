@@ -29,12 +29,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TrailMind uses your location to suggest nearby adventures and support future navigation.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>TrailMind uses the microphone to turn your spoken route request into text.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>TrailMind uses speech recognition to transcribe your spoken route request.</string>
+	<string>Apple Speech can send captured audio to Apple's servers for processing. TrailMind does not retain raw audio or send it to its own backend.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

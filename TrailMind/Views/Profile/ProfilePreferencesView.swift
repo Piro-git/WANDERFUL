@@ -12,34 +12,51 @@ struct ProfilePreferencesView: View {
                         .listRowBackground(Color.clear)
                 }
 
-                Section("TrailMind today") {
-                    informationRow(
-                        title: "Natural-language planning",
-                        detail: "Describe a same-day hike, trail run or bike route with a start, destination, distance or time.",
-                        symbol: "text.bubble.fill"
-                    )
-                    informationRow(
-                        title: "Mapped route results",
-                        detail: "Route geometry, distance, duration and elevation come from the routing response.",
-                        symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
-                    )
-                    informationRow(
-                        title: "Local saved plans",
-                        detail: "Routes appear in Saved only after you choose to save a verified result on this device.",
-                        symbol: "bookmark.fill"
+                Section {
+                    ForEach(TrailMindAboutContent.currentCapabilityItems) { item in
+                        informationRow(item)
+                    }
+                } header: {
+                    sectionHeader(
+                        "TrailMind today",
+                        accessibilityIdentifier: TrailMindAboutAccessibilityID.currentCapabilitiesSection
                     )
                 }
 
-                Section("Planning boundary") {
-                    informationRow(
-                        title: "Review before starting",
-                        detail: "TrailMind is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
-                        symbol: "checklist"
+                Section {
+                    ForEach(TrailMindAboutContent.dataFlowItems) { item in
+                        informationRow(item)
+                    }
+                } header: {
+                    sectionHeader(
+                        "Data & privacy",
+                        accessibilityIdentifier: TrailMindAboutAccessibilityID.dataFlowSection
                     )
-                    informationRow(
-                        title: "Preferences are requests",
-                        detail: "Requested features are shown separately unless mapped route data verifies them.",
-                        symbol: "slider.horizontal.3"
+                } footer: {
+                    Text(TrailMindAboutContent.dataFlowFooter)
+                        .accessibilityIdentifier("about.data.footer")
+                }
+
+                Section {
+                    ForEach(TrailMindAboutContent.planningBoundaryItems) { item in
+                        informationRow(item)
+                    }
+                } header: {
+                    sectionHeader(
+                        "Planning boundary",
+                        accessibilityIdentifier: TrailMindAboutAccessibilityID.planningBoundarySection
+                    )
+                }
+
+                Section {
+                    informationRow(TrailMindAboutContent.mapDisplayItem)
+                    ForEach(TrailMindAboutContent.credits) { credit in
+                        creditRow(credit)
+                    }
+                } header: {
+                    sectionHeader(
+                        "Providers & map data",
+                        accessibilityIdentifier: TrailMindAboutAccessibilityID.creditsSection
                     )
                 }
             }
@@ -77,12 +94,51 @@ struct ProfilePreferencesView: View {
             }
         }
         .padding(.vertical, 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("TrailMind. A focused planner for real outdoor routes.")
+        .accessibilityIdentifier(TrailMindAboutAccessibilityID.header)
     }
 
-    private func informationRow(
+    private func sectionHeader(
+        _ title: String,
+        accessibilityIdentifier: String
+    ) -> some View {
+        Text(title)
+            .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private func informationRow(_ item: TrailMindAboutItem) -> some View {
+        rowContent(
+            title: item.title,
+            detail: item.detail,
+            symbol: item.symbol
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.title). \(item.detail)")
+        .accessibilityIdentifier(item.id)
+    }
+
+    private func creditRow(_ credit: TrailMindAboutCredit) -> some View {
+        Link(destination: credit.destination) {
+            rowContent(
+                title: credit.title,
+                detail: credit.detail,
+                symbol: credit.symbol,
+                trailingSymbol: "arrow.up.right.square"
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(credit.title). \(credit.detail)")
+        .accessibilityHint("Opens the provider's official attribution and licence information.")
+        .accessibilityIdentifier(credit.id)
+    }
+
+    private func rowContent(
         title: String,
         detail: String,
-        symbol: String
+        symbol: String,
+        trailingSymbol: String? = nil
     ) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
@@ -99,6 +155,15 @@ struct ProfilePreferencesView: View {
                     .font(.caption)
                     .foregroundStyle(theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            if let trailingSymbol {
+                Image(systemName: trailingSymbol)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.forest)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.vertical, 4)
