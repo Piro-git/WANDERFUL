@@ -4,16 +4,16 @@ import SwiftUI
 struct RouteCard: View {
     @Environment(TrailTheme.self) private var theme
     let route: TrailRoute
-    let matchScore: Int?
+    let comparisonLabel: String?
     let qualityExplanations: [RouteQualityExplanation]
 
     init(
         route: TrailRoute,
-        matchScore: Int?,
+        comparisonLabel: String? = nil,
         qualityExplanations: [RouteQualityExplanation] = []
     ) {
         self.route = route
-        self.matchScore = matchScore
+        self.comparisonLabel = comparisonLabel
         self.qualityExplanations = qualityExplanations
     }
 
@@ -109,17 +109,13 @@ struct RouteCard: View {
     }
 
     private var badgeLabel: String? {
-        if let variantLabel = route.planningMetadata?.variantLabel {
-            return variantLabel
-        }
-        if let matchScore {
-            return "\(matchScore)% match"
-        }
-        return nil
+        RouteAlternativeQuality.displayLabel(candidate: comparisonLabel, for: route)
     }
 
     private var badgeSymbol: String {
-        route.planningMetadata?.variantLabel == nil ? "sparkles" : "arrow.trianglehead.2.clockwise.rotate.90"
+        route.routeType == .loop
+            ? "arrow.trianglehead.2.clockwise.rotate.90"
+            : "point.bottomleft.forward.to.point.topright.scurvepath"
     }
 }
 

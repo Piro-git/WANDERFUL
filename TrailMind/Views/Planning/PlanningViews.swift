@@ -436,7 +436,7 @@ struct RouteSuggestionsView: View {
                     NavigationLink(value: suggestion.route) {
                         RouteCard(
                             route: suggestion.route,
-                            matchScore: suggestion.matchScore,
+                            comparisonLabel: suggestion.explanation,
                             qualityExplanations: RouteQualityExplanationGenerator.explanations(
                                 for: suggestion.route,
                                 debugMetadata: suggestion.debugMetadata,

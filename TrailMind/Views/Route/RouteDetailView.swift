@@ -476,7 +476,7 @@ struct RouteDetailView: View {
                             PlanningChip(label: "Loop route", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
                         }
 
-                        if let variantLabel = metadata.variantLabel {
+                        if let variantLabel = RouteAlternativeQuality.detailDisplayLabel(for: route) {
                             PlanningChip(label: variantLabel, symbol: "slider.horizontal.3")
                         }
 

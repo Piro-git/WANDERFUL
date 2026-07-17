@@ -649,12 +649,36 @@ struct RoutePlanningMetadata: Hashable, Sendable {
     func distanceNote(actualDistanceKm: Double) -> String? {
         guard let targetDistanceKm, let fit = distanceFit(actualDistanceKm: actualDistanceKm) else { return nil }
         guard fit != .withinTolerance else { return nil }
-        let routeKind = routeType == .loop ? "loop" : "route"
-        return "Closest available mapped \(routeKind) to your \(Self.distanceLabel(targetDistanceKm)) request."
+        return "Actual \(Self.distanceLabel(actualDistanceKm)) vs requested \(Self.distanceLabel(targetDistanceKm))."
+    }
+
+    func durationFit(actualDurationMinutes: Int) -> DistanceFit? {
+        guard let targetDurationMinutes, targetDurationMinutes > 0 else { return nil }
+        let difference = actualDurationMinutes - targetDurationMinutes
+        let tolerance = max(15, Int((Double(targetDurationMinutes) * 0.12).rounded()))
+        if abs(difference) <= tolerance { return .withinTolerance }
+        return difference < 0 ? .shorter : .longer
+    }
+
+    func durationNote(actualDurationMinutes: Int) -> String? {
+        guard
+            let targetDurationMinutes,
+            let fit = durationFit(actualDurationMinutes: actualDurationMinutes),
+            fit != .withinTolerance
+        else { return nil }
+        return "Actual \(Self.durationLabel(actualDurationMinutes)) vs requested \(Self.durationLabel(targetDurationMinutes))."
     }
 
     private static func distanceLabel(_ value: Double) -> String {
-        "\(value.formatted(.number.precision(.fractionLength(value.rounded() == value ? 0 : 1)))) km"
+        "\(value.formatted(.number.locale(Locale(identifier: "en_US_POSIX")).precision(.fractionLength(value.rounded() == value ? 0 : 1)))) km"
+    }
+
+    private static func durationLabel(_ minutes: Int) -> String {
+        let hours = minutes / 60
+        let remainder = minutes % 60
+        if hours == 0 { return "\(minutes) min" }
+        if remainder == 0 { return "\(hours) hr" }
+        return "\(hours) hr \(remainder) min"
     }
 }
 
@@ -854,11 +878,23 @@ enum RouteQualityExplanationGenerator {
                 to: &explanations
             )
 
+            appendDurationExplanation(
+                route: route,
+                metadata: metadata,
+                to: &explanations
+            )
+
+            appendDifficultyMismatchExplanation(
+                route: route,
+                metadata: metadata,
+                to: &explanations
+            )
+
             if metadata.routeType == .loop || route.routeType == .loop {
                 explanations.append(
                     RouteQualityExplanation(
                         title: "Loop route",
-                        detail: "Starts and finishes at the same area.",
+                        detail: "Route type returned by routing: loop.",
                         symbol: "arrow.trianglehead.2.clockwise.rotate.90"
                     )
                 )
@@ -936,41 +972,76 @@ enum RouteQualityExplanationGenerator {
         }
     }
 
+    private static func appendDurationExplanation(
+        route: TrailRoute,
+        metadata: RoutePlanningMetadata,
+        to explanations: inout [RouteQualityExplanation]
+    ) {
+        guard
+            let targetDurationMinutes = metadata.targetDurationMinutes,
+            targetDurationMinutes > 0,
+            let durationFit = metadata.durationFit(actualDurationMinutes: route.durationMinutes)
+        else { return }
+
+        let detail = "Actual \(durationLabel(route.durationMinutes)) vs requested \(durationLabel(targetDurationMinutes))."
+        switch durationFit {
+        case .withinTolerance:
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Close to your target time",
+                    detail: detail,
+                    symbol: "clock"
+                )
+            )
+        case .shorter:
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Shorter than target time",
+                    detail: detail,
+                    symbol: "clock.badge.checkmark"
+                )
+            )
+        case .longer:
+            explanations.append(
+                RouteQualityExplanation(
+                    title: "Longer than target time",
+                    detail: detail,
+                    symbol: "clock.badge.exclamationmark"
+                )
+            )
+        }
+    }
+
+    private static func appendDifficultyMismatchExplanation(
+        route: TrailRoute,
+        metadata: RoutePlanningMetadata,
+        to explanations: inout [RouteQualityExplanation]
+    ) {
+        guard
+            let requestedDifficulty = metadata.difficulty,
+            difficultyRank(route.difficulty) > difficultyRank(requestedDifficulty)
+        else { return }
+
+        explanations.append(
+            RouteQualityExplanation(
+                title: "Harder than requested",
+                detail: "Requested \(requestedDifficulty.rawValue). Measured \(distanceLabel(route.distanceKilometers)) and \(route.elevationGainMeters) m climb produce TrailMind’s \(route.difficulty.rawValue) estimate.",
+                symbol: "exclamationmark.triangle.fill"
+            )
+        )
+    }
+
     private static func appendVariantExplanation(
         metadata: RoutePlanningMetadata,
         to explanations: inout [RouteQualityExplanation]
     ) {
         switch metadata.variantLabel {
-        case "Easier Option":
+        case "Lowest climb":
             explanations.append(
                 RouteQualityExplanation(
-                    title: "Easier elevation option",
-                    detail: "Lower climb among the generated route variants.",
+                    title: "Lowest measured climb",
+                    detail: "Lowest elevation gain among these distinct routed options.",
                     symbol: "leaf.fill"
-                )
-            )
-        case "More Elevation":
-            explanations.append(
-                RouteQualityExplanation(
-                    title: "More elevation option",
-                    detail: "Higher climb among the generated route variants.",
-                    symbol: "mountain.2.fill"
-                )
-            )
-        case "Shorter Loop":
-            explanations.append(
-                RouteQualityExplanation(
-                    title: "Shorter loop option",
-                    detail: "A shorter generated variant for comparison.",
-                    symbol: "minus.circle.fill"
-                )
-            )
-        case "Longer Loop":
-            explanations.append(
-                RouteQualityExplanation(
-                    title: "Longer loop option",
-                    detail: "A longer generated variant for comparison.",
-                    symbol: "plus.circle.fill"
                 )
             )
         default:
@@ -986,7 +1057,27 @@ enum RouteQualityExplanationGenerator {
     }
 
     private static func distanceLabel(_ distanceKm: Double) -> String {
-        distanceKm.formatted(.number.precision(.fractionLength(distanceKm.rounded() == distanceKm ? 0 : 1))) + " km"
+        distanceKm.formatted(
+            .number
+                .locale(Locale(identifier: "en_US_POSIX"))
+                .precision(.fractionLength(distanceKm.rounded() == distanceKm ? 0 : 1))
+        ) + " km"
+    }
+
+    private static func durationLabel(_ minutes: Int) -> String {
+        let hours = minutes / 60
+        let remainder = minutes % 60
+        if hours == 0 { return "\(minutes) min" }
+        if remainder == 0 { return "\(hours) hr" }
+        return "\(hours) hr \(remainder) min"
+    }
+
+    private static func difficultyRank(_ difficulty: RouteDifficulty) -> Int {
+        switch difficulty {
+        case .easy: 0
+        case .moderate: 1
+        case .challenging: 2
+        }
     }
 
     private static func percentLabel(_ ratio: Double) -> String {
@@ -1811,20 +1902,17 @@ struct RouteSuggestionDebugMetadata: Hashable, Sendable {
 struct RouteSuggestion: Identifiable, Hashable {
     let id: UUID
     let route: TrailRoute
-    let matchScore: Int
     let explanation: String
     let debugMetadata: RouteSuggestionDebugMetadata?
 
     init(
         id: UUID = UUID(),
         route: TrailRoute,
-        matchScore: Int,
         explanation: String,
         debugMetadata: RouteSuggestionDebugMetadata? = nil
     ) {
         self.id = id
         self.route = route
-        self.matchScore = matchScore
         self.explanation = explanation
         self.debugMetadata = debugMetadata
     }

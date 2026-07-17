@@ -864,7 +864,6 @@ private extension PlannerViewModel {
                 return RouteSuggestion(
                     id: suggestion.id,
                     route: routeWithSearchOutcome.withIntentDebugMetadata(intentDebugMetadata),
-                    matchScore: suggestion.matchScore,
                     explanation: suggestion.explanation,
                     debugMetadata: suggestion.debugMetadata
                 )

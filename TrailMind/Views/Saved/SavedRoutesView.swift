@@ -337,7 +337,7 @@ private struct SavedRouteRow: View {
             }
 
             NavigationLink(value: snapshot.route) {
-                RouteCard(route: snapshot.route, matchScore: nil)
+                RouteCard(route: snapshot.route)
             }
             .buttonStyle(.plain)
 

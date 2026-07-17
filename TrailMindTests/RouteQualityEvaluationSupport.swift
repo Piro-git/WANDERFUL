@@ -116,12 +116,19 @@ enum RouteQualityFixtureError: LocalizedError {
 struct RouteQualityMetrics: Sendable {
     let routeCount: Int
     let comparisonCount: Int
+    let distinctRouteCount: Int
     let primaryDistanceKm: Double?
     let distanceRatio: Double?
     let primaryDurationMinutes: Int?
     let primaryElevationGainMeters: Int?
     let overlapRatio: Double?
     let shapeQualityScore: Double?
+    let maximumPairwiseSimilarity: Double?
+    let maximumClosureGapMeters: Double?
+    let allLoopsClosed: Bool?
+    let maximumSelfBacktrackingRatio: Double?
+    let maximumSelfOverlapRatio: Double?
+    let maximumDetourRatio: Double?
     let surfaceCoverageRatio: Double?
     let roadClassCoverageRatio: Double?
     let pathAndTrackRatio: Double?
@@ -175,12 +182,18 @@ struct RouteQualitySummary: Sendable {
             "failed: \(failed)",
             "warnings: \(warningCount)",
             "comparison results: \(comparisonCount)",
+            "distinct routed options: \(metrics.reduce(0) { $0 + $1.distinctRouteCount })",
             "direct routes: \(directRouteCount)",
             "fallback routes: \(fallbackRouteCount)",
             "search time median/p95: \(timingLabel(metrics.map(\.elapsedMilliseconds)))",
             "distance ratio median: \(ratioLabel(metrics.map(\.distanceRatio)))",
             "overlap median: \(ratioLabel(metrics.map(\.overlapRatio)))",
             "shape quality median: \(ratioLabel(metrics.map(\.shapeQualityScore)))",
+            "maximum pairwise similarity median: \(ratioLabel(metrics.map(\.maximumPairwiseSimilarity)))",
+            "maximum loop closure gap median: \(measurementLabel(metrics.map(\.maximumClosureGapMeters), suffix: "m"))",
+            "maximum self-backtracking median: \(ratioLabel(metrics.map(\.maximumSelfBacktrackingRatio)))",
+            "maximum self-overlap median: \(ratioLabel(metrics.map(\.maximumSelfOverlapRatio)))",
+            "point-to-point detour median: \(decimalLabel(metrics.map(\.maximumDetourRatio)))",
             "surface coverage median: \(ratioLabel(metrics.map(\.surfaceCoverageRatio)))",
             "road-class coverage median: \(ratioLabel(metrics.map(\.roadClassCoverageRatio)))",
             "hard failures: \(categoryLabel(mostCommonHardFailures))",
@@ -194,6 +207,8 @@ struct RouteQualitySummary: Sendable {
                 result.metrics.map { "routes=\($0.routeCount)" },
                 result.metrics?.distanceRatio.map { "distance=\(Self.percent($0))" },
                 result.metrics?.overlapRatio.map { "overlap=\(Self.percent($0))" },
+                result.metrics?.maximumPairwiseSimilarity.map { "pairwise=\(Self.percent($0))" },
+                result.metrics?.maximumClosureGapMeters.map { "closure=\(Int($0.rounded()))m" },
                 result.metrics?.elapsedMilliseconds.map { "time=\($0)ms" },
                 !result.hardFailures.isEmpty ? "fail=\(result.hardFailures.joined(separator: ","))" : nil,
                 !result.warnings.isEmpty ? "warn=\(result.warnings.joined(separator: ","))" : nil,
@@ -225,6 +240,18 @@ struct RouteQualitySummary: Sendable {
         let usable = values.compactMap { $0 }
         guard !usable.isEmpty else { return "n/a" }
         return Self.percent(Self.quantile(usable, 0.5))
+    }
+
+    private func measurementLabel(_ values: [Double?], suffix: String) -> String {
+        let usable = values.compactMap { $0 }
+        guard !usable.isEmpty else { return "n/a" }
+        return "\(Int(Self.quantile(usable, 0.5).rounded()))\(suffix)"
+    }
+
+    private func decimalLabel(_ values: [Double?]) -> String {
+        let usable = values.compactMap { $0 }
+        guard !usable.isEmpty else { return "n/a" }
+        return Self.quantile(usable, 0.5).formatted(.number.precision(.fractionLength(2))) + "×"
     }
 
     private static func quantile(_ values: [Double], _ percentile: Double) -> Double {
@@ -283,20 +310,35 @@ struct RouteQualityEvaluator {
 
     private func makeMetrics(result: RoutingResult, intent: RouteIntent) -> RouteQualityMetrics {
         let primaryRoute = result.suggestions.first?.route
-        let quality = primaryRoute.map(LoopFallbackProvider.qualityAnalysis)
+        let analyses = result.suggestions.map {
+            RouteAlternativeQuality.analyze(route: $0.route, request: intent.request)
+        }
+        let primaryQuality = analyses.first
+        let pairwiseSimilarities = Self.pairwiseSimilarities(
+            result.suggestions.map(\.route.path)
+        )
         let characteristics = primaryRoute?.verifiedCharacteristics
         let diagnostics = result.loopSearchDiagnostics
         return RouteQualityMetrics(
             routeCount: result.suggestions.count,
             comparisonCount: result.suggestions.count >= 2 ? result.suggestions.count : 0,
+            distinctRouteCount: Self.distinctRouteCount(result.suggestions.map(\.route.path)),
             primaryDistanceKm: primaryRoute?.distanceKilometers,
             distanceRatio: primaryRoute.flatMap { route in
                 intent.request.targetDistanceKm.map { route.distanceKilometers / $0 }
             },
             primaryDurationMinutes: primaryRoute?.durationMinutes,
             primaryElevationGainMeters: primaryRoute?.elevationGainMeters,
-            overlapRatio: intent.request.routeType == .loop ? quality?.overlapRatio : nil,
-            shapeQualityScore: intent.request.routeType == .loop ? quality?.shapeQualityScore : nil,
+            overlapRatio: intent.request.routeType == .loop ? primaryQuality?.selfBacktrackingRatio : nil,
+            shapeQualityScore: intent.request.routeType == .loop ? primaryQuality?.shapeQualityScore : nil,
+            maximumPairwiseSimilarity: pairwiseSimilarities.max(),
+            maximumClosureGapMeters: analyses.compactMap(\.closureGapMeters).max(),
+            allLoopsClosed: intent.request.routeType == .loop
+                ? analyses.allSatisfy { $0.isClosedLoop == true }
+                : nil,
+            maximumSelfBacktrackingRatio: analyses.compactMap(\.selfBacktrackingRatio).max(),
+            maximumSelfOverlapRatio: analyses.compactMap(\.selfOverlapRatio).max(),
+            maximumDetourRatio: analyses.compactMap(\.detourRatio).max(),
             surfaceCoverageRatio: characteristics?.surfaceCoverageRatio,
             roadClassCoverageRatio: characteristics?.roadClassCoverageRatio,
             pathAndTrackRatio: characteristics?.pathAndTrackRatio,
@@ -314,31 +356,30 @@ struct RouteQualityEvaluator {
         result: RoutingResult,
         metrics: RouteQualityMetrics
     ) -> [String] {
-        guard let route = result.suggestions.first?.route else { return ["no_usable_route"] }
+        guard !result.suggestions.isEmpty else { return ["no_usable_route"] }
         var failures: [String] = []
 
-        if route.path.count < 2 || !route.distanceKilometers.isFinite || route.distanceKilometers <= 0 || route.durationMinutes <= 0 {
-            failures.append("invalid_route_metrics")
+        for suggestion in result.suggestions {
+            let route = suggestion.route
+            let analysis = RouteAlternativeQuality.analyze(route: route, request: intent.request)
+            if route.path.count < 2 || !route.distanceKilometers.isFinite || route.distanceKilometers <= 0 || route.durationMinutes <= 0 {
+                failures.append("invalid_route_metrics")
+            }
+            if let rejection = RouteAlternativeQuality.rejection(
+                for: route,
+                analysis: analysis,
+                request: intent.request
+            ) {
+                failures.append("route_quality_\(rejection.rawValue)")
+            }
         }
-
-        guard intent.request.routeType == .loop else { return failures }
-        if !LoopFallbackProvider.hasUsableGeometry(route) {
-            failures.append("invalid_loop_geometry")
+        if metrics.distinctRouteCount != result.suggestions.count {
+            failures.append("near_duplicate_alternatives")
         }
-        if let targetDistanceKm = intent.request.targetDistanceKm,
-           LoopFallbackProvider.distanceRejectionReason(route: route, targetDistanceKm: targetDistanceKm) != nil
-        {
-            failures.append("loop_distance_outside_hard_envelope")
+        if intent.request.routeType == .loop, metrics.allLoopsClosed == false {
+            failures.append("open_loop_geometry")
         }
-        if let overlapRatio = metrics.overlapRatio,
-           let shapeQualityScore = metrics.shapeQualityScore,
-           !LoopFallbackProvider.acceptsLoopQuality(
-               .init(overlapRatio: overlapRatio, shapeQualityScore: shapeQualityScore)
-           )
-        {
-            failures.append("loop_geometry_quality_rejected")
-        }
-        return failures
+        return Array(Set(failures)).sorted()
     }
 
     private func warnings(
@@ -396,5 +437,33 @@ struct RouteQualityEvaluator {
             warnings.append("candidate_rejections")
         }
         return warnings
+    }
+
+    private static func pairwiseSimilarities(_ paths: [[Coordinate]]) -> [Double] {
+        guard paths.count >= 2 else { return [] }
+        var values: [Double] = []
+        for lhsIndex in 0..<(paths.count - 1) {
+            for rhsIndex in (lhsIndex + 1)..<paths.count {
+                values.append(
+                    RouteAlternativeQuality.pairwiseSimilarity(
+                        paths[lhsIndex],
+                        paths[rhsIndex]
+                    )
+                )
+            }
+        }
+        return values
+    }
+
+    private static func distinctRouteCount(_ paths: [[Coordinate]]) -> Int {
+        var distinct: [[Coordinate]] = []
+        for path in paths {
+            let duplicate = distinct.contains {
+                RouteAlternativeQuality.pairwiseSimilarity(path, $0) >=
+                    RouteAlternativeQualityPolicy.preBaseline.nearDuplicateSimilarity
+            }
+            if !duplicate { distinct.append(path) }
+        }
+        return distinct.count
     }
 }

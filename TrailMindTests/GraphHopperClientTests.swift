@@ -867,7 +867,7 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
         XCTAssertEqual(
             route.planningMetadata?.distanceNote(actualDistanceKm: route.distanceKilometers),
-            "Closest available mapped loop to your 15 km request."
+            "Actual 12.2 km vs requested 15 km."
         )
     }
 

@@ -26,7 +26,7 @@ final class RouteQualityEvaluationTests: XCTestCase {
         let fixture = try XCTUnwrap(try RouteQualityFixture.load().first { $0.id == "schierke-hike-15" })
         let route = Self.loopRoute(distanceKm: 15, characteristics: nil)
         let result = RoutingResult(
-            suggestions: [RouteSuggestion(route: route, matchScore: 90, explanation: "test")],
+            suggestions: [RouteSuggestion(route: route, explanation: "test")],
             notice: nil,
             loopSearchDiagnostics: LoopSearchDiagnostics.empty(elapsedMilliseconds: 180)
         )
@@ -43,9 +43,16 @@ final class RouteQualityEvaluationTests: XCTestCase {
 
     func testMalformedLoopGeometryAndHardDistanceMissFail() async throws {
         let fixture = try XCTUnwrap(try RouteQualityFixture.load().first { $0.id == "schierke-hike-15" })
-        let route = Self.loopRoute(distanceKm: 25, path: [Coordinate(latitude: 51.76, longitude: 10.66)])
+        let malformedRoute = Self.loopRoute(
+            distanceKm: 15,
+            path: [Coordinate(latitude: 51.76, longitude: 10.66)]
+        )
+        let hardDistanceMiss = Self.loopRoute(distanceKm: 30)
         let result = RoutingResult(
-            suggestions: [RouteSuggestion(route: route, matchScore: 50, explanation: "test")],
+            suggestions: [
+                RouteSuggestion(route: malformedRoute, explanation: "malformed"),
+                RouteSuggestion(route: hardDistanceMiss, explanation: "distance miss")
+            ],
             notice: nil
         )
 
@@ -55,8 +62,8 @@ final class RouteQualityEvaluationTests: XCTestCase {
 
         XCTAssertFalse(evaluation.passed)
         XCTAssertTrue(evaluation.hardFailures.contains("invalid_route_metrics"))
-        XCTAssertTrue(evaluation.hardFailures.contains("invalid_loop_geometry"))
-        XCTAssertTrue(evaluation.hardFailures.contains("loop_distance_outside_hard_envelope"))
+        XCTAssertTrue(evaluation.hardFailures.contains("route_quality_invalid_geometry"))
+        XCTAssertTrue(evaluation.hardFailures.contains("route_quality_distance_outside_hard_envelope"))
     }
 
     func testPartialSurfaceDataWarnsWithoutFailing() async throws {
@@ -72,7 +79,7 @@ final class RouteQualityEvaluationTests: XCTestCase {
         )
         let route = Self.loopRoute(distanceKm: 15, characteristics: characteristics)
         let result = RoutingResult(
-            suggestions: [RouteSuggestion(route: route, matchScore: 90, explanation: "test")],
+            suggestions: [RouteSuggestion(route: route, explanation: "test")],
             notice: nil
         )
 
@@ -98,7 +105,7 @@ final class RouteQualityEvaluationTests: XCTestCase {
         )
         let route = Self.loopRoute(distanceKm: 15, activity: .biking, characteristics: characteristics)
         let result = RoutingResult(
-            suggestions: [RouteSuggestion(route: route, matchScore: 90, explanation: "test")],
+            suggestions: [RouteSuggestion(route: route, explanation: "test")],
             notice: nil
         )
 
@@ -114,7 +121,7 @@ final class RouteQualityEvaluationTests: XCTestCase {
         let fixture = try XCTUnwrap(try RouteQualityFixture.load().first { $0.id == "schierke-hike-15" })
         let route = Self.loopRoute(distanceKm: 15)
         let result = RoutingResult(
-            suggestions: [RouteSuggestion(route: route, matchScore: 90, explanation: "test")],
+            suggestions: [RouteSuggestion(route: route, explanation: "test")],
             notice: nil,
             loopSearchDiagnostics: LoopSearchDiagnostics(
                 elapsedMilliseconds: 500,
@@ -132,7 +139,52 @@ final class RouteQualityEvaluationTests: XCTestCase {
         XCTAssertTrue(output.contains("total fixtures: 1"))
         XCTAssertTrue(output.contains("search time median/p95: 500ms / 500ms"))
         XCTAssertTrue(output.contains("fallback routes: 1"))
+        XCTAssertTrue(output.contains("maximum loop closure gap median:"))
+        XCTAssertTrue(output.contains("maximum pairwise similarity median:"))
         XCTAssertTrue(output.contains("candidate_rejections"))
+    }
+
+    func testEvaluationRejectsReversedDuplicateAlternatives() async throws {
+        let fixture = try XCTUnwrap(try RouteQualityFixture.load().first { $0.id == "schierke-hike-15" })
+        let path = Self.cleanLoopPath()
+        let result = RoutingResult(
+            suggestions: [
+                RouteSuggestion(route: Self.loopRoute(distanceKm: 15, path: path), explanation: "one"),
+                RouteSuggestion(
+                    route: Self.loopRoute(distanceKm: 15.1, path: Array(path.reversed())),
+                    explanation: "two"
+                )
+            ],
+            notice: nil
+        )
+
+        let summary = await RouteQualityEvaluator(coordinator: StubRoutingCoordinator(result: result))
+            .evaluate(fixtures: [fixture], label: "stub")
+        let evaluation = try XCTUnwrap(summary.results.first)
+
+        XCTAssertEqual(evaluation.metrics?.distinctRouteCount, 1)
+        XCTAssertGreaterThan(evaluation.metrics?.maximumPairwiseSimilarity ?? 0, 0.95)
+        XCTAssertTrue(evaluation.hardFailures.contains("near_duplicate_alternatives"))
+    }
+
+    func testEvaluationChecksClosureForEveryLoopAlternative() async throws {
+        let fixture = try XCTUnwrap(try RouteQualityFixture.load().first { $0.id == "schierke-hike-15" })
+        let openPath = Array(Self.cleanLoopPath().dropLast(4))
+        let result = RoutingResult(
+            suggestions: [
+                RouteSuggestion(route: Self.loopRoute(distanceKm: 15), explanation: "closed"),
+                RouteSuggestion(route: Self.loopRoute(distanceKm: 15.2, path: openPath), explanation: "open")
+            ],
+            notice: nil
+        )
+
+        let summary = await RouteQualityEvaluator(coordinator: StubRoutingCoordinator(result: result))
+            .evaluate(fixtures: [fixture], label: "stub")
+        let evaluation = try XCTUnwrap(summary.results.first)
+
+        XCTAssertEqual(evaluation.metrics?.allLoopsClosed, false)
+        XCTAssertTrue(evaluation.hardFailures.contains("open_loop_geometry"))
+        XCTAssertTrue(evaluation.hardFailures.contains("route_quality_open_loop"))
     }
 
     func testEvaluationSummaryRedactsFixtureAndProviderError() {
@@ -267,7 +319,7 @@ final class RouteQualityEvaluationTests: XCTestCase {
             activity: activity,
             distanceKilometers: distanceKm,
             elevationGainMeters: 220,
-            durationHours: 3,
+            durationHours: activity == .biking ? 1 : 3,
             difficulty: .moderate,
             routeType: .loop,
             summary: "Test route",
