@@ -145,6 +145,7 @@ actor LocalSavedRouteStore: SavedRouteStore {
     private let recordReader: any SavedRouteRecordReading
     private let recordRemover: any SavedRouteRecordRemoving
     private let recordWriter: any SavedRouteRecordWriting
+    private let excludesFromBackup: Bool
     private var unusableRecordURLs: Set<URL> = []
     private var hasCurrentCleanupInventory = false
     private var isOperationInProgress = false
@@ -152,19 +153,24 @@ actor LocalSavedRouteStore: SavedRouteStore {
 
     static func applicationStore() -> LocalSavedRouteStore {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return LocalSavedRouteStore(directoryURL: baseURL.appendingPathComponent("SavedRoutes", isDirectory: true))
+        return LocalSavedRouteStore(
+            directoryURL: baseURL.appendingPathComponent("SavedRoutes", isDirectory: true),
+            excludesFromBackup: true
+        )
     }
 
     init(
         directoryURL: URL,
         recordReader: any SavedRouteRecordReading = FileSavedRouteRecordReader(),
         recordRemover: any SavedRouteRecordRemoving = FileSavedRouteRecordRemover(),
-        recordWriter: any SavedRouteRecordWriting = AtomicSavedRouteRecordWriter()
+        recordWriter: any SavedRouteRecordWriting = AtomicSavedRouteRecordWriter(),
+        excludesFromBackup: Bool = false
     ) {
         self.directoryURL = directoryURL
         self.recordReader = recordReader
         self.recordRemover = recordRemover
         self.recordWriter = recordWriter
+        self.excludesFromBackup = excludesFromBackup
         encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .custom { date, encoder in
             var container = encoder.singleValueContainer()
@@ -425,6 +431,12 @@ actor LocalSavedRouteStore: SavedRouteStore {
     private func createDirectoryIfNeeded() throws {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        if excludesFromBackup {
+            var resourceValues = URLResourceValues()
+            resourceValues.isExcludedFromBackup = true
+            var mutableDirectoryURL = directoryURL
+            try mutableDirectoryURL.setResourceValues(resourceValues)
+        }
     }
 
     private func recordURL(for id: UUID) -> URL {

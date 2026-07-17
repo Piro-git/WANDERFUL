@@ -2,5 +2,6 @@
 // Never commit Local.xcconfig. Permanent provider keys belong on the backend.
 // Optional DEBUG intent backend override for Simulator/local development.
 // INTENT_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000
-// Release/CI must provide the real HTTPS backend explicitly.
+// Release/CI uses the tracked Shared.xcconfig endpoint unless an owner-approved
+// HTTPS production endpoint is explicitly supplied here. Never include credentials in the URL.
 // PRODUCTION_BACKEND_BASE_URL = https:/$()/api.example.com

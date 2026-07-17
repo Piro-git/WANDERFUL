@@ -98,7 +98,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
         )
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.savedRoutes"),
-            "New saves accept only verified routed results and are stored as protected files on this device. Recovered legacy records remain labeled unverified. In Saved, use the trash button to delete all saved routes."
+            "New saves accept only verified routed results and are stored as protected files on this device, excluded from device backups. Recovered legacy records remain labeled unverified. In Saved, use the trash button to delete all saved routes."
         )
         XCTAssertEqual(
             SavedRoutesViewContent.unverifiedLabel,
@@ -112,6 +112,59 @@ final class PrivacyReleaseContentTests: XCTestCase {
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.gpx"),
             "Export creates a protected temporary GPX file containing route coordinates. The app or person you select in the share sheet receives those coordinates. TrailMind runs cleanup after sharing and recovers abandoned TrailMind export files on a later launch."
+        )
+    }
+
+    func testPrivacyManifestMatchesRequiredReasonAndAppAttestDataFlowContracts() throws {
+        let trackedManifest = try trackedPrivacyManifest()
+        let builtManifest = try builtPrivacyManifest()
+
+        for (label, manifest) in [("tracked", trackedManifest), ("built", builtManifest)] {
+            XCTAssertEqual(manifest["NSPrivacyTracking"] as? Bool, false, "Unexpected \(label) tracking declaration.")
+            XCTAssertNil(manifest["NSPrivacyTrackingDomains"], "Tracking domains must be absent when tracking is disabled.")
+
+            let accessedTypes = try XCTUnwrap(
+                manifest["NSPrivacyAccessedAPITypes"] as? [[String: Any]],
+                "Missing \(label) required-reason API declarations."
+            )
+            let accessedReasons = try Dictionary(
+                uniqueKeysWithValues: accessedTypes.map { item in
+                    (
+                        try XCTUnwrap(item["NSPrivacyAccessedAPIType"] as? String),
+                        try XCTUnwrap(item["NSPrivacyAccessedAPITypeReasons"] as? [String])
+                    )
+                }
+            )
+            XCTAssertEqual(
+                accessedReasons,
+                [
+                    "NSPrivacyAccessedAPICategoryFileTimestamp": ["C617.1"],
+                    "NSPrivacyAccessedAPICategoryUserDefaults": ["CA92.1"]
+                ],
+                "Unexpected \(label) required-reason API scope."
+            )
+
+            let collectedTypes = try XCTUnwrap(
+                manifest["NSPrivacyCollectedDataTypes"] as? [[String: Any]],
+                "Missing \(label) collected-data declaration."
+            )
+            XCTAssertEqual(collectedTypes.count, 1)
+            let deviceIdentifier = try XCTUnwrap(collectedTypes.first)
+            XCTAssertEqual(
+                deviceIdentifier["NSPrivacyCollectedDataType"] as? String,
+                "NSPrivacyCollectedDataTypeDeviceID"
+            )
+            XCTAssertEqual(deviceIdentifier["NSPrivacyCollectedDataTypeLinked"] as? Bool, true)
+            XCTAssertEqual(deviceIdentifier["NSPrivacyCollectedDataTypeTracking"] as? Bool, false)
+            XCTAssertEqual(
+                deviceIdentifier["NSPrivacyCollectedDataTypePurposes"] as? [String],
+                ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+            )
+        }
+
+        XCTAssertEqual(
+            try dataFlowDetail(id: "about.data.appAttest"),
+            "Apple App Attest helps protect backend requests. Its key identifier is stored in the device Keychain. TrailMind's backend keeps an app-scoped installation record and stores a one-way hash of the request connection source for rate limiting. This is not a TrailMind account and is not used for tracking."
         )
     }
 
@@ -160,6 +213,22 @@ final class PrivacyReleaseContentTests: XCTestCase {
                 "Shipping services must not retain unused location capability: \(forbiddenToken)"
             )
         }
+    }
+
+    func testClosedBetaDeclaresOnlyProvenIPhonePortraitSurface() throws {
+        let trackedInfo = try trackedInfoPlist()
+        let builtInfo = try XCTUnwrap(Bundle.main.infoDictionary)
+
+        XCTAssertNil(trackedInfo["UISupportedInterfaceOrientations~ipad"])
+        XCTAssertEqual(
+            trackedInfo["UISupportedInterfaceOrientations"] as? [String],
+            ["UIInterfaceOrientationPortrait"]
+        )
+        XCTAssertEqual(builtInfo["UIDeviceFamily"] as? [Int], [1])
+        XCTAssertEqual(
+            builtInfo["UISupportedInterfaceOrientations"] as? [String],
+            ["UIInterfaceOrientationPortrait"]
+        )
     }
 
     func testPlanningBoundaryRemainsExact() {
@@ -249,6 +318,29 @@ final class PrivacyReleaseContentTests: XCTestCase {
             .appendingPathComponent("Configuration", isDirectory: true)
             .appendingPathComponent("TrailMind-Info.plist", isDirectory: false)
         let data = try Data(contentsOf: infoPlistURL)
+        return try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        )
+    }
+
+    private func trackedPrivacyManifest() throws -> [String: Any] {
+        try propertyList(
+            at: repositoryURL
+                .appendingPathComponent("TrailMind", isDirectory: true)
+                .appendingPathComponent("PrivacyInfo.xcprivacy", isDirectory: false)
+        )
+    }
+
+    private func builtPrivacyManifest() throws -> [String: Any] {
+        let manifestURL = try XCTUnwrap(
+            Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"),
+            "The app target must bundle PrivacyInfo.xcprivacy."
+        )
+        return try propertyList(at: manifestURL)
+    }
+
+    private func propertyList(at url: URL) throws -> [String: Any] {
+        let data = try Data(contentsOf: url)
         return try XCTUnwrap(
             PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
         )

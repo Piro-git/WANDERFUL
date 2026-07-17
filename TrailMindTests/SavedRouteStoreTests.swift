@@ -58,6 +58,20 @@ final class SavedRouteStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testApplicationStyleStoreExcludesSavedRouteDirectoryFromBackup() async throws {
+        let directory = makeDirectoryURL()
+        let store = LocalSavedRouteStore(
+            directoryURL: directory,
+            excludesFromBackup: true
+        )
+
+        _ = try await store.save(makeCompleteRoute(), at: Date())
+
+        let values = try directory.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        XCTAssertEqual(values.isExcludedFromBackup, true)
+    }
+
+    @MainActor
     func testDemoRouteCannotBeSavedOrExported() async throws {
         let route = MockRoutes.luneburgLoop
 

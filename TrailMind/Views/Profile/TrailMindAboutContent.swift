@@ -86,7 +86,7 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.data.savedRoutes",
             title: "Saved routes",
-            detail: "New saves accept only verified routed results and are stored as protected files on this device. Recovered legacy records remain labeled unverified. In Saved, use the trash button to delete all saved routes.",
+            detail: "New saves accept only verified routed results and are stored as protected files on this device, excluded from device backups. Recovered legacy records remain labeled unverified. In Saved, use the trash button to delete all saved routes.",
             symbol: "internaldrive.fill"
         ),
         TrailMindAboutItem(
@@ -104,7 +104,7 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.data.appAttest",
             title: "Request protection",
-            detail: "Apple App Attest helps protect backend requests. Its key identifier is stored in the device Keychain and is not a TrailMind account.",
+            detail: "Apple App Attest helps protect backend requests. Its key identifier is stored in the device Keychain. TrailMind's backend keeps an app-scoped installation record and stores a one-way hash of the request connection source for rate limiting. This is not a TrailMind account and is not used for tracking.",
             symbol: "checkmark.shield.fill"
         )
     ]
