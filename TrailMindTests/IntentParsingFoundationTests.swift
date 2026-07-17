@@ -247,6 +247,10 @@ final class IntentParsingFoundationTests: XCTestCase {
 
         XCTAssertThrowsError(try validator.validate(intent)) { error in
             XCTAssertEqual(error as? IntentValidationError, .unreasonableDistance(1_000))
+            XCTAssertEqual(
+                error.localizedDescription,
+                "Choose a realistic distance for this route."
+            )
         }
     }
 
@@ -265,12 +269,13 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(request.metadata.requestedFeatureSummary, "Requested: Views, Forest")
     }
 
-    func testRemoteProviderIsInterfaceOnlyAndDoesNotCallNetwork() async {
+    #if DEBUG
+    func testRemoteProviderWithoutConfigurationDoesNotCallNetwork() async {
         let provider = RemoteAIIntentParsingProvider(baseURL: nil)
 
         do {
             _ = try await provider.parseIntent(rawPrompt: "Plan a quiet loop near Schierke")
-            XCTFail("Remote provider should stay disabled until a backend exists.")
+            XCTFail("Remote provider must stay disabled without a configured backend URL.")
         } catch {
             XCTAssertEqual(error as? RemoteAIIntentParsingProvider.ProviderError, .notConfigured)
         }
@@ -523,6 +528,7 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(debugInfo.remoteValidationError, "missing fields: endLocationQuery")
         XCTAssertEqual(debugInfo.parserMode, .remoteWithLocalFallback)
     }
+    #endif
 
     func testLocalOnlyModeDoesNotAttemptRemote() async throws {
         let provider = LocalIntentParsingProvider()
@@ -544,6 +550,7 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(debugInfo.parserMode, .localOnly)
     }
 
+    #if DEBUG
     func testDebugParserModeCanBeConfiguredFromEnvironment() {
         let localProvider = IntentParsingProviderFactory.makeDefaultProvider(
             environment: ["TRAILMIND_INTENT_PARSER_MODE": "local_only"]
@@ -591,6 +598,7 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(rows["backendBaseURL"], "http://127.0.0.1:3000")
         XCTAssertEqual(rows["parserMode"], "remote with local fallback")
     }
+    #endif
 
     func testIntentDebugFormatterIncludesParserFallbackAndIntentFields() {
         let intent = ValidatedAdventureIntent(
@@ -647,6 +655,7 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(values["geocodedStartLabel"], "Schierke")
     }
 
+    #if DEBUG
     func testRemoteRouteTypeNilCanNormalizeToLoopFromPromptAndRegion() async throws {
         let provider = RemoteAIIntentParsingProvider(
             baseURL: URL(string: "http://127.0.0.1:3000"),
@@ -663,6 +672,7 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(intent.regionQuery, "Lüneburg")
         XCTAssertNil(intent.endLocationQuery)
     }
+    #endif
 
     func testIntentRepairKeepsRequestedFeaturesAsPreferencesOnly() throws {
         let validator = IntentValidationService()

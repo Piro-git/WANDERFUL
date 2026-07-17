@@ -631,9 +631,11 @@ private extension PlannerViewModel {
         if error is RoutePromptParserError || error is IntentValidationError {
             return .malformedIntent
         }
+        #if DEBUG
         if error is RemoteAIIntentParsingProvider.ProviderError {
             return .intentUnavailable
         }
+        #endif
         if error is GeocodingServiceError {
             return .geocoding
         }
@@ -668,9 +670,11 @@ private extension PlannerViewModel {
         if let error = error as? IntentValidationError {
             return error.localizedDescription
         }
+        #if DEBUG
         if error is RemoteAIIntentParsingProvider.ProviderError {
             return "Route understanding isn’t available right now. Try again or edit the request."
         }
+        #endif
         if let error = error as? GeocodingServiceError {
             return switch error {
             case .emptyQuery:

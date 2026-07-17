@@ -34,6 +34,36 @@ final class PrivacyReleaseContentTests: XCTestCase {
         )
     }
 
+    func testRemoteIntentImplementationIsDebugCompilationOnly() throws {
+        let parsingSource = try source(
+            relativePath: "TrailMind/Services/IntentParsingFoundation.swift"
+        )
+        let plannerSource = try source(
+            relativePath: "TrailMind/ViewModels/PlannerViewModel.swift"
+        )
+
+        for token in [
+            "struct RemoteAIIntentParsingProvider",
+            "struct RemoteWithLocalFallbackIntentParsingProvider",
+            "private struct RemoteIntentRequest",
+            "private struct RemoteAdventureIntentResponse",
+            "appending(path: \"parse-intent\")"
+        ] {
+            XCTAssertTrue(
+                try everyOccurrenceIsDebugOnly(token, in: parsingSource),
+                "Remote intent token must remain inside #if DEBUG: \(token)"
+            )
+        }
+
+        XCTAssertTrue(
+            try everyOccurrenceIsDebugOnly(
+                "error is RemoteAIIntentParsingProvider.ProviderError",
+                in: plannerSource
+            ),
+            "Planner remote-error handling must not compile into Release."
+        )
+    }
+
     func testVoiceDisclosureMatchesRecognitionRequestMode() throws {
         let voiceSource = try source(
             relativePath: "TrailMind/Services/VoicePlanningService.swift"
@@ -424,6 +454,52 @@ final class PrivacyReleaseContentTests: XCTestCase {
         return expression.numberOfMatches(in: source, range: range)
     }
 
+    private func everyOccurrenceIsDebugOnly(_ token: String, in source: String) throws -> Bool {
+        var conditionalStack: [String] = []
+        var occurrenceCount = 0
+
+        for lineSlice in source.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = String(lineSlice)
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("#if ") {
+                conditionalStack.append(String(trimmed.dropFirst(4)))
+                continue
+            }
+            if trimmed.hasPrefix("#elseif ") {
+                guard !conditionalStack.isEmpty else {
+                    throw SourceContractError.malformedConditionalCompilation
+                }
+                conditionalStack[conditionalStack.count - 1] = String(trimmed.dropFirst(8))
+                continue
+            }
+            if trimmed == "#else" {
+                guard !conditionalStack.isEmpty else {
+                    throw SourceContractError.malformedConditionalCompilation
+                }
+                conditionalStack[conditionalStack.count - 1] = "!(\(conditionalStack.last!))"
+                continue
+            }
+            if trimmed == "#endif" {
+                guard conditionalStack.popLast() != nil else {
+                    throw SourceContractError.malformedConditionalCompilation
+                }
+                continue
+            }
+
+            var searchStart = line.startIndex
+            while let range = line.range(of: token, range: searchStart..<line.endIndex) {
+                occurrenceCount += 1
+                guard conditionalStack.contains("DEBUG") else { return false }
+                searchStart = range.upperBound
+            }
+        }
+
+        guard conditionalStack.isEmpty else {
+            throw SourceContractError.malformedConditionalCompilation
+        }
+        return occurrenceCount > 0
+    }
+
     private func reflectedValue(named name: String, in value: Any) throws -> Any {
         guard let child = Mirror(reflecting: value).children.first(where: { $0.label == name }) else {
             throw SourceContractError.missingStoredProperty(name)
@@ -447,4 +523,5 @@ private enum SourceContractError: Error {
     case missingReleaseBranch
     case missingStoredProperty(String)
     case nilStoredProperty
+    case malformedConditionalCompilation
 }

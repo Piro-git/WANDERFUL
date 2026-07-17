@@ -111,6 +111,7 @@ final class IntentEvaluationTests: XCTestCase {
         }
     }
 
+    #if DEBUG
     func testLiveRemoteAIIntentEvalWhenEnabled() async throws {
         let environment = ProcessInfo.processInfo.environment
         guard environment["TRAILMIND_RUN_REMOTE_INTENT_EVAL"] == "1" else {
@@ -155,4 +156,5 @@ final class IntentEvaluationTests: XCTestCase {
         XCTAssertTrue(providerProof, "No remote provider result was observed.")
         XCTAssertEqual(summary.failed, 0, summary.formatted(maxFailures: 50))
     }
+    #endif
 }

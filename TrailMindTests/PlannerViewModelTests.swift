@@ -17,6 +17,7 @@ private struct FixedIntentParsingProvider: IntentParsingProvider, IntentParsingD
     func intentParserDebugInfo() async -> IntentParserDebugInfo? { debugInfo }
 }
 
+#if DEBUG
 private struct UnavailableIntentParsingProvider: IntentParsingProvider {
     let parserSource: IntentParserSource = .remoteAI
 
@@ -24,6 +25,7 @@ private struct UnavailableIntentParsingProvider: IntentParsingProvider {
         throw RemoteAIIntentParsingProvider.ProviderError.notConfigured
     }
 }
+#endif
 
 private struct SlowIntentParsingProvider: IntentParsingProvider {
     let parserSource: IntentParserSource
@@ -541,6 +543,7 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertTrue(router.intents.isEmpty)
     }
 
+    #if DEBUG
     func testUnavailableIntentProviderIsRecoverable() async {
         let prompt = "Ilsenburg nach Schierke"
         let geocoder = StubGeocodingService(coordinates: [:])
@@ -562,6 +565,7 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertTrue(geocoder.requests.isEmpty)
         XCTAssertTrue(router.intents.isEmpty)
     }
+    #endif
 
     func testExplicitEmptyRoutingResultEntersNoRoutes() async {
         let prompt = "Ilsenburg nach Schierke"

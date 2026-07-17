@@ -106,6 +106,7 @@ struct LocalIntentParsingProvider: IntentParsingProvider, IntentParsingDebugProv
     }
 }
 
+#if DEBUG
 struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugProviding {
     enum ProviderError: LocalizedError, Equatable {
         case notConfigured
@@ -115,7 +116,6 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
         case httpError(Int)
 
         var errorDescription: String? {
-            #if DEBUG
             switch self {
             case .notConfigured:
                 "Remote AI intent parsing is not configured yet."
@@ -128,9 +128,6 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
             case let .httpError(statusCode):
                 "Remote AI intent backend failed with HTTP \(statusCode)."
             }
-            #else
-            "Remote AI intent parsing is not configured yet."
-            #endif
         }
     }
 
@@ -595,6 +592,7 @@ private extension URLError {
         }
     }
 }
+#endif
 
 enum IntentParsingProviderFactory {
     static func makeDefaultProvider(
@@ -628,6 +626,7 @@ enum IntentParsingProviderFactory {
     #endif
 }
 
+#if DEBUG
 private struct RemoteIntentRequest: Encodable {
     let prompt: String
     let locale: String
@@ -785,6 +784,7 @@ private struct RemoteAdventureIntentResponse: Decodable {
         return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
+#endif
 
 enum IntentValidationError: LocalizedError, Equatable {
     case missingLoopStartOrRegion
@@ -807,7 +807,7 @@ enum IntentValidationError: LocalizedError, Equatable {
         case .vagueHikingRequest:
             IntentClarificationQuestion.vagueArea
         case .unreasonableDistance:
-            "Bitte wähle eine realistische Distanz für die Route."
+            "Choose a realistic distance for this route."
         }
     }
 }
