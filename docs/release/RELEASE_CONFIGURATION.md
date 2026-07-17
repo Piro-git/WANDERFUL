@@ -15,9 +15,9 @@ Evidence date: 2026-07-17
 | Device family | iPhone (`TARGETED_DEVICE_FAMILY = 1`) | iPhone only; iPad is not declared |
 | Orientation | Portrait only | No iPad or landscape claims/assets |
 | Appearance | Forced light appearance | Closed beta is light-only; dark appearance remains a public-release decision/gate |
-| Language/region | English development region with Germany-biased geocoding, German geocoding failures, and routing locale `de` | Treat as a mixed-language, Germany-first closed beta; resolve/localize before any general English-market claim |
+| Language/region | English interface, deterministic English errors, routing instructions requested with locale `en`, and Germany-biased unqualified geocoding | Germany-first English-interface closed beta; German and English route prompts are accepted, but the interface is not German-localized |
 | Category | Navigation | Must be confirmed in App Store Connect against the planning-aid scope |
-| Release intent parser | Local rule-based parser selected by the Release factory | Remote provider code is present but unselected and unconfigured; metadata must not claim remote AI |
+| Release intent parser | Local rule-based parser selected by the Release factory | Remote providers and their client endpoint are Debug-only and excluded from Release compilation; metadata must not claim remote AI |
 | Routing path | TrailMind backend → GraphHopper | Provider credential remains backend-only |
 | Device location | Not used | No location purpose key; people enter place names |
 | Voice | Optional Apple Speech | Requires microphone and Speech purpose strings and signed-device QA |
@@ -53,7 +53,7 @@ Permission copy must remain identical to the in-app About disclosure and focused
 ## Release-only behavior
 
 - `IntentParsingProviderFactory.makeDefaultProvider()` returns `LocalIntentParsingProvider` outside Debug.
-- The Release factory selects the local parser and the remote provider's default URL is `nil`. The remote provider implementation still compiles into Release, so signed-binary and traffic checks—not symbol absence—must prove it is dormant.
+- Remote-intent providers, their request/response types, and the `/api/parse-intent` client path are enclosed by Debug compilation guards. Release binary verification must reject their symbols or endpoint marker.
 - Deterministic mocks, debug edit surfaces, debug parser selection, and UI-test composition are compile-gated.
 - The default `GraphHopperClient` uses `BackendRouteGateway`; it does not load a GraphHopper key into the shipping app.
 - Release backend authorization uses App Attest route sessions. The insecure loopback authorizer is development-only.
@@ -69,7 +69,7 @@ The deployed backend must have all required production values, including:
 - production `NODE_ENV`;
 - HTTPS endpoint matching the exact Release build.
 
-Remote AI provider variables are not required because the Release factory does not select or configure remote parsing. They must not be marketed as a shipping capability.
+Remote AI provider variables are not required because remote parsing does not compile into Release. They must not be marketed as a shipping capability.
 
 ## Unresolved configuration decisions
 
@@ -82,7 +82,7 @@ Remote AI provider variables are not required because the Release factory does n
 - Public support and privacy URLs.
 - Final light-only disposition for public release.
 - Final supported iPhone hardware matrix.
-- Germany-first mixed-language behavior versus a consistently localized market/language release.
+- Owner approval of the Germany-first English-interface beta territory, primary locale, and reviewer path; a fully German-localized interface is not present.
 
 ## Preflight invariants
 
@@ -91,7 +91,7 @@ Do not upload a candidate unless all are true:
 1. The candidate is built from a clean, identified commit.
 2. The final Release endpoint is HTTPS and responds fail-closed when dependencies are absent.
 3. No provider credential or local configuration file exists in the app/archive.
-4. Release contains no test bundle, fixture route, or debug mock; its default parser is local, its remote provider is unconfigured/unselected, and observed traffic contains no remote-intent request.
+4. Release contains no test bundle, fixture route, debug mock, remote-intent provider symbol, or `/api/parse-intent` marker; its parser is local and observed traffic contains no remote-intent request.
 5. The built Info plist declares iPhone only and portrait only.
 6. Release has the production App Attest entitlement and correct application identifier.
 7. `PrivacyInfo.xcprivacy` is bundled and matches the reviewed decision.

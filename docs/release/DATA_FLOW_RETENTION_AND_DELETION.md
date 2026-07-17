@@ -10,7 +10,7 @@ This document describes observed source behavior. It is not a provider contract 
 
 - Release builds parse the full typed route request on the device with `LocalIntentParsingProvider`.
 - Release builds do **not** send the full prompt to a remote AI provider.
-- A remote-intent provider implementation remains compiled into the app, but the Release factory neither selects nor configures it. Debug evaluation can send prompts to the TrailMind backend and then Google or OpenRouter. Release traffic must prove that dormant path is never invoked.
+- Remote-intent providers, their request/response types, and the `/api/parse-intent` path are compiled only in Debug. The Release factory contains only the local parsing path. Debug evaluation can send prompts to the TrailMind backend and then Google or OpenRouter.
 - TrailMind does not currently request or read the device's location. The person enters place names.
 - There are no TrailMind user accounts, cloud sync, advertising, or analytics SDKs in the app source.
 
@@ -34,7 +34,7 @@ This document describes observed source behavior. It is not a provider contract 
 | Microphone audio for optional voice input | Yes, depending on Apple Speech service behavior | Apple's Speech framework transcribes the request | TrailMind does not retain raw audio or send it to its backend | Audio buffers are released when transcription stops/cancels; no TrailMind audio archive | Apple processing/retention terms and physical-device proof are unresolved |
 | Voice transcript | Not as a full prompt in Release | Reviewed on device, then processed like typed input | In memory unless its resulting verified route is saved | Clear/edit prompt or leave the flow | Confirmed source |
 | Map display | May contact Apple map services | MapKit renders the route map | No TrailMind map-tile store or offline-map store | System/provider controlled | Apple service handling is unresolved for the final policy review |
-| Debug remote-intent evaluation | Yes, Debug only | TrailMind backend, then configured Google or OpenRouter provider | The Release factory does not select or configure it; evaluation harness artifacts are redacted | Evaluation artifacts are temporary and separately controlled | Candidate traffic must prove it remains uninvoked in Release |
+| Debug remote-intent evaluation | Yes, Debug only | TrailMind backend, then configured Google or OpenRouter provider | The provider and `/api/parse-intent` client path are excluded from Release compilation; evaluation harness artifacts are redacted | Evaluation artifacts are temporary and separately controlled | Exact candidate binary scan and traffic inspection must confirm the Release boundary |
 
 ## Local saved-route retention
 

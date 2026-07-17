@@ -67,7 +67,7 @@ Create one record per asset:
 
 ## Localization
 
-The development region is English, but current geocoding failures and routing instructions can be German and unqualified searches are Germany-biased. Do not capture a general English-market set until that behavior is resolved, or a Germany-first mixed-language beta is explicitly approved and represented truthfully. Do not upload German-localized screenshots merely because the parser recognizes German prompts. Add localized sets only after the full UI, metadata, permissions, safety copy, and support/privacy pages are localized and reviewed.
+Capture an English screenshot set for the Germany-first English-interface beta: interface copy, errors, and requested route instructions are English, while unqualified place searches are intentionally Germany-biased. German and English route prompts are supported, but that parser capability is not a German-localized interface. Do not upload German-localized screenshots until the full UI, metadata, permissions, safety copy, and support/privacy pages are localized and reviewed. The owner must approve the primary locale and territory before capture.
 
 ## Rejection criteria
 

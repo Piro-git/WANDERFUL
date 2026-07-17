@@ -102,6 +102,7 @@ Secret scanning must report only file names/rules and redacted findings; it must
 - [ ] Generate Xcode's privacy report from the exact archive.
 - [ ] Reconcile every accessed API, collected data type, SDK, and tracking-domain result.
 - [ ] Compare observed release traffic with [DATA_FLOW_RETENTION_AND_DELETION.md](DATA_FLOW_RETENTION_AND_DELETION.md).
+- [ ] Confirm the exact Release executable contains no `RemoteAIIntentParsingProvider`, `RemoteWithLocalFallbackIntentParsingProvider`, or `parse-intent` marker.
 - [ ] Confirm the full typed prompt never reaches a remote AI provider in Release.
 - [ ] Confirm app traffic contains only expected Apple and TrailMind-backend domains; any direct app-to-GraphHopper request is a failure. Verify backend-to-GraphHopper egress separately.
 - [ ] Confirm production logs do not retain prompts, exact coordinates, credentials, tokens, assertions, or raw provider bodies.

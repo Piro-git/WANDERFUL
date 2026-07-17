@@ -4,7 +4,7 @@ Status: copy draft; not entered in App Store Connect
 Evidence date: 2026-07-17
 Scope: iPhone-only portrait beta
 
-Every public field below is conditional. Do not enter this copy until its claim-matrix gate is closed. In particular, omit GPX and voice claims until independent GPX import and physical-device voice proof pass, and do not position the current mixed-language build as a general English-market release.
+Every public field below is conditional. Do not enter this copy until its claim-matrix gate is closed. In particular, omit GPX and voice claims until independent GPX import and physical-device voice proof pass. Position the current build only as a Germany-first English-interface beta until the owner approves its primary locale and territories.
 
 ## Metadata draft
 
@@ -97,7 +97,7 @@ Do not use these claims in the subtitle, description, screenshots, preview, rele
 | No current-location access | No shipping location service or usage key; About disclosure | Privacy release tests | Exact signed archive/traffic inspection | Allowed after archive check |
 | Full typed prompt stays on device in Release | Release factory returns local parser | Release disclosure/factory source contract tests | Signed archive/traffic inspection | Allowed after archive check |
 | Planning aid, not navigation | Onboarding/About/detail safety copy; no Release start action | Release-surface truth tests | Screenshot/review copy audit | Required claim |
-| Remote AI unselected and unconfigured in Release | Release factory selects the local parser and the remote provider default URL is `nil`; provider symbols remain compiled | Privacy release factory/configuration contract test | Signed candidate traffic check proving no remote-intent request | Required internal constraint; do not market AI |
+| Remote AI absent from Release | Release factory selects the local parser; remote providers, request/response types, and `/api/parse-intent` client path are Debug-only | Privacy source contract plus Release binary forbidden-marker scan | Exact signed-candidate binary and traffic inspection | Required internal constraint; do not market AI |
 
 ## Screenshot traceability rule
 

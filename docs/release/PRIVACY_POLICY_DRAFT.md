@@ -66,7 +66,7 @@ Current service relationships include:
 - **[POSTGRESQL/DATABASE PROVIDER — UNRESOLVED]** — App Attest security records;
 - a person or app selected by the user in the system share sheet — exported GPX coordinates.
 
-The remote-intent provider implementation remains in the binary, but the Release factory does not select or configure it. Debug evaluation can use Google or OpenRouter. Release traffic must confirm that full prompts stay on device. If remote AI becomes a Release feature, this policy and in-app disclosure must be updated before prompts are sent.
+Remote-intent provider code and its `/api/parse-intent` client path are excluded from Release compilation. Debug evaluation can use Google or OpenRouter. The exact candidate binary and observed traffic must still confirm that full prompts stay on device. If remote AI becomes a Release feature, this policy and in-app disclosure must be updated before prompts are sent.
 
 Provider processing locations, subprocessors, contractual roles, and retention periods are **[UNRESOLVED]**.
 

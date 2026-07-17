@@ -9,7 +9,7 @@ Replace every bracketed field and verify the exact uploaded build before copying
 
 TrailMind is an iPhone-only, portrait route-planning app for same-day hiking, trail running, and biking. It is a planning aid, not live navigation.
 
-Language/market note: **[UNRESOLVED]**. The current candidate is Germany-first and mixed-language: the interface development region is English, while geocoding failures and routing instructions can be German. Do not submit until the intended market and reviewer path match the tested behavior.
+Language/market note: TrailMind is currently a Germany-first English-interface beta. Interface copy, errors, and requested route instructions are English; the local parser accepts supported German and English route-request forms. Unqualified place searches are intentionally biased toward Germany. The owner must approve the matching primary locale, territory, and reviewer path before submission.
 
 No account or login is required. TrailMind does not access the device's current location; the reviewer enters a place name for the route start.
 
@@ -26,7 +26,7 @@ Suggested review path:
 
 Voice input is optional. It uses Apple's Speech framework and requests microphone and Speech permission only when selected. The complete text review path works without granting either permission.
 
-The distributed Release factory parses the full typed prompt on the device. A dormant remote-provider implementation remains compiled but is neither selected nor configured in Release; candidate traffic must confirm it is never invoked. Route coordinates and routing constraints are sent to TrailMind's backend, which uses GraphHopper to calculate route geometry and measured statistics. Apple App Attest protects backend requests; there are no reviewer credentials.
+The distributed Release build parses the full typed prompt on the device. Remote-intent providers and their client endpoint are excluded from Release compilation; exact-candidate binary and traffic inspection must confirm that boundary. Route coordinates and routing constraints are sent to TrailMind's backend, which uses GraphHopper to calculate route geometry and measured statistics. Apple App Attest protects backend requests; there are no reviewer credentials.
 
 TrailMind does not include turn-by-turn navigation, live location, route recording, offline maps, weather, closures, verified water availability, accounts, cloud sync, advertising, or analytics.
 
