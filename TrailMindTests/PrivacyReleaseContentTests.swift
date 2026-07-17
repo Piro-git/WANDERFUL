@@ -134,12 +134,32 @@ final class PrivacyReleaseContentTests: XCTestCase {
                 TrailMindPermissionCopy.speechRecognition,
                 "Unexpected \(label) speech-recognition purpose."
             )
+            XCTAssertNil(
+                info["NSAppTransportSecurity"],
+                "The \(label) plist must not grant broad local-network transport access."
+            )
         }
 
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.deviceLocation"),
             "TrailMind does not currently access your device's location. Enter a place name when choosing a route start."
         )
+    }
+
+    func testShippingSourceHasNoDormantLocationAuthorizationOrTrackingSurface() throws {
+        let servicesSource = try source(relativePath: "TrailMind/Services/TrailServices.swift")
+
+        for forbiddenToken in [
+            "LocationService",
+            "CLLocationManager",
+            "requestWhenInUseAuthorization",
+            "startUpdatingLocation"
+        ] {
+            XCTAssertFalse(
+                servicesSource.contains(forbiddenToken),
+                "Shipping services must not retain unused location capability: \(forbiddenToken)"
+            )
+        }
     }
 
     func testPlanningBoundaryRemainsExact() {

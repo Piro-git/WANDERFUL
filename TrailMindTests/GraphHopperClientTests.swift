@@ -45,6 +45,7 @@ final class GraphHopperClientTests: XCTestCase {
         )
 
         XCTAssertEqual(route.title, "Trail run from Ilsenburg to Schierke")
+        XCTAssertEqual(route.location, "Ilsenburg → Schierke")
         XCTAssertEqual(route.activity, .trailRunning)
         XCTAssertEqual(route.difficulty, .moderate)
         XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
@@ -57,6 +58,46 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(provenance.provider, .graphHopper)
         XCTAssertEqual(provenance.strategy, .directGraphHopper)
         XCTAssertTrue(route.isVerifiedRoutedResult)
+    }
+
+    @MainActor
+    func testDisplayLocationUsesRequestedRouteContextWithoutInventingLocality() {
+        let pointToPoint = RoutePlanningRequest(
+            startQuery: "  Ilsenburg ",
+            endQuery: "Schierke  ",
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+        let loop = RoutePlanningRequest(
+            routeType: .loop,
+            startQuery: "Ilsenburg",
+            endQuery: nil,
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: 12,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+        let unknown = RoutePlanningRequest(
+            startQuery: "   ",
+            endQuery: nil,
+            activityType: .hiking,
+            graphHopperProfile: "foot",
+            targetDistanceKm: nil,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: []
+        )
+
+        XCTAssertEqual(GraphHopperClient.displayLocation(for: pointToPoint), "Ilsenburg → Schierke")
+        XCTAssertEqual(GraphHopperClient.displayLocation(for: loop), "Ilsenburg")
+        XCTAssertNil(GraphHopperClient.displayLocation(for: unknown))
+        XCTAssertFalse(GraphHopperClient.displayLocation(for: pointToPoint)?.contains("Germany") == true)
     }
 
     @MainActor
@@ -758,6 +799,7 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertNil(payload?["alternative_route.max_paths"])
         XCTAssertEqual(route.routeType, .loop)
         XCTAssertEqual(route.title, "15.2 km Hike loop around Ilsenburg")
+        XCTAssertEqual(route.location, "Ilsenburg")
         XCTAssertEqual(route.planningMetadata?.routeType, .loop)
         XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
         guard case let .routed(provenance) = route.provenance else {

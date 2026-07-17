@@ -24,11 +24,6 @@
 	<string>$(INTENT_BACKEND_BASE_URL)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>TrailMind uses the microphone to turn your spoken route request into text.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

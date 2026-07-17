@@ -383,9 +383,11 @@ struct RouteDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label(route.location, systemImage: "location.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(theme.moss)
+                if let locationLabel {
+                    Label(locationLabel, systemImage: "location.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.moss)
+                }
                 Spacer()
                 DifficultyBadge(difficulty: route.difficulty)
             }
@@ -400,6 +402,11 @@ struct RouteDetailView: View {
                 .foregroundStyle(theme.secondaryText)
                 .lineSpacing(4)
         }
+    }
+
+    private var locationLabel: String? {
+        let value = route.location.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 
     #if DEBUG

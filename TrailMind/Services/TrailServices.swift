@@ -1,4 +1,3 @@
-import CoreLocation
 import Foundation
 import MapKit
 
@@ -18,13 +17,6 @@ protocol RoutingService: Sendable {
 protocol MapService: Sendable {
     func getMapPreview(route: TrailRoute) -> MKCoordinateRegion
     func getRoutePolyline(route: TrailRoute) -> MKPolyline
-}
-
-protocol LocationService: AnyObject {
-    func requestLocationPermission()
-    func getCurrentLocation() -> CLLocation?
-    func startTracking()
-    func stopTracking()
 }
 
 enum TrailServiceError: LocalizedError {
@@ -142,39 +134,6 @@ struct DefaultMapService: MapService {
     func getRoutePolyline(route: TrailRoute) -> MKPolyline {
         let coordinates = route.path.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
         return MKPolyline(coordinates: coordinates, count: coordinates.count)
-    }
-}
-
-@Observable
-final class DefaultLocationService: NSObject, LocationService, CLLocationManagerDelegate {
-    private let manager = CLLocationManager()
-    private(set) var currentLocation: CLLocation?
-
-    override init() {
-        super.init()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyBest
-    }
-
-    func requestLocationPermission() {
-        manager.requestWhenInUseAuthorization()
-    }
-
-    func getCurrentLocation() -> CLLocation? {
-        currentLocation
-    }
-
-    func startTracking() {
-        // TODO: Persist energy-efficient navigation samples when active guidance is implemented.
-        manager.startUpdatingLocation()
-    }
-
-    func stopTracking() {
-        manager.stopUpdatingLocation()
-    }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        currentLocation = locations.last
     }
 }
 

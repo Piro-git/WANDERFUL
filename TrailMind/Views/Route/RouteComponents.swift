@@ -38,10 +38,12 @@ struct RouteCard: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(route.location.uppercased())
-                        .font(.caption.weight(.bold))
-                        .tracking(0.8)
-                        .foregroundStyle(theme.moss)
+                    if let locationLabel {
+                        Text(locationLabel.uppercased())
+                            .font(.caption.weight(.bold))
+                            .tracking(0.8)
+                            .foregroundStyle(theme.moss)
+                    }
                     Spacer()
                     DifficultyBadge(difficulty: route.difficulty)
                 }
@@ -110,6 +112,11 @@ struct RouteCard: View {
 
     private var badgeLabel: String? {
         RouteAlternativeQuality.displayLabel(candidate: comparisonLabel, for: route)
+    }
+
+    private var locationLabel: String? {
+        let value = route.location.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 
     private var badgeSymbol: String {

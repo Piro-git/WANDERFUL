@@ -1402,7 +1402,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 endName: resolvedEndName,
                 actualDistanceKm: distanceKilometers
             ),
-            location: "Germany",
+            location: Self.displayLocation(for: planningRequest) ?? "",
             activity: activity,
             distanceKilometers: distanceKilometers,
             elevationGainMeters: elevationGain,
@@ -1465,6 +1465,21 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         try RouteEligibilityPolicy.validate(route, for: .productionSuccess)
         try Task.checkCancellation()
         return route
+    }
+
+    nonisolated static func displayLocation(for request: RoutePlanningRequest) -> String? {
+        let start = request.startQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !start.isEmpty else { return nil }
+
+        guard request.routeType == .pointToPoint else {
+            return start
+        }
+
+        let end = request.endQuery?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !end.isEmpty, end.caseInsensitiveCompare(start) != .orderedSame else {
+            return start
+        }
+        return "\(start) → \(end)"
     }
 
     private static func decodeCoordinate(_ values: [Double]) throws -> Coordinate {
