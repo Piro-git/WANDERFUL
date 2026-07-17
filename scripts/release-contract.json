@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "product": {
+    "bundle_identifier": "com.trailmind.app",
+    "bundle_name": "TrailMind",
+    "display_name": "TrailMind",
+    "package_type": "APPL",
+    "marketing_version": "1.0",
+    "build_number": "1",
+    "minimum_os_version": "26.0",
+    "development_region": "en",
+    "device_family": [
+      1
+    ],
+    "orientations": [
+      "UIInterfaceOrientationPortrait"
+    ],
+    "app_category": "public.app-category.navigation",
+    "backend_info_key": "INTENT_BACKEND_BASE_URL",
+    "backend_url": "https://backend-zeta-amber-69.vercel.app",
+    "usage_descriptions": {
+      "NSMicrophoneUsageDescription": "TrailMind uses the microphone to turn your spoken route request into text.",
+      "NSSpeechRecognitionUsageDescription": "Apple Speech can send captured audio to Apple's servers for processing. TrailMind does not retain raw audio or send it to its own backend."
+    }
+  },
+  "platforms": {
+    "simulator-app": {
+      "dt_platform_name": "iphonesimulator",
+      "supported_platforms": [
+        "iPhoneSimulator"
+      ],
+      "allowed_architectures": [
+        "arm64",
+        "x86_64"
+      ]
+    },
+    "distribution-signed-archive": {
+      "dt_platform_name": "iphoneos",
+      "supported_platforms": [
+        "iPhoneOS"
+      ],
+      "allowed_architectures": [
+        "arm64"
+      ],
+      "application_path": "Applications/TrailMind.app",
+      "app_attest_environment": "production",
+      "requires_beta_reports_active": true
+    }
+  },
+  "privacy_manifest": {
+    "filename": "PrivacyInfo.xcprivacy",
+    "expected": {
+      "NSPrivacyAccessedAPITypes": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "C617.1"
+          ]
+        },
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "CA92.1"
+          ]
+        }
+      ],
+      "NSPrivacyCollectedDataTypes": [
+        {
+          "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
+          "NSPrivacyCollectedDataTypeLinked": true,
+          "NSPrivacyCollectedDataTypePurposes": [
+            "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+          ],
+          "NSPrivacyCollectedDataTypeTracking": false
+        }
+      ],
+      "NSPrivacyTracking": false
+    }
+  },
+  "forbidden_info_keys": [
+    "GRAPHHOPPER_API_KEY",
+    "OPENROUTER_API_KEY",
+    "GOOGLE_API_KEY",
+    "NSAppTransportSecurity",
+    "UIBackgroundModes",
+    "NSLocalNetworkUsageDescription",
+    "NSBonjourServices",
+    "NSLocationWhenInUseUsageDescription",
+    "NSLocationAlwaysUsageDescription",
+    "NSLocationAlwaysAndWhenInUseUsageDescription",
+    "NSLocationTemporaryUsageDescriptionDictionary"
+  ],
+  "forbidden_binary_markers": [
+    "--trailmind-ui-testing",
+    "--trailmind-ui-scenario",
+    "UITestLaunchComposition",
+    "MockRoutes",
+    "MockAIPlannerService",
+    "MockRoutingService",
+    "RouteEditAIView",
+    "Harz Waterfall Weekend",
+    "Lüneburg Forest Loop",
+    "Sunset Ridge Walk",
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "LIVE ROUTING DEMO",
+    "Edit with AI",
+    "XCTest",
+    "TrailMindTests",
+    "TrailMindUITests",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000"
+  ]
+}
