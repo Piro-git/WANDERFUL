@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createAppAttestEndpoint } from "../src/appAttest/appAttestEndpoint.js";
+import { appAttestError } from "../src/appAttest/appAttestErrors.js";
 import { InMemoryAppAttestRepository } from "../src/appAttest/appAttestRepository.js";
 import { decodeBase64Url, hashOpaqueValue, sha256 } from "../src/appAttest/clientData.js";
 
@@ -60,6 +61,31 @@ describe("App Attest endpoints", () => {
     assert.equal(decodeBase64Url(result.payload.routeSessionToken).length, 32);
     assert.equal(repository.sessions.has(hashOpaqueValue(result.payload.routeSessionToken)), true);
     assert.equal(JSON.stringify([...repository.sessions.values()]).includes(result.payload.routeSessionToken), false);
+  });
+
+  it("charges a route-session attempt before checking an unknown key", async () => {
+    const calls = [];
+    const repository = {
+      async consumeRouteSessionAttempt() {
+        calls.push("attempt");
+      },
+      async findRegisteredKey() {
+        calls.push("key lookup");
+        throw appAttestError("app_attest_not_registered");
+      },
+      async createChallenge() {
+        calls.push("challenge");
+      }
+    };
+    const { endpoint } = fixture({ repository });
+    const result = await endpoint(
+      "/api/app-attest/challenge",
+      { purpose: "routeSession", keyId: KEY_ID },
+      context()
+    );
+    assert.equal(result.statusCode, 401);
+    assert.equal(result.payload.error.code, "app_attest_not_registered");
+    assert.deepEqual(calls, ["attempt", "key lookup"]);
   });
 
   it("fails closed in production with an in-memory repository", async () => {

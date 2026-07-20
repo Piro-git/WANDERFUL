@@ -163,7 +163,7 @@ Provider responses that specifically indicate unavailable flexible routing are n
 
 ## Timeout, cancellation, and retries
 
-The provider timeout defaults to 30 seconds and may be configured up to 60 seconds. HTTP client disconnects abort upstream work. The gateway currently performs no automatic retry, so invalid requests and provider rate limits are never retried and no retry can exceed the request deadline. A later deployment may add at most one retry for a confirmed transient failure within the same overall deadline.
+The provider timeout defaults to 30 seconds and may be configured up to 60 seconds. `ROUTE_GLOBAL_LEASE_TTL_SECONDS` must exceed `ROUTE_REQUEST_TIMEOUT_MS` by at least one second; invalid combinations fail closed during route-authorizer construction so a provider request cannot outlive the lease counted for global concurrency. HTTP client disconnects abort upstream work. The gateway currently performs no automatic retry, so invalid requests and provider rate limits are never retried and no retry can exceed the request deadline. A later deployment may add at most one retry for a confirmed transient failure within the same overall deadline.
 
 ## Security, privacy, and operations
 
@@ -186,6 +186,7 @@ The provider timeout defaults to 30 seconds and may be configured up to 60 secon
 GRAPHHOPPER_API_KEY=
 GRAPHHOPPER_BASE_URL=https://graphhopper.com/api/1
 ROUTE_REQUEST_TIMEOUT_MS=30000
+ROUTE_GLOBAL_LEASE_TTL_SECONDS=90
 ROUTE_MAX_BODY_BYTES=32768
 ROUTE_MAX_DISTANCE_METERS=200000
 ROUTE_ALLOW_INSECURE_LOCAL_ROUTING=false

@@ -264,21 +264,29 @@ export class PostgresAppAttestRepository extends AppAttestRepository {
   }
 
   async pruneExpired() {
-    await this.transaction(async (client) => {
-      await client.query(
+    return this.transaction(async (client) => {
+      const challenges = await client.query(
         `DELETE FROM app_attest_challenges
           WHERE expires_at < clock_timestamp() - interval '10 minutes'`
       );
-      await client.query(
+      const routeSessions = await client.query(
         `DELETE FROM app_attest_route_sessions
           WHERE expires_at < clock_timestamp() - interval '10 minutes'`
       );
-      await client.query("DELETE FROM app_attest_rate_windows WHERE reset_at < clock_timestamp()");
-      await client.query(
+      const rateWindows = await client.query(
+        "DELETE FROM app_attest_rate_windows WHERE reset_at < clock_timestamp()"
+      );
+      const providerLeases = await client.query(
         `DELETE FROM app_attest_provider_leases
           WHERE expires_at < clock_timestamp() - interval '10 minutes'
              OR released_at < clock_timestamp() - interval '10 minutes'`
       );
+      return {
+        challenges: challenges.rowCount,
+        routeSessions: routeSessions.rowCount,
+        rateWindows: rateWindows.rowCount,
+        providerLeases: providerLeases.rowCount
+      };
     });
   }
 

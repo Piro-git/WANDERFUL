@@ -3,11 +3,28 @@ import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
 import { InMemoryAppAttestRepository } from "../src/appAttest/appAttestRepository.js";
 import { hashOpaqueValue } from "../src/appAttest/clientData.js";
-import { createRouteSessionAuthorizer } from "../src/appAttest/routeSessionAuthorizer.js";
+import {
+  createRouteSessionAuthorizer,
+  routeAuthorizationConfiguration
+} from "../src/appAttest/routeSessionAuthorizer.js";
 import { createRouteEndpoint } from "../src/routing/routeEndpoint.js";
 import { graphHopperResponse, loopRequest } from "./routeTestSupport.js";
 
 describe("route-session integration", () => {
+  it("rejects a route timeout that can outlive its provider lease", () => {
+    assert.throws(
+      () => routeAuthorizationConfiguration({
+        ROUTE_REQUEST_TIMEOUT_MS: "60000",
+        ROUTE_GLOBAL_LEASE_TTL_SECONDS: "10"
+      }),
+      (error) => error.code === "authorization_unavailable"
+    );
+    assert.doesNotThrow(() => routeAuthorizationConfiguration({
+      ROUTE_REQUEST_TIMEOUT_MS: "9000",
+      ROUTE_GLOBAL_LEASE_TTL_SECONDS: "10"
+    }));
+  });
+
   it("allows several loop variants concurrently through one assertion session", async () => {
     const repository = new InMemoryAppAttestRepository();
     const token = Buffer.alloc(32, 6).toString("base64url");

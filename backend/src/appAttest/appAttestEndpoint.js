@@ -48,16 +48,16 @@ export function createAppAttestEndpoint(options) {
     if (body.purpose === "routeSession") {
       const keyId = requiredOpaqueString(body.keyId, "keyId", 512);
       keyIdHash = hashOpaqueValue(keyId);
-      await repository.findRegisteredKey({
-        environment: verifier.configuration.environment,
-        keyIdHash
-      });
       await repository.consumeRouteSessionAttempt({
         edgeIdentity,
         keyIdHash,
         edgeMaximum: configuration.routeSessionEdgeMaximum,
         keyMaximum: configuration.routeSessionKeyMaximum,
         windowMs: configuration.routeSessionWindowMs
+      });
+      await repository.findRegisteredKey({
+        environment: verifier.configuration.environment,
+        keyIdHash
       });
     }
 

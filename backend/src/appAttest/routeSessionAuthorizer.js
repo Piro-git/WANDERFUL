@@ -6,6 +6,7 @@ import {
 } from "./clientData.js";
 
 const AUTHORIZATION_PREFIX = "TrailMindRouteSession ";
+const LEASE_TIMEOUT_MARGIN_MS = 1_000;
 
 export function createRouteSessionAuthorizer(options) {
   return createSessionAuthorizer(options, "route", routeAuthorizationConfiguration(options?.env ?? process.env));
@@ -61,6 +62,13 @@ function createSessionAuthorizer(options, scope, configuration) {
 }
 
 export function routeAuthorizationConfiguration(env = process.env) {
+  const leaseTtlMs =
+    integer(env.ROUTE_GLOBAL_LEASE_TTL_SECONDS, 90, 10, 600) * 1_000;
+  const timeoutMs =
+    integer(env.ROUTE_REQUEST_TIMEOUT_MS, 30_000, 1_000, 60_000);
+  if (timeoutMs > leaseTtlMs - LEASE_TIMEOUT_MARGIN_MS) {
+    throw appAttestError("authorization_unavailable");
+  }
   return {
     providerEnabled: env.ROUTE_PROVIDER_ENABLED !== "false",
     installationMaximumCost: integer(env.APP_ATTEST_INSTALLATION_MAX_COST, 60, 1, 10_000),
@@ -68,7 +76,7 @@ export function routeAuthorizationConfiguration(env = process.env) {
     globalMaximumCost: integer(env.ROUTE_GLOBAL_MAX_COST, 5_000, 1, 1_000_000),
     globalWindowMs: integer(env.ROUTE_GLOBAL_WINDOW_SECONDS, 60, 1, 86_400) * 1_000,
     globalMaximumConcurrency: integer(env.ROUTE_GLOBAL_MAX_CONCURRENCY, 20, 1, 1_000),
-    leaseTtlMs: integer(env.ROUTE_GLOBAL_LEASE_TTL_SECONDS, 90, 10, 600) * 1_000
+    leaseTtlMs
   };
 }
 

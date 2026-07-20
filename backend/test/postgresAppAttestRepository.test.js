@@ -136,6 +136,68 @@ describe("PostgreSQL App Attest repository", () => {
       (error) => error.code === "app_attest_counter_replayed"
     );
   });
+
+  it("returns fixed aggregate counts after transactional pruning", async () => {
+    const calls = [];
+    const rowCounts = [2, 3, 5, 7];
+    const client = {
+      async query(text) {
+        calls.push(text);
+        if (text === "BEGIN" || text === "COMMIT") return { rowCount: 0, rows: [] };
+        return { rowCount: rowCounts.shift(), rows: [] };
+      },
+      release() {}
+    };
+    const repository = new PostgresAppAttestRepository({
+      pool: { connect: async () => client, query: async () => ({ rows: [], rowCount: 0 }) }
+    });
+    assert.deepEqual(await repository.pruneExpired(), {
+      challenges: 2,
+      routeSessions: 3,
+      rateWindows: 5,
+      providerLeases: 7
+    });
+    assert.equal(calls[0], "BEGIN");
+    assert.match(calls[1], /DELETE FROM app_attest_challenges/);
+    assert.match(calls[2], /DELETE FROM app_attest_route_sessions/);
+    assert.match(calls[3], /DELETE FROM app_attest_rate_windows/);
+    assert.match(calls[4], /DELETE FROM app_attest_provider_leases/);
+    assert.equal(calls[5], "COMMIT");
+  });
+
+  it("rolls a failed prune back, preserves the failure, and permits a retry", async () => {
+    const failure = new Error("synthetic prune failure");
+    const failedCalls = [];
+    const failedClient = {
+      async query(text) {
+        failedCalls.push(text);
+        if (/DELETE FROM app_attest_route_sessions/.test(text)) throw failure;
+        return { rowCount: 1, rows: [] };
+      },
+      release() {}
+    };
+    const retryClient = {
+      async query(text) {
+        return { rowCount: text.startsWith("DELETE") ? 1 : 0, rows: [] };
+      },
+      release() {}
+    };
+    let attempts = 0;
+    const repository = new PostgresAppAttestRepository({
+      pool: {
+        connect: async () => (++attempts === 1 ? failedClient : retryClient),
+        query: async () => ({ rows: [], rowCount: 0 })
+      }
+    });
+    await assert.rejects(repository.pruneExpired(), (error) => error === failure);
+    assert.equal(failedCalls.at(-1), "ROLLBACK");
+    assert.deepEqual(await repository.pruneExpired(), {
+      challenges: 1,
+      routeSessions: 1,
+      rateWindows: 1,
+      providerLeases: 1
+    });
+  });
 });
 
 function fakePool() {

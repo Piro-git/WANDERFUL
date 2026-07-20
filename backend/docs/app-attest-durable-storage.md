@@ -41,4 +41,14 @@ Before enabling protected production traffic, confirm:
 4. Expected peak session creation and route cost per minute.
 5. Backup, retention, regional-residency, and deletion requirements for App Attest receipts.
 
-Production can be enabled only after `TRAILMIND_TEST_DATABASE_URL` points to a disposable database and the adapter passes the same counter-replay and concurrent-budget test suite against real PostgreSQL. Expired records should be pruned by calling `PostgresAppAttestRepository.pruneExpired()` from a controlled scheduled job; request paths do not perform unbounded cleanup work.
+Production can be enabled only after `TRAILMIND_TEST_DATABASE_URL` points to a dedicated disposable database and the PostgreSQL integration suite passes migration repeatability, challenge/session expiry, counter replay, request-ID replay, weighted installation/global budgets, concurrent session and lease enforcement, pruning/cascade behavior, rollback, and recovery.
+
+Run expiry maintenance as a one-shot controlled job from the backend directory:
+
+```sh
+node src/appAttest/pruneExpired.js
+```
+
+The command requires `DATABASE_URL` or `POSTGRES_URL`, fails with a nonzero exit when durable configuration or pruning is unavailable, and prints only fixed aggregate deletion counts. It never prints connection details or record contents. Request paths do not perform unbounded cleanup work.
+
+Schedule one invocation every five minutes. Alert when the command exits nonzero or no successful run has been observed for 15 minutes. The production scheduler, alert destination, database backup policy, and key/receipt retention policy remain external release gates; repository code cannot prove those deployed controls.
