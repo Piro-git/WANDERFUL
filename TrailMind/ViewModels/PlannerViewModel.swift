@@ -82,6 +82,7 @@ final class PlannerViewModel {
 
     enum ClarificationAnswer: Equatable, Sendable {
         case text(String)
+        case locationCandidate(LocationCandidate)
         case routeType(TrailRouteType)
     }
 
@@ -115,6 +116,25 @@ final class PlannerViewModel {
         let validatedIntent: ValidatedAdventureIntent
         let validation: ValidationSnapshot
         let parserDebugInfo: IntentParserDebugInfo?
+        let selectedLocations: [IntentMissingField: LocationCandidate]
+
+        init(
+            id: UUID,
+            originalPrompt: String,
+            intent: AdventureIntent,
+            validatedIntent: ValidatedAdventureIntent,
+            validation: ValidationSnapshot,
+            parserDebugInfo: IntentParserDebugInfo?,
+            selectedLocations: [IntentMissingField: LocationCandidate] = [:]
+        ) {
+            self.id = id
+            self.originalPrompt = originalPrompt
+            self.intent = intent
+            self.validatedIntent = validatedIntent
+            self.validation = validation
+            self.parserDebugInfo = parserDebugInfo
+            self.selectedLocations = selectedLocations
+        }
 
         func withID(_ id: UUID) -> PreparedAttempt {
             PreparedAttempt(
@@ -123,7 +143,26 @@ final class PlannerViewModel {
                 intent: intent,
                 validatedIntent: validatedIntent,
                 validation: validation,
-                parserDebugInfo: parserDebugInfo
+                parserDebugInfo: parserDebugInfo,
+                selectedLocations: selectedLocations
+            )
+        }
+
+        func selecting(
+            _ candidate: LocationCandidate,
+            for field: IntentMissingField,
+            id: UUID
+        ) -> PreparedAttempt {
+            var selections = selectedLocations
+            selections[field] = candidate
+            return PreparedAttempt(
+                id: id,
+                originalPrompt: originalPrompt,
+                intent: intent,
+                validatedIntent: validatedIntent,
+                validation: validation,
+                parserDebugInfo: parserDebugInfo,
+                selectedLocations: selections
             )
         }
     }
@@ -143,6 +182,10 @@ final class PlannerViewModel {
         let parserDebugInfo: IntentParserDebugInfo?
         let question: String
         let kind: ClarificationKind
+        let supportingText: String?
+        let locationCandidates: [LocationCandidate]
+        let allowsFreeText: Bool
+        let preparedAttempt: PreparedAttempt?
     }
 
     struct PlanningSuccess: Equatable {
@@ -242,7 +285,7 @@ final class PlannerViewModel {
 
     private let intentParsingProvider: any IntentParsingProvider
     private let intentValidationService: IntentValidationService
-    private let geocodingService: any GeocodingService
+    private let locationResolver: any LocationResolving
     private let routingCoordinator: any RoutingCoordinating
     private let operationTimeouts: OperationTimeouts
     @ObservationIgnored private let attemptIDProvider: @MainActor () -> UUID
@@ -378,14 +421,25 @@ final class PlannerViewModel {
     init(
         intentParsingProvider: any IntentParsingProvider = IntentParsingProviderFactory.makeDefaultProvider(),
         intentValidationService: IntentValidationService = IntentValidationService(),
-        geocodingService: any GeocodingService = NativeGeocodingService(),
+        geocodingService: (any GeocodingService)? = nil,
+        locationResolver: (any LocationResolving)? = nil,
         routingCoordinator: any RoutingCoordinating = RoutingCoordinator(),
         operationTimeouts: OperationTimeouts = .production,
         attemptIDProvider: @escaping @MainActor () -> UUID = { UUID() }
     ) {
         self.intentParsingProvider = intentParsingProvider
         self.intentValidationService = intentValidationService
-        self.geocodingService = geocodingService
+        if let locationResolver {
+            self.locationResolver = locationResolver
+        } else if let geocodingService {
+            self.locationResolver = LegacyGeocodingLocationResolver(
+                geocodingService: geocodingService
+            )
+        } else {
+            self.locationResolver = LocationResolutionService(
+                provider: NativeGeocodingService()
+            )
+        }
         self.routingCoordinator = routingCoordinator
         self.operationTimeouts = operationTimeouts
         self.attemptIDProvider = attemptIDProvider
@@ -419,6 +473,17 @@ final class PlannerViewModel {
         let requestID = attemptIDProvider()
 
         do {
+            if let preparedAttempt = pending.preparedAttempt,
+               case let .location(field) = pending.kind {
+                try resumeLocationClarification(
+                    answer,
+                    pending: pending,
+                    preparedAttempt: preparedAttempt,
+                    field: field,
+                    requestID: requestID
+                )
+                return
+            }
             let mergedIntent = try Self.merge(answer, into: pending.intent, for: pending.kind)
             let validationResult = intentValidationService.validateResult(mergedIntent)
             try continueAfterValidation(
@@ -467,7 +532,11 @@ final class PlannerViewModel {
         case let .understanding(attempt):
             recovery = cancelledRecovery(prompt: attempt.originalPrompt, stage: .understanding, prepared: nil)
         case let .awaitingClarification(pending):
-            recovery = cancelledRecovery(prompt: pending.originalPrompt, stage: .understanding, prepared: nil)
+            recovery = cancelledRecovery(
+                prompt: pending.originalPrompt,
+                stage: pending.preparedAttempt == nil ? .understanding : .locations,
+                prepared: pending.preparedAttempt
+            )
         case let .resolvingLocations(prepared):
             recovery = cancelledRecovery(prompt: prepared.originalPrompt, stage: .locations, prepared: prepared)
         case let .generatingRoutes(resolved):
@@ -525,6 +594,67 @@ final class PlannerViewModel {
 }
 
 private extension PlannerViewModel {
+    func resumeLocationClarification(
+        _ answer: ClarificationAnswer,
+        pending: PendingClarification,
+        preparedAttempt: PreparedAttempt,
+        field: IntentMissingField,
+        requestID: UUID
+    ) throws {
+        switch answer {
+        case let .locationCandidate(candidate):
+            guard let providerCandidate = pending.locationCandidates.first(where: { $0.id == candidate.id }) else {
+                throw PlannerIssue.unsupportedClarification
+            }
+            guard providerCandidate.semanticKind.isUsableRouteAnchor else {
+                activeRequestID = nil
+                state = .awaitingClarification(
+                    PendingClarification(
+                        id: requestID,
+                        originalPrompt: pending.originalPrompt,
+                        intent: pending.intent,
+                        validation: pending.validation,
+                        parserDebugInfo: pending.parserDebugInfo,
+                        question: field == .endLocationQuery
+                            ? "Which specific place in this area should be the destination?"
+                            : "Where in this area should the hike start?",
+                        kind: pending.kind,
+                        supportingText: "Enter a nearby town, valley or trailhead so TrailMind does not route from an arbitrary map center.",
+                        locationCandidates: [],
+                        allowsFreeText: true,
+                        preparedAttempt: preparedAttempt
+                    )
+                )
+                return
+            }
+
+            let freshAttempt = preparedAttempt.selecting(
+                providerCandidate,
+                for: field,
+                id: requestID
+            )
+            state = .resolvingLocations(freshAttempt)
+            launchAttempt(id: requestID)
+
+        case .text:
+            let mergedIntent = try Self.merge(answer, into: preparedAttempt.intent, for: pending.kind)
+            let validationResult = intentValidationService.validateResult(mergedIntent)
+            var retainedSelections = preparedAttempt.selectedLocations
+            retainedSelections.removeValue(forKey: field)
+            try continueAfterValidation(
+                validationResult,
+                parsedIntent: mergedIntent,
+                parserDebugInfo: pending.parserDebugInfo,
+                requestID: requestID,
+                originalPrompt: pending.originalPrompt,
+                selectedLocations: retainedSelections
+            )
+
+        case .routeType:
+            throw PlannerIssue.unsupportedClarification
+        }
+    }
+
     static func clarificationKind(for result: IntentValidationResult) -> ClarificationKind? {
         if result.missingFields.contains(.routeType) {
             return .routeType
@@ -568,6 +698,8 @@ private extension PlannerViewModel {
             }
         case let (.routeType, .routeType(value)):
             routeType = value
+        case (.location, .locationCandidate):
+            throw PlannerIssue.unsupportedClarification
         default:
             throw PlannerIssue.unsupportedClarification
         }
@@ -683,6 +815,8 @@ private extension PlannerViewModel {
                 "TrailMind couldn’t find “\(query)”. Check the spelling or choose a nearby trailhead."
             case .endpointsTooClose:
                 "Start and destination are too close together. Choose a more specific destination."
+            case let .needsClarification(query):
+                "TrailMind needs a more specific town, valley or trailhead for “\(query)”."
             case .network:
                 "TrailMind couldn’t reach location search. Check your connection and try again."
             case .requestInProgress:
@@ -771,33 +905,71 @@ private extension PlannerViewModel {
             stage = .locations
 
             let planningRequest = RoutePlanningRequest(validatedIntent: preparedAttempt.validatedIntent)
-            let start = try await withTimeout(seconds: operationTimeouts.geocodingSeconds) {
-                try await self.geocodingService.geocodeLocation(planningRequest.startQuery)
+            var workingPrepared = preparedAttempt
+            let startCandidate: LocationCandidate
+            if let selectedStart = workingPrepared.selectedLocations[.startLocationQuery] {
+                startCandidate = selectedStart
+            } else {
+                guard let resolvedStart = try await resolveLocationCandidate(
+                    query: planningRequest.startQuery,
+                    field: .startLocationQuery,
+                    preferredCoordinate: nil,
+                    preparedAttempt: workingPrepared,
+                    requestID: requestID
+                ) else { return }
+                startCandidate = resolvedStart
+                workingPrepared = workingPrepared.selecting(
+                    resolvedStart,
+                    for: .startLocationQuery,
+                    id: requestID
+                )
             }
-            try ensureActive(requestID)
+            preparedForRetry = workingPrepared
+            let start = startCandidate.coordinate
 
             let end: Coordinate?
+            let endCandidate: LocationCandidate?
             if let endQuery = planningRequest.endQuery, planningRequest.routeType != .loop {
-                let geocodedEnd = try await withTimeout(seconds: operationTimeouts.geocodingSeconds) {
-                    try await self.geocodingService.geocodeLocation(endQuery, near: start)
+                let resolvedEnd: LocationCandidate
+                if let selectedEnd = workingPrepared.selectedLocations[.endLocationQuery] {
+                    resolvedEnd = selectedEnd
+                } else {
+                    guard let candidate = try await resolveLocationCandidate(
+                        query: endQuery,
+                        field: .endLocationQuery,
+                        preferredCoordinate: start,
+                        preparedAttempt: workingPrepared,
+                        requestID: requestID
+                    ) else { return }
+                    resolvedEnd = candidate
+                    workingPrepared = workingPrepared.selecting(
+                        candidate,
+                        for: .endLocationQuery,
+                        id: requestID
+                    )
                 }
-                try ensureActive(requestID)
                 let endpointDistance = CLLocation(
                     latitude: start.latitude,
                     longitude: start.longitude
                 ).distance(
-                    from: CLLocation(latitude: geocodedEnd.latitude, longitude: geocodedEnd.longitude)
+                    from: CLLocation(
+                        latitude: resolvedEnd.coordinate.latitude,
+                        longitude: resolvedEnd.coordinate.longitude
+                    )
                 )
                 guard endpointDistance >= 250 else {
                     throw GeocodingServiceError.endpointsTooClose
                 }
-                end = geocodedEnd
+                end = resolvedEnd.coordinate
+                endCandidate = resolvedEnd
             } else {
                 end = nil
+                endCandidate = nil
             }
+            preparedForRetry = workingPrepared
 
             let resolved = ResolvedAttempt(
-                prepared: preparedAttempt,
+                prepared: workingPrepared,
                 request: planningRequest,
                 start: start,
                 end: end
@@ -826,8 +998,8 @@ private extension PlannerViewModel {
             guard !routingResult.suggestions.isEmpty else {
                 transitionToNoRoutes(
                     requestID: requestID,
-                    originalPrompt: preparedAttempt.originalPrompt,
-                    preparedAttempt: preparedAttempt
+                    originalPrompt: workingPrepared.originalPrompt,
+                    preparedAttempt: workingPrepared
                 )
                 return
             }
@@ -853,8 +1025,8 @@ private extension PlannerViewModel {
                 repairReason: preparedAttempt.validation.repairReason,
                 missingFields: preparedAttempt.validation.missingFields.map(\.rawValue),
                 clarificationQuestion: preparedAttempt.validation.clarificationQuestion,
-                geocodedStartLabel: planningRequest.startQuery,
-                geocodedEndLabel: planningRequest.endQuery,
+                geocodedStartLabel: startCandidate.displayName,
+                geocodedEndLabel: endCandidate?.displayName,
                 loopSearchOutcome: routingResult.loopSearchOutcome,
                 loopSearchDiagnostics: routingResult.loopSearchDiagnostics
             )
@@ -931,19 +1103,112 @@ private extension PlannerViewModel {
         )
     }
 
+    func resolveLocationCandidate(
+        query: String,
+        field: IntentMissingField,
+        preferredCoordinate: Coordinate?,
+        preparedAttempt: PreparedAttempt,
+        requestID: UUID
+    ) async throws -> LocationCandidate? {
+        let context = LocationQueryContext(
+            originalQuery: query,
+            originalPrompt: preparedAttempt.originalPrompt,
+            routeType: preparedAttempt.validatedIntent.routeType,
+            activityType: preparedAttempt.validatedIntent.activityType,
+            requestedField: field,
+            preferredCoordinate: preferredCoordinate,
+            explicitlyRequestsNearby: Self.explicitlyRequestsNearby(preparedAttempt.originalPrompt)
+        )
+        let resolution = try await withTimeout(seconds: operationTimeouts.geocodingSeconds) {
+            try await self.locationResolver.resolve(context)
+        }
+        try ensureActive(requestID)
+
+        switch resolution {
+        case let .resolved(candidate):
+            guard candidate.semanticKind.isUsableRouteAnchor else {
+                let clarification = LocationClarification(
+                    query: query,
+                    question: field == .endLocationQuery
+                        ? "Which specific place should be the destination?"
+                        : "Where should the hike start?",
+                    supportingText: "Enter a nearby town, valley or trailhead so TrailMind does not route from an arbitrary map center.",
+                    candidates: [candidate],
+                    allowsFreeText: true
+                )
+                transitionToLocationClarification(
+                    clarification,
+                    field: field,
+                    preparedAttempt: preparedAttempt,
+                    requestID: requestID
+                )
+                return nil
+            }
+            return candidate
+
+        case let .needsClarification(clarification):
+            transitionToLocationClarification(
+                clarification,
+                field: field,
+                preparedAttempt: preparedAttempt,
+                requestID: requestID
+            )
+            return nil
+
+        case let .noResults(query):
+            throw GeocodingServiceError.noResults(query: query)
+
+        case .unavailable:
+            throw GeocodingServiceError.unavailable
+        }
+    }
+
+    func transitionToLocationClarification(
+        _ clarification: LocationClarification,
+        field: IntentMissingField,
+        preparedAttempt: PreparedAttempt,
+        requestID: UUID
+    ) {
+        guard isActive(requestID) else { return }
+        activeRequestID = nil
+        state = .awaitingClarification(
+            PendingClarification(
+                id: requestID,
+                originalPrompt: preparedAttempt.originalPrompt,
+                intent: preparedAttempt.intent,
+                validation: preparedAttempt.validation,
+                parserDebugInfo: preparedAttempt.parserDebugInfo,
+                question: clarification.question,
+                kind: .location(field),
+                supportingText: clarification.supportingText,
+                locationCandidates: clarification.candidates,
+                allowsFreeText: clarification.allowsFreeText,
+                preparedAttempt: preparedAttempt
+            )
+        )
+    }
+
+    static func explicitlyRequestsNearby(_ prompt: String) -> Bool {
+        let normalized = LocationLanguageContext.normalizedWords(prompt)
+        return ["near me", "close to me", "in meiner nahe", "bei mir", "um mich herum"]
+            .contains(where: normalized.contains)
+    }
+
     func continueAfterValidation(
         _ validationResult: IntentValidationResult,
         parsedIntent: AdventureIntent,
         parserDebugInfo: IntentParserDebugInfo?,
         requestID: UUID,
-        originalPrompt: String
+        originalPrompt: String,
+        selectedLocations: [IntentMissingField: LocationCandidate] = [:]
     ) throws {
         guard let prepared = try preparedAttempt(
             from: validationResult,
             parsedIntent: parsedIntent,
             parserDebugInfo: parserDebugInfo,
             requestID: requestID,
-            originalPrompt: originalPrompt
+            originalPrompt: originalPrompt,
+            selectedLocations: selectedLocations
         ) else { return }
 
         state = .resolvingLocations(prepared)
@@ -955,7 +1220,8 @@ private extension PlannerViewModel {
         parsedIntent: AdventureIntent,
         parserDebugInfo: IntentParserDebugInfo?,
         requestID: UUID,
-        originalPrompt: String
+        originalPrompt: String,
+        selectedLocations: [IntentMissingField: LocationCandidate] = [:]
     ) throws -> PreparedAttempt? {
         let snapshot = ValidationSnapshot(validationResult)
         if let validatedIntent = validationResult.validatedIntent {
@@ -965,7 +1231,8 @@ private extension PlannerViewModel {
                 intent: validationResult.intentForRouting ?? parsedIntent,
                 validatedIntent: validatedIntent,
                 validation: snapshot,
-                parserDebugInfo: parserDebugInfo
+                parserDebugInfo: parserDebugInfo,
+                selectedLocations: selectedLocations
             )
         }
 
@@ -985,7 +1252,11 @@ private extension PlannerViewModel {
                     question: validationResult.clarificationQuestion
                         ?? validationResult.validationError?.localizedDescription
                         ?? IntentClarificationQuestion.vagueArea,
-                    kind: kind
+                    kind: kind,
+                    supportingText: nil,
+                    locationCandidates: [],
+                    allowsFreeText: true,
+                    preparedAttempt: nil
                 )
             )
             return nil

@@ -37,6 +37,10 @@ struct RoutePromptParser: Sendable {
 
     private static let loopPatterns: [NSRegularExpression] = [
         try! NSRegularExpression(
+            pattern: #"^\s*.*?\b(?:rundwanderung|rundtour|wanderung|tour|hike|walk|trailrun|trail\s+run)\b.*?\b(?:in\s+den|in\s+der|in\s+the|im|in)\s+(.+?)(?:\s+(?:machen|planen|unternehmen|gehen|with|mit|for|für)\b|[.!?]|$)"#,
+            options: [.caseInsensitive]
+        ),
+        try! NSRegularExpression(
             pattern: #"^\s*(?:.+?\s+)?(?:rundwanderung|rundtour|runde)\s+(?:um|ab|bei)\s+(.+?)\s*$"#,
             options: [.caseInsensitive]
         ),

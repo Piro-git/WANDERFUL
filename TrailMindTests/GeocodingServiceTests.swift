@@ -16,6 +16,10 @@ final class GeocodingServiceTests: XCTestCase {
                 "Start and destination could not be distinguished. Use more specific place names."
             ),
             (
+                .needsClarification(query: "Alps"),
+                "“Alps” needs a more specific town, valley or trailhead."
+            ),
+            (
                 .network,
                 "Place search is unavailable right now. Check your connection and try again."
             ),
@@ -33,10 +37,10 @@ final class GeocodingServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testUnqualifiedPlacesUseAnEnglishGermanyQualifier() {
+    func testUnqualifiedPlacesAreNeverSilentlyCountryQualified() {
         XCTAssertEqual(
             NativeGeocodingService.contextualizedQuery("Ilsenburg"),
-            "Ilsenburg, Germany"
+            "Ilsenburg"
         )
         XCTAssertEqual(
             NativeGeocodingService.contextualizedQuery(
@@ -45,7 +49,7 @@ final class GeocodingServiceTests: XCTestCase {
                 subAdministrativeArea: "Landkreis Harz",
                 administrativeArea: "Saxony-Anhalt"
             ),
-            "Schierke, Landkreis Harz, Saxony-Anhalt, Germany"
+            "Schierke"
         )
     }
 
@@ -70,27 +74,12 @@ final class GeocodingServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testInitialSearchRegionIsAnExplicitGermanyBias() throws {
-        let region = try XCTUnwrap(
-            NativeGeocodingService.searchRegion(for: "Ilsenburg", near: nil)
-        )
-
-        XCTAssertEqual(region.identifier, "GermanyBias")
-        XCTAssertEqual(
-            region.center.latitude,
-            NativeGeocodingService.germanyBiasCenter.latitude,
-            accuracy: 0.000_001
-        )
-        XCTAssertEqual(
-            region.center.longitude,
-            NativeGeocodingService.germanyBiasCenter.longitude,
-            accuracy: 0.000_001
-        )
-        XCTAssertEqual(region.radius, NativeGeocodingService.germanyBiasRadiusMeters)
+    func testInitialSearchHasNoImplicitCountryRegion() {
+        XCTAssertNil(NativeGeocodingService.searchRegion(for: "Ilsenburg", near: nil))
     }
 
     @MainActor
-    func testDestinationSearchUsesTheResolvedStartInsteadOfTheCountryCenter() throws {
+    func testDestinationSearchUsesResolvedStartAsNearbyHint() throws {
         let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
         let region = try XCTUnwrap(
             NativeGeocodingService.searchRegion(for: "Schierke", near: start)
@@ -103,7 +92,7 @@ final class GeocodingServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testExplicitForeignCountryRemovesGermanyAndRouteStartBiases() {
+    func testExplicitCountryRemovesRouteStartBias() {
         let germanStart = Coordinate(latitude: 51.8666, longitude: 10.6782)
 
         XCTAssertNil(

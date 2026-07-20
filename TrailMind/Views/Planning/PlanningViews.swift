@@ -145,6 +145,7 @@ struct PlanningClarificationView: View {
     let onEditPrompt: () -> Void
     @State private var textAnswer = ""
     @State private var routeTypeSelection: TrailRouteType?
+    @State private var selectedLocationCandidateID: String?
 
     var body: some View {
         ScrollView {
@@ -161,6 +162,13 @@ struct PlanningClarificationView: View {
                         .foregroundStyle(theme.graphite)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier(PlanningAccessibilityID.clarificationQuestion)
+
+                    if let supportingText = clarification.supportingText {
+                        Text(supportingText)
+                            .font(.subheadline)
+                            .foregroundStyle(theme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
                     answerContent
 
@@ -208,19 +216,55 @@ struct PlanningClarificationView: View {
     private var answerContent: some View {
         switch clarification.kind {
         case .location:
-            TextField("Enter a place or trailhead", text: $textAnswer)
-                .focused($isTextAnswerFocused)
-                .textInputAutocapitalization(.words)
-                .autocorrectionDisabled()
-                .padding(.horizontal, 15)
-                .padding(.vertical, 14)
-                .frame(minHeight: 52)
-                .background(theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(theme.forest.opacity(0.12), lineWidth: 1)
+            VStack(alignment: .leading, spacing: 12) {
+                if !clarification.locationCandidates.isEmpty {
+                    Text("Matching places")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(theme.moss)
+                        .textCase(.uppercase)
+                        .tracking(0.7)
+
+                    ForEach(clarification.locationCandidates) { candidate in
+                        ClarificationLocationChoiceButton(
+                            candidate: candidate,
+                            isSelected: selectedLocationCandidateID == candidate.id
+                        ) {
+                            selectedLocationCandidateID = candidate.id
+                            textAnswer = ""
+                            isTextAnswerFocused = false
+                        }
+                    }
                 }
-                .accessibilityIdentifier(PlanningAccessibilityID.clarificationAnswer)
+
+                if clarification.allowsFreeText {
+                    if !clarification.locationCandidates.isEmpty {
+                        Text("Or enter a specific starting area")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(theme.secondaryText)
+                    }
+
+                    TextField("Town, valley or trailhead", text: $textAnswer)
+                        .focused($isTextAnswerFocused)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 15)
+                        .padding(.vertical, 14)
+                        .frame(minHeight: 52)
+                        .background(theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(theme.forest.opacity(0.12), lineWidth: 1)
+                        }
+                        .onChange(of: textAnswer) { _, newValue in
+                            if !newValue.isEmpty {
+                                selectedLocationCandidateID = nil
+                            }
+                        }
+                        .accessibilityLabel("Specific town, valley or trailhead")
+                        .accessibilityHint("Enter a precise place TrailMind can safely use to calculate the route.")
+                        .accessibilityIdentifier(PlanningAccessibilityID.clarificationAnswer)
+                }
+            }
 
         case .routeType:
             VStack(spacing: 10) {
@@ -246,7 +290,8 @@ struct PlanningClarificationView: View {
     private var canContinue: Bool {
         switch clarification.kind {
         case .location:
-            !textAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            selectedLocationCandidateID != nil
+                || !textAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .routeType:
             routeTypeSelection != nil
         }
@@ -255,10 +300,84 @@ struct PlanningClarificationView: View {
     private func submitAnswer() {
         switch clarification.kind {
         case .location:
-            onSubmit(.text(textAnswer))
+            if let selectedLocationCandidateID,
+               let candidate = clarification.locationCandidates.first(where: { $0.id == selectedLocationCandidateID }) {
+                onSubmit(.locationCandidate(candidate))
+            } else {
+                onSubmit(.text(textAnswer))
+            }
         case .routeType:
             guard let routeTypeSelection else { return }
             onSubmit(.routeType(routeTypeSelection))
+        }
+    }
+}
+
+private struct ClarificationLocationChoiceButton: View {
+    @Environment(TrailTheme.self) private var theme
+    let candidate: LocationCandidate
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(theme.moss)
+                    .frame(width: 28, height: 28)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(candidate.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.graphite)
+                        .multilineTextAlignment(.leading)
+                    Text(candidate.semanticKind.userFacingLabel)
+                        .font(.caption)
+                        .foregroundStyle(theme.secondaryText)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? theme.moss : theme.secondaryText.opacity(0.4))
+            }
+            .padding(.horizontal, 15)
+            .padding(.vertical, 12)
+            .frame(minHeight: 56)
+            .background(
+                isSelected ? theme.mossSoft.opacity(0.7) : theme.surface,
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? theme.moss.opacity(0.45) : theme.forest.opacity(0.1), lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(candidate.displayName), \(candidate.semanticKind.userFacingLabel)")
+        .accessibilityHint(candidate.semanticKind.isUsableRouteAnchor
+            ? "Selects this place for route planning."
+            : "This is a broad area and still needs a specific town, valley or trailhead.")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+    }
+
+    private var symbol: String {
+        switch candidate.semanticKind {
+        case .settlement:
+            "building.2.fill"
+        case .trailhead:
+            "figure.hiking"
+        case .landmark:
+            "mappin.and.ellipse"
+        case .park:
+            "tree.fill"
+        case .mountainRange, .broadRegion:
+            "mountain.2.fill"
+        case .unknown:
+            "mappin"
         }
     }
 }

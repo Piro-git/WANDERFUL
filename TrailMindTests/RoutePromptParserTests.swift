@@ -90,6 +90,22 @@ final class RoutePromptParserTests: XCTestCase {
     }
 
     @MainActor
+    func testNaturalHikeInRegionPromptsPreserveTheNamedRegion() throws {
+        let parser = RoutePromptParser()
+        let german = try parser.parse(
+            "Ich will mit Freunden eine etwas leichtere Wanderung in den Alpen machen."
+        )
+        let english = try parser.parse("We want an easy hike in the Alps.")
+
+        XCTAssertEqual(german.routeType, .loop)
+        XCTAssertEqual(german.startLocationQuery, "Alpen")
+        XCTAssertEqual(german.difficulty, .easy)
+        XCTAssertEqual(english.routeType, .loop)
+        XCTAssertEqual(english.startLocationQuery, "Alps")
+        XCTAssertEqual(english.difficulty, .easy)
+    }
+
+    @MainActor
     func testNaturalLoopPromptsFromExamples() throws {
         let parser = RoutePromptParser()
 

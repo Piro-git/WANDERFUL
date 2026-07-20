@@ -145,6 +145,24 @@ private final class ControlledGeocodingService: GeocodingService {
 }
 
 @MainActor
+private final class PolicyLocationResolver: LocationResolving {
+    private let candidatesByQuery: [String: [LocationCandidate]]
+    private(set) var contexts: [LocationQueryContext] = []
+
+    init(candidatesByQuery: [String: [LocationCandidate]]) {
+        self.candidatesByQuery = candidatesByQuery
+    }
+
+    func resolve(_ context: LocationQueryContext) async throws -> LocationResolution {
+        contexts.append(context)
+        return LocationResolutionPolicy.resolve(
+            context: context,
+            candidates: candidatesByQuery[context.originalQuery] ?? []
+        )
+    }
+}
+
+@MainActor
 private final class StubRoutingCoordinator: RoutingCoordinating {
     private var results: [Result<RoutingResult, Error>]
     private(set) var intents: [RouteIntent] = []
@@ -208,6 +226,27 @@ private final class ControlledRoutingCoordinator: RoutingCoordinating {
 final class PlannerViewModelTests: XCTestCase {
     private let start = Coordinate(latitude: 51.8666, longitude: 10.6782)
     private let end = Coordinate(latitude: 51.7636, longitude: 10.6647)
+
+    private func locationCandidate(
+        id: String,
+        name: String,
+        displayName: String,
+        coordinate: Coordinate,
+        kind: LocationSemanticKind = .settlement,
+        countryCode: String? = "DE",
+        rank: Int = 0
+    ) -> LocationCandidate {
+        LocationCandidate(
+            id: id,
+            name: name,
+            displayName: displayName,
+            coordinate: coordinate,
+            semanticKind: kind,
+            countryCode: countryCode,
+            provider: .appleGeocoder,
+            providerRank: rank
+        )
+    }
 
     private func makeViewModel(
         geocodingService: any GeocodingService,
@@ -1057,6 +1096,289 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(finalSuccess.originalPrompt, newPrompt)
         XCTAssertEqual(router.intents.count, 1)
         XCTAssertEqual(router.intents.first?.parsedIntent?.rawPrompt, newPrompt)
+    }
+
+    func testBroadHikingRegionsClarifyBeforeRouting() async throws {
+        let cases = [
+            (
+                "Ich möchte eine leichte Wanderung in den Alpen.",
+                "Alpen",
+                "Where in the Alps should the hike start?"
+            ),
+            (
+                "15 km Rundwanderung im Harz.",
+                "Harz",
+                "Where in the Harz should the hike start?"
+            )
+        ]
+
+        for (prompt, query, expectedQuestion) in cases {
+            let resolver = PolicyLocationResolver(candidatesByQuery: [:])
+            let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .loop))
+            let viewModel = PlannerViewModel(
+                intentParsingProvider: LocalIntentParsingProvider(),
+                locationResolver: resolver,
+                routingCoordinator: router
+            )
+
+            viewModel.startPlanning(prompt: prompt)
+            await viewModel.generate()
+
+            let clarification = try XCTUnwrap(viewModel.currentClarification)
+            XCTAssertEqual(clarification.question, expectedQuestion)
+            XCTAssertTrue(clarification.supportingText?.contains("town, valley or trailhead") == true)
+            XCTAssertTrue(clarification.allowsFreeText)
+            XCTAssertEqual(clarification.originalPrompt, prompt)
+            XCTAssertEqual(router.intents.count, 0)
+            XCTAssertEqual(resolver.contexts.count, 1)
+            XCTAssertEqual(resolver.contexts.first?.originalQuery, query)
+        }
+    }
+
+    func testQualifiedHikingSettlementResolvesWithoutGermanyBias() async {
+        let prompt = "Easy hike near Innsbruck, Austria."
+        let innsbruck = locationCandidate(
+            id: "innsbruck-at",
+            name: "Innsbruck",
+            displayName: "Innsbruck, Tyrol, Austria",
+            coordinate: Coordinate(latitude: 47.27, longitude: 11.40),
+            countryCode: "AT"
+        )
+        let resolver = PolicyLocationResolver(candidatesByQuery: ["Innsbruck, Austria": [innsbruck]])
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .loop))
+        let viewModel = PlannerViewModel(
+            intentParsingProvider: FixedIntentParsingProvider(
+                intent: makeIntent(
+                    rawPrompt: prompt,
+                    routeType: .loop,
+                    start: "Innsbruck, Austria",
+                    end: nil,
+                    distance: 10
+                )
+            ),
+            locationResolver: resolver,
+            routingCoordinator: router
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        XCTAssertEqual(router.intents.count, 1)
+        XCTAssertEqual(router.intents.first?.start, innsbruck.coordinate)
+        XCTAssertEqual(resolver.contexts.first?.explicitCountryCode, "AT")
+        XCTAssertNil(resolver.contexts.first?.preferredCoordinate)
+    }
+
+    func testAmbiguousCandidateChoiceDeterministicallyResumesRouting() async throws {
+        let prompt = "Wanderung bei Neustadt"
+        let first = locationCandidate(
+            id: "neustadt-one",
+            name: "Neustadt",
+            displayName: "Neustadt, Rhineland-Palatinate, Germany",
+            coordinate: Coordinate(latitude: 49.35, longitude: 8.15),
+            rank: 0
+        )
+        let selected = locationCandidate(
+            id: "neustadt-two",
+            name: "Neustadt",
+            displayName: "Neustadt, Lower Saxony, Germany",
+            coordinate: Coordinate(latitude: 52.50, longitude: 9.46),
+            rank: 1
+        )
+        let resolver = PolicyLocationResolver(candidatesByQuery: ["Neustadt": [first, selected]])
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .loop))
+        let viewModel = PlannerViewModel(
+            intentParsingProvider: FixedIntentParsingProvider(
+                intent: makeIntent(
+                    rawPrompt: prompt,
+                    routeType: .loop,
+                    start: "Neustadt",
+                    end: nil,
+                    distance: 10
+                )
+            ),
+            locationResolver: resolver,
+            routingCoordinator: router
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        let clarification = try XCTUnwrap(viewModel.currentClarification)
+        XCTAssertEqual(clarification.locationCandidates.map(\.id), [first.id, selected.id])
+        XCTAssertEqual(router.intents.count, 0)
+
+        viewModel.submitClarification(.locationCandidate(selected))
+        await viewModel.generate()
+
+        XCTAssertEqual(router.intents.count, 1)
+        XCTAssertEqual(router.intents.first?.start, selected.coordinate)
+        XCTAssertEqual(resolver.contexts.count, 1, "An explicit candidate must not be silently re-geocoded.")
+        guard case .suggestionsReady = viewModel.state else {
+            return XCTFail("Selected location should resume the existing routing pipeline.")
+        }
+    }
+
+    func testDestinationResolutionUsesResolvedStartOnlyAsSoftHint() async {
+        let prompt = "Plan a hike from Ilsenburg to Schierke."
+        let ilsenburg = locationCandidate(
+            id: "ilsenburg",
+            name: "Ilsenburg",
+            displayName: "Ilsenburg, Saxony-Anhalt, Germany",
+            coordinate: start
+        )
+        let schierke = locationCandidate(
+            id: "schierke",
+            name: "Schierke",
+            displayName: "Schierke, Saxony-Anhalt, Germany",
+            coordinate: end
+        )
+        let resolver = PolicyLocationResolver(
+            candidatesByQuery: ["Ilsenburg": [ilsenburg], "Schierke": [schierke]]
+        )
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .pointToPoint))
+        let viewModel = PlannerViewModel(
+            intentParsingProvider: FixedIntentParsingProvider(intent: makeIntent(rawPrompt: prompt)),
+            locationResolver: resolver,
+            routingCoordinator: router
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+
+        XCTAssertEqual(resolver.contexts.count, 2)
+        XCTAssertNil(resolver.contexts[0].preferredCoordinate)
+        XCTAssertEqual(resolver.contexts[1].requestedField, .endLocationQuery)
+        XCTAssertEqual(resolver.contexts[1].preferredCoordinate, start)
+        XCTAssertEqual(router.intents.first?.end, end)
+    }
+
+    func testRoutingRetryPreservesExplicitCandidateChoice() async throws {
+        let prompt = "Wanderung bei Neustadt"
+        let first = locationCandidate(
+            id: "neustadt-one",
+            name: "Neustadt",
+            displayName: "Neustadt, Rhineland-Palatinate, Germany",
+            coordinate: Coordinate(latitude: 49.35, longitude: 8.15),
+            rank: 0
+        )
+        let selected = locationCandidate(
+            id: "neustadt-two",
+            name: "Neustadt",
+            displayName: "Neustadt, Lower Saxony, Germany",
+            coordinate: Coordinate(latitude: 52.50, longitude: 9.46),
+            rank: 1
+        )
+        let resolver = PolicyLocationResolver(candidatesByQuery: ["Neustadt": [first, selected]])
+        let router = StubRoutingCoordinator(
+            results: [
+                .failure(GraphHopperError.network(message: "offline")),
+                .success(
+                    RoutingResult(
+                        suggestions: RouteSuggestionNormalizer.suggestions(
+                            from: [verifiedRoute(routeType: .loop)]
+                        ),
+                        notice: nil
+                    )
+                )
+            ]
+        )
+        let viewModel = PlannerViewModel(
+            intentParsingProvider: FixedIntentParsingProvider(
+                intent: makeIntent(
+                    rawPrompt: prompt,
+                    routeType: .loop,
+                    start: "Neustadt",
+                    end: nil
+                )
+            ),
+            locationResolver: resolver,
+            routingCoordinator: router
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+        viewModel.submitClarification(.locationCandidate(selected))
+        await viewModel.generate()
+
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("First routing attempt should fail recoverably.")
+        }
+        XCTAssertEqual(recovery.preparedAttempt?.selectedLocations[.startLocationQuery], selected)
+
+        viewModel.retryGeneration()
+        await viewModel.generate()
+
+        XCTAssertEqual(router.intents.count, 2)
+        XCTAssertTrue(router.intents.allSatisfy { $0.start == selected.coordinate })
+        XCTAssertEqual(resolver.contexts.count, 1, "Retry must reuse the explicit location choice.")
+        guard case .suggestionsReady = viewModel.state else {
+            return XCTFail("Retry should finish with the preserved location.")
+        }
+    }
+
+    func testNoRoutesRetryPreservesExplicitCandidateChoice() async throws {
+        let prompt = "Wanderung bei Neustadt"
+        let first = locationCandidate(
+            id: "neustadt-one",
+            name: "Neustadt",
+            displayName: "Neustadt, Rhineland-Palatinate, Germany",
+            coordinate: Coordinate(latitude: 49.35, longitude: 8.15),
+            rank: 0
+        )
+        let selected = locationCandidate(
+            id: "neustadt-two",
+            name: "Neustadt",
+            displayName: "Neustadt, Lower Saxony, Germany",
+            coordinate: Coordinate(latitude: 52.50, longitude: 9.46),
+            rank: 1
+        )
+        let resolver = PolicyLocationResolver(candidatesByQuery: ["Neustadt": [first, selected]])
+        let router = StubRoutingCoordinator(
+            results: [
+                .success(RoutingResult(suggestions: [], notice: nil)),
+                .success(
+                    RoutingResult(
+                        suggestions: RouteSuggestionNormalizer.suggestions(
+                            from: [verifiedRoute(routeType: .loop)]
+                        ),
+                        notice: nil
+                    )
+                )
+            ]
+        )
+        let viewModel = PlannerViewModel(
+            intentParsingProvider: FixedIntentParsingProvider(
+                intent: makeIntent(
+                    rawPrompt: prompt,
+                    routeType: .loop,
+                    start: "Neustadt",
+                    end: nil
+                )
+            ),
+            locationResolver: resolver,
+            routingCoordinator: router
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        await viewModel.generate()
+        viewModel.submitClarification(.locationCandidate(selected))
+        await viewModel.generate()
+
+        guard case let .noRoutes(recovery) = viewModel.state else {
+            return XCTFail("The first routing result should expose no-route recovery.")
+        }
+        XCTAssertEqual(recovery.preparedAttempt?.selectedLocations[.startLocationQuery], selected)
+
+        viewModel.retryGeneration()
+        await viewModel.generate()
+
+        XCTAssertEqual(router.intents.count, 2)
+        XCTAssertTrue(router.intents.allSatisfy { $0.start == selected.coordinate })
+        XCTAssertEqual(resolver.contexts.count, 1, "No-route retry must reuse the explicit location choice.")
+        guard case .suggestionsReady = viewModel.state else {
+            return XCTFail("No-route retry should finish with the preserved location.")
+        }
     }
 
     func testEveryHomeExampleUsesTheSameRealCoordinator() async {

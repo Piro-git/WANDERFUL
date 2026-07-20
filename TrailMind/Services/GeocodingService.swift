@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import MapKit
 
 @MainActor
 protocol GeocodingService {
@@ -18,6 +19,7 @@ enum GeocodingServiceError: LocalizedError {
     case noResults(query: String)
     case requestInProgress
     case endpointsTooClose
+    case needsClarification(query: String)
     case network
     case unavailable
     case failed(message: String)
@@ -32,6 +34,8 @@ enum GeocodingServiceError: LocalizedError {
             "Place search is already in progress. Try again in a moment."
         case .endpointsTooClose:
             "Start and destination could not be distinguished. Use more specific place names."
+        case let .needsClarification(query):
+            "“\(query)” needs a more specific town, valley or trailhead."
         case .network:
             "Place search is unavailable right now. Check your connection and try again."
         case .unavailable:
@@ -43,59 +47,53 @@ enum GeocodingServiceError: LocalizedError {
 }
 
 @MainActor
-final class NativeGeocodingService: GeocodingService {
+final class NativeGeocodingService: GeocodingService, LocationCandidateProviding {
     private struct PlacemarkContext {
         let locality: String?
         let subAdministrativeArea: String?
         let administrativeArea: String?
+        let countryCode: String?
     }
 
-    private let geocoder = CLGeocoder()
-    private var cache: [String: Coordinate] = [:]
+    private var candidateCache: [String: [LocationCandidate]] = [:]
     private var contextByCoordinate: [String: PlacemarkContext] = [:]
     private var lastRequestDate: Date?
 
-    /// Unqualified place names are intentionally biased toward TrailMind's
-    /// Germany-first beta region. This is a search hint, not a location claim.
-    static let germanyBiasCenter = Coordinate(latitude: 51.1657, longitude: 10.4515)
-    static let germanyBiasRadiusMeters: CLLocationDistance = 700_000
     static let nearbyBiasRadiusMeters: CLLocationDistance = 150_000
-    private static let germanyRegionCode = "DE"
-    private static let countryRegionCodeByName: [String: String] = {
-        let displayLocales = [Locale(identifier: "en"), Locale(identifier: "de")]
-        return Locale.Region.isoRegions.reduce(into: [:]) { namesByCode, region in
-            let regionCode = region.identifier.uppercased()
-            namesByCode[normalizedCountryComponent(regionCode)] = regionCode
-            for locale in displayLocales {
-                if let name = locale.localizedString(forRegionCode: regionCode) {
-                    namesByCode[normalizedCountryComponent(name)] = regionCode
-                }
-            }
-        }
-    }()
 
     func geocodeLocation(_ query: String, near preferredCoordinate: Coordinate?) async throws -> Coordinate {
-        let cleanQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let context = LocationQueryContext(
+            originalQuery: query,
+            originalPrompt: query,
+            routeType: .pointToPoint,
+            activityType: .hiking,
+            requestedField: preferredCoordinate == nil ? .startLocationQuery : .endLocationQuery,
+            preferredCoordinate: preferredCoordinate
+        )
+        let resolution = LocationResolutionPolicy.resolve(
+            context: context,
+            candidates: try await candidates(for: context)
+        )
+        switch resolution {
+        case let .resolved(candidate):
+            return candidate.coordinate
+        case .needsClarification:
+            throw GeocodingServiceError.needsClarification(query: query)
+        case let .noResults(query):
+            throw GeocodingServiceError.noResults(query: query)
+        case .unavailable:
+            throw GeocodingServiceError.unavailable
+        }
+    }
+
+    func candidates(for context: LocationQueryContext) async throws -> [LocationCandidate] {
+        let cleanQuery = context.originalQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanQuery.isEmpty else {
             throw GeocodingServiceError.emptyQuery
         }
 
-        let normalizedQuery = cleanQuery.folding(
-            options: [.caseInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "en_US_POSIX")
-        )
-        let cacheKey = if let preferredCoordinate {
-            "\(normalizedQuery)|\(Int(preferredCoordinate.latitude * 10)),\(Int(preferredCoordinate.longitude * 10))"
-        } else {
-            "\(normalizedQuery)|germany"
-        }
-        if let cached = cache[cacheKey] {
-            return cached
-        }
-
-        guard !geocoder.isGeocoding else {
-            throw GeocodingServiceError.requestInProgress
-        }
+        let cacheKey = Self.cacheKey(for: context)
+        if let cached = candidateCache[cacheKey] { return cached }
 
         if let lastRequestDate {
             let elapsed = Date().timeIntervalSince(lastRequestDate)
@@ -106,70 +104,77 @@ final class NativeGeocodingService: GeocodingService {
         try Task.checkCancellation()
         lastRequestDate = Date()
 
-        let nearbyContext = preferredCoordinate.flatMap {
+        let nearbyContext = context.preferredCoordinate.flatMap {
             contextByCoordinate[coordinateCacheKey($0)]
         }
-        let germanyBiasedQuery = Self.contextualizedQuery(
+        let contextualQuery = Self.contextualizedQuery(
             cleanQuery,
             locality: nearbyContext?.locality,
             subAdministrativeArea: nearbyContext?.subAdministrativeArea,
             administrativeArea: nearbyContext?.administrativeArea
         )
-        let searchRegion = Self.searchRegion(for: cleanQuery, near: preferredCoordinate)
+        let searchRegion = Self.searchRegion(for: cleanQuery, near: context.preferredCoordinate)
+        guard let geocodingRequest = MKGeocodingRequest(addressString: contextualQuery) else {
+            throw GeocodingServiceError.noResults(query: cleanQuery)
+        }
+        geocodingRequest.preferredLocale = Locale(identifier: context.localeIdentifier)
+        if let searchRegion {
+            geocodingRequest.region = MKCoordinateRegion(
+                center: searchRegion.center,
+                latitudinalMeters: searchRegion.radius * 2,
+                longitudinalMeters: searchRegion.radius * 2
+            )
+        }
 
         do {
-            let placemarks = try await geocoder.geocodeAddressString(
-                germanyBiasedQuery,
-                in: searchRegion
-            )
+            let mapItems = try await geocodingRequest.mapItems
             try Task.checkCancellation()
-
-            let selectedPlacemark: CLPlacemark?
-            if let preferredCoordinate,
+            var candidates = mapItems.enumerated().map { index, mapItem in
+                Self.candidate(from: mapItem, query: cleanQuery, providerRank: index)
+            }
+            if let preferredCoordinate = context.preferredCoordinate,
                Self.shouldPreferNearbyResults(for: cleanQuery, near: preferredCoordinate) {
                 let preferredLocation = CLLocation(
                     latitude: preferredCoordinate.latitude,
                     longitude: preferredCoordinate.longitude
                 )
-                selectedPlacemark = placemarks
-                    .filter { $0.location != nil }
-                    .min {
-                        $0.location!.distance(from: preferredLocation)
-                            < $1.location!.distance(from: preferredLocation)
-                    }
-            } else {
-                selectedPlacemark = placemarks.first { $0.location != nil }
+                candidates.sort {
+                    let first = CLLocation(
+                        latitude: $0.coordinate.latitude,
+                        longitude: $0.coordinate.longitude
+                    )
+                    let second = CLLocation(
+                        latitude: $1.coordinate.latitude,
+                        longitude: $1.coordinate.longitude
+                    )
+                    return first.distance(from: preferredLocation) < second.distance(from: preferredLocation)
+                }
             }
 
-            guard let selectedPlacemark, let location = selectedPlacemark.location else {
+            guard !candidates.isEmpty else {
                 throw GeocodingServiceError.noResults(query: cleanQuery)
             }
-
-            let coordinate = Coordinate(
-                latitude: location.coordinate.latitude,
-                longitude: location.coordinate.longitude,
-                elevationMeters: location.altitude.isFinite ? location.altitude : nil
-            )
-            cache[cacheKey] = coordinate
-            contextByCoordinate[coordinateCacheKey(coordinate)] = PlacemarkContext(
-                locality: selectedPlacemark.locality,
-                subAdministrativeArea: selectedPlacemark.subAdministrativeArea,
-                administrativeArea: selectedPlacemark.administrativeArea
-            )
-            return coordinate
+            candidateCache[cacheKey] = candidates
+            for candidate in candidates {
+                contextByCoordinate[coordinateCacheKey(candidate.coordinate)] = PlacemarkContext(
+                    locality: candidate.locality,
+                    subAdministrativeArea: nil,
+                    administrativeArea: candidate.administrativeRegion,
+                    countryCode: candidate.countryCode
+                )
+            }
+            return candidates
         } catch is CancellationError {
-            geocoder.cancelGeocode()
+            geocodingRequest.cancel()
             throw CancellationError()
         } catch let error as GeocodingServiceError {
             throw error
-        } catch let error as CLError {
-            switch error.code {
-            case .geocodeFoundNoResult, .geocodeFoundPartialResult:
+        } catch let error as NSError where error.domain == MKErrorDomain {
+            switch MKError.Code(rawValue: UInt(error.code)) {
+            case .placemarkNotFound:
                 throw GeocodingServiceError.noResults(query: cleanQuery)
-            case .network:
+            case .serverFailure, .loadingThrottled:
                 throw GeocodingServiceError.network
-            case .denied:
-                throw GeocodingServiceError.unavailable
             default:
                 throw GeocodingServiceError.failed(message: error.localizedDescription)
             }
@@ -184,36 +189,19 @@ final class NativeGeocodingService: GeocodingService {
         subAdministrativeArea: String? = nil,
         administrativeArea: String? = nil
     ) -> String {
-        guard !isAlreadyCountryQualified(query) else { return query }
-
-        var components = [query]
-        if let subAdministrativeArea {
-            components.append(subAdministrativeArea)
-        } else if let locality {
-            components.append(locality)
-        }
-        if let administrativeArea {
-            components.append(administrativeArea)
-        }
-        components.append("Germany")
-
-        var seen: Set<String> = []
-        return components.filter { component in
-            let normalized = component.folding(
-                options: [.caseInsensitive, .diacriticInsensitive],
-                locale: Locale(identifier: "en_US_POSIX")
-            )
-            return seen.insert(normalized).inserted
-        }
-        .joined(separator: ", ")
+        // Nearby route context is deliberately carried as a search/ranking
+        // hint, never rewritten into the user's query as if it were explicit.
+        _ = locality
+        _ = subAdministrativeArea
+        _ = administrativeArea
+        return query
     }
 
     static func searchRegion(
         for query: String,
         near preferredCoordinate: Coordinate?
     ) -> CLCircularRegion? {
-        if let countryRegionCode = explicitCountryRegionCode(in: query),
-           countryRegionCode != germanyRegionCode {
+        if LocationLanguageContext.explicitCountryCode(in: query) != nil {
             return nil
         }
         if let preferredCoordinate {
@@ -226,14 +214,7 @@ final class NativeGeocodingService: GeocodingService {
                 identifier: "RouteStartBias"
             )
         }
-        return CLCircularRegion(
-            center: CLLocationCoordinate2D(
-                latitude: germanyBiasCenter.latitude,
-                longitude: germanyBiasCenter.longitude
-            ),
-            radius: germanyBiasRadiusMeters,
-            identifier: "GermanyBias"
-        )
+        return nil
     }
 
     static func shouldPreferNearbyResults(
@@ -241,31 +222,76 @@ final class NativeGeocodingService: GeocodingService {
         near preferredCoordinate: Coordinate?
     ) -> Bool {
         guard preferredCoordinate != nil else { return false }
-        guard let countryRegionCode = explicitCountryRegionCode(in: query) else { return true }
-        return countryRegionCode == germanyRegionCode
+        return LocationLanguageContext.explicitCountryCode(in: query) == nil
     }
 
     private func coordinateCacheKey(_ coordinate: Coordinate) -> String {
         "\(Int(coordinate.latitude * 1_000)),\(Int(coordinate.longitude * 1_000))"
     }
 
-    private static func isAlreadyCountryQualified(_ query: String) -> Bool {
-        explicitCountryRegionCode(in: query) != nil
+    private static func cacheKey(for context: LocationQueryContext) -> String {
+        let coordinateKey = context.preferredCoordinate.map {
+            "\(Int($0.latitude * 10)),\(Int($0.longitude * 10))"
+        } ?? "none"
+        return [
+            LocationLanguageContext.normalizedWords(context.originalQuery),
+            context.explicitCountryCode ?? "none",
+            coordinateKey
+        ].joined(separator: "|")
     }
 
-    private static func explicitCountryRegionCode(in query: String) -> String? {
-        guard query.contains(","),
-              let finalComponent = query.split(separator: ",", omittingEmptySubsequences: false).last else {
-            return nil
+    private static func candidate(
+        from mapItem: MKMapItem,
+        query: String,
+        providerRank: Int
+    ) -> LocationCandidate {
+        let location = mapItem.location
+        let coordinate = Coordinate(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            elevationMeters: location.altitude.isFinite ? location.altitude : nil
+        )
+        let representations = mapItem.addressRepresentations
+        let name = mapItem.name ?? representations?.cityName ?? query
+        let locality = representations?.cityName
+        let country = representations?.regionName
+        let cityContext = representations?.cityWithContext(.full)
+        let components = [
+            name,
+            cityContext,
+            mapItem.address?.shortAddress,
+            cityContext == nil ? country : nil
+        ]
+        let displayName = deduplicatedComponents(components).joined(separator: ", ")
+        let semanticKind = LocationSemanticClassifier.classify(
+            query: query,
+            hasLocality: locality != nil,
+            hasAreaOfInterest: mapItem.pointOfInterestCategory != nil
+        )
+        let stableCoordinate = String(format: "%.5f,%.5f", coordinate.latitude, coordinate.longitude)
+        return LocationCandidate(
+            id: "apple:\(stableCoordinate):\(LocationLanguageContext.normalizedWords(displayName))",
+            name: name,
+            displayName: displayName,
+            coordinate: coordinate,
+            semanticKind: semanticKind,
+            locality: locality,
+            administrativeRegion: cityContext,
+            country: country,
+            countryCode: country.flatMap(LocationLanguageContext.explicitCountryCode(in:)),
+            provider: .appleGeocoder,
+            providerRank: providerRank
+        )
+    }
+
+    private static func deduplicatedComponents(_ components: [String?]) -> [String] {
+        var seen: Set<String> = []
+        return components.compactMap { component in
+            guard let component = component?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !component.isEmpty else { return nil }
+            let normalized = LocationLanguageContext.normalizedWords(component)
+            guard seen.insert(normalized).inserted else { return nil }
+            return component
         }
-        return countryRegionCodeByName[normalizedCountryComponent(String(finalComponent))]
-    }
-
-    private static func normalizedCountryComponent(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(
-                options: [.caseInsensitive, .diacriticInsensitive],
-                locale: Locale(identifier: "en_US_POSIX")
-            )
     }
 }
