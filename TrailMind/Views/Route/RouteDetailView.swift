@@ -251,6 +251,7 @@ struct RouteDetailView: View {
     let route: TrailRoute
     private let gpxService: any GPXService
     private let presentation: RouteDetailPresentation
+    private let qualityPresentation: RouteQualityExplanationSet
 
     init(
         route: TrailRoute,
@@ -259,6 +260,7 @@ struct RouteDetailView: View {
         self.route = route
         self.gpxService = gpxService
         presentation = RouteDetailPresentation(route: route)
+        qualityPresentation = HikingRouteQualityEngine().presentation(for: route)
     }
 
     var body: some View {
@@ -274,6 +276,7 @@ struct RouteDetailView: View {
                     verificationNotice
                     RouteStatsRow(route: route)
                     planningContext
+                    routeEvidence
                     verifiedRouteCharacteristics
                     #if DEBUG
                     intentQA
@@ -372,11 +375,35 @@ struct RouteDetailView: View {
 
     @ViewBuilder
     private var verifiedRouteCharacteristics: some View {
-        if let characteristics = route.verifiedCharacteristics,
+        if route.isVerifiedRoutedResult,
+           let characteristics = route.verifiedCharacteristics,
            characteristics.hasDisplayableData
         {
             VerifiedRouteCharacteristicsView(characteristics: characteristics)
         }
+    }
+
+    @ViewBuilder
+    private var routeEvidence: some View {
+        let items = detailEvidenceItems
+        if !items.isEmpty {
+            RouteQualityEvidenceSection(items: items)
+        }
+    }
+
+    private var detailEvidenceItems: [RouteQualityPresentationItem] {
+        let limit = HikingRouteQualityPolicy.v1.maximumDetailExplanationCount
+        var items = qualityPresentation.detailItems(limit: limit)
+
+        if let limitation = qualityPresentation.limitations.first,
+           !items.contains(where: { $0.role == .limitation })
+        {
+            if items.count == limit, !items.isEmpty {
+                items.removeLast()
+            }
+            items.append(limitation)
+        }
+        return items
     }
 
     private var header: some View {
@@ -388,7 +415,15 @@ struct RouteDetailView: View {
                         .foregroundStyle(theme.moss)
                 }
                 Spacer()
-                DifficultyBadge(difficulty: route.difficulty)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("ESTIMATED EFFORT")
+                        .font(.caption2.weight(.semibold))
+                        .tracking(0.45)
+                        .foregroundStyle(theme.secondaryText)
+                    DifficultyBadge(difficulty: route.difficulty)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Physical effort estimate: \(route.difficulty.rawValue)")
             }
 
             Text(route.title)
@@ -546,10 +581,6 @@ struct RouteDetailView: View {
                     .background(theme.sand.opacity(0.62), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
 
-                let qualityExplanations = RouteQualityExplanationGenerator.explanations(for: route)
-                if !qualityExplanations.isEmpty {
-                    RouteQualityExplanationList(explanations: qualityExplanations)
-                }
             }
             .trailCard()
         }
@@ -927,6 +958,96 @@ private struct GPXActivityView: UIViewControllerRepresentable {
     }
 }
 
+private struct RouteQualityEvidenceSection: View {
+    @Environment(TrailTheme.self) private var theme
+
+    let items: [RouteQualityPresentationItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(
+                title: "Why this route",
+                subtitle: "Request fit, mapped route evidence and known data limits."
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+
+            ForEach(items) { item in
+                evidenceRow(item)
+            }
+        }
+        .trailCard()
+        .accessibilityIdentifier("route.qualityEvidence")
+    }
+
+    private func evidenceRow(_ item: RouteQualityPresentationItem) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: item.symbol)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(itemColor(item.role))
+                .frame(width: 30, height: 30)
+                .background(
+                    itemBackground(item.role),
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(roleLabel(item.role).uppercased())
+                    .font(.caption2.weight(.bold))
+                    .tracking(0.5)
+                    .foregroundStyle(itemColor(item.role))
+
+                Text(item.title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(theme.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let detail = item.detail {
+                    Text(detail)
+                        .font(.footnote)
+                        .foregroundStyle(theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .background(
+            item.role == .limitation
+                ? theme.sand.opacity(0.52)
+                : theme.warmWhite.opacity(0.72),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.accessibilityLabel)
+        .accessibilityIdentifier("route.qualityEvidence.\(item.code.rawValue)")
+    }
+
+    private func roleLabel(_ role: RouteQualityExplanationRole) -> String {
+        switch role {
+        case .primaryFit:
+            "Request fit"
+        case .verifiedCharacteristic:
+            "Mapped evidence"
+        case .estimate:
+            "Estimate"
+        case .limitation:
+            "Data limitation"
+        }
+    }
+
+    private func itemColor(_ role: RouteQualityExplanationRole) -> Color {
+        role == .limitation ? theme.warning : theme.forest
+    }
+
+    private func itemBackground(_ role: RouteQualityExplanationRole) -> Color {
+        role == .limitation
+            ? theme.sand.opacity(0.86)
+            : theme.mossSoft.opacity(0.58)
+    }
+}
+
 private struct PlanningChip: View {
     @Environment(TrailTheme.self) private var theme
 
@@ -988,19 +1109,22 @@ private struct RouteShapingSummaryView: View {
 
 private struct VerifiedRouteCharacteristicsView: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let characteristics: VerifiedRouteCharacteristics
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(
-                title: "Route surface",
-                subtitle: "Measured from mapped GraphHopper route segments."
+                title: "Mapped route characteristics",
+                subtitle: "Surface, road and technical classifications returned for mapped route segments; coverage can be incomplete."
             )
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
 
             if characteristics.hasDisplayableSurfaceData {
                 surfaceBar
-                HStack(spacing: 18) {
+                surfaceLegendLayout {
                     if let unpavedRatio = characteristics.unpavedRatio {
                         legendItem(
                             label: "Unpaved",
@@ -1041,19 +1165,16 @@ private struct VerifiedRouteCharacteristicsView: View {
                 )
             }
 
-            if let maximumHikeRating = characteristics.maximumHikeRating,
-               maximumHikeRating >= 2
-            {
-                let distanceKm = characteristics.mountainHikingDistanceMeters / 1_000
+            if characteristics.mountainHikingDistanceMeters > 0 {
                 factRow(
-                    title: "Mountain-hiking classified sections",
-                    value: "\(distanceKm.formatted(.number.precision(.fractionLength(1)))) km · rating up to \(maximumHikeRating)",
+                    title: "Mapped mountain-hiking sections",
+                    value: mappedDistanceLabel(characteristics.mountainHikingDistanceMeters),
                     symbol: "mountain.2.fill"
                 )
             }
 
             Text(coverageSummary)
-                .font(.caption)
+                .font(.footnote)
                 .foregroundStyle(theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1081,9 +1202,7 @@ private struct VerifiedRouteCharacteristicsView: View {
         }
         .frame(height: 10)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            "Surface: \(percentLabel(characteristics.unpavedRatio ?? 0)) unpaved, \(percentLabel(characteristics.pavedRatio ?? 0)) paved"
-        )
+        .accessibilityLabel(surfaceAccessibilityLabel)
     }
 
     private func legendItem(label: String, value: String, color: Color) -> some View {
@@ -1096,28 +1215,48 @@ private struct VerifiedRouteCharacteristicsView: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(theme.graphite)
                 Text(label)
-                    .font(.caption2)
+                    .font(.footnote)
                     .foregroundStyle(theme.secondaryText)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value)")
     }
 
     private func factRow(title: String, value: String, symbol: String) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
-                .font(.caption.weight(.bold))
+                .font(.footnote.weight(.bold))
                 .foregroundStyle(theme.forest)
                 .frame(width: 28, height: 28)
                 .background(theme.mossSoft.opacity(0.62), in: Circle())
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(theme.graphite)
-            Spacer(minLength: 8)
-            Text(value)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(theme.secondaryText)
-                .multilineTextAlignment(.trailing)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(theme.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(value)
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title): \(value)")
+    }
+
+    private var surfaceLegendLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            return AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+        }
+        return AnyLayout(HStackLayout(spacing: 18))
+    }
+
+    private var surfaceAccessibilityLabel: String {
+        let unknown = characteristics.unknownSurfaceRatio ?? 0
+        return "Mapped surface. \(percentLabel(characteristics.unpavedRatio ?? 0)) unpaved, \(percentLabel(characteristics.pavedRatio ?? 0)) paved, \(percentLabel(unknown)) unknown. Surface classifications cover \(percentLabel(characteristics.surfaceCoverageRatio)) of the route."
     }
 
     private var coverageSummary: String {
@@ -1129,9 +1268,17 @@ private struct VerifiedRouteCharacteristicsView: View {
             values.append("road class \(percentLabel(characteristics.roadClassCoverageRatio))")
         }
         if characteristics.hikeRatingCoverageMeters > 0 {
-            values.append("hike rating \(percentLabel(characteristics.hikeRatingCoverageRatio))")
+            values.append("technical classification \(percentLabel(characteristics.hikeRatingCoverageRatio))")
         }
-        return "Mapped-data coverage: \(values.joined(separator: ", ")). Unknown sections are not treated as paved or unpaved."
+        return "Mapped-data coverage: \(values.joined(separator: ", ")). Uncovered sections remain unknown."
+    }
+
+    private func mappedDistanceLabel(_ distanceMeters: Double) -> String {
+        if distanceMeters < 1_000 {
+            return "\(Int(distanceMeters.rounded()).formatted()) m mapped"
+        }
+        let distanceKilometers = distanceMeters / 1_000
+        return "\(distanceKilometers.formatted(.number.precision(.fractionLength(1)))) km mapped"
     }
 
     private func percentLabel(_ ratio: Double) -> String {

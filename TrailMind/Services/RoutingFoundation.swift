@@ -79,17 +79,20 @@ struct RoutingResult {
     let notice: String?
     let loopSearchOutcome: LoopSearchOutcome?
     let loopSearchDiagnostics: LoopSearchDiagnostics?
+    let routeQualityPolicyVersion: String?
 
     init(
         suggestions: [RouteSuggestion],
         notice: String?,
         loopSearchOutcome: LoopSearchOutcome? = nil,
-        loopSearchDiagnostics: LoopSearchDiagnostics? = nil
+        loopSearchDiagnostics: LoopSearchDiagnostics? = nil,
+        routeQualityPolicyVersion: String? = nil
     ) {
         self.suggestions = suggestions
         self.notice = notice
         self.loopSearchOutcome = loopSearchOutcome
         self.loopSearchDiagnostics = loopSearchDiagnostics
+        self.routeQualityPolicyVersion = routeQualityPolicyVersion
     }
 }
 
@@ -157,7 +160,11 @@ struct RoutingCoordinator: RoutingCoordinating {
                 guard !normalization.suggestions.isEmpty else {
                     throw RoutingError.routeQualityRejected
                 }
-                return RoutingResult(suggestions: normalization.suggestions, notice: nil)
+                return RoutingResult(
+                    suggestions: normalization.suggestions,
+                    notice: nil,
+                    routeQualityPolicyVersion: normalization.qualityPolicyVersion
+                )
             case .loop:
                 break
             }
@@ -168,7 +175,15 @@ struct RoutingCoordinator: RoutingCoordinating {
                 maximumSuggestions: loopSearchPolicy.targetSuggestionCount
             )
             let distinctPrimary = primaryNormalization.suggestions
-            if distinctPrimary.count >= loopSearchPolicy.minimumComparableSuggestionCount {
+            let hasSufficientPrimaryQuality = HikingRouteQualityEngine()
+                .hasSufficientHighQualityDistinctCandidates(
+                    distinctPrimary,
+                    request: routingIntent.request,
+                    minimumCandidateCount: loopSearchPolicy.minimumComparableSuggestionCount
+                )
+            if distinctPrimary.count >= loopSearchPolicy.minimumComparableSuggestionCount,
+               hasSufficientPrimaryQuality
+            {
                 return loopResult(
                     suggestions: distinctPrimary,
                     notice: nil,
@@ -398,7 +413,8 @@ struct RoutingCoordinator: RoutingCoordinating {
             suggestions: shapedSuggestions,
             notice: notice,
             loopSearchOutcome: outcome,
-            loopSearchDiagnostics: diagnostics
+            loopSearchDiagnostics: diagnostics,
+            routeQualityPolicyVersion: HikingRouteQualityPolicyVersion.v1.rawValue
         )
     }
 }
@@ -605,11 +621,17 @@ struct LoopFallbackProvider: RoutingProvider {
         case openLoop = "open_loop"
         case degenerateLoopShape = "degenerate_loop_shape"
         case durationOutsideEnvelope = "duration_outside_hard_envelope"
+        case routeTypeMismatch = "route_type_mismatch"
+        case activityMismatch = "activity_mismatch"
+        case unusableEvidencePayload = "unusable_evidence_payload"
+        case knownTechnicalDifficultyAboveEasyRequest = "known_technical_difficulty_above_easy_request"
+        case excessiveKnownMajorRoadExposure = "excessive_known_major_road_exposure"
     }
 
     private let client: any GraphHopperMultiPointRouteCalculating
     private let seeds: [Int]
     private let maximumSuggestions: Int
+    private let maximumCandidatePoolCount: Int
     private let baseRadiusFactors: [Double]
     private let bearingPatterns: [LoopFallbackBearingPattern]
 
@@ -617,12 +639,21 @@ struct LoopFallbackProvider: RoutingProvider {
         client: any GraphHopperMultiPointRouteCalculating = GraphHopperClient(),
         seeds: [Int] = [11, 29, 47],
         maximumSuggestions: Int = 3,
+        maximumCandidatePoolCount: Int = HikingRouteQualityPolicy.v1.maximumCandidatePoolCount,
         baseRadiusFactors: [Double] = [0.16, 0.19, 0.22],
         bearingPatterns: [LoopFallbackBearingPattern] = LoopFallbackBearingPattern.allCases
     ) {
         self.client = client
         self.seeds = seeds
-        self.maximumSuggestions = maximumSuggestions
+        let boundedSuggestions = max(
+            1,
+            min(maximumSuggestions, HikingRouteQualityPolicy.v1.maximumSuggestions)
+        )
+        self.maximumSuggestions = boundedSuggestions
+        self.maximumCandidatePoolCount = max(
+            boundedSuggestions,
+            min(maximumCandidatePoolCount, HikingRouteQualityPolicy.v1.maximumCandidatePoolCount)
+        )
         self.baseRadiusFactors = baseRadiusFactors
         self.bearingPatterns = bearingPatterns
     }
@@ -652,13 +683,20 @@ struct LoopFallbackProvider: RoutingProvider {
             radiusFactors: baseRadiusFactors,
             intent: intent,
             signatures: &signatures,
-            comparisonGeometries: &comparisonGeometries
+            comparisonGeometries: &comparisonGeometries,
+            maximumAcceptedCandidates: maximumCandidatePoolCount
         )
         try Task.checkCancellation()
         var variants = initialOutcome.accepted
         var accumulatedOutcome = initialOutcome
+        let qualityEngine = HikingRouteQualityEngine()
 
-        if variants.count < maximumSuggestions,
+        if variants.count < maximumCandidatePoolCount,
+           !qualityEngine.hasSufficientHighQualityDistinctCandidates(
+                variants.map { RouteSuggestion(route: $0.route, explanation: $0.route.whyItMatches) },
+                request: intent.request,
+                minimumCandidateCount: maximumSuggestions
+           ),
            initialOutcome.hasRejectedAsTooLong
         {
             let retryOutcome = try await evaluateCandidates(
@@ -668,15 +706,21 @@ struct LoopFallbackProvider: RoutingProvider {
                 intent: intent,
                 signatures: &signatures,
                 comparisonGeometries: &comparisonGeometries,
-                patterns: orderedPatterns(from: initialOutcome.rejectedAsTooLong)
+                patterns: orderedPatterns(from: initialOutcome.rejectedAsTooLong),
+                maximumAcceptedCandidates: maximumCandidatePoolCount - variants.count
             )
             try Task.checkCancellation()
             variants.append(contentsOf: retryOutcome.accepted)
             accumulatedOutcome.merge(retryOutcome)
         }
 
-        if variants.count < maximumSuggestions,
-           initialOutcome.hasRejectedAsTooShort
+        if variants.count < maximumCandidatePoolCount,
+           !qualityEngine.hasSufficientHighQualityDistinctCandidates(
+                variants.map { RouteSuggestion(route: $0.route, explanation: $0.route.whyItMatches) },
+                request: intent.request,
+                minimumCandidateCount: maximumSuggestions
+           ),
+           accumulatedOutcome.hasRejectedAsTooShort
         {
             let retryOutcome = try await evaluateCandidates(
                 start: intent.start,
@@ -685,7 +729,8 @@ struct LoopFallbackProvider: RoutingProvider {
                 intent: intent,
                 signatures: &signatures,
                 comparisonGeometries: &comparisonGeometries,
-                patterns: orderedPatterns(from: initialOutcome.rejectedAsTooShort)
+                patterns: orderedPatterns(from: accumulatedOutcome.rejectedAsTooShort),
+                maximumAcceptedCandidates: maximumCandidatePoolCount - variants.count
             )
             try Task.checkCancellation()
             variants.append(contentsOf: retryOutcome.accepted)
@@ -693,12 +738,25 @@ struct LoopFallbackProvider: RoutingProvider {
         }
 
         try Task.checkCancellation()
+        let rankingRequest = RoutePlanningRequest(
+            routeType: intent.request.routeType,
+            startQuery: intent.request.startQuery,
+            endQuery: intent.request.endQuery,
+            activityType: intent.request.activityType,
+            graphHopperProfile: intent.request.graphHopperProfile,
+            targetDistanceKm: targetDistanceKm,
+            targetDurationMinutes: intent.request.targetDurationMinutes,
+            difficulty: intent.request.difficulty,
+            desiredFeatures: intent.request.desiredFeatures,
+            avoidFeatures: intent.request.avoidFeatures
+        )
         let rankedVariants = LoopRouteVariantRanker.rank(
             variants,
             targetDistanceKm: targetDistanceKm,
             targetDurationMinutes: intent.request.targetDurationMinutes,
             prefersLowerElevation: intent.request.avoidFeatures.contains(.steepClimbs)
-                || intent.request.difficulty == .easy
+                || intent.request.difficulty == .easy,
+            request: rankingRequest
         )
         .prefix(maximumSuggestions)
 
@@ -745,7 +803,8 @@ struct LoopFallbackProvider: RoutingProvider {
         intent: RouteIntent,
         signatures: inout Set<String>,
         comparisonGeometries: inout [[Coordinate]],
-        patterns: [LoopFallbackBearingPattern]? = nil
+        patterns: [LoopFallbackBearingPattern]? = nil,
+        maximumAcceptedCandidates: Int
     ) async throws -> CandidateOutcome {
         try Task.checkCancellation()
         var outcome = CandidateOutcome()
@@ -805,6 +864,25 @@ struct LoopFallbackProvider: RoutingProvider {
                     continue
                 }
 
+                let qualityAssessment = HikingRouteQualityEngine().assessment(
+                    for: RouteSuggestion(route: route, explanation: route.whyItMatches),
+                    providerIndex: candidate.index,
+                    request: intent.request,
+                    analysis: analysis
+                )
+                if let qualityRejection = qualityAssessment.eligibility.rejection {
+                    let rejectionReason = Self.fallbackRejectionReason(
+                        qualityRejection,
+                        distanceRatio: analysis.distanceRatio
+                    )
+                    outcome.record(rejectionReason, pattern: candidate.bearingPattern)
+                    Self.debugCandidateRejection(
+                        pattern: candidate.bearingPattern,
+                        reason: rejectionReason.rawValue
+                    )
+                    continue
+                }
+
                 let signature = Self.geometrySignature(for: route)
                 let duplicatesAccepted = comparisonGeometries.contains { existingPath in
                     RouteAlternativeQuality.pairwiseSimilarity(
@@ -824,6 +902,7 @@ struct LoopFallbackProvider: RoutingProvider {
                     )
                     continue
                 }
+                guard outcome.accepted.count < maximumAcceptedCandidates else { continue }
                 outcome.accepted.append(
                     LoopRouteVariantRanker.Variant(
                         seed: candidate.seed,
@@ -852,9 +931,20 @@ struct LoopFallbackProvider: RoutingProvider {
                 }
             }
             nextCandidateIndex = batchEnd
-            // Each accepted candidate has already passed measured pairwise
-            // deduplication, so stopping here keeps fallback requests bounded.
-            if outcome.accepted.count >= maximumSuggestions {
+            // Stop at three only when the complete quality policy considers the
+            // current set strong and distinct. Otherwise inspect the bounded
+            // six-candidate pool before final Pareto ranking.
+            if outcome.accepted.count >= maximumSuggestions,
+               HikingRouteQualityEngine().hasSufficientHighQualityDistinctCandidates(
+                    outcome.accepted.map {
+                        RouteSuggestion(route: $0.route, explanation: $0.route.whyItMatches)
+                    },
+                    request: intent.request
+               )
+            {
+                break
+            }
+            if outcome.accepted.count >= maximumAcceptedCandidates {
                 break
             }
         }
@@ -885,6 +975,40 @@ struct LoopFallbackProvider: RoutingProvider {
             .duplicateGeometry
         case .extremeDetour:
             .insufficientGeometry
+        }
+    }
+
+    private static func fallbackRejectionReason(
+        _ rejection: RouteQualityRejection,
+        distanceRatio: Double?
+    ) -> RejectionReason {
+        switch rejection {
+        case .invalidGeometry:
+            .insufficientGeometry
+        case .openLoop:
+            .openLoop
+        case .excessiveBacktracking, .excessiveSelfOverlap:
+            .tooMuchOverlap
+        case .degenerateLoopShape:
+            .degenerateLoopShape
+        case .extremeDetour:
+            .insufficientGeometry
+        case .distanceOutsideEnvelope:
+            (distanceRatio ?? 1) < 1 ? .tooShortHard : .tooLongHard
+        case .durationOutsideEnvelope:
+            .durationOutsideEnvelope
+        case .routeTypeMismatch:
+            .routeTypeMismatch
+        case .activityMismatch:
+            .activityMismatch
+        case .unusableEvidencePayload:
+            .unusableEvidencePayload
+        case .knownTechnicalDifficultyAboveEasyRequest:
+            .knownTechnicalDifficultyAboveEasyRequest
+        case .excessiveKnownMajorRoadExposure:
+            .excessiveKnownMajorRoadExposure
+        case .nearDuplicateGeometry:
+            .duplicateGeometry
         }
     }
 
@@ -1208,6 +1332,8 @@ enum RouteSuggestionNormalizer {
     struct NormalizationResult {
         let suggestions: [RouteSuggestion]
         let rejectionCounts: [String: Int]
+        let qualityPolicyVersion: String
+        let qualityTelemetry: RouteQualityTelemetrySummary?
     }
 
     static func suggestions(from routes: [TrailRoute]) -> [RouteSuggestion] {
@@ -1250,7 +1376,9 @@ enum RouteSuggestionNormalizer {
         }
         return NormalizationResult(
             suggestions: normalized,
-            rejectionCounts: selection.rejectionCounts
+            rejectionCounts: selection.rejectionCounts,
+            qualityPolicyVersion: selection.policyVersion,
+            qualityTelemetry: selection.telemetry
         )
     }
 
@@ -1317,10 +1445,11 @@ enum LoopRouteVariantRanker {
         _ variants: [Variant],
         targetDistanceKm: Double,
         targetDurationMinutes: Int? = nil,
-        prefersLowerElevation: Bool = false
+        prefersLowerElevation: Bool = false,
+        request suppliedRequest: RoutePlanningRequest? = nil
     ) -> [Variant] {
         guard let firstRoute = variants.first?.route else { return [] }
-        let request = RoutePlanningRequest(
+        let request = suppliedRequest ?? RoutePlanningRequest(
             routeType: .loop,
             startQuery: "Start",
             endQuery: nil,

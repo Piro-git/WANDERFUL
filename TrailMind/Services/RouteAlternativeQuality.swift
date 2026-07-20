@@ -72,6 +72,9 @@ struct RouteAlternativeSelection {
 
     let selected: [Selected]
     let rejectionCounts: [String: Int]
+    let policyVersion: String
+    let telemetry: RouteQualityTelemetrySummary?
+    let comparisons: [RouteQualityComparison]
 }
 
 enum RouteAlternativeQuality {
@@ -208,6 +211,39 @@ enum RouteAlternativeQuality {
         maximumSuggestions: Int? = nil,
         policy: RouteAlternativeQualityPolicy = .preBaseline
     ) -> RouteAlternativeSelection {
+        let qualityPolicy = HikingRouteQualityPolicy.v1.replacingStructuralPolicy(policy)
+        let qualitySelection = HikingRouteQualityEngine(policy: qualityPolicy).select(
+            suggestions,
+            request: request,
+            maximumSuggestions: maximumSuggestions
+        )
+        return RouteAlternativeSelection(
+            selected: qualitySelection.selected.map { assessment in
+                .init(
+                    suggestion: assessment.suggestion,
+                    analysis: analyze(
+                        route: assessment.route,
+                        request: request,
+                        policy: policy
+                    ),
+                    providerIndex: assessment.providerIndex
+                )
+            },
+            rejectionCounts: qualitySelection.rejectionCounts,
+            policyVersion: qualitySelection.policyVersion.rawValue,
+            telemetry: qualitySelection.telemetry,
+            comparisons: qualitySelection.comparisons
+        )
+    }
+
+    /// Frozen pre-v1 selector retained only for deterministic offline regression
+    /// comparison. Production selection always enters through `select` above.
+    static func selectBaseline(
+        _ suggestions: [RouteSuggestion],
+        request: RoutePlanningRequest,
+        maximumSuggestions: Int? = nil,
+        policy: RouteAlternativeQualityPolicy = .preBaseline
+    ) -> RouteAlternativeSelection {
         var rejectionCounts: [String: Int] = [:]
         let candidates = suggestions.enumerated().compactMap { index, suggestion -> RankedCandidate? in
             let analysis = analyze(route: suggestion.route, request: request, policy: policy)
@@ -254,7 +290,10 @@ enum RouteAlternativeQuality {
                     providerIndex: $0.providerIndex
                 )
             },
-            rejectionCounts: rejectionCounts
+            rejectionCounts: rejectionCounts,
+            policyVersion: "pre-v1-baseline",
+            telemetry: nil,
+            comparisons: []
         )
     }
 

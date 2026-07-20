@@ -6,6 +6,7 @@ struct RouteCard: View {
     let route: TrailRoute
     let comparisonLabel: String?
     let qualityExplanations: [RouteQualityExplanation]
+    private let qualityPresentation: RouteQualityExplanationSet
 
     init(
         route: TrailRoute,
@@ -15,6 +16,7 @@ struct RouteCard: View {
         self.route = route
         self.comparisonLabel = comparisonLabel
         self.qualityExplanations = qualityExplanations
+        qualityPresentation = HikingRouteQualityEngine().presentation(for: route)
     }
 
     var body: some View {
@@ -29,10 +31,15 @@ struct RouteCard: View {
                     Label(badgeLabel, systemImage: badgeSymbol)
                         .font(.caption.weight(.bold))
                         .foregroundStyle(theme.forest)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 8)
-                        .background(.white.opacity(0.88), in: Capsule())
+                        .background(
+                            .white.opacity(0.88),
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        )
                         .padding(12)
+                        .accessibilityLabel("Route comparison. \(badgeLabel)")
                 }
             }
 
@@ -45,7 +52,15 @@ struct RouteCard: View {
                             .foregroundStyle(theme.moss)
                     }
                     Spacer()
-                    DifficultyBadge(difficulty: route.difficulty)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("ESTIMATED EFFORT")
+                            .font(.caption2.weight(.semibold))
+                            .tracking(0.45)
+                            .foregroundStyle(theme.secondaryText)
+                        DifficultyBadge(difficulty: route.difficulty)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Physical effort estimate: \(route.difficulty.rawValue)")
                 }
 
                 Text(route.title)
@@ -73,27 +88,9 @@ struct RouteCard: View {
                 cardStat(route.durationLabel, label: "Time")
             }
 
-            if let facts = route.verifiedCharacteristics?.cardFacts, !facts.isEmpty {
-                VerifiedRouteFactRow(facts: facts)
+            if !cardEvidenceItems.isEmpty {
+                RouteCardEvidenceRow(items: cardEvidenceItems)
             }
-
-            if !qualityExplanations.isEmpty {
-                RouteQualityChipRow(explanations: qualityExplanations)
-            }
-
-            HStack(spacing: 8) {
-                ForEach(route.highlights.prefix(3)) { highlight in
-                    Image(systemName: highlight.symbol)
-                        .font(.caption)
-                    Text(highlight.title)
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-                    if highlight.id != route.highlights.prefix(3).last?.id {
-                        Circle().frame(width: 3, height: 3)
-                    }
-                }
-            }
-            .foregroundStyle(theme.secondaryText)
         }
         .trailCard()
     }
@@ -114,6 +111,14 @@ struct RouteCard: View {
         RouteAlternativeQuality.displayLabel(candidate: comparisonLabel, for: route)
     }
 
+    private var cardEvidenceItems: [RouteQualityPresentationItem] {
+        let candidates = qualityPresentation.verifiedCharacteristics
+            + qualityPresentation.limitations
+        return Array(
+            candidates.prefix(HikingRouteQualityPolicy.v1.maximumCardExplanationCount)
+        )
+    }
+
     private var locationLabel: String? {
         let value = route.location.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
@@ -126,30 +131,60 @@ struct RouteCard: View {
     }
 }
 
-private struct VerifiedRouteFactRow: View {
+private struct RouteCardEvidenceRow: View {
     @Environment(TrailTheme.self) private var theme
-    let facts: [RouteQualityExplanation]
+    let items: [RouteQualityPresentationItem]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Mapped route facts")
-                .font(.caption.weight(.bold))
+            Text("Route evidence")
+                .font(.footnote.weight(.bold))
                 .foregroundStyle(theme.graphite)
+                .accessibilityAddTraits(.isHeader)
 
-            FlowLayout(spacing: 8, rowSpacing: 8) {
-                ForEach(facts.prefix(2)) { fact in
-                    Label(fact.title, systemImage: fact.symbol)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(theme.forest)
-                        .lineLimit(1)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 6)
-                        .background(theme.sand.opacity(0.7), in: Capsule())
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(items) { item in
+                    evidenceItem(item)
                 }
             }
         }
         .padding(12)
         .background(theme.warmWhite.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func evidenceItem(_ item: RouteQualityPresentationItem) -> some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: item.symbol)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(itemColor(item.role))
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
+
+            Text(item.title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(theme.graphite)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(
+            itemBackground(item.role),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.accessibilityLabel)
+        .accessibilityIdentifier("route.cardEvidence.\(item.code.rawValue)")
+    }
+
+    private func itemColor(_ role: RouteQualityExplanationRole) -> Color {
+        role == .limitation ? theme.warning : theme.forest
+    }
+
+    private func itemBackground(_ role: RouteQualityExplanationRole) -> Color {
+        role == .limitation
+            ? theme.sand.opacity(0.68)
+            : theme.mossSoft.opacity(0.48)
     }
 }
 
@@ -176,126 +211,6 @@ private struct IntentSourceDebugBadge: View {
     }
 }
 #endif
-
-struct RouteQualityChipRow: View {
-    @Environment(TrailTheme.self) private var theme
-    let explanations: [RouteQualityExplanation]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text("Why this route fits")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(theme.graphite)
-
-            FlowLayout(spacing: 8, rowSpacing: 8) {
-                ForEach(explanations) { explanation in
-                    Label(explanation.title, systemImage: explanation.symbol)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(theme.forest)
-                        .lineLimit(1)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 6)
-                        .background(theme.mossSoft.opacity(0.52), in: Capsule())
-                }
-            }
-        }
-        .padding(12)
-        .background(theme.warmWhite.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
-
-struct RouteQualityExplanationList: View {
-    @Environment(TrailTheme.self) private var theme
-    let explanations: [RouteQualityExplanation]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Why this route fits")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(theme.graphite)
-
-            ForEach(explanations) { explanation in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: explanation.symbol)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(theme.forest)
-                        .frame(width: 24, height: 24)
-                        .background(theme.mossSoft.opacity(0.62), in: Circle())
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(explanation.title)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(theme.graphite)
-                        if let detail = explanation.detail {
-                            Text(detail)
-                                .font(.caption)
-                                .foregroundStyle(theme.secondaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .background(theme.warmWhite.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
-
-private struct FlowLayout: Layout {
-    var spacing: CGFloat
-    var rowSpacing: CGFloat
-
-    init(spacing: CGFloat, rowSpacing: CGFloat? = nil) {
-        self.spacing = spacing
-        self.rowSpacing = rowSpacing ?? spacing
-    }
-
-    func sizeThatFits(
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) -> CGSize {
-        let result = layout(proposal: proposal, subviews: subviews)
-        return result.size
-    }
-
-    func placeSubviews(
-        in bounds: CGRect,
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) {
-        let result = layout(proposal: proposal, subviews: subviews)
-        for (index, point) in result.points.enumerated() {
-            subviews[index].place(
-                at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y),
-                proposal: .unspecified
-            )
-        }
-    }
-
-    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, points: [CGPoint]) {
-        let maxWidth = proposal.width ?? 300
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var points: [CGPoint] = []
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > maxWidth, x > 0 {
-                x = 0
-                y += rowHeight + rowSpacing
-                rowHeight = 0
-            }
-            points.append(CGPoint(x: x, y: y))
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-
-        return (CGSize(width: maxWidth, height: y + rowHeight), points)
-    }
-}
 
 struct RouteThumbnailView: View {
     @Environment(TrailTheme.self) private var theme

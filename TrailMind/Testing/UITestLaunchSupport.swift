@@ -92,7 +92,11 @@ private struct UITestIntentParsingProvider: IntentParsingProvider {
                 routeType: .loop,
                 start: "Ilsenburg",
                 end: nil,
-                targetDistance: normalized.contains("15 km") ? 15 : 12
+                targetDistance: normalized.contains("15 km") ? 15 : 12,
+                difficulty: normalized.contains("easy") ? .easy : nil,
+                avoidFeatures: normalized.contains("avoid major roads")
+                    ? [.majorRoads]
+                    : []
             )
         }
         if normalized.contains("luneburg") && normalized.contains("amelinghausen") {
@@ -125,7 +129,9 @@ private struct UITestIntentParsingProvider: IntentParsingProvider {
         routeType: TrailRouteType,
         start: String?,
         end: String?,
-        targetDistance: Double?
+        targetDistance: Double?,
+        difficulty: RouteDifficulty? = nil,
+        avoidFeatures: [AvoidFeature] = []
     ) -> AdventureIntent {
         AdventureIntent(
             rawPrompt: rawPrompt,
@@ -138,9 +144,9 @@ private struct UITestIntentParsingProvider: IntentParsingProvider {
             regionQuery: nil,
             targetDistanceKm: targetDistance,
             targetDurationMinutes: nil,
-            difficulty: nil,
+            difficulty: difficulty,
             desiredFeatures: [],
-            avoidFeatures: []
+            avoidFeatures: avoidFeatures
         )
     }
 }
@@ -187,21 +193,23 @@ private final class UITestRoutingCoordinator: RoutingCoordinating {
             return RoutingResult(suggestions: [], notice: nil)
         }
 
-        let routes = UITestRouteFactory.routes(
-            activity: intent.request.activityType,
-            routeType: intent.request.routeType
-        )
+        let routes = UITestRouteFactory.routes(request: intent.request)
+        let rawSuggestions = routes.enumerated().map { index, route in
+            RouteSuggestion(
+                id: UITestRouteFactory.suggestionIDs[index],
+                route: route,
+                explanation: "Deterministic routed fixture"
+            )
+        }
+        let suggestions = HikingRouteQualityEngine().select(
+            rawSuggestions,
+            request: intent.request
+        ).selected.map(\.suggestion)
         return RoutingResult(
-            suggestions: routes.enumerated().map { index, route in
-                RouteSuggestion(
-                    id: UITestRouteFactory.suggestionIDs[index],
-                    route: route,
-                    explanation: "Deterministic routed fixture"
-                )
-            },
+            suggestions: suggestions,
             notice: nil,
             loopSearchOutcome: intent.request.routeType == .loop
-                ? .comparison(routeCount: routes.count)
+                ? .comparison(routeCount: suggestions.count)
                 : nil,
             loopSearchDiagnostics: intent.request.routeType == .loop
                 ? .empty(elapsedMilliseconds: 1)
@@ -212,6 +220,12 @@ private final class UITestRoutingCoordinator: RoutingCoordinating {
 
 @MainActor
 private enum UITestRouteFactory {
+    private struct RoadEvidenceProfile {
+        let coverageRatio: Double
+        let pathRatio: Double
+        let majorRoadRatio: Double
+    }
+
     static let pointToPointRouteID = UUID(uuidString: "11111111-1111-4111-8111-111111111111")!
     static let loopRouteIDs = [
         UUID(uuidString: "22222222-2222-4222-8222-222222222221")!,
@@ -224,8 +238,19 @@ private enum UITestRouteFactory {
         UUID(uuidString: "33333333-3333-4333-8333-333333333333")!
     ]
 
-    static func routes(activity: ActivityType, routeType: TrailRouteType) -> [TrailRoute] {
+    static func routes(request: RoutePlanningRequest) -> [TrailRoute] {
+        let activity = request.activityType
+        let routeType = request.routeType
         if routeType == .loop {
+            let roadEvidence: [RoadEvidenceProfile?] = if request.avoidFeatures.contains(.majorRoads) {
+                [
+                    RoadEvidenceProfile(coverageRatio: 1, pathRatio: 0.20, majorRoadRatio: 0.35),
+                    RoadEvidenceProfile(coverageRatio: 1, pathRatio: 0.85, majorRoadRatio: 0.01),
+                    RoadEvidenceProfile(coverageRatio: 0.20, pathRatio: 0.16, majorRoadRatio: 0)
+                ]
+            } else {
+                [nil, nil, nil]
+            }
             return [
                 route(
                     id: loopRouteIDs[0],
@@ -235,7 +260,8 @@ private enum UITestRouteFactory {
                     distance: 14.8,
                     elevationGain: 330,
                     duration: 4.1,
-                    path: loopPath(latitudeOffset: 0, longitudeOffset: 0)
+                    path: loopPath(latitudeOffset: 0, longitudeOffset: 0),
+                    roadEvidence: roadEvidence[0]
                 ),
                 route(
                     id: loopRouteIDs[1],
@@ -245,7 +271,8 @@ private enum UITestRouteFactory {
                     distance: 15.3,
                     elevationGain: 280,
                     duration: 4.0,
-                    path: loopPath(latitudeOffset: -0.008, longitudeOffset: 0.006)
+                    path: loopPath(latitudeOffset: -0.008, longitudeOffset: 0.006),
+                    roadEvidence: roadEvidence[1]
                 ),
                 route(
                     id: loopRouteIDs[2],
@@ -255,7 +282,8 @@ private enum UITestRouteFactory {
                     distance: 16.1,
                     elevationGain: 410,
                     duration: 4.5,
-                    path: loopPath(latitudeOffset: 0.006, longitudeOffset: -0.007)
+                    path: loopPath(latitudeOffset: 0.006, longitudeOffset: -0.007),
+                    roadEvidence: roadEvidence[2]
                 )
             ]
         }
@@ -275,7 +303,8 @@ private enum UITestRouteFactory {
                     Coordinate(latitude: 51.8060, longitude: 10.6500, elevationMeters: 540),
                     Coordinate(latitude: 51.7810, longitude: 10.6590, elevationMeters: 470),
                     Coordinate(latitude: 51.7669, longitude: 10.6642, elevationMeters: 610)
-                ]
+                ],
+                roadEvidence: nil
             )
         ]
     }
@@ -304,13 +333,20 @@ private enum UITestRouteFactory {
         distance: Double,
         elevationGain: Int,
         duration: Double,
-        path: [Coordinate]
+        path: [Coordinate],
+        roadEvidence: RoadEvidenceProfile?
     ) -> TrailRoute {
         let difficulty = RouteDifficulty.estimated(
             distanceKilometers: distance,
             elevationGainMeters: elevationGain
         )
         let elevationLoss = max(0, elevationGain - 40)
+        let verifiedCharacteristics = roadEvidence.map {
+            routeCharacteristics(
+                routeDistanceMeters: distance * 1_000,
+                profile: $0
+            )
+        }
         let provenance = RouteProvenance.routingEngineOutput(
             provider: .graphHopper,
             strategy: .backend,
@@ -322,7 +358,7 @@ private enum UITestRouteFactory {
             durationHours: duration,
             difficulty: difficulty,
             path: path,
-            verifiedCharacteristics: nil
+            verifiedCharacteristics: verifiedCharacteristics
         )
         return TrailRoute(
             id: id,
@@ -349,7 +385,45 @@ private enum UITestRouteFactory {
                 )
             ],
             elevationProfile: path.compactMap(\.elevationMeters),
-            path: path
+            path: path,
+            verifiedCharacteristics: verifiedCharacteristics
+        )
+    }
+
+    private static func routeCharacteristics(
+        routeDistanceMeters: Double,
+        profile: RoadEvidenceProfile
+    ) -> VerifiedRouteCharacteristics {
+        let otherRatio = max(
+            profile.coverageRatio - profile.pathRatio - profile.majorRoadRatio,
+            0
+        )
+        var roadClassBreakdown = [
+            VerifiedRouteCharacteristicValue(
+                value: "path",
+                distanceMeters: profile.pathRatio * routeDistanceMeters
+            ),
+            VerifiedRouteCharacteristicValue(
+                value: "primary",
+                distanceMeters: profile.majorRoadRatio * routeDistanceMeters
+            )
+        ]
+        if otherRatio > 0 {
+            roadClassBreakdown.append(
+                VerifiedRouteCharacteristicValue(
+                    value: "residential",
+                    distanceMeters: otherRatio * routeDistanceMeters
+                )
+            )
+        }
+        return VerifiedRouteCharacteristics(
+            routeDistanceMeters: routeDistanceMeters,
+            surfaceBreakdown: [],
+            roadClassBreakdown: roadClassBreakdown,
+            hikeRatingBreakdown: [],
+            surfaceCoverageMeters: 0,
+            roadClassCoverageMeters: profile.coverageRatio * routeDistanceMeters,
+            hikeRatingCoverageMeters: 0
         )
     }
 }

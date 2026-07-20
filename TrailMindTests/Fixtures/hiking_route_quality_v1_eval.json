@@ -1,0 +1,622 @@
+{
+  "schemaVersion": 1,
+  "benchmarkKind": "deterministic_engine_contract",
+  "policyVersion": "hiking-route-quality-v1",
+  "cases": [
+    {
+      "id": "easy-loop-distance-fit",
+      "tags": ["loop", "distanceTarget", "easy", "dominance"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"exact","distanceKm":10,"durationMinutes":120,"elevationGainMeters":180,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"farther","distanceKm":11,"durationMinutes":120,"elevationGainMeters":180,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["exact", "farther"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["exact", "farther"], "expectedComparison": "unchanged"
+    },
+    {
+      "id": "moderate-loop-distance-fit",
+      "tags": ["loop", "distanceTarget", "moderate"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":15,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"exact","distanceKm":15,"durationMinutes":180,"elevationGainMeters":350,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"short","distanceKm":13.5,"durationMinutes":180,"elevationGainMeters":350,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["exact", "short"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["exact", "short"], "expectedComparison": "unchanged"
+    },
+    {
+      "id": "challenging-loop-distance-fit",
+      "tags": ["loop", "distanceTarget", "challenging"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":20,"targetDurationMinutes":null,"difficulty":"Challenging","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"exact","distanceKm":20,"durationMinutes":300,"elevationGainMeters":850,"difficulty":"Challenging","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"short","distanceKm":18,"durationMinutes":300,"elevationGainMeters":850,"difficulty":"Challenging","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["exact", "short"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "easy-loop-duration-fit",
+      "tags": ["loop", "durationTarget", "easy"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":null,"targetDurationMinutes":120,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"time-exact","distanceKm":8,"durationMinutes":120,"elevationGainMeters":140,"difficulty":"Easy","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"time-long","distanceKm":8,"durationMinutes":150,"elevationGainMeters":140,"difficulty":"Easy","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["time-exact", "time-long"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["durationFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "moderate-point-duration-fit",
+      "tags": ["pointToPoint", "durationTarget", "moderate"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":null,"targetDurationMinutes":180,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"time-exact","distanceKm":9,"durationMinutes":180,"elevationGainMeters":300,"difficulty":"Easy","geometry":"point","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"time-long","distanceKm":9,"durationMinutes":210,"elevationGainMeters":300,"difficulty":"Easy","geometry":"point","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["time-exact", "time-long"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["durationFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "distance-duration-tradeoff",
+      "tags": ["pointToPoint", "distanceTarget", "durationTarget", "moderate", "nonDominance"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":15,"targetDurationMinutes":180,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"distance-exact","distanceKm":15,"durationMinutes":210,"elevationGainMeters":350,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"time-exact","distanceKm":16.5,"durationMinutes":180,"elevationGainMeters":350,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0.3,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["time-exact", "distance-exact"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["time-exact", "distance-exact"], "expectedComparison": "unchanged"
+    },
+    {
+      "id": "easy-steep-climb-tradeoff",
+      "tags": ["loop", "distanceTarget", "easy", "avoidSteepClimbs", "nonDominance"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Easy","avoid":["steepClimbs"],"desired":[]},
+      "candidates": [
+        {"id":"steep-exact","distanceKm":10,"durationMinutes":130,"elevationGainMeters":600,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"gentle-near","distanceKm":9.5,"durationMinutes":130,"elevationGainMeters":120,"difficulty":"Easy","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["gentle-near", "steep-exact"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "moderate-exact-over-gentle-miss",
+      "tags": ["loop", "distanceTarget", "moderate"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":15,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"moderate-exact","distanceKm":15,"durationMinutes":190,"elevationGainMeters":500,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"easy-short","distanceKm":14,"durationMinutes":190,"elevationGainMeters":100,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["moderate-exact", "easy-short"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "challenging-physical-effort-fit",
+      "tags": ["pointToPoint", "distanceTarget", "challenging"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":18,"targetDurationMinutes":null,"difficulty":"Challenging","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"challenging-fit","distanceKm":18,"durationMinutes":300,"elevationGainMeters":850,"difficulty":"Challenging","geometry":"pointLong","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"moderate-effort","distanceKm":17.5,"durationMinutes":300,"elevationGainMeters":300,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0.3,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["challenging-fit", "moderate-effort"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "explicit-major-road-hard-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "avoidMajorRoads", "roadEvidence", "hardEligibilityChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["majorRoads"],"desired":[]},
+      "candidates": [
+        {"id":"road-heavy","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"roadHighFull"},
+        {"id":"road-light","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"roadLowFull"}
+      ],
+      "expectedSelected": ["road-light"], "expectedRejections": {"road-heavy":"excessive_known_major_road_exposure"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["road-heavy", "road-light"], "expectedComparison": "changed"
+    },
+    {
+      "id": "partial-road-evidence-does-not-confirm-avoidance",
+      "tags": ["loop", "distanceTarget", "moderate", "avoidMajorRoads", "partialEvidence", "roadEvidence", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["majorRoads"],"desired":[]},
+      "candidates": [
+        {"id":"partial","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"roadHighPartial"},
+        {"id":"full","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"roadLowFull"}
+      ],
+      "expectedSelected": ["full", "partial"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["partial", "full"], "expectedComparison": "changed"
+    },
+    {
+      "id": "lower-road-exposure-without-hard-avoidance",
+      "tags": ["loop", "distanceTarget", "moderate", "roadEvidence", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"road-heavy","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"roadHighFull"},
+        {"id":"road-light","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"roadLowFull"}
+      ],
+      "expectedSelected": ["road-light", "road-heavy"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["road-heavy", "road-light"], "expectedComparison": "changed"
+    },
+    {
+      "id": "paths-and-tracks-preference",
+      "tags": ["loop", "distanceTarget", "moderate", "pathEvidence", "roadEvidence", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"few-paths","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"pathLowFull"},
+        {"id":"many-paths","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"pathHighFull"}
+      ],
+      "expectedSelected": ["many-paths", "few-paths"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["few-paths", "many-paths"], "expectedComparison": "changed"
+    },
+    {
+      "id": "easy-stable-surface-preference",
+      "tags": ["loop", "distanceTarget", "easy", "surfaceEvidence", "evidenceConfidenceChange", "familyCasual"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":8,"targetDurationMinutes":null,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"rough","distanceKm":8,"durationMinutes":110,"elevationGainMeters":120,"difficulty":"Easy","geometry":"loop","geometryOffset":0,"evidenceProfile":"roughFull"},
+        {"id":"stable","distanceKm":8,"durationMinutes":110,"elevationGainMeters":120,"difficulty":"Easy","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"stableFull"}
+      ],
+      "expectedSelected": ["stable", "rough"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["rough", "stable"], "expectedComparison": "changed"
+    },
+    {
+      "id": "challenging-surface-is-not-universal-positive",
+      "tags": ["loop", "distanceTarget", "challenging", "surfaceEvidence", "nonDominance"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Challenging","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"a-rough","distanceKm":12,"durationMinutes":180,"elevationGainMeters":700,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"roughFull"},
+        {"id":"b-stable","distanceKm":12,"durationMinutes":180,"elevationGainMeters":700,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"stableFull"}
+      ],
+      "expectedSelected": ["a-rough", "b-stable"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "easy-known-technical-hard-rejection",
+      "tags": ["loop", "distanceTarget", "easy", "technicalSections", "hardEligibilityChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"technical","distanceKm":10,"durationMinutes":130,"elevationGainMeters":180,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"technical2Full"},
+        {"id":"basic","distanceKm":10.4,"durationMinutes":130,"elevationGainMeters":180,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["basic"], "expectedRejections": {"technical":"known_technical_difficulty_above_easy_request"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["technical", "basic"], "expectedComparison": "changed"
+    },
+    {
+      "id": "easy-partial-known-technical-hard-rejection",
+      "tags": ["loop", "distanceTarget", "easy", "technicalSections", "partialEvidence", "hardEligibilityChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"technical-partial","distanceKm":10,"durationMinutes":130,"elevationGainMeters":180,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"technical2Partial"},
+        {"id":"basic","distanceKm":10.3,"durationMinutes":130,"elevationGainMeters":180,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["basic"], "expectedRejections": {"technical-partial":"known_technical_difficulty_above_easy_request"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["technical-partial", "basic"], "expectedComparison": "changed"
+    },
+    {
+      "id": "moderate-known-technical-ranking",
+      "tags": ["loop", "distanceTarget", "moderate", "technicalSections", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":14,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"rating-two","distanceKm":14,"durationMinutes":190,"elevationGainMeters":420,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"technical2Full"},
+        {"id":"rating-one","distanceKm":14,"durationMinutes":190,"elevationGainMeters":420,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["rating-one", "rating-two"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["rating-two", "rating-one"], "expectedComparison": "changed"
+    },
+    {
+      "id": "challenging-known-technical-ranking",
+      "tags": ["loop", "distanceTarget", "challenging", "technicalSections", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":16,"targetDurationMinutes":null,"difficulty":"Challenging","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"rating-three","distanceKm":16,"durationMinutes":240,"elevationGainMeters":800,"difficulty":"Challenging","geometry":"loop","geometryOffset":0,"evidenceProfile":"technical3Full"},
+        {"id":"rating-one","distanceKm":16,"durationMinutes":240,"elevationGainMeters":800,"difficulty":"Challenging","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["rating-one", "rating-three"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["rating-three", "rating-one"], "expectedComparison": "changed"
+    },
+    {
+      "id": "missing-vs-strong-evidence",
+      "tags": ["loop", "distanceTarget", "moderate", "missingEvidence", "pathEvidence", "roadEvidence", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"missing","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"strong","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["strong", "missing"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["missing", "strong"], "expectedComparison": "changed"
+    },
+    {
+      "id": "partial-vs-full-evidence",
+      "tags": ["loop", "distanceTarget", "moderate", "partialEvidence", "pathEvidence", "roadEvidence", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"partial","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodPartial"},
+        {"id":"full","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["full", "partial"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["partial", "full"], "expectedComparison": "changed"
+    },
+    {
+      "id": "partial-surface-limitation",
+      "tags": ["loop", "distanceTarget", "easy", "partialEvidence", "surfaceEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":8,"targetDurationMinutes":null,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"partial-surface","distanceKm":8,"durationMinutes":110,"elevationGainMeters":120,"difficulty":"Easy","geometry":"loop","geometryOffset":0,"evidenceProfile":"surfacePartial"}
+      ],
+      "expectedSelected": ["partial-surface"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": ["surfaceCoverageLimited"]
+    },
+    {
+      "id": "partial-road-limitation",
+      "tags": ["loop", "distanceTarget", "moderate", "partialEvidence", "roadEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"partial-road","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"roadPartial"}
+      ],
+      "expectedSelected": ["partial-road"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["roadClassCoverageLimited"]
+    },
+    {
+      "id": "partial-technical-limitation",
+      "tags": ["loop", "distanceTarget", "moderate", "partialEvidence", "technicalSections"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"partial-technical","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"hikePartial"}
+      ],
+      "expectedSelected": ["partial-technical"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": ["technicalDifficultyCoverageLimited"]
+    },
+    {
+      "id": "missing-evidence-and-requested-preference-limitations",
+      "tags": ["loop", "distanceTarget", "easy", "missingEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":8,"targetDurationMinutes":null,"difficulty":"Easy","avoid":[],"desired":["viewpoint"]},
+      "candidates": [
+        {"id":"unknown","distanceKm":8,"durationMinutes":110,"elevationGainMeters":120,"difficulty":"Easy","geometry":"loop","geometryOffset":0,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["unknown"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"],
+      "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable", "surfaceEvidenceUnavailable", "requestedPreferencesUnverified"]
+    },
+    {
+      "id": "malformed-coverage-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "malformedEvidence", "hardEligibilityChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"malformed","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"malformedCoverage"},
+        {"id":"valid","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["valid"], "expectedRejections": {"malformed":"unusable_evidence_payload"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["malformed", "valid"], "expectedComparison": "changed"
+    },
+    {
+      "id": "malformed-hike-rating-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "malformedEvidence", "technicalSections", "hardEligibilityChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"malformed","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"malformedRating"},
+        {"id":"valid","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["valid"], "expectedRejections": {"malformed":"unusable_evidence_payload"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["malformed", "valid"], "expectedComparison": "changed"
+    },
+    {
+      "id": "malformed-negative-distance-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "malformedEvidence", "surfaceEvidence", "hardEligibilityChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"malformed","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"malformedNegative"},
+        {"id":"valid","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["valid"], "expectedRejections": {"malformed":"unusable_evidence_payload"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["malformed", "valid"], "expectedComparison": "changed"
+    },
+    {
+      "id": "open-loop-hard-rejection",
+      "tags": ["loop", "distanceTarget", "moderate"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"open","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loopOpen","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"closed","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["closed"], "expectedRejections": {"open":"open_loop"},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "out-and-back-loop-hard-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "avoidRepeatedPath"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["repeatedPath"],"desired":[]},
+      "candidates": [
+        {"id":"out-and-back","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loopOutAndBack","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"clean","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["clean"], "expectedRejections": {"out-and-back":"excessive_backtracking"},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "same-direction-repetition-hard-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "avoidRepeatedPath", "nearDuplicate"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":20,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["repeatedPath"],"desired":[]},
+      "candidates": [
+        {"id":"repeated","distanceKm":20,"durationMinutes":260,"elevationGainMeters":420,"difficulty":"Challenging","geometry":"loopRepeated","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"clean","distanceKm":20.5,"durationMinutes":260,"elevationGainMeters":420,"difficulty":"Challenging","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["clean"], "expectedRejections": {"repeated":"excessive_self_overlap"},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "degenerate-loop-shape-hard-rejection",
+      "tags": ["loop", "distanceTarget", "moderate"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"degenerate","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loopDegenerate","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"clean","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["clean"], "expectedRejections": {"degenerate":"degenerate_loop_shape"},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "extreme-point-detour-hard-rejection",
+      "tags": ["pointToPoint", "moderate"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":null,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"extreme-detour","distanceKm":30,"durationMinutes":360,"elevationGainMeters":500,"difficulty":"Challenging","geometry":"pointNorth","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"direct","distanceKm":4,"durationMinutes":70,"elevationGainMeters":100,"difficulty":"Easy","geometry":"point","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["direct"], "expectedRejections": {"extreme-detour":"extreme_detour"},
+      "expectedFirstExplanationCodes": [], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "distance-hard-envelope-rejection",
+      "tags": ["pointToPoint", "distanceTarget", "moderate"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"distance-miss","distanceKm":18,"durationMinutes":220,"elevationGainMeters":300,"difficulty":"Challenging","geometry":"pointLong","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"inside-envelope","distanceKm":11,"durationMinutes":150,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0.3,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["inside-envelope"], "expectedRejections": {"distance-miss":"distance_outside_hard_envelope"},
+      "expectedFirstExplanationCodes": ["distanceFit"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "duration-hard-envelope-rejection",
+      "tags": ["pointToPoint", "durationTarget", "moderate"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":null,"targetDurationMinutes":60,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"duration-miss","distanceKm":4,"durationMinutes":180,"elevationGainMeters":120,"difficulty":"Easy","geometry":"point","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"inside-envelope","distanceKm":4,"durationMinutes":70,"elevationGainMeters":120,"difficulty":"Easy","geometry":"point","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["inside-envelope"], "expectedRejections": {"duration-miss":"duration_outside_hard_envelope"},
+      "expectedFirstExplanationCodes": ["durationFit"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "route-type-mismatch-hard-rejection",
+      "tags": ["pointToPoint", "distanceTarget", "moderate", "hardEligibilityChange"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":4,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"wrong-type","distanceKm":4,"durationMinutes":70,"elevationGainMeters":120,"difficulty":"Easy","geometry":"loop","geometryOffset":0,"evidenceProfile":"none","routeType":"Loop"},
+        {"id":"correct-type","distanceKm":4,"durationMinutes":70,"elevationGainMeters":120,"difficulty":"Easy","geometry":"point","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["correct-type"], "expectedRejections": {"wrong-type":"route_type_mismatch"},
+      "expectedFirstExplanationCodes": ["distanceFit"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"],
+      "expectedBaselineSelected": ["wrong-type", "correct-type"], "expectedComparison": "changed"
+    },
+    {
+      "id": "activity-mismatch-hard-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "hardEligibilityChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"wrong-activity","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"none","activity":"Biking"},
+        {"id":"correct-activity","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["correct-activity"], "expectedRejections": {"wrong-activity":"activity_mismatch"},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"],
+      "expectedBaselineSelected": ["wrong-activity", "correct-activity"], "expectedComparison": "changed"
+    },
+    {
+      "id": "near-duplicate-diversity-filter",
+      "tags": ["loop", "distanceTarget", "moderate", "nearDuplicate"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"a-primary","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"b-near-copy","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.00005,"evidenceProfile":"goodFull"},
+        {"id":"c-distinct","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["a-primary", "c-distinct"], "expectedRejections": {"b-near-copy":"near_duplicate_geometry"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "direction-reversal-deduplication",
+      "tags": ["loop", "distanceTarget", "moderate", "nearDuplicate", "directionReversal"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"a-original","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"b-reversed","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loopReversed","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"c-distinct","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["a-original", "c-distinct"], "expectedRejections": {"b-reversed":"near_duplicate_geometry"},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "input-order-permutation-contract",
+      "tags": ["loop", "distanceTarget", "moderate", "inputOrder"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"c-far","distanceKm":11,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.2,"evidenceProfile":"goodFull"},
+        {"id":"a-close","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"b-mid","distanceKm":10.5,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["a-close", "b-mid", "c-far"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "strict-dominance-contract",
+      "tags": ["pointToPoint", "distanceTarget", "durationTarget", "easy", "dominance"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":120,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"dominator","distanceKm":10,"durationMinutes":120,"elevationGainMeters":100,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0,"evidenceProfile":"goodFull"},
+        {"id":"dominated","distanceKm":11,"durationMinutes":150,"elevationGainMeters":400,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0.3,"evidenceProfile":"goodPartial"}
+      ],
+      "expectedSelected": ["dominator", "dominated"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "distance-versus-road-non-dominance",
+      "tags": ["loop", "distanceTarget", "moderate", "roadEvidence", "nonDominance"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"closer-road-heavy","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"roadHighFull"},
+        {"id":"farther-road-light","distanceKm":11,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"roadLowFull"}
+      ],
+      "expectedSelected": ["closer-road-heavy", "farther-road-light"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath", "majorRoadExposure"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "invalid-geometry-hard-rejection",
+      "tags": ["loop", "distanceTarget", "moderate", "malformedEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"invalid","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"invalid","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"valid","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["valid"], "expectedRejections": {"invalid":"invalid_geometry"},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "deterministic-stable-tie",
+      "tags": ["loop", "distanceTarget", "moderate", "inputOrder", "evidenceConfidenceChange"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"b-provider-first","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"},
+        {"id":"a-stable-first","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["a-stable-first", "b-provider-first"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": [],
+      "expectedBaselineSelected": ["b-provider-first", "a-stable-first"], "expectedComparison": "changed"
+    },
+    {
+      "id": "duration-and-lower-climb-easy",
+      "tags": ["loop", "durationTarget", "easy", "avoidSteepClimbs", "nonDominance"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":null,"targetDurationMinutes":150,"difficulty":"Easy","avoid":["steepClimbs"],"desired":[]},
+      "candidates": [
+        {"id":"time-exact-steep","distanceKm":9,"durationMinutes":150,"elevationGainMeters":500,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"stableFull"},
+        {"id":"gentle-longer","distanceKm":9,"durationMinutes":165,"elevationGainMeters":100,"difficulty":"Easy","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"stableFull"}
+      ],
+      "expectedSelected": ["time-exact-steep", "gentle-longer"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["durationFit", "majorRoadExposure", "pathsAndTracks", "physicalEffortEstimate"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "road-avoidance-distance-tradeoff",
+      "tags": ["pointToPoint", "distanceTarget", "moderate", "avoidMajorRoads", "roadEvidence", "nonDominance"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["majorRoads"],"desired":[]},
+      "candidates": [
+        {"id":"exact-medium-road","distanceKm":10,"durationMinutes":140,"elevationGainMeters":220,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0,"evidenceProfile":"pathLowFull"},
+        {"id":"near-low-road","distanceKm":10.8,"durationMinutes":140,"elevationGainMeters":220,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0.3,"evidenceProfile":"roadLowFull"}
+      ],
+      "expectedSelected": ["near-low-road", "exact-medium-road"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "technical-section-explanation-moderate",
+      "tags": ["pointToPoint", "distanceTarget", "moderate", "technicalSections"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"technical","distanceKm":12,"durationMinutes":190,"elevationGainMeters":450,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0,"evidenceProfile":"technical2Full"}
+      ],
+      "expectedSelected": ["technical"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "pathsAndTracks", "technicalSections"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "low-coverage-road-zero-is-not-positive",
+      "tags": ["loop", "distanceTarget", "moderate", "partialEvidence", "roadEvidence", "missingEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":9,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["majorRoads"],"desired":[]},
+      "candidates": [
+        {"id":"partial-zero","distanceKm":9,"durationMinutes":125,"elevationGainMeters":180,"difficulty":"Easy","geometry":"loop","geometryOffset":0,"evidenceProfile":"goodPartial"}
+      ],
+      "expectedSelected": ["partial-zero"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"], "expectedFirstLimitationCodes": ["technicalDifficultyCoverageLimited", "surfaceCoverageLimited", "roadClassCoverageLimited"]
+    },
+    {
+      "id": "major-road-threshold-boundary-accepted",
+      "tags": ["loop", "distanceTarget", "moderate", "avoidMajorRoads", "roadEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["majorRoads"],"desired":[]},
+      "candidates": [
+        {"id":"ten-percent-road","distanceKm":12,"durationMinutes":160,"elevationGainMeters":250,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"pathLowFull"}
+      ],
+      "expectedSelected": ["ten-percent-road"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath", "majorRoadExposure"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "point-input-order-evidence-contract",
+      "tags": ["pointToPoint", "distanceTarget", "moderate", "inputOrder", "pathEvidence", "roadEvidence"],
+      "request": {"routeType":"Point to point","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"c-low-evidence","distanceKm":10,"durationMinutes":140,"elevationGainMeters":220,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0.6,"evidenceProfile":"goodPartial"},
+        {"id":"b-road-heavy","distanceKm":10,"durationMinutes":140,"elevationGainMeters":220,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0.3,"evidenceProfile":"roadHighFull"},
+        {"id":"a-path-rich","distanceKm":10,"durationMinutes":140,"elevationGainMeters":220,"difficulty":"Moderate","geometry":"pointLong","geometryOffset":0,"evidenceProfile":"pathHighFull"}
+      ],
+      "expectedSelected": ["a-path-rich", "b-road-heavy", "c-low-evidence"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "majorRoadExposure", "pathsAndTracks"], "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "physical-effort-warning-not-technical-proof",
+      "tags": ["loop", "distanceTarget", "easy", "missingEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Easy","avoid":[],"desired":[]},
+      "candidates": [
+        {"id":"physically-hard-unknown-technical","distanceKm":10,"durationMinutes":180,"elevationGainMeters":700,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["physically-hard-unknown-technical"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath", "physicalEffortEstimate"],
+      "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable", "surfaceEvidenceUnavailable"]
+    },
+    {
+      "id": "clean-loop-repetition-fact",
+      "tags": ["loop", "distanceTarget", "moderate", "avoidRepeatedPath"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":12,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["repeatedPath"],"desired":[]},
+      "candidates": [
+        {"id":"clean","distanceKm":12,"durationMinutes":170,"elevationGainMeters":300,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"none"},
+        {"id":"minor-overlap","distanceKm":12,"durationMinutes":170,"elevationGainMeters":300,"difficulty":"Moderate","geometry":"loopMinorOverlap","geometryOffset":0.1,"evidenceProfile":"none"}
+      ],
+      "expectedSelected": ["clean", "minor-overlap"], "expectedRejections": {},
+      "expectedFirstExplanationCodes": ["distanceFit", "lowRepeatedPath"],
+      "expectedFirstLimitationCodes": ["technicalDifficultyUnavailable"]
+    },
+    {
+      "id": "underfilled-surface-breakdown-is-unusable",
+      "tags": ["loop", "distanceTarget", "easy", "avoidSteepClimbs", "surfaceEvidence", "malformedEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Easy","avoid":["steepClimbs"],"desired":[]},
+      "candidates": [
+        {"id":"underfilled","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"underfilledSurface"},
+        {"id":"valid","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"goodFull"}
+      ],
+      "expectedSelected": ["valid"], "expectedRejections": {"underfilled":"unusable_evidence_payload"},
+      "expectedFirstExplanationCodes": ["distanceFit", "pathsAndTracks", "majorRoadExposure"],
+      "expectedFirstLimitationCodes": []
+    },
+    {
+      "id": "underfilled-road-breakdown-is-unusable",
+      "tags": ["loop", "distanceTarget", "moderate", "avoidMajorRoads", "roadEvidence", "malformedEvidence"],
+      "request": {"routeType":"Loop","activity":"Hiking","targetDistanceKm":10,"targetDurationMinutes":null,"difficulty":"Moderate","avoid":["majorRoads"],"desired":[]},
+      "candidates": [
+        {"id":"underfilled","distanceKm":10,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0,"evidenceProfile":"underfilledRoad"},
+        {"id":"valid","distanceKm":10.2,"durationMinutes":140,"elevationGainMeters":260,"difficulty":"Moderate","geometry":"loop","geometryOffset":0.1,"evidenceProfile":"roadLowFull"}
+      ],
+      "expectedSelected": ["valid"], "expectedRejections": {"underfilled":"unusable_evidence_payload"},
+      "expectedFirstExplanationCodes": ["distanceFit", "pathsAndTracks", "majorRoadExposure"],
+      "expectedFirstLimitationCodes": []
+    }
+  ]
+}
