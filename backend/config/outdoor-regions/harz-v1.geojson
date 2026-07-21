@@ -1,0 +1,19 @@
+{
+  "type": "Feature",
+  "properties": {
+    "regionId": "harz-v1",
+    "name": "Harz v1 operational coverage"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [10.30, 51.45],
+        [11.35, 51.45],
+        [11.35, 51.98],
+        [10.30, 51.98],
+        [10.30, 51.45]
+      ]
+    ]
+  }
+}

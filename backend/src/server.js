@@ -3,6 +3,13 @@ import { AppAttestError, appAttestErrorResult } from "./appAttest/appAttestError
 import { createAppAttestRuntime } from "./appAttest/appAttestRuntime.js";
 import { createIntentSessionEndpoint } from "./appAttest/intentSessionEndpoint.js";
 import { intentError, intentErrorResult } from "./parseIntent.js";
+import { createOutdoorEvidenceEndpoint } from "./outdoorEvidence/outdoorEvidenceEndpoint.js";
+import {
+  OutdoorEvidenceError,
+  outdoorEvidenceError,
+  outdoorEvidenceErrorResult
+} from "./outdoorEvidence/outdoorEvidenceErrors.js";
+import { postgresOutdoorEvidenceRepositoryFromRuntime } from "./outdoorEvidence/postgresOutdoorEvidenceRepository.js";
 import { createRouteEndpoint } from "./routing/routeEndpoint.js";
 import { RouteError, routeError, routeErrorResult } from "./routing/routeErrors.js";
 
@@ -25,6 +32,20 @@ export function createIntentRequestHandler(options = {}) {
     appAttestRepository: appAttestRuntime.repository,
     authorizer: options.authorizer ?? (appAttestRuntime.repository ? appAttestRuntime.routeAuthorizer : undefined)
   });
+  const outdoorEvidenceRepository = options.outdoorEvidenceRepository ??
+    postgresOutdoorEvidenceRepositoryFromRuntime({
+      pool: options.postgresPool,
+      appAttestRepository: appAttestRuntime.repository,
+      statementTimeoutMs: outdoorEvidenceQueryTimeout(options.env)
+    });
+  const outdoorEvidenceEndpoint = options.outdoorEvidenceEndpoint ?? createOutdoorEvidenceEndpoint({
+    ...options,
+    repository: outdoorEvidenceRepository,
+    appAttestRepository: appAttestRuntime.repository,
+    authorizer: options.authorizer ?? (appAttestRuntime.repository ? appAttestRuntime.routeAuthorizer : undefined),
+    maximumPois: outdoorEvidenceMaximumPois(options.env),
+    maximumResponseBytes: outdoorEvidenceResponseLimit(options.env)
+  });
   return async function intentRequestHandler(request, response) {
     const cancellation = new AbortController();
     const abortFromRequest = () => cancellation.abort();
@@ -40,12 +61,15 @@ export function createIntentRequestHandler(options = {}) {
       if (knownPostRoute) {
         if (!isJsonMediaType(request.headers["content-type"])) {
           if (request.url === "/api/parse-intent") throw intentError("invalid_request");
+          if (request.url === "/api/outdoor-evidence/corridor") {
+            throw outdoorEvidenceError("invalid_request", { message: "Content-Type must be application/json." });
+          }
           throw routeError("invalid_request", { message: "Content-Type must be application/json." });
         }
         body = await readJsonBody(
           request,
           bodyLimit(request.url, options.env),
-          request.url !== "/api/parse-intent"
+          requestContract(request.url)
         );
       }
       const result = await handleIntentHttpRequest(
@@ -57,7 +81,7 @@ export function createIntentRequestHandler(options = {}) {
           edgeIdentity: options.edgeIdentityResolver?.(request) ?? request.socket.remoteAddress ?? "unknown-edge",
           signal: cancellation.signal
         },
-        { ...options, routeEndpoint, appAttestEndpoint, intentEndpoint }
+        { ...options, routeEndpoint, outdoorEvidenceEndpoint, appAttestEndpoint, intentEndpoint }
       );
       return sendJson(response, result.statusCode, result.payload, result.headers);
     } catch (error) {
@@ -67,6 +91,10 @@ export function createIntentRequestHandler(options = {}) {
       }
       if (error instanceof RouteError) {
         const result = routeErrorResult(error);
+        return sendJson(response, result.statusCode, result.payload);
+      }
+      if (error instanceof OutdoorEvidenceError) {
+        const result = outdoorEvidenceErrorResult(error);
         return sendJson(response, result.statusCode, result.payload);
       }
       if (request.url === "/api/parse-intent") {
@@ -96,6 +124,15 @@ export async function handleIntentHttpRequest(request, options = {}) {
       });
     }
 
+    if (request.method === "POST" && request.url === "/api/outdoor-evidence/corridor") {
+      const endpoint = options.outdoorEvidenceEndpoint ?? createOutdoorEvidenceEndpoint(options);
+      return await endpoint(request.body, {
+        headers: request.headers,
+        signal: request.signal,
+        requestId: request.requestId
+      });
+    }
+
     if (request.method === "POST" && request.url?.startsWith("/api/app-attest/")) {
       const appAttestEndpoint = options.appAttestEndpoint ?? createAppAttestRuntime(options).endpoint;
       return await appAttestEndpoint(request.url, request.body, {
@@ -118,11 +155,12 @@ export async function handleIntentHttpRequest(request, options = {}) {
     if (request.url === "/api/parse-intent") return intentErrorResult(error);
     if (error instanceof AppAttestError) return appAttestErrorResult(error);
     if (error instanceof RouteError) return routeErrorResult(error);
+    if (error instanceof OutdoorEvidenceError) return outdoorEvidenceErrorResult(error);
     return { statusCode: 500, payload: { error: "Internal server error" } };
   }
 }
 
-function readJsonBody(request, maxBytes, routeErrorContract) {
+function readJsonBody(request, maxBytes, contract) {
   return new Promise((resolve, reject) => {
     let data = "";
     let byteCount = 0;
@@ -145,9 +183,7 @@ function readJsonBody(request, maxBytes, routeErrorContract) {
       if (byteCount > maxBytes) {
         finish(
           reject,
-          routeErrorContract
-            ? routeError("request_too_large")
-            : intentError("invalid_request", { statusCode: 413 })
+          bodyError(contract, "tooLarge")
         );
         request.resume();
         return;
@@ -160,18 +196,14 @@ function readJsonBody(request, maxBytes, routeErrorContract) {
       } catch {
         finish(
           reject,
-          routeErrorContract
-            ? routeError("invalid_request", { message: "Request body must be valid JSON." })
-            : intentError("invalid_request")
+          bodyError(contract, "invalidJson")
         );
       }
     };
     const onError = (error) => finish(reject, error);
     const onAborted = () => finish(
       reject,
-      routeErrorContract
-        ? routeError("request_cancelled")
-        : intentError("request_cancelled")
+      bodyError(contract, "cancelled")
     );
 
     request.setEncoding("utf8");
@@ -195,14 +227,38 @@ function sendJson(response, statusCode, payload, additionalHeaders = {}) {
 
 function isKnownPostPath(url) {
   return url === "/api/parse-intent" || url === "/api/route" ||
+    url === "/api/outdoor-evidence/corridor" ||
     url === "/api/app-attest/challenge" || url === "/api/app-attest/register" ||
     url === "/api/app-attest/route-session";
 }
 
 function bodyLimit(url, env) {
   if (url === "/api/route") return routeBodyLimit(env);
+  if (url === "/api/outdoor-evidence/corridor") return outdoorEvidenceBodyLimit(env);
   if (url?.startsWith("/api/app-attest/")) return 262_144;
   return 16_384;
+}
+
+function requestContract(url) {
+  if (url === "/api/parse-intent") return "intent";
+  if (url === "/api/outdoor-evidence/corridor") return "outdoorEvidence";
+  return "route";
+}
+
+function bodyError(contract, reason) {
+  if (contract === "intent") {
+    return reason === "cancelled"
+      ? intentError("request_cancelled")
+      : intentError("invalid_request", reason === "tooLarge" ? { statusCode: 413 } : undefined);
+  }
+  if (contract === "outdoorEvidence") {
+    if (reason === "tooLarge") return outdoorEvidenceError("request_too_large");
+    if (reason === "cancelled") return outdoorEvidenceError("request_cancelled");
+    return outdoorEvidenceError("invalid_request", { message: "Request body must be valid JSON." });
+  }
+  if (reason === "tooLarge") return routeError("request_too_large");
+  if (reason === "cancelled") return routeError("request_cancelled");
+  return routeError("invalid_request", { message: "Request body must be valid JSON." });
 }
 
 function isJsonMediaType(value) {
@@ -215,6 +271,28 @@ function routeBodyLimit(env = process.env) {
   if (rawValue === undefined || rawValue === "") return 32_768;
   const value = Number(rawValue);
   return Number.isInteger(value) && value >= 1_024 && value <= 262_144 ? value : 32_768;
+}
+
+function outdoorEvidenceBodyLimit(env = process.env) {
+  return boundedEnvironmentInteger(env?.OUTDOOR_EVIDENCE_MAX_BODY_BYTES, 131_072, 4_096, 262_144);
+}
+
+function outdoorEvidenceResponseLimit(env = process.env) {
+  return boundedEnvironmentInteger(env?.OUTDOOR_EVIDENCE_MAX_RESPONSE_BYTES, 524_288, 8_192, 2_097_152);
+}
+
+function outdoorEvidenceMaximumPois(env = process.env) {
+  return boundedEnvironmentInteger(env?.OUTDOOR_EVIDENCE_MAX_POIS, 40, 1, 100);
+}
+
+function outdoorEvidenceQueryTimeout(env = process.env) {
+  return boundedEnvironmentInteger(env?.OUTDOOR_EVIDENCE_QUERY_TIMEOUT_MS, 2_500, 100, 15_000);
+}
+
+function boundedEnvironmentInteger(rawValue, fallback, minimum, maximum) {
+  if (rawValue === undefined || rawValue === "") return fallback;
+  const value = Number(rawValue);
+  return Number.isInteger(value) && value >= minimum && value <= maximum ? value : fallback;
 }
 
 export default createIntentRequestHandler();

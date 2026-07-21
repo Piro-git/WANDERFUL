@@ -10,3 +10,11 @@ backend/node_modules/
 *.xcuserstate
 xcuserdata/
 DerivedData/
+
+# Regional OSM imports and generated outdoor-evidence artifacts
+*.osm.pbf
+*.osm.pbf.*
+backend/data/outdoor-evidence/
+backend/tmp/outdoor-import-*/
+backend/**/*.osm
+backend/**/*.osc

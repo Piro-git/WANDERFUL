@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "regionId": "harz-v1",
+  "name": "Harz v1",
+  "boundaryFile": "harz-v1.geojson",
+  "boundaryKind": "trailmind-operational-polygon",
+  "coordinateReferenceSystem": "EPSG:4326",
+  "metricSRID": 25832,
+  "freshnessThresholdDays": 14,
+  "pathMatchToleranceMeters": 25,
+  "supportedFeatureClasses": [
+    "viewpoint",
+    "peak",
+    "lake",
+    "waterfall",
+    "alpineHut",
+    "wildernessHut",
+    "trailSegment",
+    "hikingRouteRelation"
+  ],
+  "requiredAnchors": [
+    { "name": "Ilsenburg", "latitude": 51.866, "longitude": 10.678 },
+    { "name": "Schierke", "latitude": 51.765, "longitude": 10.665 },
+    { "name": "Brocken", "latitude": 51.800, "longitude": 10.618 },
+    { "name": "Wernigerode", "latitude": 51.836, "longitude": 10.786 },
+    { "name": "Bad Harzburg", "latitude": 51.882, "longitude": 10.562 }
+  ],
+  "sourceMetadataContract": {
+    "required": [
+      "datasetName",
+      "sourceIdentifier",
+      "retrievedAt",
+      "toolVersion",
+      "importSchemaVersion"
+    ],
+    "optional": ["sourceDataTimestamp"]
+  }
+}

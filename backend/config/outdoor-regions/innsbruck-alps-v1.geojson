@@ -1,0 +1,20 @@
+{
+  "type": "Feature",
+  "properties": {
+    "regionId": "innsbruck-alps-v1",
+    "name": "Innsbruck Alpine Pilot v1 operational coverage",
+    "boundaryNotice": "TrailMind operational pilot boundary; not a complete or official Alps boundary"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [10.95, 47.00],
+        [11.65, 47.00],
+        [11.65, 47.45],
+        [10.95, 47.45],
+        [10.95, 47.00]
+      ]
+    ]
+  }
+}

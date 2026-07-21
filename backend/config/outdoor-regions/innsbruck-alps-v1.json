@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "regionId": "innsbruck-alps-v1",
+  "name": "Innsbruck Alpine Pilot v1",
+  "boundaryFile": "innsbruck-alps-v1.geojson",
+  "boundaryKind": "trailmind-operational-polygon",
+  "coordinateReferenceSystem": "EPSG:4326",
+  "metricSRID": 25832,
+  "freshnessThresholdDays": 14,
+  "pathMatchToleranceMeters": 25,
+  "supportedFeatureClasses": [
+    "viewpoint",
+    "peak",
+    "lake",
+    "waterfall",
+    "alpineHut",
+    "wildernessHut",
+    "trailSegment",
+    "hikingRouteRelation"
+  ],
+  "requiredAnchors": [
+    { "name": "Innsbruck", "latitude": 47.269, "longitude": 11.404 },
+    { "name": "Nordkette", "latitude": 47.312, "longitude": 11.384 },
+    { "name": "Seefeld in Tirol", "latitude": 47.330, "longitude": 11.188 },
+    { "name": "Fulpmes", "latitude": 47.153, "longitude": 11.349 },
+    { "name": "Neustift im Stubaital", "latitude": 47.111, "longitude": 11.306 }
+  ],
+  "sourceMetadataContract": {
+    "required": [
+      "datasetName",
+      "sourceIdentifier",
+      "retrievedAt",
+      "toolVersion",
+      "importSchemaVersion"
+    ],
+    "optional": ["sourceDataTimestamp"]
+  }
+}
