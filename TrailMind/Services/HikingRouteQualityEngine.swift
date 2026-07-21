@@ -185,12 +185,30 @@ struct HikingRouteQualityEngine {
         request: RoutePlanningRequest,
         analysis: RouteGeometryQualityAnalysis
     ) -> RouteQualityAssessment {
+        assessment(
+            for: suggestion,
+            providerIndex: providerIndex,
+            request: request,
+            analysis: analysis,
+            outdoorEvidence: .unsupported
+        )
+    }
+
+    /// Deterministic merge seam for evidence fetched before ranking. Network
+    /// work remains outside the synchronous quality engine.
+    func assessment(
+        for suggestion: RouteSuggestion,
+        providerIndex: Int,
+        request: RoutePlanningRequest,
+        analysis: RouteGeometryQualityAnalysis,
+        outdoorEvidence: OutdoorRouteEvidenceSnapshot
+    ) -> RouteQualityAssessment {
         let route = suggestion.route
         let evidence = RouteEvidenceSnapshot.make(
             route: route,
             analysis: analysis,
             policy: policy
-        )
+        ).merging(outdoorEvidence)
         let eligibility = eligibility(
             route: route,
             request: request,

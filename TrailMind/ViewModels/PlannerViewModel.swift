@@ -287,11 +287,16 @@ final class PlannerViewModel {
     private let intentValidationService: IntentValidationService
     private let locationResolver: any LocationResolving
     private let routingCoordinator: any RoutingCoordinating
+    private let outdoorEvidenceProvider: any OutdoorRouteEvidenceProviding
     private let operationTimeouts: OperationTimeouts
     @ObservationIgnored private let attemptIDProvider: @MainActor () -> UUID
     @ObservationIgnored private var activeRequestID: UUID?
     @ObservationIgnored private var planningTaskID: UUID?
     @ObservationIgnored private var planningTask: Task<Void, Never>?
+    @ObservationIgnored private var outdoorEvidenceTask: Task<Void, Never>?
+    @ObservationIgnored private(set) var outdoorEvidenceBySuggestionID: [
+        UUID: OutdoorRouteEvidenceSnapshot
+    ] = [:]
 
     private(set) var state: State = .idle(prompt: "")
 #if DEBUG
@@ -424,6 +429,7 @@ final class PlannerViewModel {
         geocodingService: (any GeocodingService)? = nil,
         locationResolver: (any LocationResolving)? = nil,
         routingCoordinator: any RoutingCoordinating = RoutingCoordinator(),
+        outdoorEvidenceProvider: any OutdoorRouteEvidenceProviding = OutdoorRouteEvidenceProviderFactory.makeDefault(),
         operationTimeouts: OperationTimeouts = .production,
         attemptIDProvider: @escaping @MainActor () -> UUID = { UUID() }
     ) {
@@ -441,6 +447,7 @@ final class PlannerViewModel {
             )
         }
         self.routingCoordinator = routingCoordinator
+        self.outdoorEvidenceProvider = outdoorEvidenceProvider
         self.operationTimeouts = operationTimeouts
         self.attemptIDProvider = attemptIDProvider
     }
@@ -585,11 +592,53 @@ final class PlannerViewModel {
         }
     }
 
+    private func launchOutdoorEvidenceFetch(for suggestions: [RouteSuggestion]) {
+        outdoorEvidenceTask?.cancel()
+        guard outdoorEvidenceProvider.collectionEnabled else {
+            outdoorEvidenceTask = nil
+            outdoorEvidenceBySuggestionID = [:]
+            return
+        }
+        let candidates = suggestions.compactMap { suggestion -> OutdoorEvidencePostRoutingCandidate? in
+            guard suggestion.route.isVerifiedRoutedResult,
+                  case let .routed(provenance) = suggestion.route.provenance,
+                  suggestion.route.path.count >= 2
+            else { return nil }
+            return OutdoorEvidencePostRoutingCandidate(
+                suggestionID: suggestion.id,
+                query: OutdoorRouteEvidenceQuery(
+                    routeFingerprint: provenance.factFingerprint,
+                    geometry: suggestion.route.path
+                )
+            )
+        }
+        guard !candidates.isEmpty else {
+            outdoorEvidenceTask = nil
+            return
+        }
+        let expectedSuggestionIDs = Set(suggestions.map(\.id))
+        let collector = OutdoorEvidencePostRoutingCollector(provider: outdoorEvidenceProvider)
+        outdoorEvidenceTask = Task { [weak self] in
+            let snapshots = await collector.collect(candidates)
+            guard !Task.isCancelled, let self,
+                  case let .suggestionsReady(success) = self.state,
+                  Set(success.suggestions.map(\.id)) == expectedSuggestionIDs
+            else { return }
+            self.outdoorEvidenceBySuggestionID = snapshots.filter {
+                expectedSuggestionIDs.contains($0.key)
+            }
+            self.outdoorEvidenceTask = nil
+        }
+    }
+
     private func invalidateActiveRequest() {
         activeRequestID = nil
         planningTaskID = nil
         planningTask?.cancel()
         planningTask = nil
+        outdoorEvidenceTask?.cancel()
+        outdoorEvidenceTask = nil
+        outdoorEvidenceBySuggestionID = [:]
     }
 }
 
@@ -1054,6 +1103,7 @@ private extension PlannerViewModel {
                     notice: routingResult.notice
                 )
             )
+            launchOutdoorEvidenceFetch(for: preparedSuggestions)
         } catch is CancellationError {
             return
         } catch {

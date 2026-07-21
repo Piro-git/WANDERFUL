@@ -22,6 +22,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>INTENT_BACKEND_BASE_URL</key>
 	<string>$(INTENT_BACKEND_BASE_URL)</string>
+	<key>OUTDOOR_EVIDENCE_ENABLED</key>
+	<string>$(OUTDOOR_EVIDENCE_ENABLED)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
 	<key>NSMicrophoneUsageDescription</key>

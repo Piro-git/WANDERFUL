@@ -15,6 +15,8 @@ enum RouteEvidenceSource: Hashable, Sendable {
     case graphHopperPathDetail(String)
     case derived(String)
     case futureOutdoorEvidenceProvider
+    case osmRegionalDataset(regionID: String, importID: String)
+    case osmRegionalDatasets(regionIDs: [String], importIDs: [String])
     case unsupported
 }
 
@@ -27,6 +29,7 @@ enum RouteEvidenceConfidence: String, Codable, Hashable, Sendable {
 
 enum RouteEvidenceFreshness: String, Codable, Hashable, Sendable {
     case currentRequest
+    case sourceCurrent
     case sourceTimestampUnavailable
     case stale
     case notApplicable
@@ -46,7 +49,7 @@ struct RouteEvidenceMetric<Value: Sendable>: Sendable {
         isKnown && (coverageRatio ?? 0) >= policy.minimumStrongEvidenceCoverage
     }
 
-    static func known(
+    nonisolated static func known(
         _ value: Value,
         coverageRatio: Double = 1,
         source: RouteEvidenceSource,
@@ -73,7 +76,7 @@ struct RouteEvidenceMetric<Value: Sendable>: Sendable {
         )
     }
 
-    static func unavailable(source: RouteEvidenceSource) -> RouteEvidenceMetric<Value> {
+    nonisolated static func unavailable(source: RouteEvidenceSource) -> RouteEvidenceMetric<Value> {
         RouteEvidenceMetric(
             value: nil,
             coverageRatio: nil,
@@ -84,7 +87,7 @@ struct RouteEvidenceMetric<Value: Sendable>: Sendable {
         )
     }
 
-    static func unsupported() -> RouteEvidenceMetric<Value> {
+    nonisolated static func unsupported() -> RouteEvidenceMetric<Value> {
         RouteEvidenceMetric(
             value: nil,
             coverageRatio: nil,
@@ -95,7 +98,7 @@ struct RouteEvidenceMetric<Value: Sendable>: Sendable {
         )
     }
 
-    static func stale(source: RouteEvidenceSource) -> RouteEvidenceMetric<Value> {
+    nonisolated static func stale(source: RouteEvidenceSource) -> RouteEvidenceMetric<Value> {
         RouteEvidenceMetric(
             value: nil,
             coverageRatio: nil,
@@ -106,13 +109,24 @@ struct RouteEvidenceMetric<Value: Sendable>: Sendable {
         )
     }
 
-    static func malformed(source: RouteEvidenceSource) -> RouteEvidenceMetric<Value> {
+    nonisolated static func malformed(source: RouteEvidenceSource) -> RouteEvidenceMetric<Value> {
         RouteEvidenceMetric(
             value: nil,
             coverageRatio: nil,
             source: source,
             confidence: .unknown,
             status: .malformed,
+            freshness: .notApplicable
+        )
+    }
+
+    nonisolated static func rejected(source: RouteEvidenceSource) -> RouteEvidenceMetric<Value> {
+        RouteEvidenceMetric(
+            value: nil,
+            coverageRatio: nil,
+            source: source,
+            confidence: .unknown,
+            status: .rejected,
             freshness: .notApplicable
         )
     }
@@ -156,9 +170,9 @@ struct RouteEvidenceSnapshot: Sendable {
     let majorRoadRatio: RouteEvidenceMetric<Double>
     let surfaceSuitability: RouteEvidenceMetric<RouteSurfaceSuitabilityEvidence>
     let technicalDifficulty: RouteEvidenceMetric<RouteTechnicalDifficultyEvidence>
-    let officialHikingNetworkRatio: RouteEvidenceMetric<Double>
-    let verifiedPointOfInterestCount: RouteEvidenceMetric<Int>
-    let accessRestrictions: RouteEvidenceMetric<Bool>
+    let mappedHikingRouteRatio: RouteEvidenceMetric<Double>
+    let mappedPointOfInterestCount: RouteEvidenceMetric<Int>
+    let explicitAccessRestrictionCount: RouteEvidenceMetric<Int>
     let maximumSlopePercent: RouteEvidenceMetric<Double>
     let coverage: RouteEvidenceCoverage
 
@@ -212,9 +226,9 @@ struct RouteEvidenceSnapshot: Sendable {
             majorRoadRatio: mapped.majorRoadRatio,
             surfaceSuitability: mapped.surfaceSuitability,
             technicalDifficulty: mapped.technicalDifficulty,
-            officialHikingNetworkRatio: .unsupported(),
-            verifiedPointOfInterestCount: .unsupported(),
-            accessRestrictions: .unsupported(),
+            mappedHikingRouteRatio: .unsupported(),
+            mappedPointOfInterestCount: .unsupported(),
+            explicitAccessRestrictionCount: .unsupported(),
             maximumSlopePercent: .unsupported(),
             coverage: mapped.coverage
         )
@@ -247,11 +261,29 @@ struct RouteEvidenceSnapshot: Sendable {
             majorRoadRatio: mapped.majorRoadRatio,
             surfaceSuitability: mapped.surfaceSuitability,
             technicalDifficulty: mapped.technicalDifficulty,
-            officialHikingNetworkRatio: .unsupported(),
-            verifiedPointOfInterestCount: .unsupported(),
-            accessRestrictions: .unsupported(),
+            mappedHikingRouteRatio: .unsupported(),
+            mappedPointOfInterestCount: .unsupported(),
+            explicitAccessRestrictionCount: .unsupported(),
             maximumSlopePercent: .unsupported(),
             coverage: mapped.coverage
+        )
+    }
+
+    func merging(_ outdoor: OutdoorRouteEvidenceSnapshot) -> RouteEvidenceSnapshot {
+        RouteEvidenceSnapshot(
+            distanceKilometers: distanceKilometers,
+            durationMinutes: durationMinutes,
+            ascentMeters: ascentMeters,
+            geometry: geometry,
+            pathAndTrackRatio: pathAndTrackRatio,
+            majorRoadRatio: majorRoadRatio,
+            surfaceSuitability: surfaceSuitability,
+            technicalDifficulty: technicalDifficulty,
+            mappedHikingRouteRatio: outdoor.mappedHikingRouteRatio,
+            mappedPointOfInterestCount: outdoor.mappedPointOfInterestCount,
+            explicitAccessRestrictionCount: outdoor.explicitAccessRestrictionCount,
+            maximumSlopePercent: maximumSlopePercent,
+            coverage: coverage
         )
     }
 
@@ -476,25 +508,175 @@ private enum EvidenceVocabulary {
 struct OutdoorRouteEvidenceQuery: Sendable {
     let routeFingerprint: RouteFactFingerprint?
     let geometry: [Coordinate]
+    let corridorWidthMeters: Int?
+
+    init(
+        routeFingerprint: RouteFactFingerprint?,
+        geometry: [Coordinate],
+        corridorWidthMeters: Int? = nil
+    ) {
+        self.routeFingerprint = routeFingerprint
+        self.geometry = geometry
+        self.corridorWidthMeters = corridorWidthMeters
+    }
+}
+
+enum OutdoorEvidenceCategory: String, Codable, CaseIterable, Hashable, Sendable {
+    case viewpoint
+    case peak
+    case lake
+    case waterfall
+    case alpineHut
+    case wildernessHut
+}
+
+struct OutdoorEvidenceProvenance: Hashable, Sendable {
+    let regionID: String
+    let importID: String
+    let sourceDataset: String
+    let sourceIdentifier: String
+    let sourceDataTimestamp: Date?
+    let importedTimestamp: Date
+    let freshness: RouteEvidenceFreshness
+    let regionalCoverageRatio: Double
+    let osmAttribution: String
+    let osmLicenseURL: URL
+}
+
+struct OutdoorEvidenceRegionCoverage: Hashable, Sendable {
+    let regionID: String
+    let regionName: String
+    let isPartial: Bool
+    let routeCoverageRatio: Double
+}
+
+struct OutdoorEvidenceRegionState: Hashable, Sendable {
+    let coverage: OutdoorEvidenceRegionCoverage
+    let evidenceStatus: RouteEvidenceStatus
+    let provenance: OutdoorEvidenceProvenance?
+}
+
+struct OutdoorEvidenceLengthBreakdown: Hashable, Sendable {
+    let value: String
+    let lengthMeters: Double
+}
+
+struct OutdoorEvidenceAttributeCoverage: Hashable, Sendable {
+    let highway: Double?
+    let surface: Double?
+    let trailVisibility: Double?
+    let sacScale: Double?
+    let explicitAccess: Double?
+}
+
+struct OutdoorEvidenceSourceIdentity: Hashable, Sendable {
+    let osmType: String
+    let osmID: String
+}
+
+struct MappedOutdoorPointOfInterest: Hashable, Sendable {
+    let sourceIdentity: OutdoorEvidenceSourceIdentity
+    let category: OutdoorEvidenceCategory
+    let name: String?
+    let coordinate: Coordinate
+    let distanceFromRouteMeters: Double
+    let regionID: String
+    let importID: String
+    let sourceDataset: String
+    let sourceVersion: Int?
+    let sourceTimestamp: Date?
+}
+
+struct ExplicitAccessRestrictionEvidence: Hashable, Sendable {
+    let sourceIdentity: OutdoorEvidenceSourceIdentity
+    let access: String?
+    let foot: String?
+    let isConditional: Bool
+    let isSeasonal: Bool
+    let requiresPermit: Bool
 }
 
 struct OutdoorRouteEvidenceSnapshot: Sendable {
-    let officialHikingNetworkRatio: RouteEvidenceMetric<Double>
-    let verifiedPointOfInterestCount: RouteEvidenceMetric<Int>
-    let accessRestrictions: RouteEvidenceMetric<Bool>
+    let regionStates: [OutdoorEvidenceRegionState]
+    let overallRegionalCoverageRatio: Double?
+    let attributeCoverage: OutdoorEvidenceAttributeCoverage
+    let mappedHikingRouteRatio: RouteEvidenceMetric<Double>
+    let mappedPointOfInterestCount: RouteEvidenceMetric<Int>
+    let explicitAccessRestrictionCount: RouteEvidenceMetric<Int>
+    let highwayLengthBreakdown: [OutdoorEvidenceLengthBreakdown]
+    let surfaceLengthBreakdown: [OutdoorEvidenceLengthBreakdown]
+    let trailVisibilityLengthBreakdown: [OutdoorEvidenceLengthBreakdown]
+    let sacScaleLengthBreakdown: [OutdoorEvidenceLengthBreakdown]
+    let maximumKnownSacScale: String?
+    let mappedPointOfInterestCounts: [OutdoorEvidenceCategory: Int]
+    let mappedPointsOfInterest: [MappedOutdoorPointOfInterest]
+    let explicitAccessRestrictions: [ExplicitAccessRestrictionEvidence]
+    let warningCodes: [String]
 
-    static let unsupported = OutdoorRouteEvidenceSnapshot(
-        officialHikingNetworkRatio: .unsupported(),
-        verifiedPointOfInterestCount: .unsupported(),
-        accessRestrictions: .unsupported()
-    )
+    var regionCoverage: OutdoorEvidenceRegionCoverage? { regionStates.first?.coverage }
+    var provenance: OutdoorEvidenceProvenance? { regionStates.first?.provenance }
+
+    nonisolated static let unsupported = statusSnapshot(.unsupported)
+
+    nonisolated static func statusSnapshot(
+        _ status: RouteEvidenceStatus,
+        source: RouteEvidenceSource = .futureOutdoorEvidenceProvider,
+        regionCoverage: OutdoorEvidenceRegionCoverage? = nil,
+        regionStates: [OutdoorEvidenceRegionState]? = nil,
+        overallRegionalCoverageRatio: Double? = nil,
+        warningCodes: [String] = []
+    ) -> OutdoorRouteEvidenceSnapshot {
+        func metric<Value: Sendable>() -> RouteEvidenceMetric<Value> {
+            switch status {
+            case .unsupported: .unsupported()
+            case .unavailable: .unavailable(source: source)
+            case .stale: .stale(source: source)
+            case .malformed: .malformed(source: source)
+            case .rejected: .rejected(source: source)
+            case .known: .malformed(source: source)
+            }
+        }
+        let states = regionStates ?? regionCoverage.map {
+            [OutdoorEvidenceRegionState(coverage: $0, evidenceStatus: status, provenance: nil)]
+        } ?? []
+        return OutdoorRouteEvidenceSnapshot(
+            regionStates: states,
+            overallRegionalCoverageRatio: overallRegionalCoverageRatio ?? regionCoverage?.routeCoverageRatio,
+            attributeCoverage: OutdoorEvidenceAttributeCoverage(
+                highway: nil,
+                surface: nil,
+                trailVisibility: nil,
+                sacScale: nil,
+                explicitAccess: nil
+            ),
+            mappedHikingRouteRatio: metric(),
+            mappedPointOfInterestCount: metric(),
+            explicitAccessRestrictionCount: metric(),
+            highwayLengthBreakdown: [],
+            surfaceLengthBreakdown: [],
+            trailVisibilityLengthBreakdown: [],
+            sacScaleLengthBreakdown: [],
+            maximumKnownSacScale: nil,
+            mappedPointOfInterestCounts: [:],
+            mappedPointsOfInterest: [],
+            explicitAccessRestrictions: [],
+            warningCodes: warningCodes
+        )
+    }
 }
 
 protocol OutdoorRouteEvidenceProviding: Sendable {
+    nonisolated var collectionEnabled: Bool { get }
     func evidence(for query: OutdoorRouteEvidenceQuery) async throws -> OutdoorRouteEvidenceSnapshot
 }
 
+extension OutdoorRouteEvidenceProviding {
+    nonisolated var collectionEnabled: Bool { true }
+}
+
 struct NoOpOutdoorRouteEvidenceProvider: OutdoorRouteEvidenceProviding {
+    nonisolated let collectionEnabled = false
+
     func evidence(for query: OutdoorRouteEvidenceQuery) async throws -> OutdoorRouteEvidenceSnapshot {
         .unsupported
     }

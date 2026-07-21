@@ -346,6 +346,22 @@ enum TrailMindBackendConfiguration {
         #endif
         return nil
     }
+
+    nonisolated static func outdoorEvidenceEnabled(bundle: Bundle = .main) -> Bool {
+        guard let configured = bundle.object(forInfoDictionaryKey: "OUTDOOR_EVIDENCE_ENABLED") else {
+            return false
+        }
+        if let value = configured as? Bool { return value }
+        if let value = configured as? NSNumber {
+            if value == 1 { return true }
+            return false
+        }
+        if let value = configured as? String {
+            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return ["1", "true", "yes"].contains(normalized)
+        }
+        return false
+    }
 }
 
 private struct ChallengeRequest: Encodable { let purpose: String; let keyId: String? }

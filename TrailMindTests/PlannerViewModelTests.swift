@@ -392,6 +392,29 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.localFallbackUsed, true)
     }
 
+    func testOrdinaryPlanningPerformsNoOutdoorEvidenceRequestByDefault() async {
+        XCTAssertTrue(
+            OutdoorRouteEvidenceProviderFactory.makeDefault() is NoOpOutdoorRouteEvidenceProvider
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(
+                coordinates: ["Ilsenburg": start, "Schierke": end]
+            ),
+            routingCoordinator: StubRoutingCoordinator(
+                route: verifiedRoute(routeType: .pointToPoint)
+            )
+        )
+
+        viewModel.startPlanning(prompt: "Ilsenburg nach Schierke")
+        await viewModel.generate()
+        await drainTasks()
+
+        guard case .suggestionsReady = viewModel.state else {
+            return XCTFail("Ordinary planning must still produce a route with collection disabled.")
+        }
+        XCTAssertTrue(viewModel.outdoorEvidenceBySuggestionID.isEmpty)
+    }
+
     func testMultipleVerifiedSuggestionsRemainInOneSuccessState() async {
         let prompt = "15 km Rundwanderung um Ilsenburg"
         let intent = makeIntent(
