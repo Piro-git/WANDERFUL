@@ -42,6 +42,8 @@ describe("outdoor evidence importer contract", () => {
     assert.match(source, /delete childEnvironment\.POSTGRES_URL/);
     assert.match(source, /hasMinimumVersion\(result\.rows\[0\]\?\.postgis_version, 3, 2\)/);
     assert.match(source, /osm2pgsql version \(\\d\+\)\\\.\(\\d\+\).*2, 3/s);
+    assert.equal(source.match(/ST_Transform\([\s\S]*?\$(?:3|6)::integer/g)?.length, 4);
+    assert.match(source, /metric_srid = \$6::integer/);
   });
 
   it("maps only bounded evidence columns and excludes documented non-current states", async () => {

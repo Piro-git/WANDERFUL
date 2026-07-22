@@ -106,7 +106,7 @@ async function promoteImport(pool, input) {
           geom, geom_metric, source_version, source_timestamp, evidence_tags)
        SELECT $1, $2, raw.source_type, raw.osm_id, raw.category,
               NULLIF(left(trim(raw.name), 160), ''), NULLIF(left(trim(raw.ref), 80), ''),
-              ST_Force2D(raw.geom), ST_Transform(ST_Force2D(raw.geom), $3),
+              ST_Force2D(raw.geom), ST_Transform(ST_Force2D(raw.geom), $3::integer),
               NULLIF(raw.source_version, 0), raw.source_timestamp,
               jsonb_strip_nulls(jsonb_build_object(
                 'tourism', raw.tourism, 'natural', raw.natural,
@@ -154,7 +154,8 @@ async function promoteImport(pool, input) {
               NULLIF(left(trim(raw.foot_conditional), 256), ''),
               NULLIF(left(trim(raw.seasonal_tag), 40), ''),
               NULLIF(left(trim(raw.permit_tag), 40), ''),
-              ST_Multi(ST_Force2D(raw.geom)), ST_Multi(ST_Transform(ST_Force2D(raw.geom), $3)),
+              ST_Multi(ST_Force2D(raw.geom)),
+              ST_Multi(ST_Transform(ST_Force2D(raw.geom), $3::integer)),
               NULLIF(raw.source_version, 0), raw.source_timestamp
          FROM ${schema}.raw_trails raw
          JOIN outdoor_evidence_regions region ON region.region_id = $2
@@ -246,9 +247,11 @@ async function ensureRegion(pool, region) {
        (region_id, name, definition_version, boundary_kind, coordinate_reference_system,
         metric_srid, boundary, boundary_metric, supported_feature_classes,
         freshness_threshold_days, path_match_tolerance_meters)
-     VALUES ($1, $2, $3, $4, $5, $6,
+     VALUES ($1, $2, $3, $4, $5, $6::integer,
              ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($7), 4326)),
-             ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($7), 4326), $6)),
+             ST_Multi(ST_Transform(
+               ST_SetSRID(ST_GeomFromGeoJSON($7), 4326), $6::integer
+             )),
              $8, $9, $10)
      ON CONFLICT (region_id) DO NOTHING`,
     [
@@ -263,14 +266,16 @@ async function ensureRegion(pool, region) {
             AND definition_version = $3
             AND boundary_kind = $4
             AND coordinate_reference_system = $5
-            AND metric_srid = $6
+            AND metric_srid = $6::integer
             AND ST_Equals(
               boundary,
               ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($7), 4326))
             )
             AND ST_Equals(
               boundary_metric,
-              ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($7), 4326), $6))
+              ST_Multi(ST_Transform(
+                ST_SetSRID(ST_GeomFromGeoJSON($7), 4326), $6::integer
+              ))
             )
             AND supported_feature_classes = $8::text[]
             AND freshness_threshold_days = $9
