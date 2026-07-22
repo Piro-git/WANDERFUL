@@ -62,7 +62,7 @@ WITH input AS (
          ) END AS mapped_hiking_relation
     FROM route_pieces piece
     LEFT JOIN LATERAL (
-      SELECT segment.*, context.import_id, context.region_id, context.selection_rank,
+      SELECT segment.*, context.selection_rank,
              ST_Distance(
                segment.geom_metric,
                ST_Transform(piece.geom, context.metric_srid)
@@ -73,7 +73,7 @@ WITH input AS (
          AND segment.region_id = context.region_id
          AND segment.import_id = context.import_id
          AND ST_SRID(segment.geom_metric) = context.metric_srid
-       WHERE ST_Intersects(context.covered_route_wgs84, piece.geom)
+       WHERE ST_DWithin(context.covered_route_wgs84::geography, piece.geom::geography, 1)
          AND segment.geom_metric && ST_Expand(
                ST_Transform(piece.geom, context.metric_srid),
                LEAST(context.corridor_width_meters, context.path_match_tolerance_meters)
@@ -129,8 +129,8 @@ WITH input AS (
   SELECT DISTINCT ON (segment_osm_id)
          segment_osm_id, access_tag, foot_tag,
          (access_conditional IS NOT NULL OR foot_conditional IS NOT NULL) AS conditional,
-         (seasonal_tag = 'yes') AS seasonal,
-         (permit_tag IN ('yes', 'required')) AS permit_required
+         COALESCE(seasonal_tag = 'yes', false) AS seasonal,
+         COALESCE(permit_tag IN ('yes', 'required'), false) AS permit_required
     FROM assigned_pieces
    WHERE segment_osm_id IS NOT NULL
      AND (

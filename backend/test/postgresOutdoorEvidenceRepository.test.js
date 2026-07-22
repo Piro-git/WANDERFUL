@@ -30,6 +30,11 @@ describe("PostGIS outdoor evidence repository", () => {
     assert.deepEqual(JSON.parse(query.values[0]).coordinates[0], [10.61, 51.8]);
     assert.equal(query.values[1], 100);
     assert.match(query.text, /ST_DWithin/);
+    assert.match(
+      query.text,
+      /ST_DWithin\(context\.covered_route_wgs84::geography, piece\.geom::geography, 1\)/
+    );
+    assert.doesNotMatch(query.text, /ST_Intersects\(context\.covered_route_wgs84, piece\.geom\)/);
     assert.match(query.text, /ST_Segmentize/);
     assert.match(query.text, /ST_Distance/);
     assert.match(query.text, /ST_UnaryUnion\(ST_Collect/);
@@ -68,6 +73,12 @@ describe("PostGIS outdoor evidence repository", () => {
   it("assigns each route piece to one nearest segment before relation aggregation", () => {
     assert.match(outdoorEvidenceCorridorQueryForTesting, /ORDER BY match_distance[\s\S]+LIMIT 1/);
     assert.match(outdoorEvidenceCorridorQueryForTesting, /EXISTS \([\s\S]+outdoor_evidence_hiking_relation_members/);
+    assert.doesNotMatch(
+      outdoorEvidenceCorridorQueryForTesting,
+      /SELECT segment\.\*, context\.(?:import_id|region_id)/
+    );
+    assert.match(outdoorEvidenceCorridorQueryForTesting, /COALESCE\(seasonal_tag = 'yes', false\)/);
+    assert.match(outdoorEvidenceCorridorQueryForTesting, /COALESCE\(permit_tag IN \('yes', 'required'\), false\)/);
   });
 
   it("deduplicates canonical POIs and segment evidence across overlapping imports", () => {
