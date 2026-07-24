@@ -9,7 +9,9 @@
     "test": "node --test",
     "build": "node --check api/*.js scripts/*.js src/*.js src/appAttest/*.js src/outdoorEvidence/*.js src/outdoorResearch/*.js src/routing/*.js test/*.js",
     "db:migrate": "node scripts/migrate.js",
-    "outdoor-evidence:import": "node scripts/import-outdoor-evidence.js"
+    "outdoor-evidence:import": "node scripts/import-outdoor-evidence.js",
+    "outdoor-research:configure-osm-policy": "node scripts/configure-osm-outdoor-research-policy.js",
+    "outdoor-research:project-osm": "node scripts/project-osm-outdoor-research.js"
   },
   "engines": {
     "node": ">=20"

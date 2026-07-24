@@ -44,6 +44,25 @@ describe("outdoor evidence importer contract", () => {
     assert.match(source, /osm2pgsql version \(\\d\+\)\\\.\(\\d\+\).*2, 3/s);
     assert.equal(source.match(/ST_Transform\([\s\S]*?\$(?:3|6)::integer/g)?.length, 4);
     assert.match(source, /metric_srid = \$6::integer/);
+    assert.match(source, /new Set\(\["sha256"\]\)/);
+    assert.match(source, /fileChecksums\[sourceChecksum\.algorithm\] !== sourceChecksum\.value/);
+    assert.match(source, /A Geofabrik import requires its published source checksum/);
+    assert.match(source, /source_checksum_algorithm/);
+    assert.match(source, /source_checksum_verified_at/);
+    assert.match(source, /sourceChecksumVerifiedAt/);
+    assert.match(source, /input_file_sha256/);
+    assert.match(source, /geofabrik_regional_extract/);
+    assert.match(source, /acquisition_provenance/);
+    assert.match(
+      source,
+      /"source-timestamp", "acquisition-channel"/
+    );
+    assert.match(
+      source,
+      /const suppliedSourceTimestamp = requiredDate\(args\.sourceTimestamp/
+    );
+    assert.match(source, /SELECT count\(\*\) = 5/);
+    assert.doesNotMatch(source, /left\(trim\(raw\.(?:name|operator)/);
   });
 
   it("maps only bounded evidence columns and excludes documented non-current states", async () => {

@@ -108,7 +108,8 @@ function validateAnchors(anchors, rings) {
 
 function validateSourceMetadataContract(contract) {
   const required = [
-    "datasetName", "sourceIdentifier", "retrievedAt", "toolVersion", "importSchemaVersion"
+    "datasetName", "sourceIdentifier", "sourceDataTimestamp", "retrievedAt",
+    "toolVersion", "importSchemaVersion", "acquisitionChannel", "inputFileSha256"
   ];
   if (!contract || !Array.isArray(contract.required) || !Array.isArray(contract.optional)) invalid();
   if (required.some((field) => !contract.required.includes(field))) invalid();

@@ -99,7 +99,10 @@ describe("outdoor research graph PostGIS integration", { skip: !connectionString
       `SELECT version FROM "${runnerSchemaName}".trailmind_schema_migrations ORDER BY version`
     );
     assert.deepEqual(migrations.rows.map((row) => row.version), [
-      "001_app_attest.sql", "002_outdoor_evidence.sql", "003_outdoor_research_graph.sql"
+      "001_app_attest.sql",
+      "002_outdoor_evidence.sql",
+      "003_outdoor_research_graph.sql",
+      "004_osm_outdoor_research_projection.sql"
     ]);
   });
 

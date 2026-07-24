@@ -29,10 +29,16 @@
     "required": [
       "datasetName",
       "sourceIdentifier",
+      "sourceDataTimestamp",
       "retrievedAt",
       "toolVersion",
-      "importSchemaVersion"
+      "importSchemaVersion",
+      "acquisitionChannel",
+      "inputFileSha256"
     ],
-    "optional": ["sourceDataTimestamp"]
+    "optional": [
+      "sourceChecksum",
+      "sourceChecksumVerifiedAt"
+    ]
   }
 }

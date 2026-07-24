@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,8 +19,19 @@ const file = await stat(pbfPath);
 const maximumPbfBytes = integer(process.env.OUTDOOR_EVIDENCE_MAX_PBF_BYTES, 2_147_483_648, 1, 8_589_934_592);
 if (!file.isFile() || file.size < 1 || file.size > maximumPbfBytes) fail("The PBF file is empty or exceeds the configured import limit.");
 validateSourceIdentifier(args.sourceIdentifier);
+const sourceChecksum = optionalChecksum(args.sourceChecksum);
+if (args.acquisitionChannel === "geofabrik_regional_extract" && !sourceChecksum) {
+  fail("A Geofabrik import requires its published source checksum.");
+}
+const fileChecksums = await checksumsForFile(pbfPath, sourceChecksum?.algorithm);
+const inputFileSha256 = fileChecksums.sha256;
+if (sourceChecksum &&
+    fileChecksums[sourceChecksum.algorithm] !== sourceChecksum.value) {
+  fail("The PBF does not match the supplied source checksum.");
+}
+const sourceChecksumVerifiedAt = sourceChecksum ? new Date().toISOString() : null;
 const retrievedAt = requiredDate(args.retrievedAt, "retrieved-at");
-const suppliedSourceTimestamp = optionalDate(args.sourceTimestamp, "source-timestamp");
+const suppliedSourceTimestamp = requiredDate(args.sourceTimestamp, "source-timestamp");
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!connectionString) fail("DATABASE_URL or POSTGRES_URL is required.");
 const postgresURL = validatePostgresURL(connectionString);
@@ -45,11 +57,15 @@ try {
   await pool.query(
     `INSERT INTO outdoor_evidence_imports
        (import_id, region_id, source_dataset_name, source_identifier, source_data_at,
-        retrieved_at, tool_version, import_schema_version, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 1, 'loading')`,
+        retrieved_at, tool_version, import_schema_version, status,
+        acquisition_channel, source_checksum_algorithm, source_checksum,
+        source_checksum_verified_at, input_file_sha256)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 1, 'loading', $8, $9, $10, $11, $12)`,
     [
       importId, region.regionId, args.datasetName, args.sourceIdentifier,
-      suppliedSourceTimestamp, retrievedAt, osm2pgsqlVersion
+      suppliedSourceTimestamp, retrievedAt, osm2pgsqlVersion, args.acquisitionChannel,
+      sourceChecksum?.algorithm ?? null, sourceChecksum?.value ?? null,
+      sourceChecksumVerifiedAt, inputFileSha256
     ]
   );
   await pool.query(`CREATE SCHEMA ${quotedIdentifier(stagingSchema)}`);
@@ -105,7 +121,8 @@ async function promoteImport(pool, input) {
          (import_id, region_id, osm_type, osm_id, category, name, reference,
           geom, geom_metric, source_version, source_timestamp, evidence_tags)
        SELECT $1, $2, raw.source_type, raw.osm_id, raw.category,
-              NULLIF(left(trim(raw.name), 160), ''), NULLIF(left(trim(raw.ref), 80), ''),
+              CASE WHEN length(trim(raw.name)) BETWEEN 1 AND 160 THEN trim(raw.name) END,
+              CASE WHEN length(trim(raw.ref)) BETWEEN 1 AND 80 THEN trim(raw.ref) END,
               ST_Force2D(raw.geom), ST_Transform(ST_Force2D(raw.geom), $3::integer),
               NULLIF(raw.source_version, 0), raw.source_timestamp,
               jsonb_strip_nulls(jsonb_build_object(
@@ -150,10 +167,14 @@ async function promoteImport(pool, input) {
                 'yes','no','private','permissive','designated','destination','customers','delivery',
                 'agricultural','forestry','permit','use_sidepath'
               ) THEN raw.foot_tag ELSE NULL END,
-              NULLIF(left(trim(raw.access_conditional), 256), ''),
-              NULLIF(left(trim(raw.foot_conditional), 256), ''),
-              NULLIF(left(trim(raw.seasonal_tag), 40), ''),
-              NULLIF(left(trim(raw.permit_tag), 40), ''),
+              CASE WHEN length(trim(raw.access_conditional)) BETWEEN 1 AND 256
+                THEN trim(raw.access_conditional) END,
+              CASE WHEN length(trim(raw.foot_conditional)) BETWEEN 1 AND 256
+                THEN trim(raw.foot_conditional) END,
+              CASE WHEN length(trim(raw.seasonal_tag)) BETWEEN 1 AND 40
+                THEN trim(raw.seasonal_tag) END,
+              CASE WHEN length(trim(raw.permit_tag)) BETWEEN 1 AND 40
+                THEN trim(raw.permit_tag) END,
               ST_Multi(ST_Force2D(raw.geom)),
               ST_Multi(ST_Transform(ST_Force2D(raw.geom), $3::integer)),
               NULLIF(raw.source_version, 0), raw.source_timestamp
@@ -169,9 +190,15 @@ async function promoteImport(pool, input) {
           symbol, osmc_symbol, state, source_version, source_timestamp)
        SELECT DISTINCT $1, $2, relation.osm_id, relation.route_type,
               CASE WHEN relation.network IN ('iwn','nwn','rwn','lwn') THEN relation.network ELSE NULL END,
-              NULLIF(left(trim(relation.name), 160), ''), NULLIF(left(trim(relation.ref), 80), ''),
-              NULLIF(left(trim(relation.operator), 160), ''), NULLIF(left(trim(relation.symbol), 160), ''),
-              NULLIF(left(trim(relation.osmc_symbol), 160), ''), relation.state,
+              CASE WHEN length(trim(relation.name)) BETWEEN 1 AND 160 THEN trim(relation.name) END,
+              CASE WHEN length(trim(relation.ref)) BETWEEN 1 AND 80 THEN trim(relation.ref) END,
+              CASE WHEN length(trim(relation.operator)) BETWEEN 1 AND 160
+                THEN trim(relation.operator) END,
+              CASE WHEN length(trim(relation.symbol)) BETWEEN 1 AND 160
+                THEN trim(relation.symbol) END,
+              CASE WHEN length(trim(relation.osmc_symbol)) BETWEEN 1 AND 160
+                THEN trim(relation.osmc_symbol) END,
+              relation.state,
               NULLIF(relation.source_version, 0), relation.source_timestamp
          FROM ${schema}.raw_hiking_relations relation
          JOIN ${schema}.raw_hiking_relation_members member
@@ -298,9 +325,21 @@ async function ensureSchemaAvailable(pool) {
   const result = await pool.query(
     `SELECT to_regclass('outdoor_evidence_regions') IS NOT NULL AS regions,
             to_regclass('outdoor_evidence_imports') IS NOT NULL AS imports,
+            (
+              SELECT count(*) = 5
+                FROM information_schema.columns
+               WHERE table_schema = current_schema()
+                 AND table_name = 'outdoor_evidence_imports'
+                 AND column_name IN (
+                   'acquisition_channel', 'source_checksum_algorithm',
+                   'source_checksum', 'source_checksum_verified_at',
+                   'input_file_sha256'
+                 )
+            ) AS acquisition_provenance,
             postgis_lib_version() AS postgis_version`
   );
   if (!result.rows[0]?.regions || !result.rows[0]?.imports ||
+      !result.rows[0]?.acquisition_provenance ||
       !hasMinimumVersion(result.rows[0]?.postgis_version, 3, 2)) {
     fail("Apply backend migrations before importing outdoor evidence.");
   }
@@ -382,26 +421,45 @@ function validateSourceIdentifier(value) {
 
 function parseArguments(values) {
   const parsed = {};
+  const allowed = new Set([
+    "region", "pbf", "dataset-name", "source-id", "retrieved-at",
+    "source-timestamp", "acquisition-channel", "source-checksum"
+  ]);
+  if (values.length % 2 !== 0) fail("Import arguments must be --key value pairs.");
   for (let index = 0; index < values.length; index += 2) {
     const key = values[index];
     const value = values[index + 1];
     if (!key?.startsWith("--") || value === undefined) fail("Import arguments must be --key value pairs.");
-    parsed[key.slice(2)] = value;
+    const name = key.slice(2);
+    if (!allowed.has(name) || Object.hasOwn(parsed, name)) fail("Import arguments are invalid.");
+    parsed[name] = value;
   }
-  const required = ["region", "pbf", "dataset-name", "source-id", "retrieved-at"];
+  const required = [
+    "region", "pbf", "dataset-name", "source-id", "retrieved-at",
+    "source-timestamp", "acquisition-channel"
+  ];
   if (required.some((key) => !parsed[key])) {
-    fail("Required: --region --pbf --dataset-name --source-id --retrieved-at.");
+    fail(
+      "Required: --region --pbf --dataset-name --source-id --retrieved-at " +
+      "--source-timestamp --acquisition-channel."
+    );
   }
   if (!parsed["dataset-name"].trim() || parsed["dataset-name"].length > 160) {
     fail("dataset-name is invalid.");
   }
+  const acquisitionChannel = parsed["acquisition-channel"];
+  if (!new Set([
+    "geofabrik_regional_extract", "operator_supplied_local", "other_reviewed_bulk"
+  ]).has(acquisitionChannel)) fail("acquisition-channel is invalid.");
   return {
     region: parsed.region,
     pbf: parsed.pbf,
     datasetName: parsed["dataset-name"],
     sourceIdentifier: parsed["source-id"],
     retrievedAt: parsed["retrieved-at"],
-    sourceTimestamp: parsed["source-timestamp"]
+    sourceTimestamp: parsed["source-timestamp"],
+    acquisitionChannel,
+    sourceChecksum: parsed["source-checksum"]
   };
 }
 
@@ -427,6 +485,33 @@ function integer(value, fallback, minimum, maximum) {
   if (value === undefined || value === "") return fallback;
   const number = Number(value);
   return Number.isInteger(number) && number >= minimum && number <= maximum ? number : fallback;
+}
+
+function optionalChecksum(value) {
+  if (!value) return null;
+  const match = value.toLowerCase().match(/^(md5|sha256):([a-f0-9]+)$/);
+  if (!match) fail("source-checksum is invalid.");
+  const expectedLength = match[1] === "md5" ? 32 : 64;
+  if (match[2].length !== expectedLength) fail("source-checksum is invalid.");
+  return { algorithm: match[1], value: match[2] };
+}
+
+function checksumsForFile(path, sourceAlgorithm) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const algorithms = new Set(["sha256"]);
+    if (sourceAlgorithm) algorithms.add(sourceAlgorithm);
+    const hashes = new Map(
+      [...algorithms].map((algorithm) => [algorithm, createHash(algorithm)])
+    );
+    const stream = createReadStream(path);
+    stream.on("data", (chunk) => {
+      for (const hash of hashes.values()) hash.update(chunk);
+    });
+    stream.once("error", () => rejectPromise(new Error("PBF checksum failed.")));
+    stream.once("end", () => resolvePromise(Object.fromEntries(
+      [...hashes].map(([algorithm, hash]) => [algorithm, hash.digest("hex")])
+    )));
+  });
 }
 
 function fail(message) {

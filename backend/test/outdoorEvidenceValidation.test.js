@@ -48,6 +48,12 @@ describe("outdoor evidence request validation", () => {
       region.requiredAnchors.map((anchor) => anchor.name),
       ["Ilsenburg", "Schierke", "Brocken", "Wernigerode", "Bad Harzburg"]
     );
+    for (const field of [
+      "datasetName", "sourceIdentifier", "sourceDataTimestamp", "retrievedAt",
+      "acquisitionChannel", "inputFileSha256"
+    ]) {
+      assert(region.sourceMetadataContract.required.includes(field));
+    }
   });
 
   it("loads both regions deterministically and bounds the Innsbruck Alpine pilot", () => {

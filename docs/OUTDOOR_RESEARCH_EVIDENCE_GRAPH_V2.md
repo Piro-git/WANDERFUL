@@ -2,7 +2,7 @@
 
 ## Status, purpose, and non-goals
 
-This package freezes an additive database and contract foundation for a future TrailMind outdoor research agent. It does not perform research, call providers, generate routes, or make new product claims.
+This package freezes an additive database and contract foundation for a future TrailMind outdoor research agent. It does not perform research, call providers, generate routes, or make new product claims. Migration `004_osm_outdoor_research_projection.sql` now adds the first offline, operator-controlled adapter into this graph; its narrower contract is documented in `OSM_OUTDOOR_RESEARCH_PROJECTION_V1.md`.
 
 It adds:
 
@@ -25,7 +25,7 @@ The layers have different responsibilities:
 | `outdoor_evidence_*` | OSM object identity within an immutable regional import | What OSM mapped near routed geometry | Whole regional imports are immutable and atomically promoted |
 | `outdoor_research_*` | TrailMind-owned canonical identities linked to one or more external identities | Claim-level evidence, conflicts, temporal state, relationships, computations, and observations | Assertions, relationships, derived features, and observations are append-only |
 
-A future adapter may read a promoted `outdoor_evidence_*` import and write normalized mapped assertions into `outdoor_research_*`. That adapter is not part of V2. The canonical entity remains an identity container; a stored canonical geometry helps identity resolution but is not, by itself, an authoritative source claim.
+The first approved adapter may now read a promoted `outdoor_evidence_*` import and write narrowly scoped normalized mapped assertions and route-membership relationships into `outdoor_research_*`. It is offline, operator-invoked, exact-policy-gated, and limited to reviewed OSM facts. The canonical entity remains an identity container; a stored canonical geometry helps identity resolution but is not, by itself, an authoritative source claim.
 
 ## Canonical graph tables
 
@@ -172,9 +172,9 @@ Date and UTC timestamp parsing is calendar-strict: impossible dates such as `202
 
 Serialized ceilings are 48 KiB for intent, 64 KiB for plan, 16 KiB per claim/candidate, and 512 KiB for a dossier. Dossiers allow at most 160 claims, 32 highlights, 24 route candidates, 24 overnight candidates, and 48 source summaries.
 
-## Future adapter write path
+## Adapter write path
 
-A future approved adapter should:
+Every approved adapter must:
 
 1. Register or locate its active source with reviewed licensing and storage permissions.
 2. Register an active reviewed authority scope for every predicate/entity-category pair the adapter may assert; broad source category is insufficient.
@@ -205,11 +205,11 @@ The dossier is input to a later route generator. It is not a route result and ca
 
 ## Migration, repeatability, and rollback
 
-`003_outdoor_research_graph.sql` is additive and safe for the existing lexically ordered migration runner. Every table/index uses idempotent creation, trigger creation checks catalog state, functions are replaced deterministically, and a second migration-runner invocation sees its recorded version and performs no work.
+`003_outdoor_research_graph.sql` and `004_osm_outdoor_research_projection.sql` are additive and safe for the existing lexically ordered migration runner. Every table/index uses idempotent creation, trigger creation checks catalog state, functions are replaced deterministically, and a second migration-runner invocation sees each recorded version and performs no work.
 
 There is intentionally no automatic destructive down migration. Rollback means disabling future readers/writers in application code while retaining evidence for audit. If pre-production removal is explicitly approved, an operator must first prove there are no consumers, export required audit data, and drop objects in reviewed dependency order. Production deletion/retention policy is a separate operational and legal decision.
 
-The migration creates no source rows, no entities, no claims, and no production enablement.
+The migrations create no source rows, no entities, no claims, and no production enablement. Migration `004` source/policy activation is a separate explicit reviewed operator action.
 
 ## Complete Innsbruck example
 
