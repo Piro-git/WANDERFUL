@@ -253,8 +253,8 @@ function planMappedNetwork(context) {
     FOUNDATIONAL_HIKING_NETWORK.sourceCategories.some((category) =>
       context.capabilities.availableSourceCategories.includes(category)
     ) &&
-    context.capabilities.supportedEvidencePredicates.includes(
-      FOUNDATIONAL_HIKING_NETWORK.requiredPredicate
+    FOUNDATIONAL_HIKING_NETWORK.requiredPredicates.every((predicate) =>
+      context.capabilities.supportedEvidencePredicates.includes(predicate)
     );
   propose(context, {
     operationType: FOUNDATIONAL_HIKING_NETWORK.operationType,
@@ -264,9 +264,11 @@ function planMappedNetwork(context) {
     sourceGapCode: "mapped_source_unavailable",
     entityCategories: ["hiking_route", "trail_segment"],
     predicates: [
+      "entity_category",
       FOUNDATIONAL_HIKING_NETWORK.requiredPredicate,
       "trail_difficulty",
-      "trail_visibility"
+      "trail_visibility",
+      "access_restriction"
     ],
     allowEmptyPredicates: false
   });
@@ -763,7 +765,12 @@ function materializeOperations(context) {
     if (!proposal.allowEmptyPredicates && predicates.length === 0) continue;
     if (predicates.some((predicate) => HIGH_STAKES_SET.has(predicate)) &&
         !sourceCategories.every((category) =>
-          category === "official_authority" || category === "official_operator")) {
+          category === "official_authority" || category === "official_operator") &&
+        !isMappedAccessContextOperation({
+          ...proposal,
+          acceptableSourceCategories: sourceCategories,
+          predicates
+        })) {
       throw new OutdoorResearchPlannerError("invalid_generated_plan");
     }
 
@@ -786,6 +793,23 @@ function materializeOperations(context) {
     operationId: `op_${String(index + 1).padStart(2, "0")}_${operation.operationType}`,
     ...operation
   }));
+}
+
+function isMappedAccessContextOperation(operation) {
+  const highStakesPredicates = operation.predicates.filter((predicate) =>
+    HIGH_STAKES_SET.has(predicate)
+  );
+  return operation.operationType === "retrieve_mapped_hiking_routes" &&
+    operation.informationNeed === "mapped_hiking_routes" &&
+    operation.reasonCode === "coverage_gap" &&
+    operation.acceptableSourceCategories.length === 1 &&
+    operation.acceptableSourceCategories[0] === "openstreetmap_open_mapping" &&
+    operation.entityCategories.includes("trail_segment") &&
+    operation.entityCategories.every((category) =>
+      category === "trail_segment" || category === "hiking_route"
+    ) &&
+    highStakesPredicates.length === 1 &&
+    highStakesPredicates[0] === "access_restriction";
 }
 
 function mergeCompatibleOperations(operations) {

@@ -112,6 +112,38 @@ describe("outdoor research v1 contracts", () => {
     })));
   });
 
+  it("allows only the narrow mapped hiking-network access context exception", () => {
+    const mappedContext = {
+      operationId: "mapped_hiking_context",
+      operationType: "retrieve_mapped_hiking_routes",
+      informationNeed: "mapped_hiking_routes",
+      reasonCode: "coverage_gap",
+      acceptableSourceCategories: ["openstreetmap_open_mapping"],
+      entityCategories: ["hiking_route", "trail_segment"],
+      predicates: [
+        "entity_category",
+        "access_restriction",
+        "mapped_hiking_route_membership"
+      ]
+    };
+    assert.equal(validateResearchPlanV1(researchPlan({
+      operations: [mappedContext]
+    })).operations.length, 1);
+
+    for (const operation of [
+      { ...mappedContext, operationType: "inspect_access_evidence" },
+      { ...mappedContext, informationNeed: "access_and_legal_status" },
+      { ...mappedContext, reasonCode: "high_stakes_verification" },
+      { ...mappedContext, predicates: [...mappedContext.predicates, "public_access"] },
+      { ...mappedContext, acceptableSourceCategories: ["wikimedia_open_knowledge"] },
+      { ...mappedContext, entityCategories: ["viewpoint", "trail_segment"] }
+    ]) {
+      assert.throws(() => validateResearchPlanV1(researchPlan({
+        operations: [operation]
+      })));
+    }
+  });
+
   it("validates typed claims and keeps an unknown value distinct from false", () => {
     const unknown = validateEvidenceClaimV1(evidenceClaim({
       value: { type: "unknown" },
@@ -163,6 +195,46 @@ describe("outdoor research v1 contracts", () => {
         }]
       })]
     })));
+  });
+
+  it("represents counted must-have candidate shortfalls without overloading another gap code", () => {
+    const dossier = validateAdventureResearchDossierV1(adventureResearchDossier({
+      evidenceGaps: [{
+        code: "insufficient_candidate_count",
+        experience: "viewpoint",
+        requiredMinimumCount: 2,
+        foundCount: 1
+      }]
+    }));
+    assert.deepEqual(dossier.evidenceGaps, [{
+      code: "insufficient_candidate_count",
+      experience: "viewpoint",
+      requiredMinimumCount: 2,
+      foundCount: 1
+    }]);
+    for (const gap of [
+      {
+        code: "insufficient_candidate_count",
+        experience: "viewpoint",
+        requiredMinimumCount: 2,
+        foundCount: 2
+      },
+      {
+        code: "insufficient_candidate_count",
+        entityId: null,
+        predicate: "entity_category"
+      },
+      {
+        code: "missing_access_evidence",
+        experience: "viewpoint",
+        requiredMinimumCount: 2,
+        foundCount: 1
+      }
+    ]) {
+      assert.throws(() => validateAdventureResearchDossierV1(
+        adventureResearchDossier({ evidenceGaps: [gap] })
+      ));
+    }
   });
 
   it("rejects dossier candidates whose claims belong to another entity or category", () => {

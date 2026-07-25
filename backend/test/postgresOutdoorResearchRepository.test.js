@@ -1,0 +1,463 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import {
+  OSM_ASSERTION_POLICY_SCOPES,
+  OSM_RELATIONSHIP_POLICY_SCOPES
+} from "../src/outdoorResearch/osmProjectionPolicy.js";
+import {
+  outdoorResearchRepositoryQueriesForTesting,
+  PostgresOutdoorResearchRepository
+} from "../src/outdoorResearch/postgresOutdoorResearchRepository.js";
+import {
+  OUTDOOR_RESEARCH_REGION_BINDINGS_V1
+} from "../src/outdoorResearch/regionBindings.js";
+
+const BINDING = OUTDOOR_RESEARCH_REGION_BINDINGS_V1.find((binding) =>
+  binding.operationalRegionId === "harz-v1"
+);
+const ANCHOR = { latitude: 51.8, longitude: 10.6 };
+const NOW = new Date("2026-07-24T12:00:00Z");
+
+describe("PostGIS outdoor research repository", () => {
+  it("derives exact mapped capabilities from one active governed snapshot", async () => {
+    const harness = repositoryHarness({ snapshotRow: activeSnapshotRow() });
+    const result = await harness.repository.withConsistentSnapshot({}, async (session) =>
+      session.resolveCapabilities(BINDING, ANCHOR, NOW)
+    );
+    assert.equal(result.availabilityState, "active");
+    assert.deepEqual(result.capabilities.supportedRegionIds, [BINDING.regionEntityId]);
+    assert.deepEqual(result.capabilities.availableSourceCategories, [
+      "openstreetmap_open_mapping"
+    ]);
+    assert.deepEqual(result.capabilities.enabledOperationTypes, [
+      "discover_highlights",
+      "retrieve_mapped_hiking_routes"
+    ]);
+    assert(result.capabilities.supportedEvidencePredicates.includes(
+      "mapped_hiking_route_membership"
+    ));
+    assert(result.capabilities.supportedEvidencePredicates.includes(
+      "access_restriction"
+    ));
+    for (const forbidden of [
+      "public_access",
+      "current_opening",
+      "overnight_permission",
+      "drinking_water_availability",
+      "closure_status"
+    ]) {
+      assert.equal(
+        result.capabilities.supportedEvidencePredicates.includes(forbidden),
+        false
+      );
+    }
+    assert.equal(result.snapshot.operationalRegionId, "harz-v1");
+    assert.equal(Object.isFrozen(result), true);
+    assert.deepEqual(harness.commands.slice(0, 2), [
+      "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
+      "SELECT set_config('statement_timeout', $1, true)"
+    ]);
+    assert.equal(harness.commands.at(-1), "COMMIT");
+    assert.equal(harness.released(), true);
+    const snapshotCall = harness.queryCalls.find((call) =>
+      call.text.includes("SELECT region.region_id")
+    );
+    assert.deepEqual(snapshotCall.values, [
+      "harz-v1",
+      ANCHOR.longitude,
+      ANCHOR.latitude
+    ]);
+  });
+
+  it("removes capabilities for inactive, revoked, scope-drifted and stale evidence", async () => {
+    const cases = [
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ source_lifecycle_state: "paused" })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ policy_lifecycle_state: "retired" })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({
+          authority_scopes: OSM_ASSERTION_POLICY_SCOPES.slice(1)
+        })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ relationship_scopes: [] })
+      },
+      {
+        expected: "source_stale",
+        row: activeSnapshotRow({ source_data_at: "2026-07-22T10:00:00Z" })
+      }
+    ];
+    for (const testCase of cases) {
+      const harness = repositoryHarness({ snapshotRow: testCase.row });
+      const result = await harness.repository.withConsistentSnapshot(
+        {},
+        (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+      );
+      assert.equal(result.availabilityState, testCase.expected);
+      assert.deepEqual(result.capabilities.supportedRegionIds, []);
+      assert.equal(result.snapshot, null);
+    }
+  });
+
+  it("fails exact polygon containment closed without advertising another region", async () => {
+    const harness = repositoryHarness({
+      snapshotRow: activeSnapshotRow({
+        anchor_inside: false,
+        boundary_distance_meters: null
+      })
+    });
+    const result = await harness.repository.withConsistentSnapshot(
+      {},
+      (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+    );
+    assert.equal(result.availabilityState, "outside_region");
+    assert.deepEqual(result.capabilities.supportedRegionIds, []);
+    assert.equal(result.snapshot, null);
+  });
+
+  it("rejects malformed normalized repository and freshness timestamps", async () => {
+    const invalidTimestamps = [
+      "2026-02-30T10:00:00Z",
+      "2026",
+      "2026-07-24T10:00:00",
+      "2026-07-24T12:00:00+02:00",
+      "not-a-date",
+      new Date(Number.NaN)
+    ];
+    for (const invalidTimestamp of invalidTimestamps) {
+      for (const field of [
+        "source_data_at",
+        "import_retrieved_at",
+        "imported_at"
+      ]) {
+        const harness = repositoryHarness({
+          snapshotRow: activeSnapshotRow({ [field]: invalidTimestamp })
+        });
+        await assert.rejects(
+          () => harness.repository.withConsistentSnapshot(
+            {},
+            (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+          ),
+          hasCode("malformed_evidence")
+        );
+      }
+    }
+    const clockHarness = repositoryHarness({ snapshotRow: activeSnapshotRow() });
+    await assert.rejects(
+      () => clockHarness.repository.withConsistentSnapshot(
+        {},
+        (session) => session.resolveCapabilities(
+          BINDING,
+          ANCHOR,
+          "2026-07-24T12:00:00"
+        )
+      ),
+      hasCode("invalid_dependencies")
+    );
+  });
+
+  it("uses fixed parameterized spatial queries, strict active views and bounded rows", () => {
+    const queries = outdoorResearchRepositoryQueriesForTesting;
+    for (const query of Object.values(queries)) {
+      assert.match(query, /\$1/);
+      assert.doesNotMatch(query, /51\.8|10\.6/);
+      assert.doesNotMatch(query, /ST_AsGeoJSON|ST_AsText/);
+    }
+    assert.match(queries.snapshotContext, /outdoor_research_active_projection_runs/);
+    assert.match(queries.highlights, /outdoor_research_active_assertions/);
+    assert.match(queries.highlights, /ST_DWithin/);
+    assert.match(queries.highlights, /LIMIT \$8/);
+    assert.match(queries.routeMemberships, /outdoor_research_active_relationships/);
+    assert.match(queries.routeMemberships, /relationship\.evidence_class/);
+    assert.match(queries.routeMemberships, /nearby\.evidence_class/);
+    assert.match(queries.routeMemberships, /membership_rank <= \$7/);
+    assert.match(queries.routeAssertions, /LIMIT \$4/);
+  });
+
+  it("passes only bounded typed parameters to highlight and route query shapes", async () => {
+    const harness = repositoryHarness({
+      snapshotRow: activeSnapshotRow(),
+      highlightRows: [],
+      membershipRows: []
+    });
+    await harness.repository.withConsistentSnapshot({}, async (session) => {
+      await session.discoverHighlights({
+        projectionRunId: activeSnapshotRow().projection_run_id,
+        operationalRegionId: "harz-v1",
+        anchor: ANCHOR,
+        entityCategories: ["viewpoint"],
+        predicates: ["entity_category", "viewpoint_presence"],
+        searchRadiusMeters: 8_000,
+        limit: 12
+      });
+      await session.retrieveMappedHikingRoutes({
+        projectionRunId: activeSnapshotRow().projection_run_id,
+        operationalRegionId: "harz-v1",
+        anchor: ANCHOR,
+        predicates: [
+          "entity_category",
+          "mapped_hiking_route_membership",
+          "trail_difficulty",
+          "trail_visibility",
+          "access_restriction"
+        ],
+        searchRadiusMeters: 8_000,
+        limit: 12
+      });
+    });
+    const highlightCall = harness.queryCalls.find((call) =>
+      call.text.includes("WITH anchor AS") &&
+      call.text.includes("candidates AS")
+    );
+    assert.deepEqual(highlightCall.values.slice(1, 8), [
+      "harz-v1",
+      10.6,
+      51.8,
+      ["viewpoint"],
+      8_000,
+      ["entity_category", "viewpoint_presence"],
+      12
+    ]);
+    const membershipCall = harness.queryCalls.find((call) =>
+      call.text.includes("selected_routes AS")
+    );
+    assert.deepEqual(membershipCall.values.slice(1), [
+      "harz-v1",
+      10.6,
+      51.8,
+      8_000,
+      12,
+      1
+    ]);
+  });
+
+  it("returns the exact mapped evidence class selected from a route relationship", async () => {
+    const membershipRow = {
+      relationship_id: "60000000-0000-4000-8000-000000000001",
+      segment_entity_id: "50000000-0000-4000-8000-000000000002",
+      route_entity_id: "50000000-0000-4000-8000-000000000001",
+      evidence_class: "mapped"
+    };
+    const harness = repositoryHarness({
+      membershipRows: [membershipRow]
+    });
+    const result = await harness.repository.withConsistentSnapshot(
+      {},
+      (session) => session.retrieveMappedHikingRoutes({
+        projectionRunId: activeSnapshotRow().projection_run_id,
+        operationalRegionId: "harz-v1",
+        anchor: ANCHOR,
+        predicates: ["mapped_hiking_route_membership"],
+        searchRadiusMeters: 8_000,
+        limit: 1
+      })
+    );
+    assert.equal(result.memberships[0].evidence_class, "mapped");
+    assert.equal(result.assertions.length, 0);
+  });
+
+  it("does not query an already-aborted request and cancels between operations", async () => {
+    const alreadyAborted = new AbortController();
+    alreadyAborted.abort();
+    let connectCalls = 0;
+    const repository = new PostgresOutdoorResearchRepository({
+      pool: {
+        async connect() {
+          connectCalls += 1;
+          throw new Error("must not connect");
+        }
+      }
+    });
+    await assert.rejects(
+      () => repository.withConsistentSnapshot(
+        { signal: alreadyAborted.signal },
+        () => undefined
+      ),
+      hasCode("request_cancelled")
+    );
+    assert.equal(connectCalls, 0);
+
+    const controller = new AbortController();
+    const harness = repositoryHarness({ snapshotRow: activeSnapshotRow() });
+    await assert.rejects(
+      () => harness.repository.withConsistentSnapshot(
+        { signal: controller.signal },
+        async (session) => {
+          await session.resolveCapabilities(BINDING, ANCHOR, NOW);
+          controller.abort();
+          await session.discoverHighlights({
+            projectionRunId: activeSnapshotRow().projection_run_id,
+            operationalRegionId: "harz-v1",
+            anchor: ANCHOR,
+            entityCategories: ["viewpoint"],
+            predicates: ["entity_category"],
+            searchRadiusMeters: 8_000,
+            limit: 1
+          });
+        }
+      ),
+      hasCode("request_cancelled")
+    );
+    assert.equal(
+      harness.queryCalls.some((call) => call.text.includes("candidates AS")),
+      false
+    );
+    assert.equal(harness.commands.includes("ROLLBACK"), true);
+  });
+
+  it("maps database timeout and private failures to fixed safe errors", async () => {
+    for (const [error, expectedCode] of [
+      [Object.assign(new Error("private SQL detail"), { code: "57014" }),
+        "repository_timed_out"],
+      [new Error("private hostname and table detail"), "repository_failed"]
+    ]) {
+      const harness = repositoryHarness({ queryError: error });
+      await assert.rejects(
+        () => harness.repository.withConsistentSnapshot(
+          {},
+          (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+        ),
+        (caught) => {
+          assert.equal(caught.code, expectedCode);
+          assert.equal(caught.message.includes("private"), false);
+          return true;
+        }
+      );
+      assert.equal(harness.commands.includes("ROLLBACK"), true);
+    }
+  });
+
+  it("rejects oversized and invalid operation bounds", async () => {
+    const harness = repositoryHarness({
+      highlightRows: Array.from({ length: 161 }, () => ({}))
+    });
+    await assert.rejects(
+      () => harness.repository.withConsistentSnapshot({}, (session) =>
+        session.discoverHighlights({
+          projectionRunId: activeSnapshotRow().projection_run_id,
+          operationalRegionId: "harz-v1",
+          anchor: ANCHOR,
+          entityCategories: ["viewpoint"],
+          predicates: ["entity_category"],
+          searchRadiusMeters: 8_000,
+          limit: 32
+        })
+      ),
+      hasCode("result_too_large")
+    );
+    const boundsHarness = repositoryHarness();
+    await assert.rejects(
+      () => boundsHarness.repository.withConsistentSnapshot({}, (session) =>
+        session.discoverHighlights({
+          projectionRunId: activeSnapshotRow().projection_run_id,
+          operationalRegionId: "harz-v1",
+          anchor: ANCHOR,
+          entityCategories: ["viewpoint"],
+          predicates: ["entity_category"],
+          searchRadiusMeters: 8_000,
+          limit: 33
+        })
+      ),
+      hasCode("operation_scope_violation")
+    );
+  });
+});
+
+function repositoryHarness(options = {}) {
+  const commands = [];
+  const queryCalls = [];
+  let didRelease = false;
+  const client = {
+    async query(input, legacyValues) {
+      const text = typeof input === "string" ? input : input.text;
+      const values = typeof input === "string" ? legacyValues : input.values;
+      if (!values && [
+        "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
+        "COMMIT",
+        "ROLLBACK"
+      ].includes(text)) {
+        commands.push(text);
+        return { rows: [] };
+      }
+      if (text.startsWith("SELECT set_config")) {
+        commands.push("SELECT set_config('statement_timeout', $1, true)");
+        return { rows: [] };
+      }
+      queryCalls.push({ text, values });
+      if (options.queryError) throw options.queryError;
+      if (text.includes("SELECT region.region_id")) {
+        return { rows: options.snapshotRow ? [options.snapshotRow] : [] };
+      }
+      if (text.includes("candidates AS")) {
+        return { rows: options.highlightRows ?? [] };
+      }
+      if (text.includes("selected_routes AS")) {
+        return { rows: options.membershipRows ?? [] };
+      }
+      if (text.includes("projection.entity_id = ANY")) {
+        return { rows: options.assertionRows ?? [] };
+      }
+      throw new Error("unexpected fake query");
+    },
+    release() { didRelease = true; }
+  };
+  return {
+    repository: new PostgresOutdoorResearchRepository({
+      pool: { async connect() { return client; } }
+    }),
+    commands,
+    queryCalls,
+    released: () => didRelease
+  };
+}
+
+function activeSnapshotRow(overrides = {}) {
+  return {
+    region_id: "harz-v1",
+    region_enabled: true,
+    active_import_id: "10000000-0000-4000-8000-000000000001",
+    freshness_threshold_days: 14,
+    anchor_inside: true,
+    boundary_distance_meters: 12_000,
+    import_status: "active",
+    source_data_at: "2026-07-24T00:00:00Z",
+    import_retrieved_at: "2026-07-24T01:00:00Z",
+    imported_at: "2026-07-24T02:00:00Z",
+    projection_run_id: "20000000-0000-4000-8000-000000000001",
+    input_import_id: "10000000-0000-4000-8000-000000000001",
+    source_id: "40000000-0000-4000-8000-000000000001",
+    source_policy_id: "50000000-0000-4000-8000-000000000001",
+    source_policy_version: "osm-foundational-mapped-v1",
+    adapter_schema_version: "osm-evidence-graph-v1",
+    source_key: "osm_foundational_data",
+    source_category: "openstreetmap_open_mapping",
+    license_identifier: "ODbL-1.0",
+    attribution_requirements: "© OpenStreetMap contributors",
+    expected_refresh_interval_seconds: 86_400,
+    last_successful_retrieval_at: "2026-07-24T01:00:00Z",
+    source_lifecycle_state: "active",
+    source_normalized_facts_allowed: true,
+    policy_schema_version: 1,
+    maximum_input_age_days: 14,
+    policy_lifecycle_state: "active",
+    policy_normalized_facts_allowed: true,
+    policy_derived_features_allowed: false,
+    policy_scopes: OSM_ASSERTION_POLICY_SCOPES.map((scope) => ({ ...scope })),
+    authority_scopes: OSM_ASSERTION_POLICY_SCOPES.map((scope) => ({ ...scope })),
+    relationship_scopes: OSM_RELATIONSHIP_POLICY_SCOPES.map((scope) => ({
+      ...scope
+    })),
+    ...overrides
+  };
+}
+
+function hasCode(code) {
+  return (error) => error?.code === code;
+}

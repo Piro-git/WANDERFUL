@@ -41,7 +41,8 @@ const LIMITATION_CODES = [
   "water_availability_unverified", "current_conditions_unavailable", "source_stale",
   "source_timestamp_unavailable", "conflicting_authoritative_evidence",
   "mapped_presence_only", "terrain_derived_only", "partial_regional_coverage",
-  "official_status_unverified", "route_connection_unverified", "insufficient_evidence"
+  "official_status_unverified", "route_connection_unverified", "insufficient_evidence",
+  "bookability_unverified", "seasonal_status_unverified"
 ];
 const QUESTION_CODES = [
   "location_required", "start_required", "destination_required", "distance_required",
@@ -74,7 +75,7 @@ const EVIDENCE_GAP_CODES = [
   "missing_access_evidence", "missing_opening_evidence", "missing_overnight_evidence",
   "missing_water_evidence", "missing_current_conditions", "missing_official_status",
   "missing_route_connection", "missing_seasonal_evidence", "unsupported_region",
-  "partial_region_coverage"
+  "partial_region_coverage", "insufficient_candidate_count"
 ];
 
 const PREDICATE_TEXT_VALUES = Object.freeze({
@@ -515,7 +516,8 @@ function researchOperation(input, path) {
   };
   if (operation.predicates.some((predicate) => HIGH_STAKES_SET.has(predicate)) &&
       !operation.acceptableSourceCategories.some((category) =>
-        category === "official_authority" || category === "official_operator")) {
+        category === "official_authority" || category === "official_operator") &&
+      !isMappedAccessContextOperation(operation)) {
     invalid(
       `${path}.acceptableSourceCategories`,
       "high-stakes research must include an official authority or operator category"
@@ -669,13 +671,59 @@ function conflictGroup(input, path) {
 }
 
 function evidenceGap(input, path) {
-  const fields = ["code", "entityId", "predicate"];
-  const value = strictObject(input, fields, fields, path);
+  const value = strictObject(
+    input,
+    [
+      "code", "entityId", "predicate", "experience",
+      "requiredMinimumCount", "foundCount"
+    ],
+    ["code"],
+    path
+  );
+  const code = enumValue(value.code, EVIDENCE_GAP_CODES, `${path}.code`);
+  if (code === "insufficient_candidate_count") {
+    requireExactFields(
+      value,
+      ["code", "experience", "requiredMinimumCount", "foundCount"],
+      path
+    );
+    const requiredMinimumCount = integer(
+      value.requiredMinimumCount, 1, 8, `${path}.requiredMinimumCount`
+    );
+    const foundCount = integer(value.foundCount, 0, 8, `${path}.foundCount`);
+    if (foundCount >= requiredMinimumCount) {
+      invalid(`${path}.foundCount`, "must be lower than requiredMinimumCount");
+    }
+    return {
+      code,
+      experience: enumValue(value.experience, EXPERIENCE_VALUES, `${path}.experience`),
+      requiredMinimumCount,
+      foundCount
+    };
+  }
+  requireExactFields(value, ["code", "entityId", "predicate"], path);
   return {
-    code: enumValue(value.code, EVIDENCE_GAP_CODES, `${path}.code`),
+    code,
     entityId: nullableUuid(value.entityId, `${path}.entityId`),
     predicate: nullableEnum(value.predicate, EVIDENCE_PREDICATES, `${path}.predicate`)
   };
+}
+
+function isMappedAccessContextOperation(operation) {
+  const highStakesPredicates = operation.predicates.filter((predicate) =>
+    HIGH_STAKES_SET.has(predicate)
+  );
+  return operation.operationType === "retrieve_mapped_hiking_routes" &&
+    operation.informationNeed === "mapped_hiking_routes" &&
+    operation.reasonCode === "coverage_gap" &&
+    operation.acceptableSourceCategories.length === 1 &&
+    operation.acceptableSourceCategories[0] === "openstreetmap_open_mapping" &&
+    operation.entityCategories.includes("trail_segment") &&
+    operation.entityCategories.every((category) =>
+      category === "trail_segment" || category === "hiking_route"
+    ) &&
+    highStakesPredicates.length === 1 &&
+    highStakesPredicates[0] === "access_restriction";
 }
 
 function sourceSummary(input, path) {

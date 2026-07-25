@@ -137,6 +137,7 @@ const policy = {
     informationNeed: "mapped_hiking_routes",
     reasonCode: "coverage_gap",
     requiredPredicate: "mapped_hiking_route_membership",
+    requiredPredicates: ["entity_category", "mapped_hiking_route_membership"],
     sourceCategories: ["openstreetmap_open_mapping"]
   },
   experienceEntityCategories: EXPERIENCE_ENTITY_CATEGORIES,

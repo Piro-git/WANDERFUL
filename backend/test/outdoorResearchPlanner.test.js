@@ -356,12 +356,24 @@ describe("outdoor research planner v1 clarification and coverage", () => {
 });
 
 describe("outdoor research planner v1 trust safeguards", () => {
-  it("allows only official authority/operator categories for high-stakes predicates", () => {
+  it("keeps high-stakes predicates official except for narrow unresolved mapped access context", () => {
     const result = planOutdoorResearchV1(maximumIntent(), completeCapabilities());
     for (const operation of result.plan.operations) {
       if (operation.predicates.some((predicate) => HIGH_STAKES_PREDICATES.has(predicate))) {
+        const mappedAccessContext =
+          operation.operationType === "retrieve_mapped_hiking_routes" &&
+          operation.informationNeed === "mapped_hiking_routes" &&
+          operation.reasonCode === "coverage_gap" &&
+          operation.acceptableSourceCategories.length === 1 &&
+          operation.acceptableSourceCategories[0] === "openstreetmap_open_mapping" &&
+          operation.predicates.filter((predicate) =>
+            HIGH_STAKES_PREDICATES.has(predicate)
+          ).every((predicate) => predicate === "access_restriction");
         assert.equal(
-          operation.acceptableSourceCategories.every((source) => OFFICIAL_SOURCES.has(source)),
+          mappedAccessContext ||
+            operation.acceptableSourceCategories.every((source) =>
+              OFFICIAL_SOURCES.has(source)
+            ),
           true
         );
       }
