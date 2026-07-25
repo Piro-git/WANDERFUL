@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "start:local": "node --env-file=.env scripts/start-local.js",
     "test": "node --test",
-    "build": "node --check api/*.js scripts/*.js src/*.js src/appAttest/*.js src/outdoorEvidence/*.js src/outdoorResearch/*.js src/routing/*.js test/*.js",
+    "build": "node --check api/*.js scripts/*.js src/*.js src/appAttest/*.js src/outdoorEvidence/*.js src/outdoorResearch/*.js src/routeResearch/*.js src/routing/*.js test/*.js",
     "db:migrate": "node scripts/migrate.js",
     "outdoor-evidence:import": "node scripts/import-outdoor-evidence.js",
     "outdoor-research:configure-osm-policy": "node scripts/configure-osm-outdoor-research-policy.js",

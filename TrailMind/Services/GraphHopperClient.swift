@@ -1027,6 +1027,43 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         }
     }
 
+    /// Internal conversion seam for trusted backend contracts that already
+    /// contain one sanitized GraphHopper path. This deliberately reuses the
+    /// production decoder, route-fact fingerprinting, and eligibility checks;
+    /// research evidence never participates in routed provenance.
+    static func verifiedBackendRoute(
+        fromSinglePathResponse data: Data,
+        requestedStart: Coordinate,
+        requestedEnd: Coordinate,
+        planningRequest: RoutePlanningRequest,
+        limits: RouteTransportLimits
+    ) throws -> TrailRoute {
+        let converter = GraphHopperClient(
+            session: .shared,
+            configurationProvider: { throw GraphHopperError.missingAPIKey },
+            limits: limits
+        )
+        let response = try converter.decodeRouteResponse(
+            data,
+            source: .backend
+        )
+        guard
+            response.provider == .graphHopper,
+            response.paths.count == 1,
+            let path = response.paths.first
+        else {
+            throw GraphHopperError.invalidResponse
+        }
+        return try converter.makeTrailRoute(
+            from: path,
+            requestedStart: requestedStart,
+            requestedEnd: requestedEnd,
+            planningRequest: planningRequest,
+            provider: .graphHopper,
+            routingStrategy: .backend
+        )
+    }
+
     func generateHarzDemoRoute() async throws -> TrailRoute {
         let ilsenburg = Coordinate(latitude: 51.8666, longitude: 10.6782)
         let schierke = Coordinate(latitude: 51.7636, longitude: 10.6647)

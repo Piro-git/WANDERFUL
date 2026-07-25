@@ -1,0 +1,720 @@
+{
+  "schemaVersion": 1,
+  "contractSchemaVersion": 1,
+  "requiredScenarioIDs": [
+    "valid_loop_one_highlight",
+    "valid_loop_ordered_highlights",
+    "multiple_proposals_out_of_order",
+    "partial_provider_failure",
+    "all_providers_no_route",
+    "malformed_graphhopper_response",
+    "tampered_proposal_id",
+    "mismatched_evidence_or_entity",
+    "unsupported_point_to_point",
+    "unsupported_out_and_back",
+    "unsupported_activity_contract_compatibility",
+    "mapped_relation_advisory_only",
+    "excessive_snapping_distance",
+    "cancelled_and_late_response",
+    "duplicate_routed_geometry",
+    "all_quality_rejected",
+    "quality_reduced_and_ranked",
+    "oversized_arrays_and_response",
+    "sanitized_failure_no_details"
+  ],
+  "envelopes": {
+    "validAlternatives": {
+      "schemaVersion": 1,
+      "state": "routed",
+      "normalizedIntent": {
+        "schemaVersion": 1,
+        "activity": "hiking",
+        "geographicAnchor": {
+          "state": "resolved",
+          "name": "Innsbruck",
+          "coordinate": {
+            "latitude": 47.2692,
+            "longitude": 11.4041
+          },
+          "regionEntityId": "33333333-3333-4333-8333-333333333333"
+        },
+        "routeType": "loop",
+        "distanceRangeKm": {
+          "min": 10,
+          "max": 16
+        },
+        "durationRangeMinutes": {
+          "min": 210,
+          "max": 270
+        },
+        "maximumElevationGainMeters": 700,
+        "maximumTechnicalDifficulty": "hiking",
+        "mustHaveExperiences": [
+          {
+            "experience": "viewpoint",
+            "minimumCount": 2
+          },
+          {
+            "experience": "waterfall",
+            "minimumCount": 1
+          }
+        ],
+        "preferredExperiences": [
+          "alpine_hut"
+        ],
+        "avoidedExperiences": [
+          "exposed_trails"
+        ],
+        "requiredFacilities": [
+          "lunch_hut"
+        ],
+        "groupContext": {
+          "partySize": 2,
+          "includesChildren": false,
+          "youngestAge": null,
+          "mobility": "standard",
+          "experienceLevel": "intermediate"
+        },
+        "dateOrSeason": {
+          "kind": "season",
+          "season": "summer",
+          "year": 2026
+        },
+        "overnightRequirements": {
+          "required": false,
+          "nights": 0,
+          "allowedAccommodationTypes": []
+        },
+        "transportRequirements": {
+          "arrivalMode": "public_transport",
+          "returnToStart": true,
+          "publicTransportRequired": false
+        },
+        "unresolvedClarificationQuestions": []
+      },
+      "candidatePlanPolicyVersion": "research-guided-route-candidates-v1",
+      "routingAdapterPolicyVersion": "research-guided-routing-adapter-v1",
+      "attempts": [
+        {
+          "attemptId": "rrrav1_149fc6a18b98f3110bf68d5159fb0f76",
+          "proposalIndex": 0,
+          "state": "routed",
+          "provenance": {
+            "proposalId": "rrcpv1_d26d2dccb9d2fa312102181b272033df",
+            "lineageId": "rrlpv1_34f6bfff0227da6030024434c14f4d6c",
+            "strategy": "must_have_first",
+            "activity": "hiking",
+            "routeType": "loop",
+            "selectedWaypoints": [
+              {
+                "entityId": "11111111-1111-4111-8111-111111111111",
+                "coordinate": {
+                  "latitude": 47.28,
+                  "longitude": 11.42
+                },
+                "highlightCategory": "viewpoint",
+                "role": "must_have",
+                "evidenceClaimIds": [
+                  "66666666-6666-4666-8666-666666666666"
+                ],
+                "selectionReasons": [
+                  "required_experience"
+                ],
+                "requiredVerification": [
+                  "connectivity_required",
+                  "public_access_required",
+                  "closure_status_required",
+                  "trail_difficulty_required",
+                  "exposure_required",
+                  "current_conditions_required"
+                ],
+                "knownLimitations": [
+                  "access_unverified",
+                  "current_conditions_unavailable",
+                  "mapped_presence_only",
+                  "route_connection_unverified",
+                  "trail_difficulty_unverified",
+                  "exposure_unverified"
+                ]
+              }
+            ],
+            "mappedNetworkCandidates": [],
+            "evidenceClaimIds": [
+              "66666666-6666-4666-8666-666666666666"
+            ],
+            "requiredVerification": [
+              "real_routing_required",
+              "connectivity_required",
+              "actual_distance_required",
+              "actual_duration_required",
+              "actual_elevation_required",
+              "public_access_required",
+              "closure_status_required",
+              "trail_difficulty_required",
+              "exposure_required",
+              "current_conditions_required"
+            ],
+            "knownLimitations": [
+              "access_unverified",
+              "current_conditions_unavailable",
+              "mapped_presence_only",
+              "partial_regional_coverage",
+              "route_connection_unverified",
+              "requires_real_routing",
+              "trail_difficulty_unverified",
+              "exposure_unverified"
+            ],
+            "sourceCandidatePlanPolicyVersion": "research-guided-route-candidates-v1"
+          },
+          "routeResults": [
+            {
+              "routeResultId": "rrrav1_149fc6a18b98f3110bf68d5159fb0f76_path_1",
+              "pathIndex": 0,
+              "geometryProvider": "graphhopper",
+              "routingStrategy": "backend",
+              "path": {
+                "distance": 12000,
+                "time": 10800000,
+                "points": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [11.4041, 47.2692, 500],
+                    [11.42, 47.28, 650],
+                    [11.4391, 47.2442, 575],
+                    [11.4041, 47.2692, 500]
+                  ]
+                },
+                "instructions": [
+                  {
+                    "text": "Continue",
+                    "distance": 12000,
+                    "time": 10800000,
+                    "interval": [0, 3],
+                    "sign": 0
+                  }
+                ],
+                "ascend": 400,
+                "descend": 400,
+                "details": {
+                  "surface": [[0, 3, "ground"]],
+                  "road_class": [[0, 3, "path"]],
+                  "hike_rating": [[0, 3, "1"]]
+                }
+              },
+              "waypointVisits": [
+                {
+                  "waypointIndex": 0,
+                  "role": "anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 1,
+                  "role": "via",
+                  "entityId": "11111111-1111-4111-8111-111111111111",
+                  "requestedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 2,
+                  "role": "return_anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                }
+              ]
+            },
+            {
+              "routeResultId": "rrrav1_149fc6a18b98f3110bf68d5159fb0f76_path_2",
+              "pathIndex": 1,
+              "geometryProvider": "graphhopper",
+              "routingStrategy": "backend",
+              "path": {
+                "distance": 12000,
+                "time": 10800000,
+                "points": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [11.4041, 47.2692, 500],
+                    [11.42, 47.28, 650],
+                    [11.4391, 47.2442, 575],
+                    [11.4041, 47.2692, 500]
+                  ]
+                },
+                "instructions": [
+                  {
+                    "text": "Continue",
+                    "distance": 12000,
+                    "time": 10800000,
+                    "interval": [0, 3],
+                    "sign": 0
+                  }
+                ],
+                "ascend": 400,
+                "descend": 400,
+                "details": {
+                  "surface": [[0, 3, "ground"]],
+                  "road_class": [[0, 3, "path"]],
+                  "hike_rating": [[0, 3, "1"]]
+                }
+              },
+              "waypointVisits": [
+                {
+                  "waypointIndex": 0,
+                  "role": "anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 1,
+                  "role": "via",
+                  "entityId": "11111111-1111-4111-8111-111111111111",
+                  "requestedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 2,
+                  "role": "return_anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                }
+              ]
+            },
+            {
+              "routeResultId": "rrrav1_149fc6a18b98f3110bf68d5159fb0f76_path_3",
+              "pathIndex": 2,
+              "geometryProvider": "graphhopper",
+              "routingStrategy": "backend",
+              "path": {
+                "distance": 13200,
+                "time": 11400000,
+                "points": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [11.4041, 47.2692, 500],
+                    [11.42, 47.28, 650],
+                    [11.3641, 47.2992, 590],
+                    [11.4041, 47.2692, 500]
+                  ]
+                },
+                "instructions": [
+                  {
+                    "text": "Continue",
+                    "distance": 13200,
+                    "time": 11400000,
+                    "interval": [0, 3],
+                    "sign": 0
+                  }
+                ],
+                "ascend": 400,
+                "descend": 400,
+                "details": {
+                  "surface": [[0, 3, "ground"]],
+                  "road_class": [[0, 3, "path"]],
+                  "hike_rating": [[0, 3, "1"]]
+                }
+              },
+              "waypointVisits": [
+                {
+                  "waypointIndex": 0,
+                  "role": "anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 1,
+                  "role": "via",
+                  "entityId": "11111111-1111-4111-8111-111111111111",
+                  "requestedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 2,
+                  "role": "return_anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                }
+              ]
+            }
+          ],
+          "failureCode": null
+        }
+      ],
+      "remainingLimitations": [
+        "access_unverified",
+        "current_conditions_unavailable",
+        "mapped_presence_only",
+        "partial_regional_coverage",
+        "route_connection_unverified",
+        "requires_real_routing",
+        "trail_difficulty_unverified",
+        "exposure_unverified"
+      ]
+    },
+    "openLoopOnly": {
+      "schemaVersion": 1,
+      "state": "routed",
+      "normalizedIntent": {
+        "schemaVersion": 1,
+        "activity": "hiking",
+        "geographicAnchor": {
+          "state": "resolved",
+          "name": "Innsbruck",
+          "coordinate": {
+            "latitude": 47.2692,
+            "longitude": 11.4041
+          },
+          "regionEntityId": "33333333-3333-4333-8333-333333333333"
+        },
+        "routeType": "loop",
+        "distanceRangeKm": {
+          "min": 10,
+          "max": 16
+        },
+        "durationRangeMinutes": {
+          "min": 210,
+          "max": 270
+        },
+        "maximumElevationGainMeters": 700,
+        "maximumTechnicalDifficulty": "hiking",
+        "mustHaveExperiences": [
+          {
+            "experience": "viewpoint",
+            "minimumCount": 2
+          },
+          {
+            "experience": "waterfall",
+            "minimumCount": 1
+          }
+        ],
+        "preferredExperiences": ["alpine_hut"],
+        "avoidedExperiences": ["exposed_trails"],
+        "requiredFacilities": ["lunch_hut"],
+        "groupContext": {
+          "partySize": 2,
+          "includesChildren": false,
+          "youngestAge": null,
+          "mobility": "standard",
+          "experienceLevel": "intermediate"
+        },
+        "dateOrSeason": {
+          "kind": "season",
+          "season": "summer",
+          "year": 2026
+        },
+        "overnightRequirements": {
+          "required": false,
+          "nights": 0,
+          "allowedAccommodationTypes": []
+        },
+        "transportRequirements": {
+          "arrivalMode": "public_transport",
+          "returnToStart": true,
+          "publicTransportRequired": false
+        },
+        "unresolvedClarificationQuestions": []
+      },
+      "candidatePlanPolicyVersion": "research-guided-route-candidates-v1",
+      "routingAdapterPolicyVersion": "research-guided-routing-adapter-v1",
+      "attempts": [
+        {
+          "attemptId": "rrrav1_149fc6a18b98f3110bf68d5159fb0f76",
+          "proposalIndex": 0,
+          "state": "routed",
+          "provenance": {
+            "proposalId": "rrcpv1_d26d2dccb9d2fa312102181b272033df",
+            "lineageId": "rrlpv1_34f6bfff0227da6030024434c14f4d6c",
+            "strategy": "must_have_first",
+            "activity": "hiking",
+            "routeType": "loop",
+            "selectedWaypoints": [
+              {
+                "entityId": "11111111-1111-4111-8111-111111111111",
+                "coordinate": {
+                  "latitude": 47.28,
+                  "longitude": 11.42
+                },
+                "highlightCategory": "viewpoint",
+                "role": "must_have",
+                "evidenceClaimIds": [
+                  "66666666-6666-4666-8666-666666666666"
+                ],
+                "selectionReasons": ["required_experience"],
+                "requiredVerification": [
+                  "connectivity_required",
+                  "public_access_required",
+                  "closure_status_required",
+                  "trail_difficulty_required",
+                  "exposure_required",
+                  "current_conditions_required"
+                ],
+                "knownLimitations": [
+                  "access_unverified",
+                  "current_conditions_unavailable",
+                  "mapped_presence_only",
+                  "route_connection_unverified",
+                  "trail_difficulty_unverified",
+                  "exposure_unverified"
+                ]
+              }
+            ],
+            "mappedNetworkCandidates": [],
+            "evidenceClaimIds": [
+              "66666666-6666-4666-8666-666666666666"
+            ],
+            "requiredVerification": [
+              "real_routing_required",
+              "connectivity_required",
+              "actual_distance_required",
+              "actual_duration_required",
+              "actual_elevation_required",
+              "public_access_required",
+              "closure_status_required",
+              "trail_difficulty_required",
+              "exposure_required",
+              "current_conditions_required"
+            ],
+            "knownLimitations": [
+              "access_unverified",
+              "current_conditions_unavailable",
+              "mapped_presence_only",
+              "partial_regional_coverage",
+              "route_connection_unverified",
+              "requires_real_routing",
+              "trail_difficulty_unverified",
+              "exposure_unverified"
+            ],
+            "sourceCandidatePlanPolicyVersion": "research-guided-route-candidates-v1"
+          },
+          "routeResults": [
+            {
+              "routeResultId": "rrrav1_149fc6a18b98f3110bf68d5159fb0f76_path_1",
+              "pathIndex": 0,
+              "geometryProvider": "graphhopper",
+              "routingStrategy": "backend",
+              "path": {
+                "distance": 12000,
+                "time": 10800000,
+                "points": {
+                  "type": "LineString",
+                  "coordinates": [
+                    [11.4041, 47.2692, 500],
+                    [11.42, 47.28, 650],
+                    [11.4391, 47.2442, 575],
+                    [11.4241, 47.2892, 510]
+                  ]
+                },
+                "instructions": [
+                  {
+                    "text": "Continue",
+                    "distance": 12000,
+                    "time": 10800000,
+                    "interval": [0, 3],
+                    "sign": 0
+                  }
+                ],
+                "ascend": 400,
+                "descend": 400,
+                "details": {
+                  "surface": [[0, 3, "ground"]],
+                  "road_class": [[0, 3, "path"]],
+                  "hike_rating": [[0, 3, "1"]]
+                }
+              },
+              "waypointVisits": [
+                {
+                  "waypointIndex": 0,
+                  "role": "anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 1,
+                  "role": "via",
+                  "entityId": "11111111-1111-4111-8111-111111111111",
+                  "requestedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.28,
+                    "longitude": 11.42
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                },
+                {
+                  "waypointIndex": 2,
+                  "role": "return_anchor",
+                  "entityId": null,
+                  "requestedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snappedCoordinate": {
+                    "latitude": 47.2692,
+                    "longitude": 11.4041
+                  },
+                  "snapDistanceMeters": 0,
+                  "withinVisitTolerance": true
+                }
+              ]
+            }
+          ],
+          "failureCode": null
+        }
+      ],
+      "remainingLimitations": [
+        "access_unverified",
+        "current_conditions_unavailable",
+        "mapped_presence_only",
+        "partial_regional_coverage",
+        "route_connection_unverified",
+        "requires_real_routing",
+        "trail_difficulty_unverified",
+        "exposure_unverified"
+      ]
+    },
+    "unsupportedBiking": {
+      "schemaVersion": 1,
+      "state": "unsupported",
+      "normalizedIntent": {
+        "schemaVersion": 1,
+        "activity": "biking",
+        "geographicAnchor": {
+          "state": "resolved",
+          "name": "Harz",
+          "coordinate": {
+            "latitude": 51.8,
+            "longitude": 10.6
+          },
+          "regionEntityId": "88888888-8888-4888-8888-888888888888"
+        },
+        "routeType": "loop",
+        "distanceRangeKm": null,
+        "durationRangeMinutes": null,
+        "maximumElevationGainMeters": null,
+        "maximumTechnicalDifficulty": null,
+        "mustHaveExperiences": [],
+        "preferredExperiences": [],
+        "avoidedExperiences": [
+          "major_roads",
+          "unpaved_surface"
+        ],
+        "requiredFacilities": [],
+        "groupContext": {
+          "partySize": 2,
+          "includesChildren": false,
+          "youngestAge": null,
+          "mobility": "standard",
+          "experienceLevel": "intermediate"
+        },
+        "dateOrSeason": null,
+        "overnightRequirements": {
+          "required": false,
+          "nights": 0,
+          "allowedAccommodationTypes": []
+        },
+        "transportRequirements": {
+          "arrivalMode": "bicycle",
+          "returnToStart": true,
+          "publicTransportRequired": false
+        },
+        "unresolvedClarificationQuestions": []
+      },
+      "candidatePlanPolicyVersion": "research-guided-route-candidates-v1",
+      "routingAdapterPolicyVersion": "research-guided-routing-adapter-v1",
+      "attempts": [],
+      "remainingLimitations": [
+        "candidate_plan_unsupported",
+        "candidate_plan_not_routable"
+      ]
+    }
+  }
+}
