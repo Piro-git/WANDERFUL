@@ -7,3 +7,5 @@
 // PRODUCTION_BACKEND_BASE_URL = https:/$()/api.example.com
 // Enable only after the PostGIS/import, corridor-smoke-test, privacy, and attribution gates pass.
 // OUTDOOR_EVIDENCE_ENABLED = true
+// Keep disabled until the research-guided planning coordinator is intentionally integrated.
+// RESEARCH_GUIDED_PLANNING_ENABLED = true

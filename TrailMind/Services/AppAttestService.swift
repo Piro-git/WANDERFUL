@@ -362,6 +362,23 @@ enum TrailMindBackendConfiguration {
         }
         return false
     }
+
+    nonisolated static func researchGuidedPlanningEnabled(
+        bundle: Bundle = .main
+    ) -> Bool {
+        guard let value = bundle.object(
+            forInfoDictionaryKey: "RESEARCH_GUIDED_PLANNING_ENABLED"
+        ) as? String else {
+            return false
+        }
+        let normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard ["true", "yes", "1"].contains(normalized) else {
+            return false
+        }
+        return baseURL(bundle: bundle) != nil
+    }
 }
 
 private struct ChallengeRequest: Encodable { let purpose: String; let keyId: String? }

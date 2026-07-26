@@ -3,4 +3,6 @@ INTENT_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000
 PRODUCTION_BACKEND_BASE_URL = https:/$()/backend-zeta-amber-69.vercel.app
 // Optional post-routing outdoor evidence is release-gated and opt-in.
 OUTDOOR_EVIDENCE_ENABLED = false
+// Research-guided orchestration is an iOS-only seam and remains opt-in.
+RESEARCH_GUIDED_PLANNING_ENABLED = false
 #include? "Local.xcconfig"

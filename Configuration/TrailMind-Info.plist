@@ -24,6 +24,8 @@
 	<string>$(INTENT_BACKEND_BASE_URL)</string>
 	<key>OUTDOOR_EVIDENCE_ENABLED</key>
 	<string>$(OUTDOOR_EVIDENCE_ENABLED)</string>
+	<key>RESEARCH_GUIDED_PLANNING_ENABLED</key>
+	<string>$(RESEARCH_GUIDED_PLANNING_ENABLED)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
 	<key>NSMicrophoneUsageDescription</key>
