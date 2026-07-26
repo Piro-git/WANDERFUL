@@ -4,6 +4,12 @@ import { readFile } from "node:fs/promises";
 import { after, before, describe, it } from "node:test";
 import pg from "pg";
 import {
+  planAndRouteOutdoorAdventureV1
+} from "../src/outdoorAdventure/outdoorAdventureOrchestrator.js";
+import {
+  validateOutdoorAdventurePlanningResponseV1
+} from "../src/outdoorAdventure/orchestrationContract.js";
+import {
   OSM_POLICY_ACTIVATION_CONFIRMATION,
   OSM_POLICY_REVOCATION_CONFIRMATION,
   OSM_PROJECTION_POLICY_VERSION
@@ -167,6 +173,48 @@ describe("outdoor research executor real PostGIS integration", {
         result.dossier.evidenceClaims.some((claim) =>
           Object.values(other).includes(claim.entityId)),
         false
+      );
+    }
+  });
+
+  it("orchestrates real Harz and Innsbruck snapshots through deterministic fake routing", async () => {
+    for (const region of REGIONS) {
+      const repository = new PostgresOutdoorResearchRepository({
+        pool,
+        statementTimeoutMs: 2_000
+      });
+      const result = await planAndRouteOutdoorAdventureV1(
+        {
+          schemaVersion: 1,
+          intent: intent(region, {
+            requiredFacilities: [],
+            preferredExperiences: []
+          })
+        },
+        {
+          repository,
+          clock: () => NOW,
+          provider: {
+            async route(request) {
+              return deterministicProviderResponse(request);
+            }
+          }
+        },
+        {
+          maximumProposals: 2,
+          maximumConcurrency: 2,
+          researchTimeoutMs: 5_000,
+          graphHopperAttemptTimeoutMs: 5_000,
+          totalDeadlineMs: 15_000
+        }
+      );
+      assert(["partial", "routed"].includes(result.state));
+      assert(result.routedAlternatives.attempts.length >= 1);
+      assert(result.routedAlternatives.attempts.every((attempt) =>
+        attempt.state === "routed"
+      ));
+      assert.doesNotThrow(() =>
+        validateOutdoorAdventurePlanningResponseV1(result)
       );
     }
   });
@@ -769,5 +817,43 @@ function hasCode(code) {
     assert.equal(error.code, code);
     assert.equal(error.message.length < 120, true);
     return true;
+  };
+}
+
+function deterministicProviderResponse(request) {
+  const coordinates = request.points.map((point, index) => [
+    point.longitude,
+    point.latitude,
+    500 + index * 10
+  ]);
+  const finalIndex = coordinates.length - 1;
+  return {
+    provider: "graphhopper",
+    paths: [{
+      distance: 12_000,
+      time: 10_800_000,
+      ascend: 400,
+      descend: 400,
+      points: { type: "LineString", coordinates },
+      instructions: [{
+        text: "Continue",
+        distance: 12_000,
+        time: 10_800_000,
+        interval: [0, finalIndex],
+        sign: 0
+      }],
+      details: {
+        surface: [[0, finalIndex, "ground"]],
+        road_class: [[0, finalIndex, "path"]],
+        hike_rating: [[0, finalIndex, "1"]]
+      },
+      snapped_waypoints: {
+        type: "LineString",
+        coordinates: request.points.map((point) => [
+          point.longitude,
+          point.latitude
+        ])
+      }
+    }]
   };
 }

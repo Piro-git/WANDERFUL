@@ -3,6 +3,17 @@ import { AppAttestError, appAttestErrorResult } from "./appAttest/appAttestError
 import { createAppAttestRuntime } from "./appAttest/appAttestRuntime.js";
 import { createIntentSessionEndpoint } from "./appAttest/intentSessionEndpoint.js";
 import { intentError, intentErrorResult } from "./parseIntent.js";
+import { createOutdoorAdventurePlanningEndpoint } from "./outdoorAdventure/outdoorAdventureEndpoint.js";
+import {
+  OutdoorAdventureOrchestrationError,
+  outdoorAdventureOrchestrationError,
+  outdoorAdventureOrchestrationErrorResult
+} from "./outdoorAdventure/orchestrationErrors.js";
+import {
+  OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1,
+  outdoorAdventureOrchestrationConfigurationV1,
+  outdoorAdventurePlanningEnabled
+} from "./outdoorAdventure/orchestrationPolicy.js";
 import { createOutdoorEvidenceEndpoint } from "./outdoorEvidence/outdoorEvidenceEndpoint.js";
 import {
   OutdoorEvidenceError,
@@ -46,6 +57,16 @@ export function createIntentRequestHandler(options = {}) {
     maximumPois: outdoorEvidenceMaximumPois(options.env),
     maximumResponseBytes: outdoorEvidenceResponseLimit(options.env)
   });
+  const outdoorAdventurePlanningEndpoint =
+    options.outdoorAdventurePlanningEndpoint ??
+    createOutdoorAdventurePlanningEndpoint({
+      ...options,
+      appAttestRepository: appAttestRuntime.repository,
+      authorizer: options.authorizer ??
+        (appAttestRuntime.repository
+          ? appAttestRuntime.routeAuthorizer
+          : undefined)
+    });
   return async function intentRequestHandler(request, response) {
     const cancellation = new AbortController();
     const abortFromRequest = () => cancellation.abort();
@@ -59,10 +80,32 @@ export function createIntentRequestHandler(options = {}) {
       const knownPostRoute = request.method === "POST" && isKnownPostPath(request.url);
       let body = {};
       if (knownPostRoute) {
+        if (
+          request.url ===
+            OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath &&
+          !outdoorAdventurePlanningEnabled(options.env ?? process.env)
+        ) {
+          const result = await outdoorAdventurePlanningEndpoint({}, {
+            headers: request.headers,
+            signal: cancellation.signal
+          });
+          return sendJson(
+            response,
+            result.statusCode,
+            result.payload,
+            result.headers
+          );
+        }
         if (!isJsonMediaType(request.headers["content-type"])) {
           if (request.url === "/api/parse-intent") throw intentError("invalid_request");
           if (request.url === "/api/outdoor-evidence/corridor") {
             throw outdoorEvidenceError("invalid_request", { message: "Content-Type must be application/json." });
+          }
+          if (
+            request.url ===
+              OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath
+          ) {
+            throw outdoorAdventureOrchestrationError("invalid_request");
           }
           throw routeError("invalid_request", { message: "Content-Type must be application/json." });
         }
@@ -81,7 +124,14 @@ export function createIntentRequestHandler(options = {}) {
           edgeIdentity: options.edgeIdentityResolver?.(request) ?? request.socket.remoteAddress ?? "unknown-edge",
           signal: cancellation.signal
         },
-        { ...options, routeEndpoint, outdoorEvidenceEndpoint, appAttestEndpoint, intentEndpoint }
+        {
+          ...options,
+          routeEndpoint,
+          outdoorEvidenceEndpoint,
+          outdoorAdventurePlanningEndpoint,
+          appAttestEndpoint,
+          intentEndpoint
+        }
       );
       return sendJson(response, result.statusCode, result.payload, result.headers);
     } catch (error) {
@@ -95,6 +145,10 @@ export function createIntentRequestHandler(options = {}) {
       }
       if (error instanceof OutdoorEvidenceError) {
         const result = outdoorEvidenceErrorResult(error);
+        return sendJson(response, result.statusCode, result.payload);
+      }
+      if (error instanceof OutdoorAdventureOrchestrationError) {
+        const result = outdoorAdventureOrchestrationErrorResult(error);
         return sendJson(response, result.statusCode, result.payload);
       }
       if (request.url === "/api/parse-intent") {
@@ -133,6 +187,20 @@ export async function handleIntentHttpRequest(request, options = {}) {
       });
     }
 
+    if (
+      request.method === "POST" &&
+      request.url ===
+        OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath
+    ) {
+      const endpoint = options.outdoorAdventurePlanningEndpoint ??
+        createOutdoorAdventurePlanningEndpoint(options);
+      return await endpoint(request.body, {
+        headers: request.headers,
+        signal: request.signal,
+        requestId: request.requestId
+      });
+    }
+
     if (request.method === "POST" && request.url?.startsWith("/api/app-attest/")) {
       const appAttestEndpoint = options.appAttestEndpoint ?? createAppAttestRuntime(options).endpoint;
       return await appAttestEndpoint(request.url, request.body, {
@@ -156,6 +224,9 @@ export async function handleIntentHttpRequest(request, options = {}) {
     if (error instanceof AppAttestError) return appAttestErrorResult(error);
     if (error instanceof RouteError) return routeErrorResult(error);
     if (error instanceof OutdoorEvidenceError) return outdoorEvidenceErrorResult(error);
+    if (error instanceof OutdoorAdventureOrchestrationError) {
+      return outdoorAdventureOrchestrationErrorResult(error);
+    }
     return { statusCode: 500, payload: { error: "Internal server error" } };
   }
 }
@@ -228,6 +299,7 @@ function sendJson(response, statusCode, payload, additionalHeaders = {}) {
 function isKnownPostPath(url) {
   return url === "/api/parse-intent" || url === "/api/route" ||
     url === "/api/outdoor-evidence/corridor" ||
+    url === OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath ||
     url === "/api/app-attest/challenge" || url === "/api/app-attest/register" ||
     url === "/api/app-attest/route-session";
 }
@@ -235,6 +307,9 @@ function isKnownPostPath(url) {
 function bodyLimit(url, env) {
   if (url === "/api/route") return routeBodyLimit(env);
   if (url === "/api/outdoor-evidence/corridor") return outdoorEvidenceBodyLimit(env);
+  if (url === OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath) {
+    return outdoorAdventureOrchestrationConfigurationV1(env).requestBytes;
+  }
   if (url?.startsWith("/api/app-attest/")) return 262_144;
   return 16_384;
 }
@@ -242,6 +317,9 @@ function bodyLimit(url, env) {
 function requestContract(url) {
   if (url === "/api/parse-intent") return "intent";
   if (url === "/api/outdoor-evidence/corridor") return "outdoorEvidence";
+  if (url === OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath) {
+    return "outdoorAdventure";
+  }
   return "route";
 }
 
@@ -255,6 +333,17 @@ function bodyError(contract, reason) {
     if (reason === "tooLarge") return outdoorEvidenceError("request_too_large");
     if (reason === "cancelled") return outdoorEvidenceError("request_cancelled");
     return outdoorEvidenceError("invalid_request", { message: "Request body must be valid JSON." });
+  }
+  if (contract === "outdoorAdventure") {
+    if (reason === "tooLarge") {
+      return outdoorAdventureOrchestrationError("invalid_request", {
+        statusCode: 413
+      });
+    }
+    if (reason === "cancelled") {
+      return outdoorAdventureOrchestrationError("cancelled");
+    }
+    return outdoorAdventureOrchestrationError("invalid_request");
   }
   if (reason === "tooLarge") return routeError("request_too_large");
   if (reason === "cancelled") return routeError("request_cancelled");
