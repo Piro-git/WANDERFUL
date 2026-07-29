@@ -186,12 +186,106 @@ final class PlannerViewModel {
         let locationCandidates: [LocationCandidate]
         let allowsFreeText: Bool
         let preparedAttempt: PreparedAttempt?
+        let researchClarificationContext: ResearchClarificationContext?
+
+        init(
+            id: UUID,
+            originalPrompt: String,
+            intent: AdventureIntent,
+            validation: ValidationSnapshot,
+            parserDebugInfo: IntentParserDebugInfo?,
+            question: String,
+            kind: ClarificationKind,
+            supportingText: String?,
+            locationCandidates: [LocationCandidate],
+            allowsFreeText: Bool,
+            preparedAttempt: PreparedAttempt?,
+            researchClarificationContext: ResearchClarificationContext? = nil
+        ) {
+            self.id = id
+            self.originalPrompt = originalPrompt
+            self.intent = intent
+            self.validation = validation
+            self.parserDebugInfo = parserDebugInfo
+            self.question = question
+            self.kind = kind
+            self.supportingText = supportingText
+            self.locationCandidates = locationCandidates
+            self.allowsFreeText = allowsFreeText
+            self.preparedAttempt = preparedAttempt
+            self.researchClarificationContext =
+                researchClarificationContext
+        }
+    }
+
+    struct ResearchClarificationContext: Equatable, Sendable {
+        enum Origin: Equatable, Sendable {
+            case adapter
+            case coordinator
+        }
+
+        static let maximumQuestionCount = 16
+
+        let origin: Origin
+        let adapterGaps: [AdventureResearchIntentAdapterGapV1]
+        let backendPlanningGaps: [OutdoorAdventurePlanningGapV1]
+        let questions: [AdventureResearchClarificationQuestionV1]
+
+        init?(
+            origin: Origin,
+            adapterGaps: [AdventureResearchIntentAdapterGapV1],
+            backendPlanningGaps: [OutdoorAdventurePlanningGapV1],
+            questions: [AdventureResearchClarificationQuestionV1]
+        ) {
+            guard (1...Self.maximumQuestionCount).contains(questions.count)
+            else { return nil }
+
+            self.origin = origin
+            self.adapterGaps = adapterGaps
+            self.backendPlanningGaps = backendPlanningGaps
+            self.questions = questions
+        }
+    }
+
+    struct ResearchPlanningContext: Equatable, Sendable {
+        enum LegacyFallbackReason: Equatable, Sendable {
+            case adapterUnsupported
+            case coordinatorUnsupported
+            case noViableRoute
+            case coordinatorFailure(
+                OutdoorAdventurePlanningCoordinatorFailureV1
+            )
+            case invalidResearchResult
+        }
+
+        enum Outcome: Equatable, Sendable {
+            case routed
+            case partial
+            case legacyFallback(LegacyFallbackReason)
+        }
+
+        struct AlternativeSidecar: Equatable, Sendable {
+            let attemptID: String
+            let routeResultID: String
+            let researchProvenance: ResearchRouteProvenanceV1
+            let waypointVisits: [ResearchWaypointVisitV1]
+        }
+
+        let outcome: Outcome
+        let adapterGaps: [AdventureResearchIntentAdapterGapV1]
+        let backendPlanningGaps: [OutdoorAdventurePlanningGapV1]
+        let selectionState: ResearchGuidedRoutedEnvelopeStateV1?
+        let sourceEnvelopeState: ResearchGuidedRoutedEnvelopeStateV1?
+        let rejectionCounts: [String: Int]
+        let remainingLimitations: [String]
+        let alternativesBySuggestionID: [UUID: AlternativeSidecar]
     }
 
     struct PlanningSuccess: Equatable {
         let originalPrompt: String
         let suggestions: [RouteSuggestion]
         let notice: String?
+        let researchContext: ResearchPlanningContext?
     }
 
     struct PlanningRecovery: Equatable, Sendable {
@@ -200,6 +294,24 @@ final class PlannerViewModel {
         let stage: GenerationStage
         let kind: RecoveryKind
         let preparedAttempt: PreparedAttempt?
+        let researchClarificationContext: ResearchClarificationContext?
+
+        init(
+            originalPrompt: String,
+            message: String,
+            stage: GenerationStage,
+            kind: RecoveryKind,
+            preparedAttempt: PreparedAttempt?,
+            researchClarificationContext: ResearchClarificationContext? = nil
+        ) {
+            self.originalPrompt = originalPrompt
+            self.message = message
+            self.stage = stage
+            self.kind = kind
+            self.preparedAttempt = preparedAttempt
+            self.researchClarificationContext =
+                researchClarificationContext
+        }
     }
 
     /// The only observable planning source of truth.
@@ -224,6 +336,23 @@ final class PlannerViewModel {
         let value: RoutingResult
     }
 
+    private struct SendableResearchPlanningResult: @unchecked Sendable {
+        let value: OutdoorAdventurePlanningCoordinatorResultV1
+    }
+
+    private enum ResearchPathDecision {
+        case useLegacy(
+            context: ResearchPlanningContext?,
+            notice: String?
+        )
+        case suggestions(
+            [RouteSuggestion],
+            notice: String?,
+            context: ResearchPlanningContext
+        )
+        case handled
+    }
+
     private enum PlannerIssue: Error, Sendable {
         case invalidIntent(String)
         case timedOut
@@ -241,6 +370,8 @@ final class PlannerViewModel {
         func install(
             continuation: CheckedContinuation<Value, Error>,
             seconds: TimeInterval,
+            operationDidFinish:
+                @escaping @MainActor @Sendable () -> Void = {},
             operation: @escaping @MainActor @Sendable () async throws -> Value
         ) {
             if let terminalResult {
@@ -250,6 +381,7 @@ final class PlannerViewModel {
 
             self.continuation = continuation
             operationTask = Task { @MainActor [weak self] in
+                defer { operationDidFinish() }
                 do {
                     let value = try await operation()
                     self?.resolve(.success(value))
@@ -287,8 +419,15 @@ final class PlannerViewModel {
     private let intentValidationService: IntentValidationService
     private let locationResolver: any LocationResolving
     private let routingCoordinator: any RoutingCoordinating
+    private let researchIntentAdapter: any AdventureResearchIntentAdaptingV1
+    private let researchPlanningCoordinator:
+        any OutdoorAdventurePlanningCoordinatingV1
     private let outdoorEvidenceProvider: any OutdoorRouteEvidenceProviding
     private let operationTimeouts: OperationTimeouts
+    @ObservationIgnored private let researchFeatureAvailable:
+        @MainActor @Sendable () -> Bool
+    @ObservationIgnored private let researchOperationDidFinish:
+        @MainActor @Sendable (UUID) -> Void
     @ObservationIgnored private let attemptIDProvider: @MainActor () -> UUID
     @ObservationIgnored private var activeRequestID: UUID?
     @ObservationIgnored private var planningTaskID: UUID?
@@ -345,6 +484,11 @@ final class PlannerViewModel {
     var suggestionNotice: String? {
         guard case let .suggestionsReady(success) = state else { return nil }
         return success.notice
+    }
+
+    var researchPlanningContext: ResearchPlanningContext? {
+        guard case let .suggestionsReady(success) = state else { return nil }
+        return success.researchContext
     }
 
     var currentClarification: PendingClarification? {
@@ -429,6 +573,18 @@ final class PlannerViewModel {
         geocodingService: (any GeocodingService)? = nil,
         locationResolver: (any LocationResolving)? = nil,
         routingCoordinator: any RoutingCoordinating = RoutingCoordinator(),
+        researchIntentAdapter: any AdventureResearchIntentAdaptingV1 =
+            AdventureResearchIntentAdapterV1(),
+        researchPlanningCoordinator:
+            any OutdoorAdventurePlanningCoordinatingV1 =
+                OutdoorAdventurePlanningCoordinatorV1(),
+        researchFeatureAvailable:
+            @escaping @MainActor @Sendable () -> Bool = {
+                TrailMindBackendConfiguration
+                    .researchGuidedPlanningEnabled()
+            },
+        researchOperationDidFinish:
+            @escaping @MainActor @Sendable (UUID) -> Void = { _ in },
         outdoorEvidenceProvider: any OutdoorRouteEvidenceProviding = OutdoorRouteEvidenceProviderFactory.makeDefault(),
         operationTimeouts: OperationTimeouts = .production,
         attemptIDProvider: @escaping @MainActor () -> UUID = { UUID() }
@@ -447,6 +603,11 @@ final class PlannerViewModel {
             )
         }
         self.routingCoordinator = routingCoordinator
+        self.researchIntentAdapter = researchIntentAdapter
+        self.researchPlanningCoordinator = researchPlanningCoordinator
+        self.researchFeatureAvailable = researchFeatureAvailable
+        self.researchOperationDidFinish =
+            researchOperationDidFinish
         self.outdoorEvidenceProvider = outdoorEvidenceProvider
         self.operationTimeouts = operationTimeouts
         self.attemptIDProvider = attemptIDProvider
@@ -929,6 +1090,573 @@ private extension PlannerViewModel {
     }
 }
 
+private extension PlannerViewModel {
+    static let standardResearchFallbackNotice =
+        "A standard routed option was built because research-guided matching was unavailable."
+
+    static func mergedPlanningNotice(
+        researchNotice: String?,
+        routingNotice: String?
+    ) -> String? {
+        switch (researchNotice, routingNotice) {
+        case (nil, nil):
+            nil
+        case let (notice?, nil), let (nil, notice?):
+            notice
+        case let (researchNotice?, routingNotice?)
+            where researchNotice == routingNotice:
+            researchNotice
+        case let (researchNotice?, routingNotice?):
+            "\(researchNotice)\n\n\(routingNotice)"
+        }
+    }
+
+    private func researchPathDecision(
+        requestID: UUID,
+        preparedAttempt: PreparedAttempt,
+        planningRequest: RoutePlanningRequest,
+        startCandidate: LocationCandidate
+    ) async throws -> ResearchPathDecision {
+        guard researchFeatureAvailable() else {
+            return .useLegacy(context: nil, notice: nil)
+        }
+
+        let adapterResult = researchIntentAdapter.adapt(
+            AdventureResearchIntentAdapterInputV1(
+                validatedIntent: preparedAttempt.validatedIntent,
+                resolvedStart: startCandidate
+            )
+        )
+        try ensureActive(requestID)
+
+        switch adapterResult {
+        case let .unsupported(gaps):
+            return .useLegacy(
+                context: Self.makeLegacyResearchContext(
+                    reason: .adapterUnsupported,
+                    adapterGaps: gaps
+                ),
+                notice: nil
+            )
+
+        case let .clarificationRequired(intent, gaps):
+            guard adapterResult.satisfiesStateInvariants,
+                  let clarificationContext = ResearchClarificationContext(
+                    origin: .adapter,
+                    adapterGaps: gaps,
+                    backendPlanningGaps: [],
+                    questions: intent.unresolvedClarificationQuestions
+                  )
+            else {
+                transitionToFailure(
+                    PlannerIssue.unsupportedClarification,
+                    requestID: requestID,
+                    originalPrompt: preparedAttempt.originalPrompt,
+                    stage: .routing,
+                    preparedAttempt: preparedAttempt
+                )
+                return .handled
+            }
+            transitionToResearchClarification(
+                clarificationContext,
+                requestID: requestID,
+                preparedAttempt: preparedAttempt
+            )
+            return .handled
+
+        case let .ready(intent, gaps):
+            guard adapterResult.satisfiesStateInvariants else {
+                return .useLegacy(
+                    context: Self.makeLegacyResearchContext(
+                        reason: .invalidResearchResult,
+                        adapterGaps: gaps
+                    ),
+                    notice: Self.standardResearchFallbackNotice
+                )
+            }
+
+            do {
+                let result = try await withTimeout(
+                    seconds: operationTimeouts.routingSeconds,
+                    operationDidFinish: {
+                        self.researchOperationDidFinish(requestID)
+                    }
+                ) {
+                    SendableResearchPlanningResult(
+                        value: try await self.researchPlanningCoordinator.plan(
+                            intent: intent
+                        )
+                    )
+                }
+                try ensureActive(requestID)
+                return coordinatorDecision(
+                    result.value,
+                    requestID: requestID,
+                    preparedAttempt: preparedAttempt,
+                    planningRequest: planningRequest,
+                    submittedIntent: intent,
+                    adapterGaps: gaps
+                )
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                try ensureActive(requestID)
+                return .useLegacy(
+                    context: Self.makeLegacyResearchContext(
+                        reason: .coordinatorFailure(
+                            Self.researchCoordinatorFailure(for: error)
+                        ),
+                        adapterGaps: gaps
+                    ),
+                    notice: Self.standardResearchFallbackNotice
+                )
+            }
+        }
+    }
+
+    private func coordinatorDecision(
+        _ result: OutdoorAdventurePlanningCoordinatorResultV1,
+        requestID: UUID,
+        preparedAttempt: PreparedAttempt,
+        planningRequest: RoutePlanningRequest,
+        submittedIntent: AdventureResearchIntentV1,
+        adapterGaps: [AdventureResearchIntentAdapterGapV1]
+    ) -> ResearchPathDecision {
+        switch result {
+        case let .clarificationRequired(context):
+            guard context.state == .clarificationRequired,
+                  Self.researchClarificationIntentIsBound(
+                    context.normalizedIntent,
+                    to: submittedIntent,
+                    questions: context.clarificationQuestions
+                  ),
+                  let clarificationContext = ResearchClarificationContext(
+                    origin: .coordinator,
+                    adapterGaps: adapterGaps,
+                    backendPlanningGaps: context.planningGaps,
+                    questions: context.clarificationQuestions
+                  )
+            else {
+                return .useLegacy(
+                    context: Self.makeLegacyResearchContext(
+                        reason: .invalidResearchResult,
+                        adapterGaps: adapterGaps,
+                        backendPlanningGaps: context.planningGaps
+                    ),
+                    notice: Self.standardResearchFallbackNotice
+                )
+            }
+            transitionToResearchClarification(
+                clarificationContext,
+                requestID: requestID,
+                preparedAttempt: preparedAttempt
+            )
+            return .handled
+
+        case let .unsupported(context):
+            guard context.state == .unsupported,
+                  Self.researchIntentsAreEquivalent(
+                    context.normalizedIntent,
+                    submittedIntent
+                  )
+            else {
+                return .useLegacy(
+                    context: Self.makeLegacyResearchContext(
+                        reason: .invalidResearchResult,
+                        adapterGaps: adapterGaps,
+                        backendPlanningGaps: context.planningGaps
+                    ),
+                    notice: Self.standardResearchFallbackNotice
+                )
+            }
+            return .useLegacy(
+                context: Self.makeLegacyResearchContext(
+                    reason: .coordinatorUnsupported,
+                    adapterGaps: adapterGaps,
+                    backendPlanningGaps: context.planningGaps
+                ),
+                notice: Self.standardResearchFallbackNotice
+            )
+
+        case let .noViableRoute(context):
+            guard context.state == .noViableRoute,
+                  Self.researchIntentsAreEquivalent(
+                    context.normalizedIntent,
+                    submittedIntent
+                  )
+            else {
+                return .useLegacy(
+                    context: Self.makeLegacyResearchContext(
+                        reason: .invalidResearchResult,
+                        adapterGaps: adapterGaps,
+                        backendPlanningGaps: context.planningGaps
+                    ),
+                    notice: Self.standardResearchFallbackNotice
+                )
+            }
+            return .useLegacy(
+                context: Self.makeLegacyResearchContext(
+                    reason: .noViableRoute,
+                    adapterGaps: adapterGaps,
+                    backendPlanningGaps: context.planningGaps
+                ),
+                notice: Self.standardResearchFallbackNotice
+            )
+
+        case let .routed(context):
+            do {
+                let researchContext = try Self.validatedResearchContext(
+                    outcome: .routed,
+                    routedState: context,
+                    planningRequest: planningRequest,
+                    submittedIntent: submittedIntent,
+                    adapterGaps: adapterGaps
+                )
+                return .suggestions(
+                    context.routeSelection.alternatives.map(\.suggestion),
+                    notice: nil,
+                    context: researchContext
+                )
+            } catch {
+                return .useLegacy(
+                    context: Self.makeLegacyResearchContext(
+                        reason: .invalidResearchResult,
+                        adapterGaps: adapterGaps,
+                        backendPlanningGaps: context.planningGaps,
+                        selection: context.routeSelection
+                    ),
+                    notice: Self.standardResearchFallbackNotice
+                )
+            }
+
+        case let .partial(context):
+            do {
+                let researchContext = try Self.validatedResearchContext(
+                    outcome: .partial,
+                    routedState: context,
+                    planningRequest: planningRequest,
+                    submittedIntent: submittedIntent,
+                    adapterGaps: adapterGaps
+                )
+                return .suggestions(
+                    context.routeSelection.alternatives.map(\.suggestion),
+                    notice: "Some requested preferences could not be verified.",
+                    context: researchContext
+                )
+            } catch {
+                return .useLegacy(
+                    context: Self.makeLegacyResearchContext(
+                        reason: .invalidResearchResult,
+                        adapterGaps: adapterGaps,
+                        backendPlanningGaps: context.planningGaps,
+                        selection: context.routeSelection
+                    ),
+                    notice: Self.standardResearchFallbackNotice
+                )
+            }
+        }
+    }
+
+    func transitionToResearchClarification(
+        _ context: ResearchClarificationContext,
+        requestID: UUID,
+        preparedAttempt: PreparedAttempt
+    ) {
+        guard context.questions.count == 1,
+              let question = context.questions.first,
+              question.field == .geographicAnchor,
+              question.code == .locationRequired ||
+                question.code == .startRequired
+        else {
+            transitionToFailure(
+                PlannerIssue.unsupportedClarification,
+                requestID: requestID,
+                originalPrompt: preparedAttempt.originalPrompt,
+                stage: .routing,
+                preparedAttempt: preparedAttempt,
+                researchClarificationContext: context
+            )
+            return
+        }
+        guard isActive(requestID) else { return }
+
+        activeRequestID = nil
+        state = .awaitingClarification(
+            PendingClarification(
+                id: requestID,
+                originalPrompt: preparedAttempt.originalPrompt,
+                intent: preparedAttempt.intent,
+                validation: preparedAttempt.validation,
+                parserDebugInfo: preparedAttempt.parserDebugInfo,
+                question: "Which specific town, valley or trailhead should the route start from?",
+                kind: .location(.startLocationQuery),
+                supportingText: "Choose a precise route anchor so TrailMind does not route from an arbitrary map center.",
+                locationCandidates: [],
+                allowsFreeText: true,
+                preparedAttempt: preparedAttempt,
+                researchClarificationContext: context
+            )
+        )
+    }
+
+    static func validatedResearchContext(
+        outcome: ResearchPlanningContext.Outcome,
+        routedState: OutdoorAdventurePlanningRoutedStateV1,
+        planningRequest: RoutePlanningRequest,
+        submittedIntent: AdventureResearchIntentV1,
+        adapterGaps: [AdventureResearchIntentAdapterGapV1]
+    ) throws -> ResearchPlanningContext {
+        let expectedPlanningState: OutdoorAdventurePlanningStateV1
+        switch outcome {
+        case .routed:
+            expectedPlanningState = .routed
+        case .partial:
+            expectedPlanningState = .partial
+        case .legacyFallback:
+            throw PlannerIssue.unverifiedRoutes
+        }
+        guard routedState.state == expectedPlanningState,
+              researchIntentsAreEquivalent(
+                routedState.normalizedIntent,
+                submittedIntent
+              ),
+              planningRequest.routeType == .loop,
+              planningRequest.activityType == .hiking ||
+                planningRequest.activityType == .trailRunning
+        else {
+            throw PlannerIssue.unverifiedRoutes
+        }
+
+        let selection = routedState.routeSelection
+        switch outcome {
+        case .routed:
+            guard routedState.planningGaps.isEmpty,
+                  selection.state == .routed,
+                  selection.sourceEnvelopeState == .routed
+            else {
+                throw PlannerIssue.unverifiedRoutes
+            }
+        case .partial:
+            let hasCoherentSelectionState =
+                selection.state == .routed &&
+                    selection.sourceEnvelopeState == .routed ||
+                selection.state == .partial &&
+                    selection.sourceEnvelopeState == .partial
+            guard hasCoherentSelectionState,
+                  !routedState.planningGaps.isEmpty ||
+                    selection.state == .partial
+            else {
+                throw PlannerIssue.unverifiedRoutes
+            }
+        case .legacyFallback:
+            throw PlannerIssue.unverifiedRoutes
+        }
+
+        let alternatives = selection.alternatives
+        let suggestionIDs = alternatives.map(\.suggestion.id)
+        guard !alternatives.isEmpty,
+              Set(suggestionIDs).count == suggestionIDs.count
+        else {
+            throw PlannerIssue.unverifiedRoutes
+        }
+
+        var sidecars: [
+            UUID: ResearchPlanningContext.AlternativeSidecar
+        ] = [:]
+        for alternative in alternatives {
+            let route = alternative.suggestion.route
+            try RouteEligibilityPolicy.validate(
+                route,
+                for: .productionSuccess
+            )
+            guard route.isVerifiedRoutedResult,
+                  route.activity == planningRequest.activityType,
+                  route.routeType == planningRequest.routeType,
+                  route.routeType == .loop,
+                  alternative.researchProvenance.activity == route.activity,
+                  alternative.researchProvenance.routeType == route.routeType,
+                  case let .routed(routedProvenance) = route.provenance,
+                  routedProvenance.provider == .graphHopper
+            else {
+                throw PlannerIssue.unverifiedRoutes
+            }
+            sidecars[alternative.suggestion.id] =
+                ResearchPlanningContext.AlternativeSidecar(
+                    attemptID: alternative.attemptID,
+                    routeResultID: alternative.routeResultID,
+                    researchProvenance:
+                        alternative.researchProvenance,
+                    waypointVisits: alternative.waypointVisits
+                )
+        }
+
+        return ResearchPlanningContext(
+            outcome: outcome,
+            adapterGaps: adapterGaps,
+            backendPlanningGaps: routedState.planningGaps,
+            selectionState: selection.state,
+            sourceEnvelopeState: selection.sourceEnvelopeState,
+            rejectionCounts: selection.rejectionCounts,
+            remainingLimitations: selection.remainingLimitations,
+            alternativesBySuggestionID: sidecars
+        )
+    }
+
+    static func researchIntentsAreEquivalent(
+        _ returned: AdventureResearchIntentV1,
+        _ submitted: AdventureResearchIntentV1
+    ) -> Bool {
+        researchIntentFieldsAreEquivalent(
+            returned,
+            submitted,
+            comparesAnchor: true,
+            comparesQuestions: true
+        )
+    }
+
+    static func researchClarificationIntentIsBound(
+        _ returned: AdventureResearchIntentV1,
+        to submitted: AdventureResearchIntentV1,
+        questions: [AdventureResearchClarificationQuestionV1]
+    ) -> Bool {
+        guard !questions.isEmpty,
+              Set(returned.unresolvedClarificationQuestions) ==
+                Set(questions),
+              researchIntentFieldsAreEquivalent(
+                returned,
+                submitted,
+                comparesAnchor: false,
+                comparesQuestions: false
+              )
+        else {
+            return false
+        }
+
+        if returned.geographicAnchor == submitted.geographicAnchor {
+            return true
+        }
+        guard case let .unresolved(requirement) =
+                returned.geographicAnchor
+        else {
+            return false
+        }
+        return questions.contains {
+            $0.field == .geographicAnchor &&
+                Self.clarificationCode($0.code, matches: requirement)
+        }
+    }
+
+    static func clarificationCode(
+        _ code: AdventureResearchClarificationCodeV1,
+        matches requirement: AdventureResearchAnchorRequirementV1
+    ) -> Bool {
+        switch (code, requirement) {
+        case (.locationRequired, .locationRequired),
+             (.startRequired, .startRequired),
+             (.destinationRequired, .destinationRequired):
+            true
+        default:
+            false
+        }
+    }
+
+    static func researchIntentFieldsAreEquivalent(
+        _ returned: AdventureResearchIntentV1,
+        _ submitted: AdventureResearchIntentV1,
+        comparesAnchor: Bool,
+        comparesQuestions: Bool
+    ) -> Bool {
+        guard returned.activity == submitted.activity,
+              !comparesAnchor ||
+                returned.geographicAnchor ==
+                    submitted.geographicAnchor,
+              returned.routeType == submitted.routeType,
+              returned.distanceRangeKm == submitted.distanceRangeKm,
+              returned.durationRangeMinutes ==
+                submitted.durationRangeMinutes,
+              returned.maximumElevationGainMeters ==
+                submitted.maximumElevationGainMeters,
+              returned.maximumTechnicalDifficulty ==
+                submitted.maximumTechnicalDifficulty,
+              returned.groupContext == submitted.groupContext,
+              returned.dateOrSeason == submitted.dateOrSeason,
+              returned.overnightRequirements.required ==
+                submitted.overnightRequirements.required,
+              returned.overnightRequirements.nights ==
+                submitted.overnightRequirements.nights,
+              returned.transportRequirements ==
+                submitted.transportRequirements
+        else {
+            return false
+        }
+
+        let returnedMustHaves = returned.mustHaveExperiences.sorted {
+            if $0.experience.rawValue != $1.experience.rawValue {
+                return $0.experience.rawValue < $1.experience.rawValue
+            }
+            return $0.minimumCount < $1.minimumCount
+        }
+        let submittedMustHaves = submitted.mustHaveExperiences.sorted {
+            if $0.experience.rawValue != $1.experience.rawValue {
+                return $0.experience.rawValue < $1.experience.rawValue
+            }
+            return $0.minimumCount < $1.minimumCount
+        }
+
+        return returnedMustHaves == submittedMustHaves &&
+            Set(returned.preferredExperiences) ==
+                Set(submitted.preferredExperiences) &&
+            Set(returned.avoidedExperiences) ==
+                Set(submitted.avoidedExperiences) &&
+            Set(returned.requiredFacilities) ==
+                Set(submitted.requiredFacilities) &&
+            Set(
+                returned.overnightRequirements
+                    .allowedAccommodationTypes
+            ) ==
+                Set(
+                    submitted.overnightRequirements
+                        .allowedAccommodationTypes
+                ) &&
+            (!comparesQuestions ||
+                Set(returned.unresolvedClarificationQuestions) ==
+                    Set(submitted.unresolvedClarificationQuestions))
+    }
+
+    static func makeLegacyResearchContext(
+        reason: ResearchPlanningContext.LegacyFallbackReason,
+        adapterGaps: [AdventureResearchIntentAdapterGapV1],
+        backendPlanningGaps: [OutdoorAdventurePlanningGapV1] = [],
+        selection: ResearchGuidedRouteSelectionV1? = nil
+    ) -> ResearchPlanningContext {
+        ResearchPlanningContext(
+            outcome: .legacyFallback(reason),
+            adapterGaps: adapterGaps,
+            backendPlanningGaps: backendPlanningGaps,
+            selectionState: selection?.state,
+            sourceEnvelopeState: selection?.sourceEnvelopeState,
+            rejectionCounts: selection?.rejectionCounts ?? [:],
+            remainingLimitations: selection?.remainingLimitations ?? [],
+            alternativesBySuggestionID: [:]
+        )
+    }
+
+    static func researchCoordinatorFailure(
+        for error: Error
+    ) -> OutdoorAdventurePlanningCoordinatorFailureV1 {
+        if let failure =
+            error as? OutdoorAdventurePlanningCoordinatorFailureV1
+        {
+            return failure
+        }
+        if let issue = error as? PlannerIssue,
+           case .timedOut = issue {
+            return .timedOut
+        }
+        return .unavailable
+    }
+}
+
 
 private extension PlannerViewModel {
     func runAttempt(requestID: UUID) async {
@@ -1027,6 +1755,39 @@ private extension PlannerViewModel {
             state = .generatingRoutes(resolved)
             stage = .routing
 
+            let researchDecision = try await researchPathDecision(
+                requestID: requestID,
+                preparedAttempt: workingPrepared,
+                planningRequest: planningRequest,
+                startCandidate: startCandidate
+            )
+            let legacyResearchContext: ResearchPlanningContext?
+            let legacyResearchNotice: String?
+            switch researchDecision {
+            case let .suggestions(suggestions, notice, context):
+                try ensureActive(requestID)
+                state = .preparingSuggestions(resolved)
+                stage = .preparation
+                activeRequestID = nil
+                state = .suggestionsReady(
+                    PlanningSuccess(
+                        originalPrompt: preparedAttempt.originalPrompt,
+                        suggestions: suggestions,
+                        notice: notice,
+                        researchContext: context
+                    )
+                )
+                launchOutdoorEvidenceFetch(for: suggestions)
+                return
+
+            case let .useLegacy(context, notice):
+                legacyResearchContext = context
+                legacyResearchNotice = notice
+
+            case .handled:
+                return
+            }
+
             let sendableRoutingResult = try await withTimeout(seconds: operationTimeouts.routingSeconds) {
                 SendableRoutingResult(
                     value: try await self.routingCoordinator.routeSuggestions(
@@ -1100,7 +1861,11 @@ private extension PlannerViewModel {
                 PlanningSuccess(
                     originalPrompt: preparedAttempt.originalPrompt,
                     suggestions: preparedSuggestions,
-                    notice: routingResult.notice
+                    notice: Self.mergedPlanningNotice(
+                        researchNotice: legacyResearchNotice,
+                        routingNotice: routingResult.notice
+                    ),
+                    researchContext: legacyResearchContext
                 )
             )
             launchOutdoorEvidenceFetch(for: preparedSuggestions)
@@ -1341,7 +2106,9 @@ private extension PlannerViewModel {
         requestID: UUID?,
         originalPrompt: String,
         stage: GenerationStage,
-        preparedAttempt: PreparedAttempt?
+        preparedAttempt: PreparedAttempt?,
+        researchClarificationContext:
+            ResearchClarificationContext? = nil
     ) {
         if let requestID, !isActive(requestID) { return }
         activeRequestID = nil
@@ -1354,7 +2121,9 @@ private extension PlannerViewModel {
                 message: Self.userMessage(for: error),
                 stage: stage,
                 kind: Self.recoveryKind(for: error, stage: stage),
-                preparedAttempt: preparedAttempt
+                preparedAttempt: preparedAttempt,
+                researchClarificationContext:
+                    researchClarificationContext
             )
         )
     }
@@ -1376,6 +2145,8 @@ private extension PlannerViewModel {
 
     func withTimeout<T: Sendable>(
         seconds: TimeInterval,
+        operationDidFinish:
+            @escaping @MainActor @Sendable () -> Void = {},
         operation: @escaping @MainActor @Sendable () async throws -> T
     ) async throws -> T {
         let race = TimeoutRace<T>()
@@ -1384,6 +2155,7 @@ private extension PlannerViewModel {
                 race.install(
                     continuation: continuation,
                     seconds: seconds,
+                    operationDidFinish: operationDidFinish,
                     operation: operation
                 )
             }
