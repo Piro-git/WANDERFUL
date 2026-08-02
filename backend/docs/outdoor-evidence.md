@@ -186,10 +186,14 @@ npm run outdoor-evidence:import -- \
   --dataset-name "Operator-selected regional OSM extract" \
   --source-id "documented-source-identifier-without-credentials" \
   --retrieved-at "2026-07-20T08:00:00Z" \
-  --source-timestamp "2026-07-20T00:00:00Z"
+  --source-timestamp "2026-07-20T00:00:00Z" \
+  --source-checksum "sha256:<checksum-of-the-exact-local-input>"
 ```
 
-The source timestamp is optional at ingestion because some valid files do not expose one, but evidence from an import without it is returned as freshness-unavailable rather than current.
+The current importer requires an ISO-8601 source timestamp for every new
+import. If a local file does not expose a reviewable source timestamp, stop
+before ingestion rather than inventing one. Historical rows without source
+timing remain freshness-unavailable rather than current.
 
 ## Atomic promotion, retry, cleanup, and refresh
 

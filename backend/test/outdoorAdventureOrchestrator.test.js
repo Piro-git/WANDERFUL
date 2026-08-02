@@ -12,6 +12,9 @@ import {
 import {
   buildResearchGuidedRouteCandidatePlanV1
 } from "../src/routeResearch/researchGuidedRouteCandidatePlanner.js";
+import {
+  routeResearchGuidedCandidatesV1
+} from "../src/routeResearch/researchGuidedRoutingAdapter.js";
 import { routeError } from "../src/routing/routeErrors.js";
 import {
   OUTDOOR_RESEARCH_TEST_IDS,
@@ -59,6 +62,113 @@ describe("outdoor-adventure orchestrator v1", () => {
     );
   });
 
+  it("routes a generic loop through mapped fallback evidence without request semantics", async () => {
+    const intent = researchIntent({
+      mustHaveExperiences: [],
+      preferredExperiences: []
+    });
+    const dossier = routableDossier({ normalizedIntent: intent });
+    let providerCalls = 0;
+    const result = await planAndRouteOutdoorAdventureV1(
+      request(intent),
+      dependencies(dossier, {
+        provider: {
+          async route(routeRequest) {
+            providerCalls += 1;
+            assert.deepEqual(routeRequest.points[1], {
+              latitude: 51.81,
+              longitude: 10.62
+            });
+            return providerResponse(routeRequest);
+          }
+        }
+      })
+    );
+
+    assert.equal(result.state, "partial");
+    assert.equal(result.routedAlternatives.state, "routed");
+    assert.equal(providerCalls, 1);
+    assert.deepEqual(result.normalizedIntent.mustHaveExperiences, []);
+    assert.deepEqual(result.normalizedIntent.preferredExperiences, []);
+    const selected =
+      result.routedAlternatives.attempts[0].provenance.selectedWaypoints[0];
+    assert.deepEqual(selected.selectionReasons, [
+      "available_research_candidate"
+    ]);
+    assert.equal(selected.role, "available_candidate");
+    assert.notEqual(selected.role, "preferred");
+    assert.notEqual(selected.role, "must_have");
+    assert.equal(selected.highlightCategory, "viewpoint");
+    const serialized = serializeOutdoorAdventurePlanningResponseV1(result);
+    for (const forbidden of [
+      "required_experience",
+      "preferred_experience",
+      "scenic",
+      "public_access_verified",
+      "safe"
+    ]) {
+      assert.equal(serialized.includes(forbidden), false, forbidden);
+    }
+  });
+
+  it("returns the server-owned reviewed region binding for a nil request binding", async () => {
+    const dossier = routableDossier();
+    const intent = researchIntent({
+      geographicAnchor: {
+        state: "resolved",
+        name: "Harz",
+        coordinate: { latitude: 51.8, longitude: 10.6 },
+        regionEntityId: null
+      }
+    });
+    const result = await planAndRouteOutdoorAdventureV1(
+      request(intent),
+      dependencies(dossier)
+    );
+    assert.equal(
+      result.normalizedIntent.geographicAnchor.regionEntityId,
+      HARZ_REGION_ID
+    );
+    assert.equal(
+      result.routedAlternatives.normalizedIntent.geographicAnchor.regionEntityId,
+      HARZ_REGION_ID
+    );
+  });
+
+  it("permits deterministic set ordering without changing intent meaning", async () => {
+    const dossier = routableDossier();
+    const intent = researchIntent({
+      preferredExperiences: ["peak", "forest"],
+      avoidedExperiences: ["steep_climbs", "crowds"]
+    });
+    const result = await planAndRouteOutdoorAdventureV1(
+      request(intent),
+      dependencies(dossier, {
+        researchAdventure: async (normalizedIntent) => {
+          assert.deepEqual(
+            normalizedIntent.preferredExperiences,
+            ["forest", "peak"]
+          );
+          assert.deepEqual(
+            normalizedIntent.avoidedExperiences,
+            ["crowds", "steep_climbs"]
+          );
+          return {
+            state: "unsupported",
+            normalizedIntent,
+            planningGaps: [],
+            availabilityState: "unsupported_activity"
+          };
+        }
+      })
+    );
+    assert.equal(result.state, "unsupported");
+    assert.deepEqual(result.normalizedIntent.preferredExperiences, [
+      "forest",
+      "peak"
+    ]);
+  });
+
   it("returns clarification with zero research-repository and provider calls", async () => {
     let repositoryCalls = 0;
     let providerCalls = 0;
@@ -89,7 +199,7 @@ describe("outdoor-adventure orchestrator v1", () => {
     assert.equal(providerCalls, 0);
   });
 
-  it("returns unsupported exact geography with zero repository and provider calls", async () => {
+  it("returns unsupported outside reviewed coverage with zero repository and provider calls", async () => {
     let repositoryCalls = 0;
     let providerCalls = 0;
     const intent = completeAdventureResearchIntent({
@@ -97,7 +207,7 @@ describe("outdoor-adventure orchestrator v1", () => {
         state: "resolved",
         name: "Outside reviewed coverage",
         coordinate: { latitude: 45, longitude: 8 },
-        regionEntityId: "99999999-9999-4999-8999-999999999999"
+        regionEntityId: null
       }
     });
     const result = await planAndRouteOutdoorAdventureV1(
@@ -124,7 +234,12 @@ describe("outdoor-adventure orchestrator v1", () => {
   });
 
   it("returns no viable route for insufficient evidence without provider work", async () => {
+    const intent = researchIntent({
+      mustHaveExperiences: [],
+      preferredExperiences: []
+    });
     const dossier = routableDossier({
+      normalizedIntent: intent,
       evidenceClaims: [],
       candidateHighlights: [],
       sourceProvenanceSummary: [],
@@ -149,7 +264,11 @@ describe("outdoor-adventure orchestrator v1", () => {
 
   it("keeps unsupported biking decodable and performs zero provider work", async () => {
     const dossier = routableDossier({
-      normalizedIntent: researchIntent({ activity: "biking" })
+      normalizedIntent: researchIntent({
+        activity: "biking",
+        mustHaveExperiences: [],
+        preferredExperiences: []
+      })
     });
     let providerCalls = 0;
     const result = await planAndRouteOutdoorAdventureV1(
@@ -171,7 +290,11 @@ describe("outdoor-adventure orchestrator v1", () => {
   it("fails point-to-point and out-and-back closed without loop conversion", async () => {
     for (const routeType of ["point_to_point", "out_and_back"]) {
       const dossier = routableDossier({
-        normalizedIntent: researchIntent({ routeType })
+        normalizedIntent: researchIntent({
+          routeType,
+          mustHaveExperiences: [],
+          preferredExperiences: []
+        })
       });
       let providerCalls = 0;
       const result = await planAndRouteOutdoorAdventureV1(
@@ -308,6 +431,71 @@ describe("outdoor-adventure orchestrator v1", () => {
       hasCode("internal_failure")
     );
     assert.equal(providerCalls, 0);
+  });
+
+  it("rejects injected intent substitution at every orchestration boundary", async () => {
+    const dossier = routableDossier();
+    const substitutedDossier = routableDossier({
+      normalizedIntent: researchIntent({
+        preferredExperiences: ["forest"]
+      })
+    });
+
+    let providerCalls = 0;
+    const provider = {
+      async route(routeRequest) {
+        providerCalls += 1;
+        return providerResponse(routeRequest);
+      }
+    };
+
+    await assert.rejects(
+      () => planAndRouteOutdoorAdventureV1(
+        request(dossier.normalizedIntent),
+        dependencies(substitutedDossier, { provider })
+      ),
+      hasCode("internal_failure")
+    );
+    assert.equal(providerCalls, 0);
+
+    await assert.rejects(
+      () => planAndRouteOutdoorAdventureV1(
+        request(dossier.normalizedIntent),
+        dependencies(dossier, {
+          buildCandidatePlan(_value, options) {
+            return buildResearchGuidedRouteCandidatePlanV1(
+              substitutedDossier,
+              options
+            );
+          },
+          provider
+        })
+      ),
+      hasCode("internal_failure")
+    );
+    assert.equal(providerCalls, 0);
+
+    await assert.rejects(
+      () => planAndRouteOutdoorAdventureV1(
+        request(dossier.normalizedIntent),
+        dependencies(dossier, {
+          async routeCandidates(candidatePlan, routeDependencies, options) {
+            const routed = await routeResearchGuidedCandidatesV1(
+              candidatePlan,
+              routeDependencies,
+              options
+            );
+            return {
+              ...routed,
+              normalizedIntent: substitutedDossier.normalizedIntent
+            };
+          },
+          provider
+        })
+      ),
+      hasCode("internal_failure")
+    );
+    assert.equal(providerCalls, 1);
   });
 
   it("cancels before execution and while research or routing is active", async () => {

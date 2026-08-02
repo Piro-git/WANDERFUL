@@ -192,6 +192,66 @@ test("unknown access and closure remain partial verification requirements", () =
   );
 });
 
+test("generic mapped loop highlights remain available evidence, not requested preferences", () => {
+  const dossier = makeDossier({
+    intent: plainIntent(),
+    highlights: [
+      { category: "viewpoint" },
+      { category: "waterfall" }
+    ],
+    routeCandidates: 1
+  });
+  const first = buildResearchGuidedRouteCandidatePlanV1(dossier);
+  const second = buildResearchGuidedRouteCandidatePlanV1(dossier);
+
+  assert.equal(first.state, "partial");
+  assert.equal(
+    serializeResearchGuidedRouteCandidatePlanV1(first),
+    serializeResearchGuidedRouteCandidatePlanV1(second)
+  );
+  assert.equal(
+    first.proposals.length <=
+      RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V1.limits.maximumProposals,
+    true
+  );
+  assert.equal(first.proposals.length > 0, true);
+  for (const proposal of first.proposals) {
+    assert.equal(proposal.viaCandidates.length <= 5, true);
+    for (const candidate of proposal.viaCandidates) {
+      assert.equal(candidate.role, "available_candidate");
+      assert.notEqual(candidate.role, "preferred");
+      assert.notEqual(candidate.role, "must_have");
+      assert.deepEqual(candidate.selectionReasons, [
+        "available_research_candidate"
+      ]);
+    }
+    assert.equal([
+      ...proposal.satisfiedRequirements,
+      ...proposal.unsatisfiedRequirements
+    ].some((requirement) =>
+      requirement.requirementType === "must_have_experience" ||
+      requirement.requirementType === "preferred_experience"
+    ), false);
+  }
+  assert.deepEqual(
+    dossier.candidateHighlights.map((candidate) =>
+      candidate.relevanceReasons.map((reason) => reason.code)
+    ),
+    [["mapped_viewpoint"], ["mapped_waterfall"]]
+  );
+  const serialized = serializeResearchGuidedRouteCandidatePlanV1(first);
+  for (const forbidden of [
+    "required_experience",
+    "preferred_experience",
+    "scenic",
+    "official_status_verified",
+    "public_access_verified",
+    "safe"
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, forbidden);
+  }
+});
+
 test("restrictive current official access never satisfies unrestricted access", () => {
   for (const restriction of [
     "restricted",

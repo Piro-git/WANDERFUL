@@ -9,8 +9,23 @@ import {
   requiredOpaqueString,
   sha256
 } from "./clientData.js";
+import { isAppAttestVerifier } from "./appAttestVerifier.js";
 
 const PURPOSES = new Set(["registration", "routeSession"]);
+const ASSERTION_VERIFICATION_TRACKERS = new WeakMap();
+
+export function createAppAttestAssertionVerificationTracker(
+  recordVerification
+) {
+  if (typeof recordVerification !== "function") {
+    throw new TypeError(
+      "An App Attest assertion verification recorder is required."
+    );
+  }
+  const tracker = Object.freeze({});
+  ASSERTION_VERIFICATION_TRACKERS.set(tracker, recordVerification);
+  return tracker;
+}
 
 export function createAppAttestEndpoint(options) {
   const repository = options?.repository;
@@ -18,6 +33,21 @@ export function createAppAttestEndpoint(options) {
   const env = options?.env ?? process.env;
   const now = options?.now ?? Date.now;
   const random = options?.randomBytes ?? randomBytes;
+  const assertionVerificationTracker =
+    options?.assertionVerificationTracker;
+  if (
+    assertionVerificationTracker !== undefined &&
+    (
+      !ASSERTION_VERIFICATION_TRACKERS.has(
+        assertionVerificationTracker
+      ) ||
+      !isAppAttestVerifier(verifier)
+    )
+  ) {
+    throw new TypeError(
+      "A production App Attest verifier is required for verification tracking."
+    );
+  }
   const configuration = endpointConfiguration(env);
   if (!repository || !verifier) return unavailableEndpoint;
   if (env.NODE_ENV === "production" && repository.isDurable !== true) return unavailableEndpoint;
@@ -154,6 +184,13 @@ export function createAppAttestEndpoint(options) {
       newCounter: verified.counter,
       metadata: verified
     });
+    ASSERTION_VERIFICATION_TRACKERS
+      .get(assertionVerificationTracker)?.({
+        installationId: key.installationId,
+        keyIdHash,
+        previousCounter: key.counter,
+        newCounter: verified.counter
+      });
 
     const token = encodeBase64Url(random(32));
     const expiresAt = now() + configuration.routeSessionTtlMs;

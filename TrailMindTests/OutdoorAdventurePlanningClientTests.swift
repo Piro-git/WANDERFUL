@@ -346,6 +346,37 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         })
     }
 
+    func testResponseConversionTimingObserverWrapsStrictValidation()
+        async throws
+    {
+        OutdoorAdventurePlanningURLProtocolStub.reset(
+            responses: [
+                .init(
+                    statusCode: 200,
+                    data: try routedResponse()
+                )
+            ]
+        )
+        let capture = OutdoorAdventureDurationCapture()
+
+        let result = try await makeClient(
+            responseValidationDidFinish: {
+                capture.append($0)
+            }
+        ).plan(
+            OutdoorAdventurePlanningRequestV1(
+                intent: try validIntent()
+            )
+        )
+
+        XCTAssertEqual(result.state, .routed)
+        XCTAssertEqual(capture.values.count, 1)
+        XCTAssertGreaterThanOrEqual(
+            capture.values[0],
+            .zero
+        )
+    }
+
     func testRoutedWithPlanningGapsFailsClosed() async throws {
         try await assertClientFailure(
             response: routedResponse(planningGaps: [validPlanningGap()]),
@@ -679,6 +710,38 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         }
     }
 
+    func testInternalFailureIsUnavailableSoPlannerMayUseDocumentedFallback()
+        async throws
+    {
+        OutdoorAdventurePlanningURLProtocolStub.reset(responses: [
+            .init(
+                statusCode: 503,
+                data: errorResponse(
+                    code: "internal_failure",
+                    message: "private orchestration detail"
+                )
+            )
+        ])
+
+        await XCTAssertThrowsErrorAsync(
+            try await makeClient().plan(
+                OutdoorAdventurePlanningRequestV1(
+                    intent: try validIntent()
+                )
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? OutdoorAdventurePlanningClientFailure,
+                .unavailable
+            )
+        }
+        XCTAssertEqual(
+            OutdoorAdventurePlanningURLProtocolStub
+                .capturedRequests().count,
+            1
+        )
+    }
+
     private func assertClientFailure(
         response: Data,
         expected: OutdoorAdventurePlanningClientFailure,
@@ -707,13 +770,17 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
     private func makeClient(
         authorizer: any RouteSessionAuthorizing =
             RecordingOutdoorAdventurePlanningAuthorizer(),
-        limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard
+        limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard,
+        responseValidationDidFinish:
+            @escaping @Sendable (Duration) -> Void = { _ in }
     ) -> BackendOutdoorAdventurePlanningClientV1 {
         BackendOutdoorAdventurePlanningClientV1(
             baseURL: URL(string: "https://example.com")!,
             session: makeTestSession(),
             authorizer: authorizer,
-            limits: limits
+            limits: limits,
+            responseValidationDidFinish:
+                responseValidationDidFinish
         )
     }
 
@@ -1174,6 +1241,25 @@ private final class OutdoorAdventurePlanningURLProtocolStub:
             data.append(buffer, count: count)
         }
         return data
+    }
+}
+
+private final class OutdoorAdventureDurationCapture:
+    @unchecked Sendable
+{
+    private let lock = NSLock()
+    private var storage: [Duration] = []
+
+    var values: [Duration] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+
+    func append(_ value: Duration) {
+        lock.lock()
+        storage.append(value)
+        lock.unlock()
     }
 }
 

@@ -280,6 +280,49 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         longitude: 10.6647
     )
 
+#if DEBUG
+    func testStagingProofGateProbeEvaluatesDisabledPolicyWithoutWork()
+        async
+    {
+        let prompt = "disabled-gate-probe"
+        let intent = makeIntent(
+            prompt: prompt,
+            routeType: .loop
+        )
+        let adapter = ResearchAdapterSpy(
+            result: .unsupported(gaps: [.researchContractRejected])
+        )
+        let coordinator = ResearchCoordinatorSpy(
+            outcomes: [
+                .failure(
+                    OutdoorAdventurePlanningCoordinatorFailureV1
+                        .unavailable
+                )
+            ]
+        )
+        let router = ResearchLegacyRouter(suggestions: [])
+        let viewModel = makeViewModel(
+            intent: intent,
+            resolver: makeResolvedLocationResolver(),
+            router: router,
+            adapter: adapter,
+            coordinator: coordinator,
+            featureAvailable: false
+        )
+
+        XCTAssertFalse(
+            viewModel.stagingProofEvaluateResearchGuidedPlanningGate()
+        )
+        guard case .idle = viewModel.state else {
+            return XCTFail("Gate probe must leave the planner idle.")
+        }
+        XCTAssertTrue(adapter.capturedInputs().isEmpty)
+        XCTAssertTrue(coordinator.capturedIntents().isEmpty)
+        XCTAssertTrue(router.intents.isEmpty)
+        XCTAssertTrue(viewModel.suggestions.isEmpty)
+    }
+#endif
+
     func testDisabledPolicyBypassesResearchForEveryShippingShape()
         async throws
     {
@@ -691,6 +734,202 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         XCTAssertFalse(encodedString.contains("appleGeocoder"))
         XCTAssertFalse(encodedString.contains("providerRank"))
         XCTAssertFalse(encodedString.contains("73"))
+    }
+
+    func testProductionAdapterCarriesBrockenPeakMustHaveThroughPlanner()
+        async throws
+    {
+        let prompt = "PRIVATE_BROCKEN_PROMPT_MUST_NOT_CROSS"
+        let candidateID = "PRIVATE_BROCKEN_CANDIDATE_ID"
+        let intent = makeIntent(
+            prompt: prompt,
+            routeType: .loop,
+            start: "Brocken",
+            end: nil,
+            mustHave: [
+                MustHaveResearchExperienceConstraint(
+                    experience: .peak
+                )
+            ]
+        )
+        let candidate = locationCandidate(
+            id: candidateID,
+            displayName: "Brocken",
+            coordinate: Coordinate(
+                latitude: 51.7992,
+                longitude: 10.6171
+            ),
+            kind: .landmark,
+            providerRank: 73
+        )
+        let coordinator = ResearchControlledCoordinator()
+        let router = ResearchLegacyRouter(outcomes: [])
+        let viewModel = makeViewModel(
+            intent: intent,
+            resolver: ResearchLocationResolver(
+                resolutions: ["Brocken": .resolved(candidate)]
+            ),
+            router: router,
+            adapter: AdventureResearchIntentAdapterV1(),
+            coordinator: coordinator,
+            featureAvailable: true
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        guard await waitUntil(
+            "Brocken research coordinator request",
+            condition: {
+                coordinator.capturedIntents().count == 1
+            }
+        ) else { return }
+        let submittedIntent = try XCTUnwrap(
+            coordinator.capturedIntents().first
+        )
+        XCTAssertEqual(
+            submittedIntent.mustHaveExperiences,
+            [
+                try AdventureResearchExperienceRequirementV1(
+                    experience: .peak,
+                    minimumCount: 1
+                )
+            ]
+        )
+        guard case let .resolved(anchorName, _, _) =
+            submittedIntent.geographicAnchor
+        else {
+            return XCTFail("Expected a resolved Brocken anchor.")
+        }
+        XCTAssertEqual(anchorName, "Brocken")
+
+        let encodedData = try JSONEncoder().encode(submittedIntent)
+        let encoded = try XCTUnwrap(
+            String(data: encodedData, encoding: .utf8)
+        )
+        XCTAssertFalse(encoded.contains(prompt))
+        XCTAssertFalse(encoded.contains(candidateID))
+        XCTAssertFalse(encoded.contains("appleGeocoder"))
+        XCTAssertFalse(encoded.contains("providerRank"))
+
+        let selection = try routedSelection()
+        coordinator.succeed(
+            requestIndex: 0,
+            with: .routed(
+                OutdoorAdventurePlanningRoutedStateV1(
+                    state: .routed,
+                    normalizedIntent: submittedIntent,
+                    planningGaps: [],
+                    routeSelection: selection
+                )
+            )
+        )
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail(
+                "The typed Brocken research request must complete."
+            )
+        }
+        XCTAssertEqual(router.intents.count, 0)
+        XCTAssertEqual(success.researchContext?.outcome, .routed)
+    }
+
+    func testUnsatisfiedGenericMustHaveFallsBackWithoutFakeResearchRoute()
+        async throws
+    {
+        let prompt = "PRIVATE_UNSATISFIED_MUST_HAVE_PROMPT"
+        let constraint = MustHaveResearchExperienceConstraint(
+            experience: .waterfall
+        )
+        let intent = makeIntent(
+            prompt: prompt,
+            routeType: .loop,
+            end: nil,
+            mustHave: [constraint]
+        )
+        let candidate = locationCandidate(
+            id: "PRIVATE_ILSENBURG_CANDIDATE_ID",
+            displayName: "Ilsenburg, Germany",
+            coordinate: startCoordinate
+        )
+        let coordinator = ResearchControlledCoordinator()
+        let router = ResearchLegacyRouter(
+            suggestions: [
+                RouteSuggestion(
+                    route: verifiedRoute(routeType: .loop),
+                    explanation: "legacy"
+                )
+            ]
+        )
+        let viewModel = makeViewModel(
+            intent: intent,
+            resolver: ResearchLocationResolver(
+                resolutions: ["Ilsenburg": .resolved(candidate)]
+            ),
+            router: router,
+            adapter: AdventureResearchIntentAdapterV1(),
+            coordinator: coordinator,
+            featureAvailable: true
+        )
+
+        viewModel.startPlanning(prompt: prompt)
+        guard await waitUntil(
+            "generic must-have research coordinator request",
+            condition: {
+                coordinator.capturedIntents().count == 1
+            }
+        ) else { return }
+        let submittedIntent = try XCTUnwrap(
+            coordinator.capturedIntents().first
+        )
+        XCTAssertEqual(
+            submittedIntent.mustHaveExperiences,
+            [
+                try AdventureResearchExperienceRequirementV1(
+                    experience: .waterfall,
+                    minimumCount: 1
+                )
+            ]
+        )
+        XCTAssertTrue(submittedIntent.preferredExperiences.isEmpty)
+        XCTAssertTrue(submittedIntent.requiredFacilities.isEmpty)
+        let encodedData = try JSONEncoder().encode(submittedIntent)
+        let encoded = try XCTUnwrap(
+            String(data: encodedData, encoding: .utf8)
+        )
+        XCTAssertTrue(encoded.contains("\"waterfall\""))
+        XCTAssertFalse(encoded.contains(prompt))
+        XCTAssertFalse(
+            encoded.contains("PRIVATE_ILSENBURG_CANDIDATE_ID")
+        )
+
+        coordinator.succeed(
+            requestIndex: 0,
+            with: .noViableRoute(
+                OutdoorAdventurePlanningNonRoutedStateV1(
+                    state: .noViableRoute,
+                    normalizedIntent: submittedIntent,
+                    planningGaps: [],
+                    clarificationQuestions: []
+                )
+            )
+        )
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail(
+                "An unsatisfied generic must-have must use legacy fallback."
+            )
+        }
+        XCTAssertEqual(router.intents.count, 1)
+        XCTAssertEqual(success.suggestions.count, 1)
+        XCTAssertEqual(
+            success.researchContext?.outcome,
+            .legacyFallback(.noViableRoute)
+        )
+        XCTAssertTrue(
+            success.researchContext?.alternativesBySuggestionID.isEmpty
+                == true
+        )
     }
 
     func testAdapterClarificationUsesExistingLocationFlowAndInvokesNoRouter()
@@ -1602,8 +1841,7 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
             .authorizationFailed,
             .rateLimited,
             .timedOut,
-            .rejected,
-            .invalidResult
+            .rejected
         ]
 
         for failure in failures {
@@ -1651,6 +1889,58 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
                 ) == true
             )
         }
+    }
+
+    func testInvalidCoordinatorResultFailsClosedWithoutLegacyRouting()
+        async throws
+    {
+        let fixture = try makeResearchFixture()
+        let router = ResearchLegacyRouter(
+            suggestions: [
+                RouteSuggestion(
+                    route: verifiedRoute(routeType: .loop),
+                    explanation: "must not be used"
+                )
+            ]
+        )
+        let coordinator = ResearchCoordinatorSpy(
+            outcomes: [
+                .failure(
+                    OutdoorAdventurePlanningCoordinatorFailureV1
+                        .invalidResult
+                )
+            ]
+        )
+        let viewModel = makeViewModel(
+            intent: fixture.localIntent,
+            resolver: makeResolvedLocationResolver(),
+            router: router,
+            adapter: ResearchAdapterSpy(
+                result: fixture.adapterResult
+            ),
+            coordinator: coordinator,
+            featureAvailable: true
+        )
+
+        viewModel.startPlanning(
+            prompt: fixture.localIntent.rawPrompt
+        )
+        await viewModel.generate()
+
+        guard case let .recoverableError(recovery) =
+                viewModel.state
+        else {
+            return XCTFail(
+                "An invalid backend result must fail closed."
+            )
+        }
+        XCTAssertEqual(router.intents.count, 0)
+        XCTAssertEqual(coordinator.capturedIntents().count, 1)
+        XCTAssertEqual(recovery.kind, .unverified)
+        XCTAssertEqual(
+            recovery.message,
+            "TrailMind couldn’t verify the returned route. Try again or edit the request."
+        )
     }
 
     func testUnexpectedCoordinatorErrorDoesNotExposeProviderBody()
@@ -1998,6 +2288,229 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         )
     }
 
+    func testRoutedResultAcceptsReviewedRegionEnrichmentForNilAnchorRegion()
+        async throws
+    {
+        let fixture = try makeResearchFixture()
+        guard case let .resolved(name, coordinate, regionEntityID) =
+            fixture.intent.geographicAnchor
+        else {
+            return XCTFail("Fixture requires a resolved anchor.")
+        }
+        XCTAssertNil(regionEntityID)
+        let reviewedHarzRegionID = try XCTUnwrap(
+            UUID(
+                uuidString:
+                    "30000000-0000-4000-8000-000000000002"
+            )
+        )
+        let enrichedIntent = try replacingAnchor(
+            in: fixture.intent,
+            with: .resolved(
+                name: name,
+                coordinate: coordinate,
+                regionEntityID: reviewedHarzRegionID
+            )
+        )
+        let router = ResearchLegacyRouter(
+            suggestions: [
+                RouteSuggestion(
+                    route: verifiedRoute(routeType: .loop),
+                    explanation: "legacy"
+                )
+            ]
+        )
+        let viewModel = makeViewModel(
+            intent: fixture.localIntent,
+            resolver: makeResolvedLocationResolver(),
+            router: router,
+            adapter: ResearchAdapterSpy(result: fixture.adapterResult),
+            coordinator: ResearchCoordinatorSpy(
+                result: .routed(
+                    OutdoorAdventurePlanningRoutedStateV1(
+                        state: .routed,
+                        normalizedIntent: enrichedIntent,
+                        planningGaps: [],
+                        routeSelection: fixture.selection
+                    )
+                )
+            ),
+            featureAvailable: true
+        )
+
+        viewModel.startPlanning(prompt: fixture.localIntent.rawPrompt)
+        await viewModel.generate()
+
+        guard case let .suggestionsReady(success) = viewModel.state else {
+            return XCTFail("Reviewed region enrichment must remain bound.")
+        }
+        XCTAssertTrue(router.intents.isEmpty)
+        XCTAssertEqual(success.researchContext?.outcome, .routed)
+        XCTAssertEqual(
+            success.suggestions.map(\.id),
+            fixture.selection.alternatives.map(\.suggestion.id)
+        )
+    }
+
+    func testRoutedResultRejectsUnreviewedOrSubstitutedRegionEnrichment()
+        async throws
+    {
+        let fixture = try makeResearchFixture()
+        guard case let .resolved(name, coordinate, _) =
+            fixture.intent.geographicAnchor
+        else {
+            return XCTFail("Fixture requires a resolved anchor.")
+        }
+        let reviewedHarzRegionID = try XCTUnwrap(
+            UUID(
+                uuidString:
+                    "30000000-0000-4000-8000-000000000002"
+            )
+        )
+        let unreviewedRegionID = try XCTUnwrap(
+            UUID(
+                uuidString:
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+            )
+        )
+        let reviewedInnsbruckRegionID = try XCTUnwrap(
+            UUID(
+                uuidString:
+                    "30000000-0000-4000-8000-000000000001"
+            )
+        )
+        let changedCoordinate = try AdventureResearchCoordinateV1(
+            latitude: coordinate.latitude + 0.01,
+            longitude: coordinate.longitude
+        )
+        let invalidAnchors: [AdventureResearchGeographicAnchorV1] = [
+            .resolved(
+                name: name,
+                coordinate: coordinate,
+                regionEntityID: unreviewedRegionID
+            ),
+            .resolved(
+                name: name,
+                coordinate: coordinate,
+                regionEntityID: reviewedInnsbruckRegionID
+            ),
+            .resolved(
+                name: "\(name) substituted",
+                coordinate: coordinate,
+                regionEntityID: reviewedHarzRegionID
+            ),
+            .resolved(
+                name: name,
+                coordinate: changedCoordinate,
+                regionEntityID: reviewedHarzRegionID
+            )
+        ]
+        for invalidAnchor in invalidAnchors {
+            let mismatchedIntent = try replacingAnchor(
+                in: fixture.intent,
+                with: invalidAnchor
+            )
+            let router = ResearchLegacyRouter(
+                suggestions: [
+                    RouteSuggestion(
+                        route: verifiedRoute(routeType: .loop),
+                        explanation: "legacy"
+                    )
+                ]
+            )
+            let viewModel = makeViewModel(
+                intent: fixture.localIntent,
+                resolver: makeResolvedLocationResolver(),
+                router: router,
+                adapter: ResearchAdapterSpy(result: fixture.adapterResult),
+                coordinator: ResearchCoordinatorSpy(
+                    result: .routed(
+                        OutdoorAdventurePlanningRoutedStateV1(
+                            state: .routed,
+                            normalizedIntent: mismatchedIntent,
+                            planningGaps: [],
+                            routeSelection: fixture.selection
+                        )
+                    )
+                ),
+                featureAvailable: true
+            )
+
+            viewModel.startPlanning(prompt: fixture.localIntent.rawPrompt)
+            await viewModel.generate()
+
+            guard case let .suggestionsReady(success) = viewModel.state else {
+                return XCTFail("Substituted enrichment must fail closed.")
+            }
+            XCTAssertEqual(router.intents.count, 1)
+            XCTAssertEqual(
+                success.researchContext?.outcome,
+                .legacyFallback(.invalidResearchResult)
+            )
+        }
+
+        let boundSubmittedIntent = try replacingAnchor(
+            in: fixture.intent,
+            with: .resolved(
+                name: name,
+                coordinate: coordinate,
+                regionEntityID: reviewedHarzRegionID
+            )
+        )
+        let substitutedReturnedIntent = try replacingAnchor(
+            in: boundSubmittedIntent,
+            with: .resolved(
+                name: name,
+                coordinate: coordinate,
+                regionEntityID: reviewedInnsbruckRegionID
+            )
+        )
+        let boundAdapterResult =
+            AdventureResearchIntentAdapterResultV1.ready(
+                intent: boundSubmittedIntent,
+                gaps: fixture.adapterResult.gaps
+            )
+        let boundRouter = ResearchLegacyRouter(
+            suggestions: [
+                RouteSuggestion(
+                    route: verifiedRoute(routeType: .loop),
+                    explanation: "legacy"
+                )
+            ]
+        )
+        let boundViewModel = makeViewModel(
+            intent: fixture.localIntent,
+            resolver: makeResolvedLocationResolver(),
+            router: boundRouter,
+            adapter: ResearchAdapterSpy(result: boundAdapterResult),
+            coordinator: ResearchCoordinatorSpy(
+                result: .routed(
+                    OutdoorAdventurePlanningRoutedStateV1(
+                        state: .routed,
+                        normalizedIntent: substitutedReturnedIntent,
+                        planningGaps: [],
+                        routeSelection: fixture.selection
+                    )
+                )
+            ),
+            featureAvailable: true
+        )
+
+        boundViewModel.startPlanning(prompt: fixture.localIntent.rawPrompt)
+        await boundViewModel.generate()
+
+        guard case let .suggestionsReady(boundSuccess) =
+            boundViewModel.state
+        else {
+            return XCTFail("A bound region identifier cannot be replaced.")
+        }
+        XCTAssertEqual(boundRouter.intents.count, 1)
+        XCTAssertEqual(
+            boundSuccess.researchContext?.outcome,
+            .legacyFallback(.invalidResearchResult)
+        )
+    }
+
     func testPartialRejectsIncoherentSelectionStatePairs()
         async throws
     {
@@ -2144,6 +2657,9 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         )
 
         viewModel.startPlanning(prompt: fixture.localIntent.rawPrompt)
+        let planningTask = try XCTUnwrap(
+            viewModel.stagingProofPlanningTaskForQuiescence()
+        )
         guard await waitUntil(
             "research request",
             condition: {
@@ -2152,16 +2668,12 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         ) else { return }
         viewModel.cancelGeneration()
         coordinator.succeed(requestIndex: 0, with: routed)
-        guard await waitUntil(
-            "cancelled research completion",
-            condition: {
-                completionRecorder.requestIDs.count == 1
-            }
-        ) else { return }
+        await planningTask.value
 
         guard case .cancelled = viewModel.state else {
             return XCTFail("A late research result must not replace cancellation.")
         }
+        XCTAssertEqual(completionRecorder.requestIDs.count, 1)
         XCTAssertTrue(viewModel.suggestions.isEmpty)
         XCTAssertEqual(router.intents.count, 0)
     }
@@ -2463,7 +2975,9 @@ private extension PlannerViewModelResearchGuidedPlanningTests {
         routeType: TrailRouteType,
         start: String? = "Ilsenburg",
         end: String? = nil,
-        desired: [DesiredFeature] = []
+        desired: [DesiredFeature] = [],
+        mustHave:
+            [MustHaveResearchExperienceConstraint] = []
     ) -> AdventureIntent {
         AdventureIntent(
             rawPrompt: prompt,
@@ -2479,6 +2993,7 @@ private extension PlannerViewModelResearchGuidedPlanningTests {
             difficulty: nil,
             desiredFeatures: desired,
             avoidFeatures: [],
+            mustHaveResearchExperiences: mustHave,
             transportMode: nil
         )
     }

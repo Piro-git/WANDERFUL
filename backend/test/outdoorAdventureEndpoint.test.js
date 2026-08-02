@@ -335,6 +335,34 @@ describe("outdoor-adventure planning endpoint v1", () => {
     );
   });
 
+  it("constructs research with distinct product and cancellation pools", async () => {
+    const productPool = {
+      async connect() {
+        assert.fail("product pool connected");
+      }
+    };
+    const cancellationPool = {
+      async connect() {
+        assert.fail("cancellation pool connected");
+      }
+    };
+    const endpoint = successfulEndpoint({
+      repository: undefined,
+      postgresPool: productPool,
+      postgresCancellationPool: cancellationPool,
+      orchestrator: async (planningRequest, dependencies) => {
+        assert.equal(dependencies.repository.pool, productPool);
+        assert.equal(
+          dependencies.repository.cancellationPool,
+          cancellationPool
+        );
+        return clarificationResponse(planningRequest.intent);
+      }
+    });
+    const result = await endpoint(request(unresolvedIntent()));
+    assert.equal(result.statusCode, 200);
+  });
+
   it("logs only allowlisted coarse metadata and fixed classifications", async () => {
     const logs = [];
     const intent = resolvedIntent();

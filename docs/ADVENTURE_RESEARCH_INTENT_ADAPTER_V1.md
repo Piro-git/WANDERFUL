@@ -92,6 +92,7 @@ invalid numeric input takes precedence over location clarification.
 | Invalid/out-of-range duration | `unsupported` | No clamping |
 | Difficulty `.easy` | Maximum technical difficulty `.hiking` | Conservative upper bound |
 | Difficulty `.moderate` or `.challenging` | `nil` plus `technicalDifficultyNotEquivalent` | Product difficulty is not a SAC-style technical grade |
+| Explicit `MustHaveResearchExperienceConstraint` | Matching generic research experience and exact `minimumCount` | Requirement only; never a verified place fact or named-entity claim |
 | Desired `.viewpoint` | Preferred `.viewpoint` | Preference, not a must-have |
 | Desired `.forest` | Preferred `.forest` | Preference, not a verified fact |
 | Desired `.quiet` | Preferred `.quietTrails` | Preference, not a verified fact |
@@ -101,9 +102,11 @@ invalid numeric input takes precedence over location clarification.
 | Avoid `.steepClimbs` | `.steepClimbs` | Exact |
 | Avoid `.repeatedPath` | `.repeatedPath` | Exact |
 
-Mapped preference and avoidance arrays preserve first-occurrence order and
-remove later duplicates. `mustHaveExperiences` and `requiredFacilities` are
-always empty.
+Mapped must-have requirements preserve their explicit order and count. The
+research contract requires each generic experience to be unique; duplicates
+fail closed as `researchContractRejected` rather than being merged or
+reinterpreted. Preference and avoidance arrays preserve first-occurrence order
+and remove later duplicates. `requiredFacilities` is always empty.
 
 ## Neutral compatibility fields
 

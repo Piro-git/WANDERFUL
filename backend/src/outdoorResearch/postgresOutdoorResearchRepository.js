@@ -12,6 +12,13 @@ import {
 } from "./osmProjectionPolicy.js";
 import { validateResearchPlannerCapabilitiesV1 } from "./researchPlanner.js";
 
+const TRANSACTION_LIFECYCLE_OBSERVERS = new WeakMap();
+const TRANSACTION_LIFECYCLE_EVENTS = new Set([
+  "began",
+  "query_cancelled_after_abort",
+  "rollback_completed_after_cancel"
+]);
+
 const SNAPSHOT_CONTEXT_QUERY = `
 WITH anchor AS (
   SELECT ST_SetSRID(ST_MakePoint($2, $3), 4326)::geometry(Point, 4326) AS point
@@ -327,12 +334,34 @@ export class PostgresOutdoorResearchRepository {
     }
     const policy = OUTDOOR_RESEARCH_EXECUTOR_POLICY_V1;
     this.pool = options.pool;
+    if (
+      options.cancellationPool !== undefined &&
+      (
+        !options.cancellationPool?.connect ||
+        options.cancellationPool === options.pool
+      )
+    ) {
+      throw outdoorResearchExecutorError("invalid_dependencies");
+    }
+    this.cancellationPool = options.cancellationPool;
     this.statementTimeoutMs = boundedExecutorTimeout(
       options.statementTimeoutMs,
       policy.defaultStatementTimeoutMs,
       policy.minimumStatementTimeoutMs,
       policy.maximumStatementTimeoutMs
     );
+    if (
+      options.transactionLifecycleObserver !== undefined &&
+      typeof options.transactionLifecycleObserver !== "function"
+    ) {
+      throw outdoorResearchExecutorError("invalid_dependencies");
+    }
+    if (options.transactionLifecycleObserver) {
+      TRANSACTION_LIFECYCLE_OBSERVERS.set(
+        this,
+        options.transactionLifecycleObserver
+      );
+    }
   }
 
   async withConsistentSnapshot(context, work) {
@@ -346,35 +375,92 @@ export class PostgresOutdoorResearchRepository {
     } catch (error) {
       throw outdoorResearchExecutorError("database_unavailable", { cause: error });
     }
+    let transactionActive = false;
+    let snapshotSession = null;
+    let cancellationPromise = null;
+    const observeAbort = () => {
+      if (
+        !this.cancellationPool ||
+        !transactionActive ||
+        cancellationPromise !== null ||
+        snapshotSession?.queryActive !== true
+      ) {
+        return;
+      }
+      cancellationPromise = cancelActivePostgresQuery(
+        this.cancellationPool,
+        client.processID
+      );
+    };
     try {
       throwIfAborted(context?.signal);
       await client.query(
         "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
       );
+      transactionActive = true;
+      observeTransactionLifecycle(this, "began");
       await client.query("SELECT set_config('statement_timeout', $1, true)", [
         `${this.statementTimeoutMs}ms`
       ]);
-      const session = new PostgresOutdoorResearchSnapshotSession(
+      snapshotSession = new PostgresOutdoorResearchSnapshotSession(
         client,
         context?.signal
       );
-      const result = await work(session);
+      context?.signal?.addEventListener?.("abort", observeAbort, {
+        once: true
+      });
+      if (context?.signal?.aborted) observeAbort();
+      throwIfAborted(context?.signal);
+      const result = await work(snapshotSession);
       throwIfAborted(context?.signal);
       await client.query("COMMIT");
+      transactionActive = false;
       return result;
     } catch (error) {
-      try { await client.query("ROLLBACK"); } catch {}
+      const cancellationAccepted = cancellationPromise === null
+        ? false
+        : await cancellationPromise;
+      const queryCancellationObserved =
+        cancellationAccepted &&
+        snapshotSession?.queryCancelledAfterAbort === true;
+      if (queryCancellationObserved) {
+        observeTransactionLifecycle(
+          this,
+          "query_cancelled_after_abort"
+        );
+      }
+      try {
+        await client.query("ROLLBACK");
+        transactionActive = false;
+        if (queryCancellationObserved) {
+          observeTransactionLifecycle(
+            this,
+            "rollback_completed_after_cancel"
+          );
+        }
+      } catch {}
       throw normalizeRepositoryError(error, context?.signal);
     } finally {
+      context?.signal?.removeEventListener?.("abort", observeAbort);
       client.release();
     }
   }
+
+}
+
+function observeTransactionLifecycle(repository, event) {
+  if (!TRANSACTION_LIFECYCLE_EVENTS.has(event)) return;
+  try {
+    TRANSACTION_LIFECYCLE_OBSERVERS.get(repository)?.(event);
+  } catch {}
 }
 
 class PostgresOutdoorResearchSnapshotSession {
   constructor(client, signal) {
     this.client = client;
     this.signal = signal;
+    this.queryActive = false;
+    this.queryCancelledAfterAbort = false;
   }
 
   async resolveCapabilities(binding, anchor, now) {
@@ -453,15 +539,39 @@ class PostgresOutdoorResearchSnapshotSession {
   async query(text, values) {
     throwIfAborted(this.signal);
     let result;
+    this.queryActive = true;
     try {
-      result = this.signal
-        ? await this.client.query({ text, values, signal: this.signal })
-        : await this.client.query(text, values);
+      result = await this.client.query(text, values);
     } catch (error) {
+      if (
+        this.signal?.aborted === true &&
+        error?.code === "57014"
+      ) {
+        this.queryCancelledAfterAbort = true;
+      }
       throw normalizeRepositoryError(error, this.signal);
+    } finally {
+      this.queryActive = false;
     }
     throwIfAborted(this.signal);
     return result;
+  }
+}
+
+async function cancelActivePostgresQuery(pool, processId) {
+  if (!Number.isInteger(processId) || processId < 1) return false;
+  let cancellationClient;
+  try {
+    cancellationClient = await pool.connect();
+    const result = await cancellationClient.query(
+      "SELECT pg_cancel_backend($1) AS cancelled",
+      [processId]
+    );
+    return result.rows?.[0]?.cancelled === true;
+  } catch {
+    return false;
+  } finally {
+    cancellationClient?.release();
   }
 }
 

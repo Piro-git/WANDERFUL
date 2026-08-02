@@ -35,7 +35,7 @@ The inventory contains **30 source records**: **11 accepted candidates** (`appro
 ### Pilot bounds
 
 - `harz-v1`: **10.30–11.35° E, 51.45–51.98° N**, covering the relevant parts of Lower Saxony, Saxony-Anhalt and Thuringia.
-- `innsbruck-v1`: **10.95–11.65° E, 47.00–47.45° N**, covering the bounded Innsbruck/Nordkette/Stubai pilot.
+- `innsbruck-alps-v1`: **10.95–11.65° E, 47.00–47.45° N**, covering the bounded Innsbruck/Nordkette/Stubai pilot.
 
 These are the existing outdoor-evidence contract bounds. Every regional dataset must be clipped to them, while retaining source-region and source-record provenance.
 

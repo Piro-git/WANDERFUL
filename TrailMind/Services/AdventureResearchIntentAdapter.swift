@@ -294,6 +294,13 @@ struct AdventureResearchIntentAdapterV1:
         let avoidedExperiences = Self.avoidedExperiences(
             from: input.validatedIntent.avoidFeatures
         )
+        guard let mustHaveExperiences = Self.mustHaveExperiences(
+            from: input.validatedIntent.mustHaveResearchExperiences
+        ) else {
+            return Self.unsupportedResult(
+                gaps: [.researchContractRejected]
+            )
+        }
         Self.appendUnique(.groupContextUnavailable, to: &advisoryGaps)
         Self.appendUnique(.arrivalContextUnavailable, to: &advisoryGaps)
 
@@ -305,6 +312,7 @@ struct AdventureResearchIntentAdapterV1:
                 distanceRange: distanceRange,
                 durationRange: durationRange,
                 maximumTechnicalDifficulty: maximumTechnicalDifficulty,
+                mustHaveExperiences: mustHaveExperiences,
                 preferredExperiences: preferredExperiences,
                 avoidedExperiences: avoidedExperiences,
                 advisoryGaps: advisoryGaps
@@ -328,6 +336,7 @@ struct AdventureResearchIntentAdapterV1:
                 distanceRange: distanceRange,
                 durationRange: durationRange,
                 maximumTechnicalDifficulty: maximumTechnicalDifficulty,
+                mustHaveExperiences: mustHaveExperiences,
                 preferredExperiences: preferredExperiences,
                 avoidedExperiences: avoidedExperiences,
                 advisoryGaps: advisoryGaps
@@ -362,6 +371,7 @@ struct AdventureResearchIntentAdapterV1:
             distanceRange: distanceRange,
             durationRange: durationRange,
             maximumTechnicalDifficulty: maximumTechnicalDifficulty,
+            mustHaveExperiences: mustHaveExperiences,
             preferredExperiences: preferredExperiences,
             avoidedExperiences: avoidedExperiences,
             clarificationQuestions: []
@@ -387,6 +397,8 @@ struct AdventureResearchIntentAdapterV1:
         durationRange: AdventureResearchDurationRangeV1?,
         maximumTechnicalDifficulty:
             AdventureResearchTechnicalDifficultyV1?,
+        mustHaveExperiences:
+            [AdventureResearchExperienceRequirementV1],
         preferredExperiences: [AdventureResearchExperienceV1],
         avoidedExperiences: [AdventureResearchAvoidedExperienceV1],
         advisoryGaps: [AdventureResearchIntentAdapterGapV1]
@@ -404,6 +416,7 @@ struct AdventureResearchIntentAdapterV1:
             distanceRange: distanceRange,
             durationRange: durationRange,
             maximumTechnicalDifficulty: maximumTechnicalDifficulty,
+            mustHaveExperiences: mustHaveExperiences,
             preferredExperiences: preferredExperiences,
             avoidedExperiences: avoidedExperiences,
             clarificationQuestions: [question]
@@ -434,6 +447,8 @@ struct AdventureResearchIntentAdapterV1:
         durationRange: AdventureResearchDurationRangeV1?,
         maximumTechnicalDifficulty:
             AdventureResearchTechnicalDifficultyV1?,
+        mustHaveExperiences:
+            [AdventureResearchExperienceRequirementV1],
         preferredExperiences: [AdventureResearchExperienceV1],
         avoidedExperiences: [AdventureResearchAvoidedExperienceV1],
         clarificationQuestions: [AdventureResearchClarificationQuestionV1]
@@ -460,7 +475,7 @@ struct AdventureResearchIntentAdapterV1:
                 durationRangeMinutes: durationRange,
                 maximumElevationGainMeters: nil,
                 maximumTechnicalDifficulty: maximumTechnicalDifficulty,
-                mustHaveExperiences: [],
+                mustHaveExperiences: mustHaveExperiences,
                 preferredExperiences: preferredExperiences,
                 avoidedExperiences: avoidedExperiences,
                 requiredFacilities: [],
@@ -477,6 +492,50 @@ struct AdventureResearchIntentAdapterV1:
             )
         } catch {
             return nil
+        }
+    }
+
+    private static func mustHaveExperiences(
+        from constraints: [MustHaveResearchExperienceConstraint]
+    ) -> [AdventureResearchExperienceRequirementV1]? {
+        do {
+            return try constraints.map { constraint in
+                try AdventureResearchExperienceRequirementV1(
+                    experience: researchExperience(
+                        from: constraint.experience
+                    ),
+                    minimumCount: constraint.minimumCount
+                )
+            }
+        } catch {
+            return nil
+        }
+    }
+
+    private static func researchExperience(
+        from experience: ResearchExperience
+    ) -> AdventureResearchExperienceV1 {
+        switch experience {
+        case .viewpoint:
+            .viewpoint
+        case .waterfall:
+            .waterfall
+        case .peak:
+            .peak
+        case .lake:
+            .lake
+        case .forest:
+            .forest
+        case .quietTrails:
+            .quietTrails
+        case .officialHikingRoute:
+            .officialHikingRoute
+        case .alpineHut:
+            .alpineHut
+        case .wildernessHut:
+            .wildernessHut
+        case .landmark:
+            .landmark
         }
     }
 

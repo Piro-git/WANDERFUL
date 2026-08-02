@@ -508,6 +508,38 @@ async function buildCandidateTables(client, selected, runId) {
       GROUP BY osm_type, osm_id`
   );
   await client.query(
+    `CREATE TEMP TABLE tmp_osm_projection_filtered_candidates ON COMMIT DROP AS
+     SELECT candidate.*
+       FROM tmp_osm_projection_candidates candidate
+      WHERE candidate.entity_category IS NOT NULL
+        AND candidate.source_version IS NOT NULL
+        AND candidate.source_timestamp IS NOT NULL
+        AND candidate.source_timestamp <= $1::timestamptz
+        AND candidate.source_timestamp <= $2::timestamptz
+        AND (
+          (candidate.entity_category = 'hiking_route' AND candidate.geom IS NULL) OR
+          (
+            candidate.geom IS NOT NULL AND ST_SRID(candidate.geom) = 4326 AND
+            ST_NDims(candidate.geom) = 2 AND NOT ST_IsEmpty(candidate.geom) AND
+            ST_IsValid(candidate.geom) AND
+            ST_CoveredBy(
+              candidate.geom, ST_MakeEnvelope(-180, -90, 180, 90, 4326)
+            )
+          )
+        )`,
+    [selected.retrievedAt, selected.sourceDataAt]
+  );
+  await client.query(
+    "CREATE INDEX tmp_osm_projection_filtered_candidates_identity_idx " +
+    "ON tmp_osm_projection_filtered_candidates (osm_type, osm_id)"
+  );
+  await client.query(
+    "CREATE UNIQUE INDEX tmp_osm_projection_identity_counts_identity_idx " +
+    "ON tmp_osm_projection_identity_counts (osm_type, osm_id)"
+  );
+  await client.query("ANALYZE tmp_osm_projection_filtered_candidates");
+  await client.query("ANALYZE tmp_osm_projection_identity_counts");
+  await client.query(
     `CREATE TEMP TABLE tmp_osm_projection_eligible ON COMMIT DROP AS
      SELECT candidate.*,
             outdoor_research_deterministic_uuid_v3(
@@ -541,31 +573,12 @@ async function buildCandidateTables(client, selected, runId) {
                 THEN 'permit_required'
               ELSE NULL
             END::text AS access_restriction
-       FROM tmp_osm_projection_candidates candidate
+       FROM tmp_osm_projection_filtered_candidates candidate
        JOIN tmp_osm_projection_identity_counts identity
          USING (osm_type, osm_id)
       WHERE identity.record_count = 1
-        AND identity.category_count = 1
-        AND candidate.entity_category IS NOT NULL
-        AND candidate.source_version IS NOT NULL
-        AND candidate.source_timestamp IS NOT NULL
-        AND candidate.source_timestamp <= $3::timestamptz
-        AND candidate.source_timestamp <= $4::timestamptz
-        AND (
-          (candidate.entity_category = 'hiking_route' AND candidate.geom IS NULL) OR
-          (
-            candidate.geom IS NOT NULL AND ST_SRID(candidate.geom) = 4326 AND
-            ST_NDims(candidate.geom) = 2 AND NOT ST_IsEmpty(candidate.geom) AND
-            ST_IsValid(candidate.geom) AND
-            ST_CoveredBy(
-              candidate.geom, ST_MakeEnvelope(-180, -90, 180, 90, 4326)
-            )
-          )
-        )`,
-    [
-      OSM_RESEARCH_SOURCE_KEY, selected.sourceId,
-      selected.retrievedAt, selected.sourceDataAt
-    ]
+        AND identity.category_count = 1`,
+    [OSM_RESEARCH_SOURCE_KEY, selected.sourceId]
   );
   await client.query(
     "CREATE UNIQUE INDEX tmp_osm_projection_eligible_identity_idx " +
@@ -615,6 +628,19 @@ async function buildCandidateTables(client, selected, runId) {
       selected.inputFileSha256, runId, OSM_PROJECTION_ADAPTER_VERSION
     ]
   );
+  await client.query(
+    "CREATE INDEX tmp_osm_projection_lineage_identity_idx " +
+    "ON tmp_osm_projection_lineage (osm_type, osm_id)"
+  );
+  await client.query(
+    "CREATE INDEX tmp_osm_projection_lineage_entity_idx " +
+    "ON tmp_osm_projection_lineage (entity_id)"
+  );
+  await client.query(
+    "CREATE INDEX tmp_osm_projection_lineage_source_link_idx " +
+    "ON tmp_osm_projection_lineage (source_entity_link_id)"
+  );
+  await client.query("ANALYZE tmp_osm_projection_lineage");
 }
 
 async function insertQuarantines(client, runId, selected) {
@@ -738,21 +764,30 @@ async function upsertCanonicalEntities(client, sourceId) {
     [sourceId]
   );
   const invalid = await client.query(
-    `SELECT EXISTS (
-       SELECT 1 FROM tmp_osm_projection_lineage candidate
-       LEFT JOIN outdoor_research_osm_entity_identities identity
-         ON identity.source_id = $1
-        AND identity.osm_type = candidate.osm_type
-        AND identity.osm_id = candidate.osm_id
-        AND identity.entity_id = candidate.entity_id
-       LEFT JOIN outdoor_research_source_entities link
-         ON link.source_entity_link_id = candidate.source_entity_link_id
-        AND link.entity_id = candidate.entity_id
-        AND link.source_id = $1
-        AND link.external_type = candidate.osm_type
-        AND link.external_id = candidate.osm_id::text
-        AND link.matching_status = 'matched'
-      WHERE identity.entity_id IS NULL OR link.source_entity_link_id IS NULL
+    `SELECT (
+       (SELECT count(*) FROM tmp_osm_projection_lineage) <>
+       (
+         SELECT count(*)
+           FROM tmp_osm_projection_lineage candidate
+           JOIN outdoor_research_osm_entity_identities identity
+             ON identity.source_id = $1
+            AND identity.osm_type = candidate.osm_type
+            AND identity.osm_id = candidate.osm_id
+            AND identity.entity_id = candidate.entity_id
+       )
+       OR
+       (SELECT count(*) FROM tmp_osm_projection_lineage) <>
+       (
+         SELECT count(*)
+           FROM tmp_osm_projection_lineage candidate
+           JOIN outdoor_research_source_entities link
+             ON link.source_entity_link_id = candidate.source_entity_link_id
+            AND link.entity_id = candidate.entity_id
+            AND link.source_id = $1
+            AND link.external_type = candidate.osm_type
+            AND link.external_id = candidate.osm_id::text
+            AND link.matching_status = 'matched'
+       )
      ) AS invalid`,
     [sourceId]
   );
@@ -837,6 +872,27 @@ async function buildAssertionCandidates(client, input) {
         ON tmp_osm_assertion_values (entity_id, predicate)`
   );
   await client.query(
+    `CREATE TEMP TABLE tmp_osm_prior_assertions ON COMMIT DROP AS
+     SELECT DISTINCT ON (assertion.entity_id, assertion.predicate)
+            assertion.assertion_id, assertion.entity_id, assertion.predicate,
+            assertion.value_type, assertion.value_text, assertion.value_boolean
+       FROM outdoor_research_active_assertions assertion
+       JOIN (
+         SELECT DISTINCT entity_id
+           FROM tmp_osm_projection_lineage
+       ) lineage ON lineage.entity_id = assertion.entity_id
+      WHERE assertion.source_id = $1::uuid
+      ORDER BY assertion.entity_id, assertion.predicate,
+               assertion.retrieved_at DESC, assertion.created_at DESC,
+               assertion.assertion_id`,
+    [input.sourceId]
+  );
+  await client.query(
+    `CREATE UNIQUE INDEX tmp_osm_prior_assertions_cohort_idx
+        ON tmp_osm_prior_assertions (entity_id, predicate)`
+  );
+  await client.query("ANALYZE tmp_osm_prior_assertions");
+  await client.query(
     `CREATE TEMP TABLE tmp_osm_assertion_candidates ON COMMIT DROP AS
      WITH valued AS (
        SELECT value.*,
@@ -856,17 +912,9 @@ async function buildAssertionCandidates(client, input) {
                 COALESCE(value.value_text, value.value_boolean::text)
               ) AS content_assertion_id
          FROM tmp_osm_assertion_values value
-         LEFT JOIN LATERAL (
-           SELECT assertion.assertion_id, assertion.value_type,
-                  assertion.value_text, assertion.value_boolean
-             FROM outdoor_research_active_assertions assertion
-            WHERE assertion.source_id = $1::uuid
-              AND assertion.entity_id = value.entity_id
-              AND assertion.predicate = value.predicate
-            ORDER BY assertion.retrieved_at DESC, assertion.created_at DESC,
-                     assertion.assertion_id
-            LIMIT 1
-         ) prior ON true
+         LEFT JOIN tmp_osm_prior_assertions prior
+           ON prior.entity_id = value.entity_id
+          AND prior.predicate = value.predicate
      )
      SELECT CASE
               WHEN prior_assertion_id IS NOT NULL AND
@@ -908,8 +956,8 @@ async function buildAssertionCandidates(client, input) {
             prior.predicate, prior.value_type, prior.value_text, prior.value_boolean,
             prior.assertion_id, prior.assertion_id, true, 'retracts'
        FROM tmp_osm_projection_lineage lineage
-       JOIN outdoor_research_active_assertions prior
-         ON prior.source_id = $1::uuid AND prior.entity_id = lineage.entity_id
+       JOIN tmp_osm_prior_assertions prior
+         ON prior.entity_id = lineage.entity_id
        JOIN outdoor_research_source_policy_scopes policy_scope
          ON policy_scope.source_policy_id = $2
         AND policy_scope.entity_category = lineage.entity_category

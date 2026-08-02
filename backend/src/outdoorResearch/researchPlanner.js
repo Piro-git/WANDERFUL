@@ -13,6 +13,7 @@ import {
 
 const POLICY = OUTDOOR_RESEARCH_PLANNER_POLICY_V1;
 const FOUNDATIONAL_HIKING_NETWORK = POLICY.foundationalHikingNetwork;
+const DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY = POLICY.defaultMappedHighlightDiscovery;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SAFE_ERROR_MESSAGES = Object.freeze({
   invalid_intent: "Outdoor research intent is invalid.",
@@ -113,6 +114,7 @@ export function planOutdoorResearchV1(intentInput, capabilitiesInput = {}) {
   planOvernight(context);
   planAccessVerification(context);
   planSeasonAndRecentConditions(context);
+  planDefaultMappedHighlightDiscovery(context);
 
   const operations = materializeOperations(context);
   const planningGaps = normalizeGaps(context.gaps);
@@ -699,6 +701,49 @@ function hasFoundationalHikingNetworkOperation(operations) {
       FOUNDATIONAL_HIKING_NETWORK.sourceCategories.includes(category)
     )
   );
+}
+
+function planDefaultMappedHighlightDiscovery(context) {
+  if (context.intent.routeType !== "loop" ||
+      (context.intent.activity !== "hiking" &&
+        context.intent.activity !== "trail_running") ||
+      context.proposals.some((proposal) =>
+        isSupportedHighlightDiscoveryProposal(context, proposal)
+      ) ||
+      !context.capabilities.enabledOperationTypes.includes(
+        DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.operationType
+      ) ||
+      !DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.sourceCategories.some((category) =>
+        context.capabilities.availableSourceCategories.includes(category)
+      ) ||
+      !context.capabilities.supportedEvidencePredicates.includes(
+        DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.requiredPredicate
+      )) {
+    return;
+  }
+
+  propose(context, {
+    operationType: DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.operationType,
+    informationNeed: DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.informationNeed,
+    reasonCode: DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.reasonCode,
+    sourceCategories: DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.sourceCategories,
+    sourceGapCode: "mapped_source_unavailable",
+    entityCategories: DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.entityCategories,
+    predicates: [DEFAULT_MAPPED_HIGHLIGHT_DISCOVERY.requiredPredicate],
+    allowEmptyPredicates: false
+  });
+}
+
+function isSupportedHighlightDiscoveryProposal(context, proposal) {
+  return proposal.operationType === "discover_highlights" &&
+    proposal.informationNeed === "highlight_candidates" &&
+    proposal.entityCategories.length > 0 &&
+    proposal.predicates.includes("entity_category") &&
+    context.capabilities.enabledOperationTypes.includes(proposal.operationType) &&
+    proposal.sourceCategories.some((category) =>
+      context.capabilities.availableSourceCategories.includes(category)
+    ) &&
+    context.capabilities.supportedEvidencePredicates.includes("entity_category");
 }
 
 function propose(context, proposal) {

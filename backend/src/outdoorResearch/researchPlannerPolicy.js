@@ -140,6 +140,14 @@ const policy = {
     requiredPredicates: ["entity_category", "mapped_hiking_route_membership"],
     sourceCategories: ["openstreetmap_open_mapping"]
   },
+  defaultMappedHighlightDiscovery: {
+    operationType: "discover_highlights",
+    informationNeed: "highlight_candidates",
+    reasonCode: "coverage_gap",
+    requiredPredicate: "entity_category",
+    sourceCategories: ["openstreetmap_open_mapping"],
+    entityCategories: ["viewpoint", "waterfall"]
+  },
   experienceEntityCategories: EXPERIENCE_ENTITY_CATEGORIES,
   experiencePredicates: EXPERIENCE_PREDICATES,
   facilityEntityCategories: FACILITY_ENTITY_CATEGORIES,

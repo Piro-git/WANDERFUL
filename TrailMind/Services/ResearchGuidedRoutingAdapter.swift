@@ -75,6 +75,7 @@ enum ResearchKnownLimitationV1: String, CaseIterable, Hashable, Sendable {
 enum ResearchCandidateRoleV1: String, Hashable, Sendable {
     case mustHave = "must_have"
     case preferred
+    case availableCandidate = "available_candidate"
     case facilityCandidate = "facility_candidate"
     case overnightCandidate = "overnight_candidate"
 }
@@ -156,7 +157,10 @@ struct ResearchWaypointVisitV1: Hashable, Sendable {
     /// This is deliberately narrower than "visited": it only reports whether
     /// GraphHopper snapping stayed inside the documented bounded tolerance.
     var isResearchWaypointReached: Bool {
-        role == .via && withinVisitTolerance
+        role == .via &&
+            snappedCoordinate != nil &&
+            snapDistanceMeters != nil &&
+            withinVisitTolerance
     }
 }
 
@@ -193,11 +197,19 @@ enum ResearchGuidedRoutingContractErrorV1: Error, Equatable, Sendable {
     case envelopeTooLarge
 }
 
-struct ResearchGuidedRoutingContractAdapterV1 {
+struct ResearchGuidedRoutingContractAdapterV1: Sendable {
     private let limits: RouteTransportLimits
+    private let qualitySelectionDidFinish:
+        @Sendable (Duration) -> Void
 
-    init(limits: RouteTransportLimits = .standard) {
+    init(
+        limits: RouteTransportLimits = .standard,
+        qualitySelectionDidFinish:
+            @escaping @Sendable (Duration) -> Void = { _ in }
+    ) {
         self.limits = limits
+        self.qualitySelectionDidFinish =
+            qualitySelectionDidFinish
     }
 
     func decodeConvertAndSelect(
@@ -227,6 +239,12 @@ struct ResearchGuidedRoutingContractAdapterV1 {
         var conversionRejectionCount = 0
         for attempt in envelope.attempts where attempt.state == .routed {
             for result in attempt.routeResults {
+                guard result.waypointVisits.allSatisfy({
+                    $0.role != .via || $0.isResearchWaypointReached
+                }) else {
+                    conversionRejectionCount += 1
+                    continue
+                }
                 do {
                     let responseData = try JSONSerialization.data(
                         withJSONObject: [
@@ -262,9 +280,13 @@ struct ResearchGuidedRoutingContractAdapterV1 {
             }
         }
 
+        let qualityStartedAt = ContinuousClock().now
         let qualitySelection = RouteAlternativeQuality.select(
             contexts.map(\.suggestion),
             request: planningRequest
+        )
+        qualitySelectionDidFinish(
+            qualityStartedAt.duration(to: ContinuousClock().now)
         )
         var rejectionCounts = qualitySelection.rejectionCounts
         if conversionRejectionCount > 0 {
@@ -495,7 +517,7 @@ private struct ResearchGuidedRoutedEnvelopeValidatorV1 {
             value["maximumElevationGainMeters"],
             range: 0...20_000
         )
-        try nullableString(
+        let maximumTechnicalDifficulty = try nullableString(
             value["maximumTechnicalDifficulty"],
             allowed: [
                 "strolling",
@@ -508,22 +530,23 @@ private struct ResearchGuidedRoutedEnvelopeValidatorV1 {
             ]
         )
         try validateMustHave(value["mustHaveExperiences"])
-        try validateCanonicalIntentStringArray(
-            value["preferredExperiences"],
-            allowed: [
-                "viewpoint",
-                "waterfall",
-                "peak",
-                "lake",
-                "forest",
-                "quiet_trails",
-                "official_hiking_route",
-                "alpine_hut",
-                "wilderness_hut",
-                "landmark"
-            ],
-            maximum: 16
-        )
+        let preferredExperiences =
+            try validateCanonicalIntentStringArray(
+                value["preferredExperiences"],
+                allowed: [
+                    "viewpoint",
+                    "waterfall",
+                    "peak",
+                    "lake",
+                    "forest",
+                    "quiet_trails",
+                    "official_hiking_route",
+                    "alpine_hut",
+                    "wilderness_hut",
+                    "landmark"
+                ],
+                maximum: 16
+            )
         let avoided = try validateCanonicalIntentStringArray(
             value["avoidedExperiences"],
             allowed: [
@@ -576,6 +599,8 @@ private struct ResearchGuidedRoutedEnvelopeValidatorV1 {
             targetDurationMinutes: durationRange.map {
                 ($0.lowerBound + $0.upperBound) / 2
             },
+            maximumTechnicalDifficulty: maximumTechnicalDifficulty,
+            preferredExperiences: preferredExperiences,
             avoidedExperiences: avoided
         )
     }
@@ -1747,9 +1772,9 @@ private struct ResearchGuidedRoutedEnvelopeValidatorV1 {
     private func nullableString(
         _ input: Any?,
         allowed: Set<String>
-    ) throws {
-        guard !(input is NSNull) else { return }
-        _ = try string(input, allowed: allowed)
+    ) throws -> String? {
+        guard !(input is NSNull) else { return nil }
+        return try string(input, allowed: allowed)
     }
 
     private func coordinate(_ input: Any?) throws -> Coordinate {
@@ -2018,6 +2043,8 @@ private extension ResearchGuidedRoutedEnvelopeValidatorV1 {
         let anchorCoordinate: Coordinate?
         let targetDistanceKm: Double?
         let targetDurationMinutes: Int?
+        let maximumTechnicalDifficulty: String?
+        let preferredExperiences: [String]
         let avoidedExperiences: [String]
 
         var planningRequest: RoutePlanningRequest {
@@ -2044,6 +2071,21 @@ private extension ResearchGuidedRoutedEnvelopeValidatorV1 {
             if avoidedExperiences.contains("repeated_path") {
                 avoidFeatures.append(.repeatedPath)
             }
+            let difficulty: RouteDifficulty? =
+                maximumTechnicalDifficulty == "hiking" ? .easy : nil
+            let desiredFeatures = preferredExperiences.compactMap {
+                experience -> DesiredFeature? in
+                switch experience {
+                case "viewpoint":
+                    .viewpoint
+                case "forest":
+                    .forest
+                case "quiet_trails":
+                    .quiet
+                default:
+                    nil
+                }
+            }
             return RoutePlanningRequest(
                 routeType: routeType == "loop" ? .loop : .pointToPoint,
                 startQuery: anchorName ?? "Start",
@@ -2052,8 +2094,8 @@ private extension ResearchGuidedRoutedEnvelopeValidatorV1 {
                 graphHopperProfile: graphHopperProfile,
                 targetDistanceKm: targetDistanceKm,
                 targetDurationMinutes: targetDurationMinutes,
-                difficulty: nil,
-                desiredFeatures: [],
+                difficulty: difficulty,
+                desiredFeatures: desiredFeatures,
                 avoidFeatures: avoidFeatures
             )
         }

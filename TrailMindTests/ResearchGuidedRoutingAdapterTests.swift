@@ -3,6 +3,16 @@ import XCTest
 
 @MainActor
 final class ResearchGuidedRoutingAdapterTests: XCTestCase {
+    func testAvailableCandidateRoleIsNeutralAndStrictlyTyped() throws {
+        let role = try XCTUnwrap(
+            ResearchCandidateRoleV1(rawValue: "available_candidate")
+        )
+        XCTAssertEqual(role, .availableCandidate)
+        XCTAssertNotEqual(role, .preferred)
+        XCTAssertNotEqual(role, .mustHave)
+        XCTAssertNil(ResearchCandidateRoleV1(rawValue: "available"))
+    }
+
     func testSharedFixtureCorpusCoversEveryRequiredScenario() throws {
         let fixture = try fixtureCorpus()
         XCTAssertEqual(fixture.schemaVersion, 1)
@@ -126,6 +136,28 @@ final class ResearchGuidedRoutingAdapterTests: XCTestCase {
         )
     }
 
+    func testQualityTimingObserverWrapsProductionSelection() throws {
+        let capture = ResearchQualityDurationCapture()
+        let adapter = ResearchGuidedRoutingContractAdapterV1(
+            qualitySelectionDidFinish: {
+                capture.append($0)
+            }
+        )
+
+        let result = try adapter.decodeConvertAndSelect(
+            try jsonData(
+                fixtureEnvelope(named: "validAlternatives")
+            )
+        )
+
+        XCTAssertFalse(result.alternatives.isEmpty)
+        XCTAssertEqual(capture.values.count, 1)
+        XCTAssertGreaterThanOrEqual(
+            capture.values[0],
+            .zero
+        )
+    }
+
     func testOpenLoopIsRejectedByHikingQualityEngineAndCannotBecomeSuccess() throws {
         let result = try adapterResult(envelope: "openLoopOnly")
 
@@ -159,19 +191,11 @@ final class ResearchGuidedRoutingAdapterTests: XCTestCase {
         XCTAssertTrue(copied.suggestion.route.isVerifiedRoutedResult)
     }
 
-    func testExcessiveSnappingIsTypedButNeverReportedAsReached() throws {
+    func testExcessiveResearchViaSnappingRejectsEveryAffectedAlternative()
+        throws
+    {
         var envelope = try fixtureEnvelope(named: "validAlternatives")
-        var attempts = try XCTUnwrap(envelope["attempts"] as? [[String: Any]])
-        var attempt = attempts[0]
-        var results = try XCTUnwrap(
-            attempt["routeResults"] as? [[String: Any]]
-        )
-        for index in results.indices {
-            var result = results[index]
-            var visits = try XCTUnwrap(
-                result["waypointVisits"] as? [[String: Any]]
-            )
-            var visit = visits[1]
+        try mutateWaypointVisits(in: &envelope, visitIndex: 1) { visit in
             let requested = try coordinateDictionary(
                 visit["requestedCoordinate"]
             )
@@ -188,13 +212,7 @@ final class ResearchGuidedRoutingAdapterTests: XCTestCase {
                 )
             )
             visit["withinVisitTolerance"] = false
-            visits[1] = visit
-            result["waypointVisits"] = visits
-            results[index] = result
         }
-        attempt["routeResults"] = results
-        attempts[0] = attempt
-        envelope["attempts"] = attempts
         var limitations = try XCTUnwrap(
             envelope["remainingLimitations"] as? [String]
         )
@@ -203,14 +221,72 @@ final class ResearchGuidedRoutingAdapterTests: XCTestCase {
 
         let result = try ResearchGuidedRoutingContractAdapterV1()
             .decodeConvertAndSelect(try jsonData(envelope))
-        let visit = try XCTUnwrap(
-            result.alternatives.first?.waypointVisits.first {
-                $0.role == .via
+        XCTAssertEqual(result.sourceEnvelopeState, .routed)
+        XCTAssertEqual(result.state, .noViableRoute)
+        XCTAssertTrue(result.alternatives.isEmpty)
+        XCTAssertEqual(
+            result.rejectionCounts["contract_route_conversion_rejected"],
+            3
+        )
+        XCTAssertTrue(
+            result.remainingLimitations.contains(
+                "snapping_exceeds_tolerance"
+            )
+        )
+    }
+
+    func testMissingResearchViaSnappingRejectsEveryAffectedAlternative()
+        throws
+    {
+        var envelope = try fixtureEnvelope(named: "validAlternatives")
+        try mutateWaypointVisits(in: &envelope, visitIndex: 1) { visit in
+            visit["snappedCoordinate"] = NSNull()
+            visit["snapDistanceMeters"] = NSNull()
+            visit["withinVisitTolerance"] = false
+        }
+        var limitations = try XCTUnwrap(
+            envelope["remainingLimitations"] as? [String]
+        )
+        limitations.append("snapping_unavailable")
+        envelope["remainingLimitations"] = limitations
+
+        let result = try ResearchGuidedRoutingContractAdapterV1()
+            .decodeConvertAndSelect(try jsonData(envelope))
+
+        XCTAssertEqual(result.sourceEnvelopeState, .routed)
+        XCTAssertEqual(result.state, .noViableRoute)
+        XCTAssertTrue(result.alternatives.isEmpty)
+        XCTAssertEqual(
+            result.rejectionCounts["contract_route_conversion_rejected"],
+            3
+        )
+        XCTAssertTrue(
+            result.remainingLimitations.contains("snapping_unavailable")
+        )
+    }
+
+    func testMissingAnchorSnappingRetainsExistingLimitationBehavior() throws {
+        var envelope = try fixtureEnvelope(named: "validAlternatives")
+        try mutateWaypointVisits(in: &envelope, visitIndex: 0) { visit in
+            visit["snappedCoordinate"] = NSNull()
+            visit["snapDistanceMeters"] = NSNull()
+            visit["withinVisitTolerance"] = false
+        }
+
+        let result = try ResearchGuidedRoutingContractAdapterV1()
+            .decodeConvertAndSelect(try jsonData(envelope))
+
+        XCTAssertEqual(result.state, .routed)
+        XCTAssertEqual(result.alternatives.count, 2)
+        XCTAssertTrue(
+            result.alternatives.allSatisfy { alternative in
+                alternative.waypointVisits.contains {
+                    $0.role == .anchor &&
+                        $0.snappedCoordinate == nil &&
+                        !$0.withinVisitTolerance
+                }
             }
         )
-        XCTAssertFalse(visit.withinVisitTolerance)
-        XCTAssertFalse(visit.isResearchWaypointReached)
-        XCTAssertGreaterThan(visit.snapDistanceMeters ?? 0, 100)
     }
 
     func testStrictValidationRejectsUnknownTamperedAndMismatchedFields() throws {
@@ -298,6 +374,81 @@ final class ResearchGuidedRoutingAdapterTests: XCTestCase {
         let result = try adapterResult(envelope: "unsupportedBiking")
         XCTAssertEqual(result.state, .unsupported)
         XCTAssertTrue(result.alternatives.isEmpty)
+    }
+
+    func testRequestReconstructionPreservesOnlyReversibleLocalConstraints()
+        throws
+    {
+        var reversible = try fixtureEnvelope(named: "validAlternatives")
+        var reversibleIntent = try XCTUnwrap(
+            reversible["normalizedIntent"] as? [String: Any]
+        )
+        reversibleIntent["maximumTechnicalDifficulty"] = "hiking"
+        reversibleIntent["preferredExperiences"] = [
+            "alpine_hut",
+            "forest",
+            "lake",
+            "landmark",
+            "official_hiking_route",
+            "peak",
+            "quiet_trails",
+            "viewpoint",
+            "waterfall",
+            "wilderness_hut"
+        ]
+        reversible["normalizedIntent"] = reversibleIntent
+
+        let reversibleResult =
+            try ResearchGuidedRoutingContractAdapterV1()
+                .decodeConvertAndSelect(try jsonData(reversible))
+
+        XCTAssertFalse(reversibleResult.alternatives.isEmpty)
+        for alternative in reversibleResult.alternatives {
+            let metadata = try XCTUnwrap(
+                alternative.suggestion.route.planningMetadata
+            )
+            XCTAssertEqual(metadata.difficulty, .easy)
+            XCTAssertEqual(
+                metadata.desiredFeatures,
+                [.forest, .quiet, .viewpoint]
+            )
+        }
+
+        let nonReversibleDifficulties: [Any] = [
+            NSNull(),
+            "strolling",
+            "mountain_hiking",
+            "demanding_mountain_hiking",
+            "alpine_hiking",
+            "demanding_alpine_hiking",
+            "difficult_alpine_hiking"
+        ]
+        for technicalDifficulty in nonReversibleDifficulties {
+            var nonReversible =
+                try fixtureEnvelope(named: "validAlternatives")
+            var intent = try XCTUnwrap(
+                nonReversible["normalizedIntent"] as? [String: Any]
+            )
+            intent["maximumTechnicalDifficulty"] = technicalDifficulty
+            intent["preferredExperiences"] = [
+                "alpine_hut",
+                "lake",
+                "landmark",
+                "official_hiking_route",
+                "peak",
+                "waterfall",
+                "wilderness_hut"
+            ]
+            nonReversible["normalizedIntent"] = intent
+
+            let result = try ResearchGuidedRoutingContractAdapterV1()
+                .decodeConvertAndSelect(try jsonData(nonReversible))
+            let metadata = try XCTUnwrap(
+                result.alternatives.first?.suggestion.route.planningMetadata
+            )
+            XCTAssertNil(metadata.difficulty)
+            XCTAssertTrue(metadata.desiredFeatures.isEmpty)
+        }
     }
 
     func testIntentValidationMatchesBackendContractBoundaries() throws {
@@ -408,6 +559,32 @@ final class ResearchGuidedRoutingAdapterTests: XCTestCase {
         envelope["attempts"] = attempts
     }
 
+    private func mutateWaypointVisits(
+        in envelope: inout [String: Any],
+        visitIndex: Int,
+        mutation: (inout [String: Any]) throws -> Void
+    ) throws {
+        var attempts = try XCTUnwrap(
+            envelope["attempts"] as? [[String: Any]]
+        )
+        var results = try XCTUnwrap(
+            attempts[0]["routeResults"] as? [[String: Any]]
+        )
+        for resultIndex in results.indices {
+            var visits = try XCTUnwrap(
+                results[resultIndex]["waypointVisits"] as? [[String: Any]]
+            )
+            guard visits.indices.contains(visitIndex) else {
+                XCTFail("Fixture waypoint visit index is unavailable.")
+                return
+            }
+            try mutation(&visits[visitIndex])
+            results[resultIndex]["waypointVisits"] = visits
+        }
+        attempts[0]["routeResults"] = results
+        envelope["attempts"] = attempts
+    }
+
     private func fixtureEnvelope(
         named name: String
     ) throws -> [String: Any] {
@@ -487,4 +664,23 @@ private struct FixtureCorpus {
     let contractSchemaVersion: Int
     let requiredScenarioIDs: [String]
     let envelopes: [String: [String: Any]]
+}
+
+private final class ResearchQualityDurationCapture:
+    @unchecked Sendable
+{
+    private let lock = NSLock()
+    private var storage: [Duration] = []
+
+    var values: [Duration] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+
+    func append(_ value: Duration) {
+        lock.lock()
+        storage.append(value)
+        lock.unlock()
+    }
 }

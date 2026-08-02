@@ -9,6 +9,12 @@ import {
   validateAdventureResearchIntentV1
 } from "../outdoorResearch/validation.js";
 import {
+  bindOutdoorResearchIntentToReviewedRegionV1
+} from "../outdoorResearch/regionBindings.js";
+import {
+  canonicalizeResearchGuidedRouteIntentV1
+} from "../routeResearch/contractSemantics.js";
+import {
   ResearchGuidedRouteCandidateError
 } from "../routeResearch/errors.js";
 import {
@@ -69,8 +75,13 @@ export async function planAndRouteOutdoorAdventureV1(
   const deps = validateDependencies(dependencies);
   return executeWithDeadline(settings, async (signal) => {
     throwIfAborted(signal);
-    const researchResult = await deps.researchAdventure(
+    const intentBinding = serverBoundIntent(
       request.intent,
+      deps.regionBindings
+    );
+    const { normalizedIntent } = intentBinding;
+    const researchResult = await deps.researchAdventure(
+      normalizedIntent,
       {
         repository: deps.repository,
         clock: deps.clock,
@@ -81,10 +92,17 @@ export async function planAndRouteOutdoorAdventureV1(
     );
     throwIfAborted(signal);
     const research = validateResearchResult(researchResult);
+    assertSameIntent(normalizedIntent, research.normalizedIntent);
+    if (
+      intentBinding.reviewedRegionSupported === false &&
+      research.state !== "unsupported"
+    ) {
+      throw outdoorAdventureOrchestrationError("internal_failure");
+    }
     if (research.state === "clarification_required") {
       return response({
         state: "clarification_required",
-        normalizedIntent: research.normalizedIntent,
+        normalizedIntent,
         planningGaps: research.planningGaps,
         clarificationQuestions: research.clarificationQuestions,
         routedAlternatives: null
@@ -93,7 +111,7 @@ export async function planAndRouteOutdoorAdventureV1(
     if (research.state === "unsupported") {
       return response({
         state: "unsupported",
-        normalizedIntent: research.normalizedIntent,
+        normalizedIntent,
         planningGaps: research.planningGaps,
         clarificationQuestions: [],
         routedAlternatives: null
@@ -101,16 +119,19 @@ export async function planAndRouteOutdoorAdventureV1(
     }
 
     const dossier = validateAdventureResearchDossierV1(research.dossier);
+    assertSameIntent(normalizedIntent, dossier.normalizedIntent);
     throwIfAborted(signal);
     const builtPlan = deps.buildCandidatePlan(dossier, {
       maximumProposals: settings.maximumProposals
     });
+    assertSameIntent(normalizedIntent, builtPlan?.normalizedIntent);
     const candidatePlan = deps.validateCandidatePlan(builtPlan);
+    assertSameIntent(normalizedIntent, candidatePlan.normalizedIntent);
     throwIfAborted(signal);
     if (candidatePlan.state === "unsupported") {
       return response({
         state: "unsupported",
-        normalizedIntent: candidatePlan.normalizedIntent,
+        normalizedIntent,
         planningGaps: research.planningGaps,
         clarificationQuestions: [],
         routedAlternatives: null
@@ -122,7 +143,7 @@ export async function planAndRouteOutdoorAdventureV1(
     ) {
       return response({
         state: "no_viable_route",
-        normalizedIntent: candidatePlan.normalizedIntent,
+        normalizedIntent,
         planningGaps: research.planningGaps,
         clarificationQuestions: [],
         routedAlternatives: null
@@ -140,8 +161,13 @@ export async function planAndRouteOutdoorAdventureV1(
       }
     );
     throwIfAborted(signal);
+    assertSameIntent(normalizedIntent, routedOutput?.normalizedIntent);
     const routedAlternatives =
       deps.validateRoutedAlternatives(routedOutput);
+    assertSameIntent(
+      normalizedIntent,
+      routedAlternatives.normalizedIntent
+    );
     const state = orchestrationState(
       research,
       candidatePlan,
@@ -149,12 +175,62 @@ export async function planAndRouteOutdoorAdventureV1(
     );
     return response({
       state,
-      normalizedIntent: candidatePlan.normalizedIntent,
+      normalizedIntent,
       planningGaps: research.planningGaps,
       clarificationQuestions: [],
       routedAlternatives
     });
   });
+}
+
+function serverBoundIntent(intent, regionBindings) {
+  const canonicalIntent = canonicalizeIntent(intent);
+  if (canonicalIntent.geographicAnchor.state !== "resolved") {
+    return {
+      normalizedIntent: canonicalIntent,
+      reviewedRegionSupported: null
+    };
+  }
+  let reviewedRegion;
+  try {
+    reviewedRegion = bindOutdoorResearchIntentToReviewedRegionV1(
+      canonicalIntent,
+      regionBindings
+    );
+  } catch (error) {
+    throw outdoorAdventureOrchestrationError("internal_failure", {
+      cause: error
+    });
+  }
+  return {
+    normalizedIntent: reviewedRegion
+      ? canonicalizeIntent(reviewedRegion.normalizedIntent)
+      : canonicalIntent,
+    reviewedRegionSupported: reviewedRegion !== undefined
+  };
+}
+
+function assertSameIntent(expected, actual) {
+  const canonicalExpected = canonicalizeIntent(expected);
+  const canonicalActual = canonicalizeIntent(actual);
+  if (
+    JSON.stringify(canonicalExpected) !==
+    JSON.stringify(canonicalActual)
+  ) {
+    throw outdoorAdventureOrchestrationError("internal_failure");
+  }
+}
+
+function canonicalizeIntent(input) {
+  try {
+    return canonicalizeResearchGuidedRouteIntentV1(
+      validateAdventureResearchIntentV1(input)
+    );
+  } catch (error) {
+    throw outdoorAdventureOrchestrationError("internal_failure", {
+      cause: error
+    });
+  }
 }
 
 function validateDependencies(input) {

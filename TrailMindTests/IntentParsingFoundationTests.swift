@@ -15,6 +15,33 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(intent.endLocationQuery, "Brocken")
         XCTAssertEqual(intent.activityType, .hiking)
         XCTAssertEqual(intent.transportMode, .walking)
+        XCTAssertTrue(intent.mustHaveResearchExperiences.isEmpty)
+    }
+
+    func testMustHaveResearchExperienceConstraintUsesBoundedCount() {
+        let defaultConstraint =
+            MustHaveResearchExperienceConstraint(experience: .peak)
+        let maximumConstraint =
+            MustHaveResearchExperienceConstraint(
+                experience: .waterfall,
+                minimumCount: 8
+            )
+
+        XCTAssertEqual(defaultConstraint.experience, .peak)
+        XCTAssertEqual(defaultConstraint.minimumCount, 1)
+        XCTAssertEqual(maximumConstraint?.minimumCount, 8)
+        XCTAssertNil(
+            MustHaveResearchExperienceConstraint(
+                experience: .lake,
+                minimumCount: 0
+            )
+        )
+        XCTAssertNil(
+            MustHaveResearchExperienceConstraint(
+                experience: .lake,
+                minimumCount: 9
+            )
+        )
     }
 
     func testLoopPromptCreatesValidLoopIntent() async throws {
@@ -700,6 +727,43 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(validated.desiredFeatures, [.viewpoint])
         XCTAssertEqual(validated.requestedFeaturePreferences, [.viewpoint])
         XCTAssertEqual(request.metadata.requestedFeatureSummary, "Requested: Views")
+    }
+
+    func testIntentRepairPreservesExplicitGenericMustHaveExperience()
+        throws
+    {
+        let constraint = try XCTUnwrap(
+            MustHaveResearchExperienceConstraint(
+                experience: .waterfall,
+                minimumCount: 2
+            )
+        )
+        let intent = AdventureIntent(
+            rawPrompt: "Plan a loop near Schierke",
+            parserSource: .remoteAI,
+            confidence: 0.81,
+            activityType: .hiking,
+            routeType: .loop,
+            startLocationQuery: nil,
+            endLocationQuery: nil,
+            regionQuery: "Schierke",
+            targetDistanceKm: 15,
+            targetDurationMinutes: nil,
+            difficulty: nil,
+            desiredFeatures: [],
+            avoidFeatures: [],
+            mustHaveResearchExperiences: [constraint]
+        )
+
+        let result = IntentValidationService().validateResult(intent)
+        let validated = try XCTUnwrap(result.validatedIntent)
+
+        XCTAssertEqual(result.status, .repaired)
+        XCTAssertEqual(
+            validated.mustHaveResearchExperiences,
+            [constraint]
+        )
+        XCTAssertEqual(validated.startLocationQuery, "Schierke")
     }
 
     func testFixturePromptEvalCoversCurrentLocalParserContract() async throws {

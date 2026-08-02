@@ -735,6 +735,20 @@ final class PlannerViewModel {
         await task?.value
     }
 
+#if DEBUG
+    /// Evaluates the same availability gate used by the production research
+    /// decision without starting any planning, authorization, or routing work.
+    func stagingProofEvaluateResearchGuidedPlanningGate() -> Bool {
+        researchGuidedPlanningIsAvailable()
+    }
+
+    /// Captures the exact in-flight attempt so proof-only cancellation can
+    /// await quiescence even after `cancelGeneration()` clears model state.
+    func stagingProofPlanningTaskForQuiescence() -> Task<Void, Never>? {
+        planningTask
+    }
+#endif
+
     private func beginUnderstanding(prompt: String) {
 #if DEBUG
         generationDebugError = nil
@@ -928,6 +942,8 @@ private extension PlannerViewModel {
             difficulty: intent.difficulty,
             desiredFeatures: intent.desiredFeatures,
             avoidFeatures: intent.avoidFeatures,
+            mustHaveResearchExperiences:
+                intent.mustHaveResearchExperiences,
             transportMode: intent.transportMode
         )
     }
@@ -1094,6 +1110,10 @@ private extension PlannerViewModel {
     static let standardResearchFallbackNotice =
         "A standard routed option was built because research-guided matching was unavailable."
 
+    func researchGuidedPlanningIsAvailable() -> Bool {
+        researchFeatureAvailable()
+    }
+
     static func mergedPlanningNotice(
         researchNotice: String?,
         routingNotice: String?
@@ -1117,7 +1137,7 @@ private extension PlannerViewModel {
         planningRequest: RoutePlanningRequest,
         startCandidate: LocationCandidate
     ) async throws -> ResearchPathDecision {
-        guard researchFeatureAvailable() else {
+        guard researchGuidedPlanningIsAvailable() else {
             return .useLegacy(context: nil, notice: nil)
         }
 
@@ -1199,6 +1219,20 @@ private extension PlannerViewModel {
                 )
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let failure
+                as OutdoorAdventurePlanningCoordinatorFailureV1
+                where failure == .invalidResult
+            {
+                try ensureActive(requestID)
+                transitionToFailure(
+                    PlannerIssue.unverifiedRoutes,
+                    requestID: requestID,
+                    originalPrompt:
+                        preparedAttempt.originalPrompt,
+                    stage: .routing,
+                    preparedAttempt: preparedAttempt
+                )
+                return .handled
             } catch {
                 try ensureActive(requestID)
                 return .useLegacy(
@@ -1532,7 +1566,10 @@ private extension PlannerViewModel {
             return false
         }
 
-        if returned.geographicAnchor == submitted.geographicAnchor {
+        if researchGeographicAnchorsAreEquivalent(
+            returned.geographicAnchor,
+            submitted.geographicAnchor
+        ) {
             return true
         }
         guard case let .unresolved(requirement) =
@@ -1568,8 +1605,10 @@ private extension PlannerViewModel {
     ) -> Bool {
         guard returned.activity == submitted.activity,
               !comparesAnchor ||
-                returned.geographicAnchor ==
-                    submitted.geographicAnchor,
+                researchGeographicAnchorsAreEquivalent(
+                    returned.geographicAnchor,
+                    submitted.geographicAnchor
+                ),
               returned.routeType == submitted.routeType,
               returned.distanceRangeKm == submitted.distanceRangeKm,
               returned.durationRangeMinutes ==
@@ -1622,6 +1661,76 @@ private extension PlannerViewModel {
                 Set(returned.unresolvedClarificationQuestions) ==
                     Set(submitted.unresolvedClarificationQuestions))
     }
+
+    static func researchGeographicAnchorsAreEquivalent(
+        _ returned: AdventureResearchGeographicAnchorV1,
+        _ submitted: AdventureResearchGeographicAnchorV1
+    ) -> Bool {
+        if returned == submitted {
+            return true
+        }
+        guard
+            case let .resolved(
+                returnedName,
+                returnedCoordinate,
+                returnedRegionEntityID
+            ) = returned,
+            case let .resolved(
+                submittedName,
+                submittedCoordinate,
+                submittedRegionEntityID
+            ) = submitted,
+            submittedRegionEntityID == nil,
+            returnedName == submittedName,
+            returnedCoordinate == submittedCoordinate,
+            let returnedRegionEntityID,
+            reviewedResearchRegionEntityIDV1(
+                for: submittedCoordinate
+            ) == returnedRegionEntityID.uuidString.lowercased()
+        else {
+            return false
+        }
+        return true
+    }
+
+    private static func reviewedResearchRegionEntityIDV1(
+        for coordinate: AdventureResearchCoordinateV1
+    ) -> String? {
+        let matches = reviewedResearchRegionsV1.filter {
+            $0.contains(coordinate)
+        }
+        guard matches.count == 1 else {
+            return nil
+        }
+        return matches[0].entityID
+    }
+
+    private struct ReviewedResearchRegionV1 {
+        let entityID: String
+        let latitudeRange: ClosedRange<Double>
+        let longitudeRange: ClosedRange<Double>
+
+        func contains(
+            _ coordinate: AdventureResearchCoordinateV1
+        ) -> Bool {
+            latitudeRange.contains(coordinate.latitude) &&
+                longitudeRange.contains(coordinate.longitude)
+        }
+    }
+
+    /// Mirrors the backend's reviewed V1 rectangular operational polygons.
+    private static let reviewedResearchRegionsV1 = [
+        ReviewedResearchRegionV1(
+            entityID: "30000000-0000-4000-8000-000000000001",
+            latitudeRange: 47.00...47.45,
+            longitudeRange: 10.95...11.65
+        ),
+        ReviewedResearchRegionV1(
+            entityID: "30000000-0000-4000-8000-000000000002",
+            latitudeRange: 51.45...51.98,
+            longitudeRange: 10.30...11.35
+        )
+    ]
 
     static func makeLegacyResearchContext(
         reason: ResearchPlanningContext.LegacyFallbackReason,

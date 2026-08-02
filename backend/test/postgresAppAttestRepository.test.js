@@ -17,11 +17,15 @@ describe("PostgreSQL App Attest repository", () => {
       ),
       (error) => error.code === "authorization_unavailable"
     );
+    const productPool = fakePool();
+    const cancellationPool = fakePool();
     const repository = postgresAppAttestRepositoryFromEnvironment(
       { DATABASE_URL: "postgresql://example.invalid/trailmind" },
-      { pool: fakePool() }
+      { pool: productPool, cancellationPool }
     );
     assert.equal(repository.isDurable, true);
+    assert.equal(repository.pool, productPool);
+    assert.equal(repository.cancellationPool, cancellationPool);
 
     const managedRepository = postgresAppAttestRepositoryFromEnvironment(
       { POSTGRES_URL: "postgresql://example.invalid/trailmind" },
@@ -51,14 +55,33 @@ describe("PostgreSQL App Attest repository", () => {
   });
 
   it("selects the durable repository at runtime from POSTGRES_URL", () => {
+    const productPool = fakePool();
+    const cancellationPool = fakePool();
     const runtime = createAppAttestRuntime({
       env: {
         NODE_ENV: "production",
         POSTGRES_URL: "postgresql://example.invalid/trailmind"
       },
-      postgresPool: fakePool()
+      postgresPool: productPool,
+      postgresCancellationPool: cancellationPool
     });
     assert.equal(runtime.repository?.isDurable, true);
+    assert.equal(runtime.repository?.pool, productPool);
+    assert.equal(
+      runtime.repository?.cancellationPool,
+      cancellationPool
+    );
+  });
+
+  it("rejects a cancellation pool that aliases the product pool", () => {
+    const pool = fakePool();
+    assert.throws(
+      () => new PostgresAppAttestRepository({
+        pool,
+        cancellationPool: pool
+      }),
+      (error) => error.code === "authorization_unavailable"
+    );
   });
 
   it("uses one checked-out client and always rolls failed transactions back", async () => {

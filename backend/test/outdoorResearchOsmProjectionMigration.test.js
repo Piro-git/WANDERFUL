@@ -6,6 +6,10 @@ const migrationURL = new URL(
   "../migrations/004_osm_outdoor_research_projection.sql",
   import.meta.url
 );
+const geometryMigrationURL = new URL(
+  "../migrations/005_outdoor_research_projection_geometry.sql",
+  import.meta.url
+);
 
 describe("OSM projection migration contract", () => {
   it("is additive, restrictive and creates no source activation", async () => {
@@ -52,5 +56,21 @@ describe("OSM projection migration contract", () => {
     }
     assert.match(source, /retirement_reference/);
     assert.match(source, /retired_at/);
+  });
+
+  it("retains strict spatial checks while allowing mapped area features", async () => {
+    const source = await readFile(geometryMigrationURL, "utf8");
+    assert.match(
+      source,
+      /outdoor_research_projection_entities_projected_geometry_check/
+    );
+    assert.match(source, /'POLYGON'/);
+    assert.match(source, /'MULTIPOLYGON'/);
+    assert.match(source, /ST_NDims\(projected_geometry\) = 2/);
+    assert.match(source, /ST_SRID\(projected_geometry\) = 4326/);
+    assert.match(source, /NOT ST_IsEmpty\(projected_geometry\)/);
+    assert.match(source, /ST_IsValid\(projected_geometry\)/);
+    assert.match(source, /ST_CoveredBy\(/);
+    assert.doesNotMatch(source, /DROP\s+TABLE/i);
   });
 });

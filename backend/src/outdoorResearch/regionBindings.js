@@ -1,3 +1,5 @@
+import { loadOutdoorRegionDefinitions } from "../outdoorEvidence/regions.js";
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OPERATIONAL_REGION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9]\d*$/;
@@ -58,6 +60,8 @@ export function validateOutdoorResearchRegionBindingsV1(input) {
 export const OUTDOOR_RESEARCH_REGION_BINDINGS_V1 =
   validateOutdoorResearchRegionBindingsV1(REVIEWED_REGION_BINDINGS);
 
+const REVIEWED_OPERATIONAL_REGIONS = loadOutdoorRegionDefinitions();
+
 export function resolveOutdoorResearchRegionBindingV1(
   regionEntityId,
   activity,
@@ -75,6 +79,76 @@ export function resolveOutdoorResearchRegionBindingV1(
     binding.regionEntityId === normalizedRegionEntityId &&
     binding.supportedActivities.includes(activity)
   );
+}
+
+export function bindOutdoorResearchIntentToReviewedRegionV1(
+  intent,
+  bindings = OUTDOOR_RESEARCH_REGION_BINDINGS_V1
+) {
+  const validatedBindings = bindings === OUTDOOR_RESEARCH_REGION_BINDINGS_V1
+    ? bindings
+    : validateOutdoorResearchRegionBindingsV1(bindings);
+  const anchor = intent?.geographicAnchor;
+  if (
+    !intent ||
+    typeof intent !== "object" ||
+    Array.isArray(intent) ||
+    anchor?.state !== "resolved" ||
+    !SUPPORTED_ACTIVITIES.includes(intent.activity) ||
+    !validCoordinate(anchor.coordinate) ||
+    (
+      anchor.regionEntityId !== null &&
+      (
+        typeof anchor.regionEntityId !== "string" ||
+        !UUID_PATTERN.test(anchor.regionEntityId)
+      )
+    )
+  ) {
+    return undefined;
+  }
+
+  const matchingRegions = REVIEWED_OPERATIONAL_REGIONS.filter((region) =>
+    polygonCoversCoordinate(
+      region.boundaryFeature.geometry.coordinates[0],
+      anchor.coordinate
+    )
+  );
+  if (matchingRegions.length !== 1) return undefined;
+
+  const reviewedRegion = matchingRegions[0];
+  const reviewedBinding = OUTDOOR_RESEARCH_REGION_BINDINGS_V1.find(
+    (candidate) =>
+      candidate.operationalRegionId === reviewedRegion.regionId &&
+      candidate.supportedActivities.includes(intent.activity)
+  );
+  const configuredBinding = anchor.regionEntityId === null
+    ? validatedBindings.find((candidate) =>
+      candidate.operationalRegionId === reviewedRegion.regionId &&
+      candidate.supportedActivities.includes(intent.activity)
+    )
+    : resolveOutdoorResearchRegionBindingV1(
+      anchor.regionEntityId,
+      intent.activity,
+      validatedBindings
+    );
+  if (
+    !reviewedBinding ||
+    !configuredBinding ||
+    configuredBinding.regionEntityId !== reviewedBinding.regionEntityId ||
+    configuredBinding.operationalRegionId !== reviewedBinding.operationalRegionId
+  ) {
+    return undefined;
+  }
+
+  const normalizedIntent = {
+    ...intent,
+    geographicAnchor: {
+      ...anchor,
+      regionEntityId: anchor.regionEntityId ??
+        reviewedBinding.regionEntityId
+    }
+  };
+  return deepFreeze({ binding: reviewedBinding, normalizedIntent });
 }
 
 function validateBinding(input) {
@@ -130,6 +204,60 @@ function assertUnique(values) {
 
 function invalid() {
   throw new OutdoorResearchRegionBindingError();
+}
+
+function validCoordinate(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Number.isFinite(value.latitude) &&
+    value.latitude >= -90 &&
+    value.latitude <= 90 &&
+    Number.isFinite(value.longitude) &&
+    value.longitude >= -180 &&
+    value.longitude <= 180
+  );
+}
+
+function polygonCoversCoordinate(ring, coordinate) {
+  const point = [coordinate.longitude, coordinate.latitude];
+  let inside = false;
+  for (
+    let index = 0, previous = ring.length - 1;
+    index < ring.length;
+    previous = index++
+  ) {
+    const start = ring[previous];
+    const end = ring[index];
+    if (pointOnSegment(point, start, end)) return true;
+    const intersects =
+      ((end[1] > point[1]) !== (start[1] > point[1])) &&
+      (
+        point[0] <
+        (
+          (start[0] - end[0]) *
+          (point[1] - end[1])
+        ) /
+        (start[1] - end[1]) +
+        end[0]
+      );
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function pointOnSegment(point, start, end) {
+  const cross =
+    (point[1] - start[1]) * (end[0] - start[0]) -
+    (point[0] - start[0]) * (end[1] - start[1]);
+  return (
+    cross === 0 &&
+    point[0] >= Math.min(start[0], end[0]) &&
+    point[0] <= Math.max(start[0], end[0]) &&
+    point[1] >= Math.min(start[1], end[1]) &&
+    point[1] <= Math.max(start[1], end[1])
+  );
 }
 
 function deepFreeze(value) {

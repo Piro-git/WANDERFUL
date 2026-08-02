@@ -17,8 +17,8 @@ import {
   planOutdoorResearchV1
 } from "./researchPlanner.js";
 import {
+  bindOutdoorResearchIntentToReviewedRegionV1,
   OUTDOOR_RESEARCH_REGION_BINDINGS_V1,
-  resolveOutdoorResearchRegionBindingV1,
   validateOutdoorResearchRegionBindingsV1
 } from "./regionBindings.js";
 
@@ -35,13 +35,11 @@ export async function researchOutdoorAdventureV1(intentInput, dependencies) {
 
   const resolvedDependencies = validateDependencies(dependencies);
   throwIfExternallyAborted(resolvedDependencies.signal);
-  const intent = preflight.normalizedIntent;
-  const binding = resolveOutdoorResearchRegionBindingV1(
-    intent.geographicAnchor.regionEntityId,
-    intent.activity,
+  const reviewedRegion = bindOutdoorResearchIntentToReviewedRegionV1(
+    preflight.normalizedIntent,
     resolvedDependencies.bindings
   );
-  if (!binding) {
+  if (!reviewedRegion) {
     return freeze({
       state: "unsupported",
       normalizedIntent: preflight.normalizedIntent,
@@ -49,6 +47,7 @@ export async function researchOutdoorAdventureV1(intentInput, dependencies) {
       availabilityState: "unsupported_region"
     });
   }
+  const { binding, normalizedIntent: intent } = reviewedRegion;
 
   const generatedAt = safeClock(resolvedDependencies.clock);
   return executeWithDeadline(resolvedDependencies, async (signal) =>
@@ -97,7 +96,7 @@ export async function researchOutdoorAdventureV1(intentInput, dependencies) {
           appendBoundedRecords(evidenceRecords, records);
         }
         throwIfAborted(signal);
-        const dossier = assembleAdventureResearchDossierV1({
+        const dossier = await resolvedDependencies.assembleDossier({
           normalizedIntent: planned.normalizedIntent,
           planningGaps: planned.planningGaps,
           binding,
@@ -106,6 +105,7 @@ export async function researchOutdoorAdventureV1(intentInput, dependencies) {
           generatedAt,
           evidenceRecords
         });
+        throwIfAborted(signal);
         return freeze({
           state: "ready",
           normalizedIntent: planned.normalizedIntent,
@@ -218,6 +218,10 @@ function validateDependencies(input) {
   if (input.clock !== undefined && typeof input.clock !== "function") {
     throw outdoorResearchExecutorError("invalid_dependencies");
   }
+  if (input.assembleDossier !== undefined &&
+      typeof input.assembleDossier !== "function") {
+    throw outdoorResearchExecutorError("invalid_dependencies");
+  }
   if (input.signal !== undefined &&
       (!input.signal || typeof input.signal.aborted !== "boolean" ||
        typeof input.signal.addEventListener !== "function")) {
@@ -237,6 +241,8 @@ function validateDependencies(input) {
   return {
     repository: input.repository,
     clock: input.clock ?? (() => new Date()),
+    assembleDossier:
+      input.assembleDossier ?? assembleAdventureResearchDossierV1,
     signal: input.signal,
     bindings,
     totalTimeoutMs: boundedExecutorTimeout(

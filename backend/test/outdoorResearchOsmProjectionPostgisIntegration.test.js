@@ -56,7 +56,8 @@ describe("OSM Evidence Graph projection PostGIS integration", {
     for (const migrationName of [
       "002_outdoor_evidence.sql",
       "003_outdoor_research_graph.sql",
-      "004_osm_outdoor_research_projection.sql"
+      "004_osm_outdoor_research_projection.sql",
+      "005_outdoor_research_projection_geometry.sql"
     ]) {
       const migration = await readFile(
         new URL(`../migrations/${migrationName}`, import.meta.url), "utf8"

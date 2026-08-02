@@ -445,6 +445,129 @@ final class AdventureResearchIntentAdapterTests: XCTestCase {
         XCTAssertTrue(intent.requiredFacilities.isEmpty)
     }
 
+    func testBrockenAnchorCarriesGenericPeakMustHaveWithoutPromptLeak()
+        throws
+    {
+        let prompt = "PRIVATE_BROCKEN_PROMPT_SENTINEL"
+        let candidateID = "PRIVATE_BROCKEN_CANDIDATE_ID"
+        let candidate = makeCandidate(
+            id: candidateID,
+            semanticKind: .landmark,
+            latitude: 51.7992,
+            longitude: 10.6171,
+            name: "Brocken",
+            displayName: "Brocken"
+        )
+        let intent = try readyPayload(
+            adapter.adapt(
+                makeInput(
+                    anchor: .candidate(candidate),
+                    mustHaveResearchExperiences: [
+                        MustHaveResearchExperienceConstraint(
+                            experience: .peak
+                        )
+                    ],
+                    rawPrompt: prompt
+                )
+            )
+        ).intent
+
+        XCTAssertEqual(
+            intent.mustHaveExperiences,
+            [
+                try AdventureResearchExperienceRequirementV1(
+                    experience: .peak,
+                    minimumCount: 1
+                )
+            ]
+        )
+        XCTAssertTrue(intent.preferredExperiences.isEmpty)
+        guard case let .resolved(name, _, _) =
+            intent.geographicAnchor
+        else {
+            return XCTFail("Expected Brocken to remain the route anchor.")
+        }
+        XCTAssertEqual(name, "Brocken")
+
+        let encoded = try encodedString(intent)
+        XCTAssertFalse(encoded.contains(prompt))
+        XCTAssertFalse(encoded.contains(candidateID))
+        XCTAssertFalse(encoded.contains("appleGeocoder"))
+    }
+
+    func testGenericWaterfallMustHaveRemainsARequirementNotAClaim()
+        throws
+    {
+        let intent = try readyPayload(
+            adapter.adapt(
+                makeInput(
+                    mustHaveResearchExperiences: [
+                        try XCTUnwrap(
+                            MustHaveResearchExperienceConstraint(
+                                experience: .waterfall,
+                                minimumCount: 2
+                            )
+                        )
+                    ]
+                )
+            )
+        ).intent
+
+        XCTAssertEqual(
+            intent.mustHaveExperiences,
+            [
+                try AdventureResearchExperienceRequirementV1(
+                    experience: .waterfall,
+                    minimumCount: 2
+                )
+            ]
+        )
+        XCTAssertTrue(intent.preferredExperiences.isEmpty)
+        XCTAssertTrue(intent.requiredFacilities.isEmpty)
+
+        let object = try encodedJSONObject(intent)
+        let requirements = try XCTUnwrap(
+            object["mustHaveExperiences"]
+                as? [[String: Any]]
+        )
+        XCTAssertEqual(requirements.count, 1)
+        XCTAssertEqual(
+            Set(requirements[0].keys),
+            ["experience", "minimumCount"]
+        )
+        XCTAssertEqual(
+            requirements[0]["experience"] as? String,
+            "waterfall"
+        )
+        XCTAssertEqual(
+            requirements[0]["minimumCount"] as? Int,
+            2
+        )
+    }
+
+    func testDuplicateGenericMustHaveFailsClosedWithoutMerging()
+        throws
+    {
+        let duplicate = MustHaveResearchExperienceConstraint(
+            experience: .peak
+        )
+        let result = adapter.adapt(
+            makeInput(
+                mustHaveResearchExperiences: [
+                    duplicate,
+                    duplicate
+                ]
+            )
+        )
+
+        XCTAssertEqual(result.state, .unsupported)
+        XCTAssertEqual(
+            try unsupportedGaps(result),
+            [.researchContractRejected]
+        )
+        XCTAssertNil(result.intent)
+    }
+
     func testMaximumElevationGainRemainsNil() throws {
         let intent = try readyPayload(adapter.adapt(makeInput())).intent
 
@@ -880,6 +1003,8 @@ final class AdventureResearchIntentAdapterTests: XCTestCase {
         difficulty: RouteDifficulty? = nil,
         desiredFeatures: [DesiredFeature] = [],
         avoidFeatures: [AvoidFeature] = [],
+        mustHaveResearchExperiences:
+            [MustHaveResearchExperienceConstraint] = [],
         rawPrompt: String = "RAW_PROMPT_DEFAULT_SENTINEL",
         parserSource: IntentParserSource = .localRuleBased,
         confidence: Double? = 0.75,
@@ -917,7 +1042,9 @@ final class AdventureResearchIntentAdapterTests: XCTestCase {
             targetDurationMinutes: durationMinutes,
             difficulty: difficulty,
             desiredFeatures: desiredFeatures,
-            avoidFeatures: avoidFeatures
+            avoidFeatures: avoidFeatures,
+            mustHaveResearchExperiences:
+                mustHaveResearchExperiences
         )
         return AdventureResearchIntentAdapterInputV1(
             validatedIntent: ValidatedAdventureIntent(intent: intent),

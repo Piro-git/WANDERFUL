@@ -4,8 +4,17 @@ import {
   OutdoorResearchExecutorError
 } from "../src/outdoorResearch/executorPolicy.js";
 import {
+  assembleAdventureResearchDossierV1
+} from "../src/outdoorResearch/dossierAssembler.js";
+import {
   researchOutdoorAdventureV1
 } from "../src/outdoorResearch/outdoorResearchExecutor.js";
+import {
+  buildResearchGuidedRouteCandidatePlanV1
+} from "../src/routeResearch/researchGuidedRouteCandidatePlanner.js";
+import {
+  routeResearchGuidedCandidatesV1
+} from "../src/routeResearch/researchGuidedRoutingAdapter.js";
 import {
   OUTDOOR_RESEARCH_REGION_BINDINGS_V1
 } from "../src/outdoorResearch/regionBindings.js";
@@ -70,6 +79,79 @@ describe("outdoor research executor and dossier assembler", () => {
     ));
   });
 
+  it("defaults to the exact production dossier assembler", async () => {
+    const implicit = await researchOutdoorAdventureV1(
+      readyIntent(),
+      dependencies(fakeRepository())
+    );
+    const explicit = await researchOutdoorAdventureV1(
+      readyIntent(),
+      dependencies(fakeRepository(), {
+        assembleDossier: assembleAdventureResearchDossierV1
+      })
+    );
+    assert.equal(
+      serializeOutdoorResearchContract(
+        "AdventureResearchDossierV1",
+        implicit.dossier
+      ),
+      serializeOutdoorResearchContract(
+        "AdventureResearchDossierV1",
+        explicit.dossier
+      )
+    );
+  });
+
+  it("passes the exact assembly input and result through an injected wrapper", async () => {
+    const harness = fakeRepository();
+    let assemblyInput = null;
+    let assembledDossier = null;
+    let assemblyCalls = 0;
+    const result = await researchOutdoorAdventureV1(
+      readyIntent(),
+      dependencies(harness, {
+        async assembleDossier(input) {
+          assemblyCalls += 1;
+          assemblyInput = input;
+          assembledDossier = assembleAdventureResearchDossierV1(input);
+          return assembledDossier;
+        }
+      })
+    );
+
+    assert.equal(assemblyCalls, 1);
+    assert.deepEqual(Object.keys(assemblyInput).sort(), [
+      "binding",
+      "evidenceRecords",
+      "generatedAt",
+      "normalizedIntent",
+      "planningGaps",
+      "searchRadiusMeters",
+      "snapshot"
+    ]);
+    assert.equal(assemblyInput.normalizedIntent, result.normalizedIntent);
+    assert.equal(assemblyInput.binding, harness.bindings[0]);
+    assert.equal(assemblyInput.generatedAt.getTime(), NOW.getTime());
+    assert.equal(Array.isArray(assemblyInput.evidenceRecords), true);
+    assert.equal(assemblyInput.evidenceRecords.length > 0, true);
+    assert.equal(result.dossier, assembledDossier);
+  });
+
+  it("rejects invalid dossier assembler injection before repository work", async () => {
+    for (const assembleDossier of [null, false, "assembler", {}, []]) {
+      const harness = fakeRepository();
+      await assert.rejects(
+        () => researchOutdoorAdventureV1(
+          readyIntent(),
+          dependencies(harness, { assembleDossier })
+        ),
+        hasCode("invalid_dependencies")
+      );
+      assert.equal(harness.snapshotCalls, 0);
+      assert.equal(harness.evidenceCalls.length, 0);
+    }
+  });
+
   it("returns clarification with zero repository calls", async () => {
     const harness = fakeRepository();
     const result = await researchOutdoorAdventureV1(
@@ -77,6 +159,84 @@ describe("outdoor research executor and dossier assembler", () => {
       dependencies(harness)
     );
     assert.equal(result.state, "clarification_required");
+    assert.equal(harness.snapshotCalls, 0);
+    assert.equal(harness.evidenceCalls.length, 0);
+  });
+
+  it("binds a nil region ID to the one reviewed polygon before repository work", async () => {
+    const harness = fakeRepository();
+    const result = await researchOutdoorAdventureV1(
+      readyIntent({
+        geographicAnchor: {
+          state: "resolved",
+          name: "Harz",
+          coordinate: { latitude: 51.8, longitude: 10.6 },
+          regionEntityId: null
+        }
+      }),
+      dependencies(harness)
+    );
+    assert.equal(result.state, "ready");
+    assert.equal(
+      result.normalizedIntent.geographicAnchor.regionEntityId,
+      "30000000-0000-4000-8000-000000000002"
+    );
+    assert.equal(
+      result.dossier.normalizedIntent.geographicAnchor.regionEntityId,
+      "30000000-0000-4000-8000-000000000002"
+    );
+    assert.deepEqual(result.dossier.regionCoverage.regionEntityIds, [
+      "30000000-0000-4000-8000-000000000002"
+    ]);
+    assert.equal(harness.snapshotCalls, 1);
+    assert.equal(
+      harness.bindings[0].operationalRegionId,
+      "harz-v1"
+    );
+  });
+
+  it("returns unsupported for a nil binding outside coverage without repository work", async () => {
+    const harness = fakeRepository();
+    const result = await researchOutdoorAdventureV1(
+      readyIntent({
+        geographicAnchor: {
+          state: "resolved",
+          name: "Outside reviewed coverage",
+          coordinate: { latitude: 45, longitude: 8 },
+          regionEntityId: null
+        }
+      }),
+      dependencies(harness)
+    );
+    assert.equal(result.state, "unsupported");
+    assert.equal(result.availabilityState, "unsupported_region");
+    assert.equal(
+      result.normalizedIntent.geographicAnchor.regionEntityId,
+      null
+    );
+    assert.equal(harness.snapshotCalls, 0);
+    assert.equal(harness.evidenceCalls.length, 0);
+  });
+
+  it("rejects a supplied binding that mismatches the reviewed polygon without repository work", async () => {
+    const harness = fakeRepository();
+    const result = await researchOutdoorAdventureV1(
+      readyIntent({
+        geographicAnchor: {
+          state: "resolved",
+          name: "Harz",
+          coordinate: { latitude: 51.8, longitude: 10.6 },
+          regionEntityId: "30000000-0000-4000-8000-000000000001"
+        }
+      }),
+      dependencies(harness)
+    );
+    assert.equal(result.state, "unsupported");
+    assert.equal(result.availabilityState, "unsupported_region");
+    assert.equal(
+      result.normalizedIntent.geographicAnchor.regionEntityId,
+      "30000000-0000-4000-8000-000000000001"
+    );
     assert.equal(harness.snapshotCalls, 0);
     assert.equal(harness.evidenceCalls.length, 0);
   });
@@ -168,6 +328,130 @@ describe("outdoor research executor and dossier assembler", () => {
     assert(first.evidenceCalls.slice(0, -1).every((name) =>
       name === "discover_highlights"
     ));
+  });
+
+  it("materializes default loop highlights only as mapped viewpoint/waterfall facts", async () => {
+    for (const activity of ["hiking", "trail_running"]) {
+      const harness = fakeRepository();
+      const result = await researchOutdoorAdventureV1(
+        genericLoopIntent({ activity }),
+        dependencies(harness)
+      );
+
+      assert.equal(result.state, "ready");
+      assert.deepEqual(harness.evidenceCalls, [
+        "discover_highlights",
+        "retrieve_mapped_hiking_routes"
+      ]);
+      assert.deepEqual(result.normalizedIntent.mustHaveExperiences, []);
+      assert.deepEqual(result.normalizedIntent.preferredExperiences, []);
+      assert.deepEqual(
+        result.dossier.candidateHighlights.map((candidate) =>
+          candidate.highlightCategory
+        ),
+        ["viewpoint", "viewpoint", "waterfall"]
+      );
+      for (const candidate of result.dossier.candidateHighlights) {
+        assert.deepEqual(
+          candidate.relevanceReasons.map((reason) => reason.code),
+          [candidate.highlightCategory === "viewpoint"
+            ? "mapped_viewpoint"
+            : "mapped_waterfall"]
+        );
+        assert.equal(candidate.knownLimitations.includes("access_unverified"), true);
+        assert.equal(
+          candidate.knownLimitations.includes("route_connection_unverified"),
+          true
+        );
+      }
+      const serialized = JSON.stringify(result.dossier.candidateHighlights);
+      for (const forbidden of [
+        "request_must_have",
+        "request_preference",
+        "scenic",
+        "official",
+        "current_opening",
+        "public_access",
+        "safe"
+      ]) {
+        assert.equal(serialized.includes(forbidden), false, forbidden);
+      }
+    }
+  });
+
+  it("keeps a generic loop with no mapped highlights truthfully empty", async () => {
+    const harness = fakeRepository({ highlightRows: [] });
+    const result = await researchOutdoorAdventureV1(
+      genericLoopIntent(),
+      dependencies(harness)
+    );
+
+    assert.equal(result.state, "ready");
+    assert.deepEqual(harness.evidenceCalls, [
+      "discover_highlights",
+      "retrieve_mapped_hiking_routes"
+    ]);
+    assert.deepEqual(result.dossier.candidateHighlights, []);
+    assert.deepEqual(result.normalizedIntent.mustHaveExperiences, []);
+    assert.deepEqual(result.normalizedIntent.preferredExperiences, []);
+    assert.equal(result.dossier.evidenceClaims.some((claim) =>
+      claim.predicate === "viewpoint_presence" ||
+      claim.predicate === "waterfall_presence"
+    ), false);
+  });
+
+  it("composes planner, executor, candidate planning and routing with a neutral fallback role", async () => {
+    const highlightRows = defaultHighlightRows().map((row, index) => ({
+      ...row,
+      latitude: 51.81 + index * 0.001,
+      longitude: 10.62 + index * 0.001
+    }));
+    const harness = fakeRepository({ highlightRows });
+    const research = await researchOutdoorAdventureV1(
+      genericLoopIntent(),
+      dependencies(harness)
+    );
+    const candidatePlan =
+      buildResearchGuidedRouteCandidatePlanV1(
+        research.dossier,
+        { maximumProposals: 1 }
+      );
+    const providerRequests = [];
+    const routed = await routeResearchGuidedCandidatesV1(
+      candidatePlan,
+      {
+        provider: {
+          async route(routeRequest) {
+            providerRequests.push(routeRequest);
+            return routedProviderResponse(routeRequest);
+          }
+        }
+      }
+    );
+
+    assert.deepEqual(harness.evidenceCalls, [
+      "discover_highlights",
+      "retrieve_mapped_hiking_routes"
+    ]);
+    assert.equal(candidatePlan.state, "partial");
+    assert.equal(candidatePlan.proposals.length, 1);
+    assert.equal(
+      candidatePlan.proposals[0].viaCandidates[0].role,
+      "available_candidate"
+    );
+    assert.deepEqual(
+      candidatePlan.proposals[0].viaCandidates[0].selectionReasons,
+      ["available_research_candidate"]
+    );
+    assert.equal(providerRequests.length, 1);
+    assert.equal(routed.state, "routed");
+    const selected = routed.attempts[0].provenance.selectedWaypoints[0];
+    assert.equal(selected.role, "available_candidate");
+    assert.notEqual(selected.role, "preferred");
+    assert.notEqual(selected.role, "must_have");
+    assert.deepEqual(selected.selectionReasons, [
+      "available_research_candidate"
+    ]);
   });
 
   it("rejects source-category, entity-category and predicate scope escapes", async () => {
@@ -1085,6 +1369,57 @@ function readyIntent(overrides = {}) {
     },
     unresolvedClarificationQuestions: [],
     ...overrides
+  };
+}
+
+function genericLoopIntent(overrides = {}) {
+  return readyIntent({
+    maximumTechnicalDifficulty: null,
+    mustHaveExperiences: [],
+    preferredExperiences: [],
+    requiredFacilities: [],
+    ...overrides
+  });
+}
+
+function routedProviderResponse(routeRequest) {
+  const start = routeRequest.points[0];
+  const via = routeRequest.points[1];
+  return {
+    provider: "graphhopper",
+    paths: [{
+      distance: 12_000,
+      time: 10_800_000,
+      ascend: 400,
+      descend: 400,
+      points: {
+        type: "LineString",
+        coordinates: [
+          [start.longitude, start.latitude, 500],
+          [via.longitude, via.latitude, 650],
+          [start.longitude, start.latitude, 500]
+        ]
+      },
+      instructions: [{
+        text: "Continue",
+        distance: 12_000,
+        time: 10_800_000,
+        interval: [0, 2],
+        sign: 0
+      }],
+      details: {
+        surface: [[0, 2, "ground"]],
+        road_class: [[0, 2, "path"]],
+        hike_rating: [[0, 2, "1"]]
+      },
+      snapped_waypoints: {
+        type: "LineString",
+        coordinates: routeRequest.points.map((point) => [
+          point.longitude,
+          point.latitude
+        ])
+      }
+    }]
   };
 }
 

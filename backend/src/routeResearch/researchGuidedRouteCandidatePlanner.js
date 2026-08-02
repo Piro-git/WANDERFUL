@@ -808,7 +808,16 @@ function candidateRole(context, candidate) {
   if (candidateMatchesAnyFacility(candidate, context.intent.requiredFacilities)) {
     return "facility_candidate";
   }
-  return "preferred";
+  if (
+    context.intent.preferredExperiences.some(
+      (experience) =>
+        POLICY.experienceCategoryMap[experience] ===
+        candidate.highlightCategory
+    )
+  ) {
+    return "preferred";
+  }
+  return "available_candidate";
 }
 
 function candidateSelectionReasons(context, candidate) {

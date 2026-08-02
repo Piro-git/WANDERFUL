@@ -262,6 +262,40 @@ enum DesiredFeature: String, CaseIterable, Hashable, Sendable {
     }
 }
 
+enum ResearchExperience: String, CaseIterable, Hashable, Sendable {
+    case viewpoint
+    case waterfall
+    case peak
+    case lake
+    case forest
+    case quietTrails = "quiet_trails"
+    case officialHikingRoute = "official_hiking_route"
+    case alpineHut = "alpine_hut"
+    case wildernessHut = "wilderness_hut"
+    case landmark
+}
+
+struct MustHaveResearchExperienceConstraint: Hashable, Sendable {
+    let experience: ResearchExperience
+    let minimumCount: Int
+
+    init(experience: ResearchExperience) {
+        self.experience = experience
+        minimumCount = 1
+    }
+
+    init?(
+        experience: ResearchExperience,
+        minimumCount: Int
+    ) {
+        guard (1...8).contains(minimumCount) else {
+            return nil
+        }
+        self.experience = experience
+        self.minimumCount = minimumCount
+    }
+}
+
 enum AvoidFeature: String, CaseIterable, Hashable, Sendable {
     case majorRoads
     case steepClimbs
@@ -1746,6 +1780,8 @@ struct AdventureIntent: Hashable, Sendable {
     let difficulty: RouteDifficulty?
     let desiredFeatures: [DesiredFeature]
     let avoidFeatures: [AvoidFeature]
+    let mustHaveResearchExperiences:
+        [MustHaveResearchExperienceConstraint]
     let transportMode: TransportMode?
 
     init(
@@ -1762,6 +1798,8 @@ struct AdventureIntent: Hashable, Sendable {
         difficulty: RouteDifficulty?,
         desiredFeatures: [DesiredFeature],
         avoidFeatures: [AvoidFeature],
+        mustHaveResearchExperiences:
+            [MustHaveResearchExperienceConstraint] = [],
         transportMode: TransportMode? = nil
     ) {
         self.rawPrompt = rawPrompt
@@ -1777,6 +1815,8 @@ struct AdventureIntent: Hashable, Sendable {
         self.difficulty = difficulty
         self.desiredFeatures = desiredFeatures
         self.avoidFeatures = avoidFeatures
+        self.mustHaveResearchExperiences =
+            mustHaveResearchExperiences
         self.transportMode = transportMode ?? TransportMode(activityType: activityType)
     }
 
@@ -1825,6 +1865,8 @@ struct ValidatedAdventureIntent: Hashable, Sendable {
     let difficulty: RouteDifficulty?
     let desiredFeatures: [DesiredFeature]
     let avoidFeatures: [AvoidFeature]
+    let mustHaveResearchExperiences:
+        [MustHaveResearchExperienceConstraint]
     let transportMode: TransportMode?
 
     init(intent: AdventureIntent) {
@@ -1841,6 +1883,8 @@ struct ValidatedAdventureIntent: Hashable, Sendable {
         difficulty = intent.difficulty
         desiredFeatures = intent.desiredFeatures
         avoidFeatures = intent.avoidFeatures
+        mustHaveResearchExperiences =
+            intent.mustHaveResearchExperiences
         transportMode = intent.transportMode
     }
 

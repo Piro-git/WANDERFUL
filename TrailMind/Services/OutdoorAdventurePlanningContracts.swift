@@ -1142,8 +1142,18 @@ enum OutdoorAdventurePlanningResponseValidatorV1 {
 
     static func validate(
         _ data: Data,
-        adapter: ResearchGuidedRoutingContractAdapterV1
+        adapter: ResearchGuidedRoutingContractAdapterV1,
+        validationDidFinish:
+            @Sendable (Duration) -> Void = { _ in }
     ) throws -> OutdoorAdventurePlanningResultV1 {
+        let validationStartedAt = ContinuousClock().now
+        defer {
+            validationDidFinish(
+                validationStartedAt.duration(
+                    to: ContinuousClock().now
+                )
+            )
+        }
         let root: Any
         do {
             root = try JSONSerialization.jsonObject(with: data)

@@ -152,10 +152,13 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
 function resolveDependencies(options, configuration) {
   const pool = options.postgresPool ??
     options.appAttestRepository?.pool;
+  const cancellationPool = options.postgresCancellationPool ??
+    options.appAttestRepository?.cancellationPool;
   let repository = options.repository;
   if (!repository && pool?.connect) {
     repository = new PostgresOutdoorResearchRepository({
       pool,
+      cancellationPool,
       statementTimeoutMs: configuration.statementTimeoutMs
     });
   }

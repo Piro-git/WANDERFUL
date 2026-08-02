@@ -29,6 +29,7 @@ const policy = {
   candidateRoles: [
     "must_have",
     "preferred",
+    "available_candidate",
     "facility_candidate",
     "overnight_candidate"
   ],

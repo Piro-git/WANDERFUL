@@ -270,6 +270,46 @@ describe("outdoor research planner v1 determinism", () => {
     );
   });
 
+  it("adds one bounded mapped-only fallback discovery for supported loop activities", () => {
+    for (const activity of ["hiking", "trail_running"]) {
+      const intent = resolvedIntent({ activity });
+      const first = planOutdoorResearchV1(intent, completeCapabilities());
+      const second = planOutdoorResearchV1(intent, completeCapabilities());
+      const discoveries = first.plan.operations.filter((operation) =>
+        operation.operationType === "discover_highlights"
+      );
+
+      assert.equal(first.state, "ready");
+      assert.equal(JSON.stringify(first), JSON.stringify(second));
+      assert.equal(first.plan.operations.length <= 24, true);
+      assert.deepEqual(first.normalizedIntent.mustHaveExperiences, []);
+      assert.deepEqual(first.normalizedIntent.preferredExperiences, []);
+      assert.deepEqual(first.planningGaps, []);
+      assert.equal(discoveries.length, 1);
+      assert.deepEqual(discoveries[0], {
+        operationId: "op_01_discover_highlights",
+        operationType: "discover_highlights",
+        informationNeed: "highlight_candidates",
+        reasonCode: "coverage_gap",
+        acceptableSourceCategories: ["openstreetmap_open_mapping"],
+        entityCategories: ["viewpoint", "waterfall"],
+        predicates: ["entity_category"]
+      });
+      assert.equal(first.plan.operations.some((operation) =>
+        operation.operationType === "retrieve_mapped_hiking_routes" &&
+        operation.reasonCode === "coverage_gap"
+      ), true);
+      assert.deepEqual(
+        first.plan.operations.map((operation) => operation.operationId),
+        [
+          "op_01_discover_highlights",
+          "op_02_retrieve_mapped_hiking_routes",
+          "op_03_inspect_access_evidence"
+        ]
+      );
+    }
+  });
+
   it("contains no timestamps, random identifiers, prompts or executable/provider fields", () => {
     const result = planOutdoorResearchV1(resolvedIntent({
       preferredExperiences: ["viewpoint"],
@@ -613,6 +653,101 @@ describe("outdoor research planner v1 planning logic", () => {
       true
     );
     assert.deepEqual(result.normalizedIntent.activity, "biking");
+  });
+
+  it("does not add fallback highlight semantics to unsupported activities or route types", () => {
+    for (const routeType of ["point_to_point", "out_and_back"]) {
+      const result = planOutdoorResearchV1(resolvedIntent({ routeType }),
+        completeCapabilities());
+      assert.equal(result.state, "ready");
+      assert.equal(result.plan.operations.some((operation) =>
+        operation.operationType === "discover_highlights"
+      ), false);
+      assert.equal(result.plan.operations.some((operation) =>
+        operation.operationType === "retrieve_mapped_hiking_routes"
+      ), true);
+    }
+
+    const biking = planOutdoorResearchV1(resolvedIntent({
+      activity: "biking"
+    }), completeCapabilities());
+    assert.equal(biking.state, "unsupported");
+    assert.equal(biking.plan, null);
+    assert.equal(biking.planningGaps.some((gap) =>
+      gap.code === "biking_network_not_modeled"
+    ), true);
+  });
+
+  it("does not turn fallback discovery capability absence into a new constraint gap", () => {
+    const result = planOutdoorResearchV1(resolvedIntent(), completeCapabilities({
+      enabledOperationTypes: RESEARCH_OPERATION_TYPES.filter((operationType) =>
+        operationType !== "discover_highlights"
+      )
+    }));
+
+    assert.equal(result.state, "ready");
+    assert.deepEqual(result.planningGaps, []);
+    assert.equal(result.plan.operations.some((operation) =>
+      operation.operationType === "discover_highlights"
+    ), false);
+    assert.equal(result.plan.operations.some((operation) =>
+      operation.operationType === "retrieve_mapped_hiking_routes"
+    ), true);
+  });
+
+  it("preserves easy-loop constraints and their existing unsupported gaps", () => {
+    const result = planOutdoorResearchV1(resolvedIntent({
+      maximumTechnicalDifficulty: "hiking",
+      preferredExperiences: ["quiet_trails"],
+      avoidedExperiences: ["major_roads"],
+      groupContext: {
+        partySize: 2,
+        includesChildren: false,
+        youngestAge: null,
+        mobility: "standard",
+        experienceLevel: "beginner"
+      }
+    }), completeCapabilities());
+
+    assert.equal(result.state, "ready");
+    assert.equal(result.normalizedIntent.maximumTechnicalDifficulty, "hiking");
+    assert.deepEqual(result.normalizedIntent.preferredExperiences, [
+      "quiet_trails"
+    ]);
+    assert.deepEqual(result.normalizedIntent.avoidedExperiences, [
+      "major_roads"
+    ]);
+    assert.equal(result.normalizedIntent.groupContext.experienceLevel, "beginner");
+    assert.deepEqual(
+      result.planningGaps.map((gap) => [
+        gap.code,
+        gap.affectedField,
+        gap.affectedValue
+      ]),
+      [
+        [
+          "unsupported_evidence_dimension",
+          "avoidedExperiences",
+          "major_roads"
+        ],
+        [
+          "unsupported_evidence_dimension",
+          "groupContext",
+          "beginner_suitability"
+        ],
+        [
+          "unsupported_evidence_dimension",
+          "preferredExperiences",
+          "quiet_trails"
+        ]
+      ]
+    );
+    const discovery = result.plan.operations.find((operation) =>
+      operation.operationType === "discover_highlights"
+    );
+    assert.equal(discovery.reasonCode, "coverage_gap");
+    assert.deepEqual(discovery.entityCategories, ["viewpoint", "waterfall"]);
+    assert.deepEqual(discovery.predicates, ["entity_category"]);
   });
 
   it("allows independent biking viewpoint research without any hiking semantics", () => {

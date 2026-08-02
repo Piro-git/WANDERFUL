@@ -12,7 +12,17 @@ export class PostgresAppAttestRepository extends AppAttestRepository {
   constructor(options = {}) {
     super();
     if (!options.pool?.connect || !options.pool?.query) unavailable();
+    if (
+      options.cancellationPool !== undefined &&
+      (
+        !options.cancellationPool?.connect ||
+        options.cancellationPool === options.pool
+      )
+    ) {
+      unavailable();
+    }
     this.pool = options.pool;
+    this.cancellationPool = options.cancellationPool;
   }
 
   async createChallenge(record) {
@@ -332,14 +342,39 @@ export class PostgresAppAttestRepository extends AppAttestRepository {
 export function postgresAppAttestRepositoryFromEnvironment(env = process.env, options = {}) {
   const connectionString = requiredPostgresURL(configuredPostgresURL(env));
   if (!connectionString) return undefined;
+  const connectionTimeoutMillis = integer(
+    env.DATABASE_CONNECT_TIMEOUT_MS,
+    5_000,
+    500,
+    30_000
+  );
+  const idleTimeoutMillis = integer(
+    env.DATABASE_IDLE_TIMEOUT_MS,
+    30_000,
+    1_000,
+    300_000
+  );
   const pool = options.pool ?? new Pool({
     connectionString,
     max: integer(env.DATABASE_POOL_MAX, 4, 1, 20),
-    connectionTimeoutMillis: integer(env.DATABASE_CONNECT_TIMEOUT_MS, 5_000, 500, 30_000),
-    idleTimeoutMillis: integer(env.DATABASE_IDLE_TIMEOUT_MS, 30_000, 1_000, 300_000),
+    connectionTimeoutMillis,
+    idleTimeoutMillis,
     allowExitOnIdle: true
   });
-  return new PostgresAppAttestRepository({ pool });
+  const cancellationPool = options.cancellationPool ??
+    (options.pool ? undefined : new Pool({
+      connectionString,
+      max: 1,
+      connectionTimeoutMillis: Math.min(connectionTimeoutMillis, 1_000),
+      idleTimeoutMillis,
+      query_timeout: 1_000,
+      statement_timeout: 1_000,
+      allowExitOnIdle: true
+    }));
+  return new PostgresAppAttestRepository({
+    pool,
+    cancellationPool
+  });
 }
 
 function configuredPostgresURL(env) {

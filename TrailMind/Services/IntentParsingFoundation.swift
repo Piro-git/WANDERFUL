@@ -914,6 +914,8 @@ struct IntentRepairService: Sendable {
             difficulty: intent.difficulty,
             desiredFeatures: intent.desiredFeatures,
             avoidFeatures: intent.avoidFeatures,
+            mustHaveResearchExperiences:
+                intent.mustHaveResearchExperiences,
             transportMode: intent.transportMode
         )
     }

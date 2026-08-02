@@ -25,6 +25,7 @@ const DEVELOPMENT_AAGUID = Buffer.from("appattestdevelop", "ascii");
 const PRODUCTION_AAGUID = Buffer.concat([Buffer.from("appattest", "ascii"), Buffer.alloc(7)]);
 const VALIDATION_CATEGORY_KEYS = ["apple_validation_category_01", "validationCategory"];
 const BUNDLE_VERSION_KEYS = ["apple_bundle_version_01", "bundleVersion"];
+const APP_ATTEST_VERIFIERS = new WeakSet();
 const decoder = new Decoder({ mapsAsObjects: false, useRecords: false, structuredClone: false });
 setEngine("node-webcrypto", new CryptoEngine({
   name: "node-webcrypto",
@@ -41,7 +42,7 @@ export function createAppAttestVerifier(configuration) {
   const rootNode = new NodeX509Certificate(APPLE_APP_ATTESTATION_ROOT_PEM);
   const rootCertificate = Certificate.fromBER(rootNode.raw);
 
-  return {
+  const verifier = {
     configuration: config,
 
     async verifyAttestation({ attestationObject, keyId, clientDataHash, now = new Date() }) {
@@ -130,6 +131,16 @@ export function createAppAttestVerifier(configuration) {
       }
     }
   };
+  APP_ATTEST_VERIFIERS.add(verifier);
+  return Object.freeze(verifier);
+}
+
+export function isAppAttestVerifier(input) {
+  return Boolean(
+    input &&
+    typeof input === "object" &&
+    APP_ATTEST_VERIFIERS.has(input)
+  );
 }
 
 export function appAttestVerifierConfiguration(env = process.env) {

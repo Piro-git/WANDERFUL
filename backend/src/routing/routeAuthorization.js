@@ -1,6 +1,8 @@
 import { routeError } from "./routeErrors.js";
 import { createRouteSessionAuthorizer } from "../appAttest/routeSessionAuthorizer.js";
 
+const DEVELOPMENT_ROUTE_AUTHORIZERS = new WeakSet();
+
 export function createDefaultRouteAuthorizer(env = process.env, options = {}) {
   if (options.appAttestRepository) {
     return createRouteSessionAuthorizer({ repository: options.appAttestRepository, env });
@@ -17,11 +19,21 @@ export function createDefaultRouteAuthorizer(env = process.env, options = {}) {
 }
 
 export function createDevelopmentRouteAuthorizer() {
-  return {
+  const authorizer = {
     async authorize() {
       return { authorized: true, rateLimitKey: "local-development" };
     }
   };
+  DEVELOPMENT_ROUTE_AUTHORIZERS.add(authorizer);
+  return authorizer;
+}
+
+export function isDevelopmentRouteAuthorizer(value) {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    DEVELOPMENT_ROUTE_AUTHORIZERS.has(value)
+  );
 }
 
 export async function authorizeRouteRequest(authorizer, context) {

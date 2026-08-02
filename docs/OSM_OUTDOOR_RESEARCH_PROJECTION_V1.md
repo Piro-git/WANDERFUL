@@ -338,16 +338,19 @@ npm run outdoor-evidence:import -- \
   --source-id '<immutable extract identifier without credentials>' \
   --retrieved-at '<ISO-8601 UTC timestamp>' \
   --source-timestamp '<extract ISO-8601 UTC timestamp>' \
-  --acquisition-channel geofabrik_regional_extract \
-  --source-checksum 'md5:<published checksum>'
+  --acquisition-channel operator_supplied_local \
+  --source-checksum 'sha256:<bounded derivative checksum>'
 ```
 
 Use `innsbruck-alps-v1` for the Innsbruck pilot. The importer computes and
-stores the local file SHA-256 automatically. `--source-checksum` records the
-published checksum, verifies the local PBF before import, and records the
-successful verification timestamp. The operator is responsible for obtaining
-that checksum from the reviewed extract channel. A Geofabrik acquisition is
-rejected when the algorithm/value is missing, malformed, or does not match.
+stores the local file SHA-256 automatically. A bounded PBF is a transformed
+derivative, so it must be imported as `operator_supplied_local` and verified
+against the derivative's own SHA-256. Before clipping, verify every exact
+upstream Geofabrik artifact against its published checksum and retain that
+separate acquisition receipt and transformation lineage in the reviewed
+operator record. Use `geofabrik_regional_extract` only when the imported bytes
+are the exact published artifact; that channel is rejected when its published
+checksum is missing, malformed, or does not match the input.
 
 For a reviewed local file that is not a Geofabrik extract, use:
 

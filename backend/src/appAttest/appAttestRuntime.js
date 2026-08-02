@@ -13,7 +13,10 @@ export function createAppAttestRuntime(options = {}) {
   let repository = options.appAttestRepository;
   if (!repository) {
     try {
-      repository = postgresAppAttestRepositoryFromEnvironment(env, { pool: options.postgresPool });
+      repository = postgresAppAttestRepositoryFromEnvironment(env, {
+        pool: options.postgresPool,
+        cancellationPool: options.postgresCancellationPool
+      });
     } catch {
       repository = undefined;
     }
@@ -37,7 +40,9 @@ export function createAppAttestRuntime(options = {}) {
       verifier,
       env,
       now: options.now,
-      randomBytes: options.randomBytes
+      randomBytes: options.randomBytes,
+      assertionVerificationTracker:
+        options.assertionVerificationTracker
     }),
     routeAuthorizer: createRouteSessionAuthorizer({ repository, env }),
     intentAuthorizer: createIntentSessionAuthorizer({ repository, env })

@@ -44,13 +44,17 @@ struct BackendOutdoorAdventurePlanningClientV1:
     private let authorizer: any RouteSessionAuthorizing
     private let limits: OutdoorAdventurePlanningTransportLimitsV1
     private let adapter: ResearchGuidedRoutingContractAdapterV1
+    private let responseValidationDidFinish:
+        @Sendable (Duration) -> Void
 
     init(
         baseURL: URL? = TrailMindBackendConfiguration.baseURL(),
         session: URLSession = .shared,
         authorizer: (any RouteSessionAuthorizing)? = nil,
         limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard,
-        adapter: ResearchGuidedRoutingContractAdapterV1? = nil
+        adapter: ResearchGuidedRoutingContractAdapterV1? = nil,
+        responseValidationDidFinish:
+            @escaping @Sendable (Duration) -> Void = { _ in }
     ) {
         self.baseURL = baseURL
         self.session = session
@@ -60,6 +64,8 @@ struct BackendOutdoorAdventurePlanningClientV1:
         self.adapter = adapter ?? ResearchGuidedRoutingContractAdapterV1(
             limits: limits.routeTransportLimits
         )
+        self.responseValidationDidFinish =
+            responseValidationDidFinish
     }
 
     func plan(
@@ -172,7 +178,9 @@ struct BackendOutdoorAdventurePlanningClientV1:
             try Task.checkCancellation()
             return try OutdoorAdventurePlanningResponseValidatorV1.validate(
                 data,
-                adapter: adapter
+                adapter: adapter,
+                validationDidFinish:
+                    responseValidationDidFinish
             )
         } catch is CancellationError {
             throw CancellationError()
@@ -222,7 +230,7 @@ struct BackendOutdoorAdventurePlanningClientV1:
         case "response_too_large":
             .responseTooLarge
         case "internal_failure":
-            .invalidResponse
+            .unavailable
         case "feature_unavailable",
              "authorization_unavailable",
              "research_unavailable",
