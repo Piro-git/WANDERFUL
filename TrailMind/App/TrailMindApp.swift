@@ -6,6 +6,10 @@ struct TrailMindApp: App {
     @State private var theme = TrailTheme()
     @State private var appModel: AppModel
     @State private var sessionStartup = TrailMindSessionStartupState()
+    #if DEBUG
+    private let stagingProofComposition:
+        StagingProofLaunchComposition?
+    #endif
     #if DEBUG && targetEnvironment(simulator)
     @State private var hasCompletedUITestOnboarding = false
     private let uiTestComposition: UITestLaunchComposition?
@@ -13,10 +17,26 @@ struct TrailMindApp: App {
     private let gpxService = DefaultGPXService()
 
     init() {
-        #if DEBUG && targetEnvironment(simulator)
+        #if DEBUG
+        let stagingProofComposition =
+            StagingProofLaunchComposition.resolve()
+        self.stagingProofComposition = stagingProofComposition
+        #if targetEnvironment(simulator)
         let uiTestComposition = UITestLaunchComposition.resolve()
         self.uiTestComposition = uiTestComposition
-        _appModel = State(initialValue: uiTestComposition?.appModel ?? AppModel())
+        _appModel = State(
+            initialValue:
+                stagingProofComposition?.appModel ??
+                uiTestComposition?.appModel ??
+                AppModel()
+        )
+        #else
+        _appModel = State(
+            initialValue:
+                stagingProofComposition?.appModel ??
+                AppModel()
+        )
+        #endif
         #else
         _appModel = State(initialValue: AppModel())
         #endif
@@ -45,20 +65,35 @@ struct TrailMindApp: App {
 
     @ViewBuilder
     private var rootView: some View {
-        #if DEBUG && targetEnvironment(simulator)
-        if let uiTestComposition {
-            switch uiTestComposition.startDestination {
-            case .onboarding:
-                if hasCompletedUITestOnboarding {
-                    AppShellView(planner: uiTestComposition.planner)
-                } else {
-                    OnboardingView(isComplete: $hasCompletedUITestOnboarding)
-                }
-            case .appShell:
-                AppShellView(planner: uiTestComposition.planner)
-            }
+        #if DEBUG
+        if let stagingProofComposition {
+            StagingProofHostView(
+                composition: stagingProofComposition
+            )
         } else {
+            #if targetEnvironment(simulator)
+            if let uiTestComposition {
+                switch uiTestComposition.startDestination {
+                case .onboarding:
+                    if hasCompletedUITestOnboarding {
+                        AppShellView(
+                            planner: uiTestComposition.planner
+                        )
+                    } else {
+                        OnboardingView(
+                            isComplete:
+                                $hasCompletedUITestOnboarding
+                        )
+                    }
+                case .appShell:
+                    AppShellView(planner: uiTestComposition.planner)
+                }
+            } else {
+                productionRootView
+            }
+            #else
             productionRootView
+            #endif
         }
         #else
         productionRootView

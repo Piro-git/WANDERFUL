@@ -1,0 +1,379 @@
+{
+  "blockers": [
+    "app_attest_receipt_integration_missing",
+    "bounded_live_graphhopper_not_authorized",
+    "causal_pipeline_capture_missing",
+    "credential_containment_not_confirmed",
+    "database_configuration_missing",
+    "disposable_database_not_confirmed",
+    "graphhopper_configuration_missing",
+    "ios_runtime_receipt_integration_missing",
+    "operational_case_driver_missing"
+  ],
+  "caseResults": [
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-01-harz-ilsenburg-loop-viewpoints-forest",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-02-harz-schierke-easy-loop-paths-avoid-roads",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-03-harz-trail-running-loop",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-04-harz-brocken-must-have-landmark",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-05-harz-unsatisfied-must-have-highlight",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-06-outside-imported-coverage",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-07-innsbruck-viewpoint-loop",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-08-innsbruck-easy-conservative-loop",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-09-broad-alps-requires-clarification",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-10-innsbruck-missing-official-current-evidence",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-11-biking-unsupported-legacy-once",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-12-point-to-point-unsupported-documented-fallback",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-13-cancel-during-postgis-research",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-14-timeout-during-graphhopper",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-15-partial-provider-failure-survivor",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-16-malformed-backend-response-rejected-by-ios",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-17-feature-disabled-zero-research-work",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    },
+    {
+      "authorization": "none",
+      "errorCodes": [
+        "not_run"
+      ],
+      "evidenceSource": "none",
+      "executed": false,
+      "id": "case-18-retry-does-not-reuse-stale-state",
+      "legacyFallbackCount": 0,
+      "passed": false,
+      "providerTraffic": "none",
+      "responseState": "none",
+      "retryFreshness": "not_applicable",
+      "routeQuality": "not_evaluated",
+      "routingSource": "none",
+      "skipped": false,
+      "stageTimings": {},
+      "terminalState": "not_run"
+    }
+  ],
+  "manifestDigest": "283a4f5c6210dbbc77516e3d6de684bfda800391c4f4aa3d08290193e77638a0",
+  "metrics": {
+    "appAttestSessionCases": 0,
+    "clarificationCases": 0,
+    "configuredCases": 18,
+    "developmentSessionCases": 0,
+    "executedCases": 0,
+    "failedCases": 0,
+    "legacyFallbackCases": 0,
+    "liveGraphHopperAttemptCases": 0,
+    "notRunCases": 18,
+    "partialCases": 0,
+    "passedCases": 0,
+    "realGraphHopperCases": 0,
+    "realPostgisCases": 0,
+    "skippedCases": 0,
+    "syntheticCases": 0,
+    "unsupportedCases": 0
+  },
+  "proofVersion": "outdoor-adventure-staging-proof-v1",
+  "schemaVersion": 1,
+  "status": "not_run"
+}
