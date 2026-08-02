@@ -7,7 +7,7 @@
     "requiredVerificationCodes": ["real_routing_required"],
     "requiredLimitationCodes": ["requires_real_routing"],
     "forbiddenWording": ["best", "safest", "scenic", "recommended", "perfect", "open hut", "available bed", "drinkable water", "legal campsite"],
-    "orderingExpectations": ["must_have_count_desc", "known_incompatibilities_excluded", "unresolved_high_stakes_asc", "preferred_count_desc", "lower_bound_asc", "stable_entity_id"]
+    "orderingExpectations": ["must_have_count_desc", "known_incompatibilities_excluded", "unresolved_high_stakes_asc", "preferred_count_desc", "target_distance_fit_then_lower_bound", "stable_entity_id"]
   },
   "cases": [
     {"id":"de-ilsenburg-15km-viewpoints","label":"15 km Rundwanderung um Ilsenburg mit Aussichtspunkten","language":"de","template":"two_viewpoints_waterfall","expectedState":"partial","expectedProposalCount":1,"expectedMustHaveSatisfaction":[{"experience":"viewpoint","includedCount":2},{"experience":"waterfall","includedCount":1}],"expectedShortfalls":[{"requirementType":"candidate_verification","value":"candidate_public_access","shortfallCount":3},{"requirementType":"candidate_verification","value":"candidate_closure_status","shortfallCount":3}]},

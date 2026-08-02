@@ -616,6 +616,25 @@ function selectCandidateSet(
     if (category) addFromPool(pools.get(category), index);
   }
   if (selected.length === 0) addFromPool(usableCandidates);
+  // A loop through a single highlight commonly collapses into an out-and-back
+  // path. When the user supplied one exact distance target, add bounded,
+  // evidence-owned shaping waypoints so real routing can form a distinct loop.
+  // Candidate rotations and the target-aware preliminary-distance ordering
+  // below decide which combinations proceed to the provider.
+  if (
+    context.intent.routeType === "loop" &&
+    hasExactDistanceTarget(context.intent.distanceRangeKm)
+  ) {
+    const minimumLoopWaypointCount = Math.min(3, maximum);
+    for (
+      let index = 0;
+      selected.length < minimumLoopWaypointCount &&
+        index < usableCandidates.length;
+      index += 1
+    ) {
+      addFromPool(usableCandidates, index + selected.length);
+    }
+  }
   return selected;
 }
 
@@ -750,6 +769,10 @@ function buildProposalRecord(context, candidateSet, mappedNetworkCandidates) {
       : requiredVerification.filter((code) =>
         isResearchGuidedRouteHighStakesVerificationV1(code)
       ).length;
+  const distanceRanking = distanceRankingMetrics(
+    context.intent.distanceRangeKm,
+    preliminaryDistanceEnvelope
+  );
   return {
     proposal,
     gaps,
@@ -757,6 +780,11 @@ function buildProposalRecord(context, candidateSet, mappedNetworkCandidates) {
       mustHaveIncluded,
       unresolvedHighStakes,
       preferredIncluded,
+      distanceFeasibilityPenalty:
+        distanceRanking.feasibilityPenalty,
+      distanceRangeMissKm: distanceRanking.rangeMissKm,
+      distanceCenterDeviationKm:
+        distanceRanking.centerDeviationKm,
       lowerBoundKm: preliminaryDistanceEnvelope.lowerBoundKm,
       entityIds: candidateSet.entityIds,
       stableKey: candidateSet.entityIds.join(":")
@@ -1378,10 +1406,45 @@ function compareProposalRecords(left, right) {
     right.metrics.mustHaveIncluded - left.metrics.mustHaveIncluded ||
     left.metrics.unresolvedHighStakes - right.metrics.unresolvedHighStakes ||
     right.metrics.preferredIncluded - left.metrics.preferredIncluded ||
+    left.metrics.distanceFeasibilityPenalty -
+      right.metrics.distanceFeasibilityPenalty ||
+    left.metrics.distanceRangeMissKm - right.metrics.distanceRangeMissKm ||
+    left.metrics.distanceCenterDeviationKm -
+      right.metrics.distanceCenterDeviationKm ||
     left.metrics.lowerBoundKm - right.metrics.lowerBoundKm ||
     compareText(left.metrics.stableKey, right.metrics.stableKey) ||
     compareText(left.proposal.proposalId, right.proposal.proposalId)
   );
+}
+
+function distanceRankingMetrics(targetRangeKm, envelope) {
+  if (targetRangeKm === null) {
+    return {
+      feasibilityPenalty: 0,
+      rangeMissKm: 0,
+      centerDeviationKm: 0
+    };
+  }
+  const heuristic = envelope.heuristicRangeKm;
+  const rangeMissKm = heuristic.max < targetRangeKm.min
+    ? targetRangeKm.min - heuristic.max
+    : heuristic.min > targetRangeKm.max
+      ? heuristic.min - targetRangeKm.max
+      : 0;
+  const heuristicCenter = (heuristic.min + heuristic.max) / 2;
+  const targetCenter = (targetRangeKm.min + targetRangeKm.max) / 2;
+  return {
+    feasibilityPenalty:
+      envelope.feasibilityState === "lower_bound_exceeds_target" ? 1 : 0,
+    rangeMissKm: roundDistance(rangeMissKm),
+    centerDeviationKm: roundDistance(
+      Math.abs(heuristicCenter - targetCenter)
+    )
+  };
+}
+
+function hasExactDistanceTarget(range) {
+  return range !== null && range.min === range.max;
 }
 
 function selectDiverseRecords(records, maximum) {

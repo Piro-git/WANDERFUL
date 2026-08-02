@@ -69,7 +69,7 @@ describe("PostGIS outdoor research repository", () => {
     ]);
   });
 
-  it("removes capabilities for inactive, revoked, scope-drifted and stale evidence", async () => {
+  it("removes capabilities for inactive, revoked, scope-drifted and policy-stale evidence", async () => {
     const cases = [
       {
         expected: "source_unavailable",
@@ -91,7 +91,7 @@ describe("PostGIS outdoor research repository", () => {
       },
       {
         expected: "source_stale",
-        row: activeSnapshotRow({ source_data_at: "2026-07-22T10:00:00Z" })
+        row: activeSnapshotRow({ source_data_at: "2026-07-09T10:00:00Z" })
       }
     ];
     for (const testCase of cases) {
@@ -104,6 +104,77 @@ describe("PostGIS outdoor research repository", () => {
       assert.deepEqual(result.capabilities.supportedRegionIds, []);
       assert.equal(result.snapshot, null);
     }
+  });
+
+  it("does not confuse the publisher refresh cadence with the reviewed maximum age", async () => {
+    const harness = repositoryHarness({
+      snapshotRow: activeSnapshotRow({
+        source_data_at: "2026-07-23T10:00:00Z",
+        import_retrieved_at: "2026-07-23T11:00:00Z",
+        imported_at: "2026-07-23T12:00:00Z",
+        expected_refresh_interval_seconds: 86_400
+      })
+    });
+    const result = await harness.repository.withConsistentSnapshot(
+      {},
+      (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+    );
+    assert.equal(result.availabilityState, "active");
+    assert.equal(result.snapshot.freshnessLimitMilliseconds, 14 * 86_400_000);
+  });
+
+  it("fails missing, future, and maximum-age policy drift closed", async () => {
+    const cases = [
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ source_data_at: null })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ import_retrieved_at: null })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ imported_at: null })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({
+          source_data_at: "2026-07-25T00:00:00Z",
+          import_retrieved_at: "2026-07-25T01:00:00Z",
+          imported_at: "2026-07-25T02:00:00Z"
+        })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ maximum_input_age_days: null })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ maximum_input_age_days: 15 })
+      },
+      {
+        expected: "source_unavailable",
+        row: activeSnapshotRow({ freshness_threshold_days: 0 })
+      }
+    ];
+    for (const testCase of cases) {
+      const harness = repositoryHarness({ snapshotRow: testCase.row });
+      const result = await harness.repository.withConsistentSnapshot(
+        {},
+        (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+      );
+      assert.equal(result.availabilityState, testCase.expected);
+      assert.equal(result.snapshot, null);
+    }
+
+    const missingSnapshot = repositoryHarness();
+    const unavailable = await missingSnapshot.repository.withConsistentSnapshot(
+      {},
+      (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+    );
+    assert.equal(unavailable.availabilityState, "source_unavailable");
+    assert.equal(unavailable.snapshot, null);
   });
 
   it("fails exact polygon containment closed without advertising another region", async () => {
@@ -173,8 +244,20 @@ describe("PostGIS outdoor research repository", () => {
     assert.match(queries.snapshotContext, /outdoor_research_active_projection_runs/);
     assert.match(queries.highlights, /outdoor_research_active_assertions/);
     assert.match(queries.highlights, /ST_DWithin/);
+    assert.match(queries.highlights, /active_run\.region_id = \$2/);
+    assert.match(queries.highlights, /lifecycle_state = 'active'/);
+    assert.match(queries.highlights, /projection_quarantines/);
+    assert.match(queries.highlights, /trail\.entity_category = 'trail_segment'/);
+    assert.match(queries.highlights, /COS\(RADIANS\(ST_Y/);
+    assert.match(queries.highlights, /ST_DWithin\([\s\S]*::geography/);
+    assert.match(queries.highlights, /\$9::double precision/);
     assert.match(queries.highlights, /LIMIT \$8/);
     assert.match(queries.routeMemberships, /outdoor_research_active_relationships/);
+    assert.match(queries.routeMemberships, /active_run\.region_id = \$2/);
+    assert.match(queries.routeMemberships, /region\.active_import_id = active_run\.input_import_id/);
+    assert.match(queries.routeMemberships, /lifecycle_state = 'active'/);
+    assert.match(queries.routeMemberships, /projection_quarantines/);
+    assert.match(queries.routeMemberships, /COS\(RADIANS\(ST_Y/);
     assert.match(queries.routeMemberships, /relationship\.evidence_class/);
     assert.match(queries.routeMemberships, /nearby\.evidence_class/);
     assert.match(queries.routeMemberships, /membership_rank <= \$7/);
@@ -225,6 +308,7 @@ describe("PostGIS outdoor research repository", () => {
       ["entity_category", "viewpoint_presence"],
       12
     ]);
+    assert.equal(highlightCall.values[8], 75);
     const membershipCall = harness.queryCalls.find((call) =>
       call.text.includes("selected_routes AS")
     );

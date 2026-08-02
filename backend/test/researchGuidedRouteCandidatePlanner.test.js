@@ -690,6 +690,44 @@ test("lower bound exceeding target is explicit and never presented as feasible",
   );
 });
 
+test("exact-distance loops add evidence-owned shaping waypoints and rank target fit", () => {
+  const plan = buildResearchGuidedRouteCandidatePlanV1(makeDossier({
+    intent: plainIntent({
+      distanceRangeKm: { min: 15, max: 15 },
+      preferredExperiences: ["viewpoint"]
+    }),
+    highlights: [
+      { category: "viewpoint", coordinate: { latitude: 47.3100, longitude: 11.4041 } },
+      { category: "viewpoint", coordinate: { latitude: 47.2692, longitude: 11.4600 } },
+      { category: "viewpoint", coordinate: { latitude: 47.2300, longitude: 11.4041 } },
+      { category: "viewpoint", coordinate: { latitude: 47.2692, longitude: 11.3500 } }
+    ]
+  }), { maximumProposals: 3 });
+
+  assert.ok(plan.proposals.length >= 2);
+  assert.ok(plan.proposals.every((proposal) =>
+    proposal.viaCandidates.length === 3
+  ));
+  assert.ok(plan.proposals.every((proposal) =>
+    proposal.viaCandidates.every((candidate) =>
+      candidate.evidenceClaimIds.length > 0
+    )
+  ));
+  const target = 15;
+  const heuristicCenter = (proposal) => {
+    const range = proposal.preliminaryDistanceEnvelope.heuristicRangeKm;
+    return (range.min + range.max) / 2;
+  };
+  const deviations = plan.proposals.map((proposal) =>
+    Math.abs(heuristicCenter(proposal) - target)
+  );
+  assert.equal(deviations[0], Math.min(...deviations));
+  assert.ok(plan.proposals.every((proposal) =>
+    proposal.viaCandidates.map((candidate) => candidate.entityId).length ===
+      new Set(proposal.viaCandidates.map((candidate) => candidate.entityId)).size
+  ));
+});
+
 test("absent target remains target_unspecified without inventing a distance", () => {
   const plan = buildResearchGuidedRouteCandidatePlanV1(makeDossier({
     intent: plainIntent({ distanceRangeKm: null }),
@@ -1140,7 +1178,7 @@ test("the 74+ case structured fixture corpus is complete and bounded", async () 
       "known_incompatibilities_excluded",
       "unresolved_high_stakes_asc",
       "preferred_count_desc",
-      "lower_bound_asc",
+      "target_distance_fit_then_lower_bound",
       "stable_entity_id"
     ]);
   }

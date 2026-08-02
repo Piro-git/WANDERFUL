@@ -8,6 +8,7 @@ export const OUTDOOR_RESEARCH_EXECUTOR_POLICY_V1 = deepFreeze({
     biking: 40
   },
   maximumHighlightsPerOperation: 32,
+  maximumHighlightTrailSeparationMeters: 75,
   maximumRoutesPerOperation: 24,
   maximumMembershipsPerRoute: 1,
   maximumRepositoryRowsPerOperation: 160,

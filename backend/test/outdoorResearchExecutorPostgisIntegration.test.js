@@ -275,6 +275,199 @@ describe("outdoor research executor real PostGIS integration", {
     ));
   });
 
+  it("does not promote an evidence-valid highlight far from the mapped trail network", async () => {
+    const region = REGIONS[0];
+    const ids = seeded.get(region.operationalRegionId);
+    const isolatedAnchor = {
+      longitude: region.anchor.longitude + 0.05,
+      latitude: region.anchor.latitude + 0.05
+    };
+    await insertProjectedViewpoint({
+      pool,
+      sourceId,
+      projectionRunId: ids.runId,
+      operationalRegionId: region.operationalRegionId,
+      osmId: region.osmBase + 99,
+      coordinate: isolatedAnchor
+    });
+    const repository = new PostgresOutdoorResearchRepository({
+      pool,
+      statementTimeoutMs: 2_000
+    });
+    const rows = await repository.withConsistentSnapshot({}, async (session) => {
+      const capabilities = await session.resolveCapabilities(
+        binding(region),
+        region.anchor,
+        NOW
+      );
+      return session.discoverHighlights({
+        projectionRunId: capabilities.snapshot.projectionRunId,
+        operationalRegionId: region.operationalRegionId,
+        anchor: isolatedAnchor,
+        entityCategories: ["viewpoint"],
+        predicates: ["entity_category", "viewpoint_presence"],
+        searchRadiusMeters: 500,
+        limit: 12
+      });
+    });
+    assert.deepEqual(rows, []);
+  });
+
+  it("enforces the 75 m mapped-trail boundary in metres without latitude prefilter loss", async () => {
+    const region = REGIONS[0];
+    const ids = seeded.get(region.operationalRegionId);
+    const trailPoint = {
+      longitude: region.anchor.longitude + 0.015,
+      latitude: region.anchor.latitude
+    };
+    const distances = [74.9, 75, 75.1];
+    const inserted = [];
+    for (const [index, distanceMeters] of distances.entries()) {
+      const coordinate = await projectCoordinate(
+        pool,
+        trailPoint,
+        distanceMeters,
+        0
+      );
+      inserted.push({
+        distanceMeters,
+        coordinate,
+        entityId: await insertProjectedViewpoint({
+          pool,
+          sourceId,
+          projectionRunId: ids.runId,
+          operationalRegionId: region.operationalRegionId,
+          osmId: region.osmBase + 110 + index,
+          coordinate
+        })
+      });
+    }
+    const repository = new PostgresOutdoorResearchRepository({
+      pool,
+      statementTimeoutMs: 2_000
+    });
+    const rows = await repository.withConsistentSnapshot({}, async (session) => {
+      const capabilities = await session.resolveCapabilities(
+        binding(region),
+        region.anchor,
+        NOW
+      );
+      return session.discoverHighlights({
+        projectionRunId: capabilities.snapshot.projectionRunId,
+        operationalRegionId: region.operationalRegionId,
+        anchor: trailPoint,
+        entityCategories: ["viewpoint"],
+        predicates: ["entity_category", "viewpoint_presence"],
+        searchRadiusMeters: 500,
+        limit: 12
+      });
+    });
+    const returnedIds = new Set(rows.map((row) => row.entity_id));
+    assert.equal(returnedIds.has(inserted[0].entityId), true);
+    assert.equal(returnedIds.has(inserted[1].entityId), true);
+    assert.equal(returnedIds.has(inserted[2].entityId), false);
+    for (const expected of inserted.slice(0, 2)) {
+      const row = rows.find((item) => item.entity_id === expected.entityId);
+      assert.ok(row);
+      assert.ok(Math.abs(row.latitude - expected.coordinate.latitude) < 1e-9);
+      assert.ok(Math.abs(row.longitude - expected.coordinate.longitude) < 1e-9);
+    }
+  });
+
+  it("keeps the candidate-radius GiST prefilter complete east-west", async () => {
+    const region = REGIONS[0];
+    const ids = seeded.get(region.operationalRegionId);
+    const distances = [499.9, 500, 500.1];
+    const inserted = [];
+    for (const [index, distanceMeters] of distances.entries()) {
+      const coordinate = await projectCoordinate(
+        pool,
+        region.anchor,
+        distanceMeters,
+        Math.PI / 2
+      );
+      inserted.push({
+        entityId: await insertProjectedViewpoint({
+          pool,
+          sourceId,
+          projectionRunId: ids.runId,
+          operationalRegionId: region.operationalRegionId,
+          osmId: region.osmBase + 120 + index,
+          coordinate
+        })
+      });
+    }
+    const repository = new PostgresOutdoorResearchRepository({
+      pool,
+      statementTimeoutMs: 2_000
+    });
+    const rows = await repository.withConsistentSnapshot({}, async (session) => {
+      const capabilities = await session.resolveCapabilities(
+        binding(region),
+        region.anchor,
+        NOW
+      );
+      return session.discoverHighlights({
+        projectionRunId: capabilities.snapshot.projectionRunId,
+        operationalRegionId: region.operationalRegionId,
+        anchor: region.anchor,
+        entityCategories: ["viewpoint"],
+        predicates: ["entity_category", "viewpoint_presence"],
+        searchRadiusMeters: 500,
+        limit: 12
+      });
+    });
+    const returnedIds = new Set(rows.map((row) => row.entity_id));
+    assert.equal(returnedIds.has(inserted[0].entityId), true);
+    assert.equal(returnedIds.has(inserted[1].entityId), true);
+    assert.equal(returnedIds.has(inserted[2].entityId), false);
+  });
+
+  it("cannot qualify a highlight through an overlapping but different region", async () => {
+    const sourceRegion = REGIONS[0];
+    const ids = seeded.get(sourceRegion.operationalRegionId);
+    const overlappingRegionId = "overlap-test-v1";
+    await pool.query(
+      `INSERT INTO outdoor_evidence_regions
+         (region_id, name, definition_version, boundary_kind,
+          coordinate_reference_system, metric_srid, boundary,
+          boundary_metric, supported_feature_classes,
+          freshness_threshold_days, path_match_tolerance_meters,
+          active_import_id, enabled)
+       VALUES (
+         $1, 'Overlapping test region', 1, 'trailmind-operational-polygon',
+         'EPSG:4326', 25832,
+         ST_Multi(ST_MakeEnvelope($2, $3, $4, $5, 4326)),
+         ST_Transform(
+           ST_Multi(ST_MakeEnvelope($2, $3, $4, $5, 4326)),
+           25832
+         ),
+         ARRAY['viewpoint'], 14, 75, NULL, true
+       )`,
+      [overlappingRegionId, ...sourceRegion.envelope]
+    );
+    try {
+      const repository = new PostgresOutdoorResearchRepository({ pool });
+      const rows = await repository.withConsistentSnapshot({}, (session) =>
+        session.discoverHighlights({
+          projectionRunId: ids.runId,
+          operationalRegionId: overlappingRegionId,
+          anchor: sourceRegion.anchor,
+          entityCategories: ["viewpoint"],
+          predicates: ["entity_category", "viewpoint_presence"],
+          searchRadiusMeters: 500,
+          limit: 12
+        })
+      );
+      assert.deepEqual(rows, []);
+    } finally {
+      await pool.query(
+        "DELETE FROM outdoor_evidence_regions WHERE region_id = $1",
+        [overlappingRegionId]
+      );
+    }
+  });
+
   it("keeps official/current operations as gaps and mapped access unresolved", async () => {
     const result = await execute(REGIONS[0], {
       dateOrSeason: { kind: "date", date: "2026-07-25" },
@@ -339,7 +532,7 @@ describe("outdoor research executor real PostGIS integration", {
     const ids = seeded.get("harz-v1");
     await pool.query(
       `UPDATE outdoor_evidence_imports
-          SET source_data_at = '2026-07-20T08:00:00Z'
+          SET source_data_at = '2026-07-01T08:00:00Z'
         WHERE import_id = $1`,
       [ids.importId]
     );
@@ -405,20 +598,18 @@ describe("outdoor research executor real PostGIS integration", {
       await client.query("SET LOCAL enable_seqscan = off");
       const plan = await client.query(
         `EXPLAIN (FORMAT JSON)
-         SELECT entity_id
-           FROM outdoor_research_projection_entities
-          WHERE projection_run_id = $1
-            AND projected_geometry &&
-                ST_Expand(
-                  ST_SetSRID(ST_MakePoint($2, $3), 4326),
-                  $4::double precision / 111000.0
-                )
-            AND ST_DWithin(
-              projected_geometry::geography,
-              ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
-              $4::double precision
-            )`,
-        [ids.runId, REGIONS[0].anchor.longitude, REGIONS[0].anchor.latitude, 10_000]
+         ${outdoorResearchRepositoryQueriesForTesting.highlights}`,
+        [
+          ids.runId,
+          REGIONS[0].operationalRegionId,
+          REGIONS[0].anchor.longitude,
+          REGIONS[0].anchor.latitude,
+          ["viewpoint"],
+          10_000,
+          ["entity_category", "viewpoint_presence"],
+          12,
+          75
+        ]
       );
       const text = JSON.stringify(plan.rows[0]["QUERY PLAN"]);
       assert.match(
@@ -594,7 +785,7 @@ async function seedRegion(pool, region, sourceId, policyId) {
         osmId: region.osmBase + 4,
         geometry:
           `LINESTRING(${region.anchor.longitude - 0.01} ${region.anchor.latitude},` +
-          `${region.anchor.longitude + 0.01} ${region.anchor.latitude})`
+          `${region.anchor.longitude + 0.02} ${region.anchor.latitude})`
       }
     ];
     for (const entity of entities) {
@@ -763,6 +954,143 @@ async function seedRegion(pool, region, sourceId, policyId) {
     await pool.query("ROLLBACK");
     throw error;
   }
+}
+
+async function insertProjectedViewpoint({
+  pool,
+  sourceId,
+  projectionRunId,
+  operationalRegionId,
+  osmId,
+  coordinate
+}) {
+  const client = await pool.connect();
+  const entityId = randomUUID();
+  const sourceEntityLinkId = randomUUID();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `INSERT INTO outdoor_research_entities
+         (entity_id, entity_category, canonical_geometry, lifecycle_state)
+       VALUES (
+         $1, 'viewpoint', ST_SetSRID(ST_MakePoint($2, $3), 4326), 'active'
+       )`,
+      [entityId, coordinate.longitude, coordinate.latitude]
+    );
+    await client.query(
+      `INSERT INTO outdoor_research_source_entities
+         (source_entity_link_id, entity_id, source_id, external_type,
+          external_id, matching_status, matching_method, matched_at,
+          review_status, reviewed_at)
+       VALUES (
+         $1, $2, $3, 'osm:node', $4, 'matched', 'exact_external_id',
+         '2026-07-24T09:00:00Z', 'confirmed', '2026-07-24T09:00:00Z'
+       )`,
+      [sourceEntityLinkId, entityId, sourceId, String(osmId)]
+    );
+    await client.query(
+      `INSERT INTO outdoor_research_osm_entity_identities
+         (source_id, osm_type, osm_id, entity_id, deterministic_id_version)
+       VALUES ($1, 'node', $2, $3, 'trailmind-osm-identity-v1')`,
+      [sourceId, osmId, entityId]
+    );
+    await client.query(
+      `INSERT INTO outdoor_research_projection_entities
+         (projection_run_id, source_id, entity_id, source_entity_link_id,
+          osm_type, osm_id, entity_category, projected_geometry,
+          source_version, source_timestamp, record_provenance)
+       VALUES (
+         $1, $2, $3, $4, 'node', $5, 'viewpoint',
+         ST_SetSRID(ST_MakePoint($6, $7), 4326),
+         7, '2026-07-24T08:00:00Z',
+         jsonb_build_object(
+           'osm_version', 7,
+           'adapter_version', 'osm-evidence-graph-v1',
+           'region_id', $8::text
+         )
+       )`,
+      [
+        projectionRunId,
+        sourceId,
+        entityId,
+        sourceEntityLinkId,
+        osmId,
+        coordinate.longitude,
+        coordinate.latitude,
+        operationalRegionId
+      ]
+    );
+    for (const [predicate, valueType, value] of [
+      ["entity_category", "text", "viewpoint"],
+      ["viewpoint_presence", "boolean", true]
+    ]) {
+      const assertionId = randomUUID();
+      await client.query(
+        `INSERT INTO outdoor_research_assertions
+           (assertion_id, entity_id, source_id, predicate, value_type,
+            value_text, value_boolean, evidence_class, observed_at,
+            retrieved_at, freshness_state, provenance_identifier,
+            assertion_state, resolution_group_key)
+         VALUES (
+           $1, $2, $3, $4, $5,
+           CASE WHEN $5 = 'text' THEN $6::text ELSE NULL END,
+           CASE WHEN $5 = 'boolean' THEN $7::boolean ELSE NULL END,
+           'mapped', '2026-07-24T08:00:00Z', '2026-07-24T08:30:00Z',
+           'current', $8, 'asserted', $9
+         )`,
+        [
+          assertionId,
+          entityId,
+          sourceId,
+          predicate,
+          valueType,
+          valueType === "text" ? value : null,
+          valueType === "boolean" ? value : null,
+          `osm:node/${osmId}@7#${predicate}`,
+          `osm:node:${osmId}:${predicate}`
+        ]
+      );
+      await client.query(
+        `INSERT INTO outdoor_research_projection_assertions
+           (projection_run_id, assertion_id, entity_id, predicate,
+            record_provenance)
+         VALUES (
+           $1, $2, $3, $4,
+           jsonb_build_object('osm_version', 7, 'region_id', $5::text)
+         )`,
+        [
+          projectionRunId,
+          assertionId,
+          entityId,
+          predicate,
+          operationalRegionId
+        ]
+      );
+    }
+    await client.query("COMMIT");
+    return entityId;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function projectCoordinate(pool, origin, distanceMeters, bearingRadians) {
+  const result = await pool.query(
+    `SELECT ST_Y(projected::geometry)::double precision AS latitude,
+            ST_X(projected::geometry)::double precision AS longitude
+       FROM (
+         SELECT ST_Project(
+           ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+           $3::double precision,
+           $4::double precision
+         ) AS projected
+       ) value`,
+    [origin.longitude, origin.latitude, distanceMeters, bearingRadians]
+  );
+  return result.rows[0];
 }
 
 function intent(region, overrides = {}) {
