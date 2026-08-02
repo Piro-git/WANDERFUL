@@ -78,10 +78,20 @@ export class OutdoorAdventureStagingProofBackendCaptureError
 export function outdoorAdventureStagingProofCanonicalIntentDigestV1(
   input
 ) {
-  const intent = canonicalIntentForInput(input, {
+  const intent = outdoorAdventureStagingProofCanonicalIntentV1(input, {
     includeReviewedRegionId: false
   });
   return sha256(stableSerialize(intent));
+}
+
+export function outdoorAdventureStagingProofCanonicalIntentV1(
+  input,
+  { includeReviewedRegionId = false } = {}
+) {
+  if (typeof includeReviewedRegionId !== "boolean") {
+    invalid("canonical_input_not_representable");
+  }
+  return canonicalIntentForInput(input, { includeReviewedRegionId });
 }
 
 export async function withControlledOutdoorAdventureProofServerV1({
