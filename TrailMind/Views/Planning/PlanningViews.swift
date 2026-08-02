@@ -170,6 +170,12 @@ struct PlanningClarificationView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
+                    if let researchClarificationPresentation {
+                        ResearchClarificationContextView(
+                            presentation: researchClarificationPresentation
+                        )
+                    }
+
                     answerContent
 
                     PrimaryButton(title: "Continue", symbol: "arrow.right") {
@@ -295,6 +301,14 @@ struct PlanningClarificationView: View {
         case .routeType:
             routeTypeSelection != nil
         }
+    }
+
+    private var researchClarificationPresentation:
+        ResearchClarificationPresentation?
+    {
+        ResearchPresentationProjector.clarificationPresentation(
+            context: clarification.researchClarificationContext
+        )
     }
 
     private func submitAnswer() {
@@ -522,6 +536,12 @@ struct PlanningRecoveryView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .trailCard()
 
+                if let researchClarificationPresentation {
+                    ResearchClarificationContextView(
+                        presentation: researchClarificationPresentation
+                    )
+                }
+
                 VStack(spacing: 12) {
                     PrimaryButton(title: "Try again", symbol: "arrow.clockwise", action: onRetry)
                         .accessibilityIdentifier(PlanningAccessibilityID.retry)
@@ -538,6 +558,14 @@ struct PlanningRecoveryView: View {
         .navigationTitle("Route planning")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private var researchClarificationPresentation:
+        ResearchClarificationPresentation?
+    {
+        ResearchPresentationProjector.clarificationPresentation(
+            context: recovery.researchClarificationContext
+        )
+    }
 }
 
 struct RouteSuggestionsView: View {
@@ -546,6 +574,28 @@ struct RouteSuggestionsView: View {
     let suggestions: [RouteSuggestion]
     let notice: String?
     let onStartOver: () -> Void
+    private let researchPresentations: [
+        UUID: ResearchRoutePresentation
+    ]
+
+    init(
+        prompt: String,
+        suggestions: [RouteSuggestion],
+        notice: String?,
+        researchContext:
+            PlannerViewModel.ResearchPlanningContext? = nil,
+        onStartOver: @escaping () -> Void
+    ) {
+        self.prompt = prompt
+        self.suggestions = suggestions
+        self.notice = notice
+        self.onStartOver = onStartOver
+        researchPresentations =
+            ResearchPresentationProjector.routePresentations(
+                suggestions: suggestions,
+                context: researchContext
+            )
+    }
 
     var body: some View {
         ScrollView {
@@ -571,8 +621,13 @@ struct RouteSuggestionsView: View {
                 }
 
                 ForEach(suggestions) { suggestion in
+                    let researchPresentation =
+                        researchPresentations[suggestion.id]
                     NavigationLink {
-                        RouteDetailView(route: suggestion.route)
+                        RouteDetailView(
+                            route: suggestion.route,
+                            researchPresentation: researchPresentation
+                        )
                     } label: {
                         RouteCard(
                             route: suggestion.route,
@@ -581,7 +636,8 @@ struct RouteSuggestionsView: View {
                                 for: suggestion.route,
                                 debugMetadata: suggestion.debugMetadata,
                                 maximumCount: 3
-                            )
+                            ),
+                            researchPresentation: researchPresentation
                         )
                     }
                     .buttonStyle(.plain)

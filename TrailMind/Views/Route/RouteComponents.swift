@@ -6,16 +6,19 @@ struct RouteCard: View {
     let route: TrailRoute
     let comparisonLabel: String?
     let qualityExplanations: [RouteQualityExplanation]
+    let researchPresentation: ResearchRoutePresentation?
     private let qualityPresentation: RouteQualityExplanationSet
 
     init(
         route: TrailRoute,
         comparisonLabel: String? = nil,
-        qualityExplanations: [RouteQualityExplanation] = []
+        qualityExplanations: [RouteQualityExplanation] = [],
+        researchPresentation: ResearchRoutePresentation? = nil
     ) {
         self.route = route
         self.comparisonLabel = comparisonLabel
         self.qualityExplanations = qualityExplanations
+        self.researchPresentation = researchPresentation
         qualityPresentation = HikingRouteQualityEngine().presentation(for: route)
     }
 
@@ -78,6 +81,12 @@ struct RouteCard: View {
                     IntentSourceDebugBadge(metadata: intentDebugMetadata)
                 }
                 #endif
+            }
+
+            if let researchPresentation {
+                ResearchRouteCardSummaryView(
+                    presentation: researchPresentation
+                )
             }
 
             HStack(spacing: 0) {

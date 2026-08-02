@@ -43,6 +43,7 @@ struct PlanFlowView: View {
                         prompt: success.originalPrompt,
                         suggestions: success.suggestions,
                         notice: success.notice,
+                        researchContext: success.researchContext,
                         onStartOver: planner.reset
                     )
                     .transition(.opacity.combined(with: .move(edge: .trailing)))

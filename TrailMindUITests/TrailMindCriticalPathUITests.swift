@@ -6,6 +6,10 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         case core
         case failOnce = "fail-once"
         case noRoutes = "no-routes"
+        case researchComplete = "research-complete"
+        case researchPartial = "research-partial"
+        case researchFallback = "research-fallback"
+        case researchClarification = "research-clarification"
     }
 
     private let pointToPointRouteID = "11111111-1111-4111-8111-111111111111"
@@ -71,6 +75,152 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Ilsenburg North Loop"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Ilsenburg South Loop"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Ilsenburg Ridge Loop"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testResearchCompleteShowsCardFitHighlightsAndEvidenceSummary() {
+        let app = launch(.researchComplete)
+
+        openLoopResearchRoute(in: app)
+
+        XCTAssertTrue(
+            element("research.detail.evidenceSummary", in: app)
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            element("research.detail.fitReasons", in: app).exists
+        )
+        XCTAssertTrue(
+            element("research.detail.highlights", in: app).exists
+        )
+        let routeShapeReason = element(
+            "research.detail.fitReasons.routeShape",
+            in: app
+        )
+        XCTAssertTrue(routeShapeReason.exists)
+        XCTAssertTrue(
+            routeShapeReason.label.contains(
+                "The verified route returns to its start point."
+            )
+        )
+        let firstHighlight = element(
+            "research.detail.highlight.0",
+            in: app
+        )
+        XCTAssertTrue(firstHighlight.exists)
+        XCTAssertTrue(
+            firstHighlight.label.contains(
+                "Researched place on this routed path"
+            )
+        )
+        XCTAssertFalse(
+            element("research.detail.limitations", in: app).exists
+        )
+    }
+
+    @MainActor
+    func testResearchPartialShowsCalmBoundedLimitations() {
+        let app = launch(.researchPartial)
+
+        openLoopResearchRoute(in: app)
+
+        let limitations = app.staticTexts["What to check"]
+        XCTAssertTrue(
+            waitUntilHittable(limitations, in: app, maximumSwipes: 14)
+        )
+        XCTAssertTrue(
+            app.staticTexts[
+                "Official access information wasn’t available."
+            ].exists
+        )
+        let showAll = app.buttons[
+            "research.detail.limitations.showAll"
+        ]
+        XCTAssertTrue(waitUntilHittable(showAll, in: app, maximumSwipes: 14))
+        showAll.tap()
+        XCTAssertTrue(
+            app.staticTexts[
+                "Highlighted places are mapped, but current status wasn’t verified."
+            ].waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testResearchPartialSupportsAccessibilityDynamicType() {
+        let app = launch(
+            .researchPartial,
+            extraArguments: [
+                "-UIPreferredContentSizeCategoryName",
+                "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge"
+            ]
+        )
+
+        openLoopResearchRoute(in: app)
+
+        XCTAssertTrue(
+            element("research.detail.evidenceSummary", in: app)
+                .waitForExistence(timeout: 5)
+        )
+        let limitations = app.staticTexts["What to check"]
+        XCTAssertTrue(
+            waitUntilHittable(limitations, in: app, maximumSwipes: 20)
+        )
+        XCTAssertTrue(
+            app.staticTexts[
+                "Official access information wasn’t available."
+            ].exists
+        )
+    }
+
+    @MainActor
+    func testResearchFallbackKeepsStandardRouteUsefulWithoutResearchBadge() {
+        let app = launch(.researchFallback)
+
+        tapHomeExample(
+            "home.example.loop",
+            in: app,
+            until: element("planning.suggestions", in: app)
+        )
+        XCTAssertTrue(
+            app.staticTexts[
+                "A standard routed option was built because research-guided matching was unavailable."
+            ].waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(
+            element("research.card.summary", in: app).exists
+        )
+
+        openRoute(
+            titled: "Ilsenburg North Loop",
+            in: app
+        )
+        XCTAssertTrue(
+            app.staticTexts["Standard routed option"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(
+            element("research.detail.highlights", in: app).exists
+        )
+    }
+
+    @MainActor
+    func testResearchClarificationExplainsWhySpecificLocationMatters() {
+        let app = launch(.researchClarification)
+
+        tapHomeExample(
+            "home.example.loop",
+            in: app,
+            until: element("planning.clarification.question", in: app)
+        )
+        XCTAssertTrue(
+            element("research.clarification", in: app)
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts[
+                "A precise starting place helps TrailMind research places that can connect to a real routed option."
+            ].exists
+        )
     }
 
     @MainActor
@@ -187,13 +337,16 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(_ scenario: Scenario) -> XCUIApplication {
+    private func launch(
+        _ scenario: Scenario,
+        extraArguments: [String] = []
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             "--trailmind-ui-testing",
             "--trailmind-ui-scenario",
             scenario.rawValue
-        ]
+        ] + extraArguments
         app.launch()
         return app
     }
@@ -242,6 +395,41 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(
             tap(routeLink, until: element("route.detail", in: app), timeout: 8),
             "The suggestion card should open its route detail."
+        )
+    }
+
+    @MainActor
+    private func openLoopResearchRoute(in app: XCUIApplication) {
+        tapHomeExample(
+            "home.example.loop",
+            in: app,
+            until: element("planning.suggestions", in: app)
+        )
+        XCTAssertTrue(
+            element("research.card.summary", in: app)
+                .waitForExistence(timeout: 5)
+        )
+        openRoute(titled: "Ilsenburg North Loop", in: app)
+    }
+
+    @MainActor
+    private func openRoute(
+        titled title: String,
+        in app: XCUIApplication
+    ) {
+        let routeTitle = app.staticTexts[title]
+        XCTAssertTrue(routeTitle.waitForExistence(timeout: 5))
+        let routeLink = app.buttons
+            .containing(.staticText, identifier: title)
+            .firstMatch
+        XCTAssertTrue(routeLink.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            tap(
+                routeLink,
+                until: element("route.detail", in: app),
+                timeout: 8
+            ),
+            "The research route card should open its route detail."
         )
     }
 

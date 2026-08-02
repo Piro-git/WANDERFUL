@@ -13,6 +13,10 @@ struct UITestLaunchComposition {
         case core
         case failOnce = "fail-once"
         case noRoutes = "no-routes"
+        case researchComplete = "research-complete"
+        case researchPartial = "research-partial"
+        case researchFallback = "research-fallback"
+        case researchClarification = "research-clarification"
     }
 
     let startDestination: StartDestination
@@ -42,12 +46,34 @@ struct UITestLaunchComposition {
         }
 
         let routingBehavior: UITestRoutingCoordinator.Behavior = switch scenario {
-        case .onboarding, .core:
+        case .onboarding, .core, .researchComplete, .researchPartial,
+             .researchFallback, .researchClarification:
             .success
         case .failOnce:
             .failOnce
         case .noRoutes:
             .noRoutes
+        }
+        let researchBehavior:
+            UITestResearchPlanningCoordinator.Behavior = switch scenario
+        {
+        case .researchComplete:
+            .complete
+        case .researchPartial:
+            .partial
+        case .researchFallback:
+            .fallback
+        case .researchClarification:
+            .clarification
+        case .onboarding, .core, .failOnce, .noRoutes:
+            .complete
+        }
+        let researchEnabled: Bool = switch scenario {
+        case .researchComplete, .researchPartial, .researchFallback,
+             .researchClarification:
+            true
+        case .onboarding, .core, .failOnce, .noRoutes:
+            false
         }
         let savedRoutes = SavedRoutesModel(store: InMemorySavedRouteStore())
         let appModel = AppModel(savedRoutes: savedRoutes)
@@ -55,6 +81,11 @@ struct UITestLaunchComposition {
             intentParsingProvider: UITestIntentParsingProvider(),
             geocodingService: UITestGeocodingService(),
             routingCoordinator: UITestRoutingCoordinator(behavior: routingBehavior),
+            researchPlanningCoordinator:
+                UITestResearchPlanningCoordinator(
+                    behavior: researchBehavior
+                ),
+            researchFeatureAvailable: { researchEnabled },
             operationTimeouts: .init(parserSeconds: 2, geocodingSeconds: 2, routingSeconds: 2)
         )
 
@@ -218,7 +249,274 @@ private final class UITestRoutingCoordinator: RoutingCoordinating {
     }
 }
 
-@MainActor
+private struct UITestResearchPlanningCoordinator:
+    OutdoorAdventurePlanningCoordinatingV1,
+    Sendable
+{
+    enum Behavior: Equatable, Sendable {
+        case complete
+        case partial
+        case fallback
+        case clarification
+    }
+
+    let behavior: Behavior
+
+    func plan(
+        intent: AdventureResearchIntentV1
+    ) async throws -> OutdoorAdventurePlanningCoordinatorResultV1 {
+        switch behavior {
+        case .fallback:
+            throw OutdoorAdventurePlanningCoordinatorFailureV1.unavailable
+        case .clarification:
+            return try clarificationResult(intent: intent)
+        case .complete, .partial:
+            return routedResult(intent: intent)
+        }
+    }
+
+    private func routedResult(
+        intent: AdventureResearchIntentV1
+    ) -> OutdoorAdventurePlanningCoordinatorResultV1 {
+        let request = planningRequest(intent: intent)
+        let routes = UITestRouteFactory.routes(request: request)
+        let suggestions = routes.enumerated().map { index, route in
+            RouteSuggestion(
+                id: UITestRouteFactory.suggestionIDs[index],
+                route: route.withPlanningMetadata(request.metadata),
+                explanation: "Deterministic research-guided fixture"
+            )
+        }
+        let partial = behavior == .partial
+        let selectedWaypoints = researchWaypoints(partial: partial)
+        let reachedIDs = selectedWaypoints.map(\.entityID)
+        let knownLimitations: [ResearchKnownLimitationV1] = partial
+            ? [
+                .accessUnverified,
+                .currentConditionsUnavailable,
+                .mappedPresenceOnly,
+                .officialStatusUnverified
+            ]
+            : []
+        let provenance = ResearchRouteProvenanceV1(
+            proposalID: "fixture-proposal",
+            lineageID: "fixture-lineage",
+            strategy: "must_have_first",
+            activity: request.activityType,
+            routeType: request.routeType,
+            selectedWaypoints: selectedWaypoints,
+            mappedNetworkCandidates: [],
+            evidenceClaimIDs:
+                selectedWaypoints.flatMap(\.evidenceClaimIDs),
+            requiredVerification: partial
+                ? [.publicAccessRequired, .currentConditionsRequired]
+                : [],
+            knownLimitations: knownLimitations,
+            sourceCandidatePlanPolicyVersion:
+                "research-guided-route-candidates-v1"
+        )
+        let alternatives = suggestions.enumerated().map {
+            index, suggestion in
+            ResearchGuidedRouteAlternativeV1(
+                attemptID: "fixture-attempt-\(index)",
+                routeResultID: "fixture-route-\(index)",
+                suggestion: suggestion,
+                researchProvenance: provenance,
+                waypointVisits: selectedWaypoints.enumerated().map {
+                    waypointIndex, waypoint in
+                    researchVisit(
+                        waypoint: waypoint,
+                        index: waypointIndex,
+                        reached: reachedIDs.contains(waypoint.entityID)
+                    )
+                }
+            )
+        }
+        let selectionState: ResearchGuidedRoutedEnvelopeStateV1 =
+            partial ? .partial : .routed
+        let selection = ResearchGuidedRouteSelectionV1(
+            state: selectionState,
+            sourceEnvelopeState: selectionState,
+            alternatives: alternatives,
+            rejectionCounts: [:],
+            remainingLimitations: knownLimitations.map(\.rawValue)
+        )
+        let planningGaps = partial
+            ? [
+                OutdoorAdventurePlanningGapV1(
+                    code: .currentSourceUnavailable,
+                    affectedField: .researchPlan,
+                    affectedValue: nil,
+                    reason: .currentEvidenceNotAvailable,
+                    requiresClarification: false,
+                    requiresCapability: true
+                )
+            ]
+            : []
+        let state = OutdoorAdventurePlanningRoutedStateV1(
+            state: partial ? .partial : .routed,
+            normalizedIntent: intent,
+            planningGaps: planningGaps,
+            routeSelection: selection
+        )
+        return partial ? .partial(state) : .routed(state)
+    }
+
+    private func clarificationResult(
+        intent: AdventureResearchIntentV1
+    ) throws -> OutdoorAdventurePlanningCoordinatorResultV1 {
+        let question = AdventureResearchClarificationQuestionV1(
+            code: .locationRequired,
+            field: .geographicAnchor
+        )
+        let clarifiedIntent = try AdventureResearchIntentV1(
+            activity: intent.activity,
+            geographicAnchor: .unresolved(
+                requirementCode: .locationRequired
+            ),
+            routeType: intent.routeType,
+            distanceRangeKm: intent.distanceRangeKm,
+            durationRangeMinutes: intent.durationRangeMinutes,
+            maximumElevationGainMeters:
+                intent.maximumElevationGainMeters,
+            maximumTechnicalDifficulty:
+                intent.maximumTechnicalDifficulty,
+            mustHaveExperiences: intent.mustHaveExperiences,
+            preferredExperiences: intent.preferredExperiences,
+            avoidedExperiences: intent.avoidedExperiences,
+            requiredFacilities: intent.requiredFacilities,
+            groupContext: intent.groupContext,
+            dateOrSeason: intent.dateOrSeason,
+            overnightRequirements: intent.overnightRequirements,
+            transportRequirements: intent.transportRequirements,
+            unresolvedClarificationQuestions: [question]
+        )
+        return .clarificationRequired(
+            OutdoorAdventurePlanningNonRoutedStateV1(
+                state: .clarificationRequired,
+                normalizedIntent: clarifiedIntent,
+                planningGaps: [],
+                clarificationQuestions: [question]
+            )
+        )
+    }
+
+    private func planningRequest(
+        intent: AdventureResearchIntentV1
+    ) -> RoutePlanningRequest {
+        let activityType: ActivityType
+        switch intent.activity {
+        case .hiking:
+            activityType = .hiking
+        case .trailRunning:
+            activityType = .trailRunning
+        case .biking:
+            activityType = .biking
+        }
+        let startName: String
+        switch intent.geographicAnchor {
+        case let .resolved(name, _, _):
+            startName = name
+        case .unresolved:
+            startName = "Ilsenburg"
+        }
+        let desiredFeatures = intent.preferredExperiences.compactMap {
+            experience -> DesiredFeature? in
+            switch experience {
+            case .viewpoint:
+                .viewpoint
+            case .forest:
+                .forest
+            case .quietTrails:
+                .quiet
+            case .waterfall, .peak, .lake, .officialHikingRoute,
+                 .alpineHut, .wildernessHut, .landmark:
+                nil
+            }
+        }
+        return RoutePlanningRequest(
+            routeType: .loop,
+            startQuery: startName,
+            endQuery: nil,
+            activityType: activityType,
+            graphHopperProfile: activityType == .biking ? "bike" : "foot",
+            targetDistanceKm: intent.distanceRangeKm?.min,
+            targetDurationMinutes: intent.durationRangeMinutes?.min,
+            difficulty: intent.maximumTechnicalDifficulty == .hiking
+                ? .easy
+                : nil,
+            desiredFeatures: desiredFeatures
+        )
+    }
+
+    private func researchWaypoints(
+        partial: Bool
+    ) -> [ResearchSelectedWaypointV1] {
+        let limitations: [ResearchKnownLimitationV1] =
+            partial ? [.mappedPresenceOnly] : []
+        return [
+            ResearchSelectedWaypointV1(
+                entityID: UUID(
+                    uuidString:
+                        "11111111-1111-4111-8111-111111111111"
+                )!,
+                coordinate: Coordinate(
+                    latitude: 51.84,
+                    longitude: 10.69
+                ),
+                highlightCategory: .viewpoint,
+                role: .preferred,
+                evidenceClaimIDs: [
+                    UUID(
+                        uuidString:
+                            "66666666-6666-4666-8666-666666666661"
+                    )!
+                ],
+                selectionReasons: [.preferredExperience],
+                requiredVerification: [],
+                knownLimitations: limitations
+            ),
+            ResearchSelectedWaypointV1(
+                entityID: UUID(
+                    uuidString:
+                        "22222222-2222-4222-8222-222222222222"
+                )!,
+                coordinate: Coordinate(
+                    latitude: 51.83,
+                    longitude: 10.67
+                ),
+                highlightCategory: .waterfall,
+                role: .preferred,
+                evidenceClaimIDs: [
+                    UUID(
+                        uuidString:
+                            "66666666-6666-4666-8666-666666666662"
+                    )!
+                ],
+                selectionReasons: [.preferredExperience],
+                requiredVerification: [],
+                knownLimitations: limitations
+            )
+        ]
+    }
+
+    private func researchVisit(
+        waypoint: ResearchSelectedWaypointV1,
+        index: Int,
+        reached: Bool
+    ) -> ResearchWaypointVisitV1 {
+        ResearchWaypointVisitV1(
+            waypointIndex: index + 1,
+            role: .via,
+            entityID: waypoint.entityID,
+            requestedCoordinate: waypoint.coordinate,
+            snappedCoordinate: reached ? waypoint.coordinate : nil,
+            snapDistanceMeters: reached ? 0 : nil,
+            withinVisitTolerance: reached
+        )
+    }
+}
+
 private enum UITestRouteFactory {
     private struct RoadEvidenceProfile {
         let coverageRatio: Double

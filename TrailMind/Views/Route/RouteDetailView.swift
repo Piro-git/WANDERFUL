@@ -249,15 +249,18 @@ struct RouteDetailView: View {
     #endif
 
     let route: TrailRoute
+    let researchPresentation: ResearchRoutePresentation?
     private let gpxService: any GPXService
     private let presentation: RouteDetailPresentation
     private let qualityPresentation: RouteQualityExplanationSet
 
     init(
         route: TrailRoute,
+        researchPresentation: ResearchRoutePresentation? = nil,
         gpxService: any GPXService = DefaultGPXService()
     ) {
         self.route = route
+        self.researchPresentation = researchPresentation
         self.gpxService = gpxService
         presentation = RouteDetailPresentation(route: route)
         qualityPresentation = HikingRouteQualityEngine().presentation(for: route)
@@ -275,7 +278,10 @@ struct RouteDetailView: View {
                     header
                     verificationNotice
                     RouteStatsRow(route: route)
+                    researchEvidenceSummary
                     planningContext
+                    researchFit
+                    researchHighlights
                     routeEvidence
                     verifiedRouteCharacteristics
                     #if DEBUG
@@ -289,6 +295,7 @@ struct RouteDetailView: View {
                         dayBreakdown
                     }
 
+                    researchLimitations
                     safety
                     if presentation.allowsProductionActions {
                         export
@@ -387,7 +394,57 @@ struct RouteDetailView: View {
     private var routeEvidence: some View {
         let items = detailEvidenceItems
         if !items.isEmpty {
-            RouteQualityEvidenceSection(items: items)
+            RouteQualityEvidenceSection(
+                title: researchPresentation?.kind.isResearchGuided == true
+                    ? "Route evidence"
+                    : "Why this route",
+                subtitle: researchPresentation?.kind.isResearchGuided == true
+                    ? "Mapped route characteristics and known route-data limits."
+                    : "Request fit, mapped route evidence and known data limits.",
+                items: items
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var researchEvidenceSummary: some View {
+        if let researchPresentation {
+            RouteResearchEvidenceSummaryView(
+                summary: researchPresentation.evidenceSummary
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var researchFit: some View {
+        if let researchPresentation,
+           researchPresentation.kind.isResearchGuided
+        {
+            WhyThisRouteFitsView(
+                reasons: researchPresentation.fitReasons
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var researchHighlights: some View {
+        if let researchPresentation,
+           researchPresentation.kind.isResearchGuided
+        {
+            VerifiedResearchHighlightsView(
+                highlights: researchPresentation.highlights
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var researchLimitations: some View {
+        if let researchPresentation,
+           researchPresentation.kind.isResearchGuided
+        {
+            RouteResearchLimitationsView(
+                limitations: researchPresentation.limitations
+            )
         }
     }
 
@@ -961,13 +1018,15 @@ private struct GPXActivityView: UIViewControllerRepresentable {
 private struct RouteQualityEvidenceSection: View {
     @Environment(TrailTheme.self) private var theme
 
+    let title: String
+    let subtitle: String
     let items: [RouteQualityPresentationItem]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(
-                title: "Why this route",
-                subtitle: "Request fit, mapped route evidence and known data limits."
+                title: title,
+                subtitle: subtitle
             )
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
