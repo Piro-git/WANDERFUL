@@ -53,8 +53,8 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertEqual(AppTab.allCases, [.plan, .saved, .profile])
     }
 
-    func testOnboardingRetainsThreePagesWithoutUnsupportedClaims() {
-        XCTAssertEqual(OnboardingView.pages.count, 3)
+    func testOnboardingUsesAFocusedSevenStepFlowWithoutUnsupportedClaims() {
+        XCTAssertEqual(OnboardingView.pages.count, 7)
         let copy = OnboardingView.pages
             .flatMap { [$0.eyebrow, $0.title, $0.body] }
             .joined(separator: " ")
@@ -64,6 +64,13 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertFalse(copy.localizedCaseInsensitiveContains("exposure"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("planning aid"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("not live navigation"))
+        XCTAssertTrue(copy.localizedCaseInsensitiveContains("requested preferences"))
+    }
+
+    func testOnboardingDistanceChoicesAdaptToActivity() {
+        XCTAssertEqual(OnboardingView.distanceOptions(for: .hiking), [5, 10, 15, 20])
+        XCTAssertEqual(OnboardingView.distanceOptions(for: .trailRunning), [5, 8, 12, 18])
+        XCTAssertEqual(OnboardingView.distanceOptions(for: .biking), [15, 25, 40, 60])
     }
 
     func testUnverifiedAndLegacyRoutesDoNotExposeProductionActions() {

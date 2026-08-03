@@ -23,18 +23,34 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         let app = launch(.onboarding)
         let continueButton = app.buttons["onboarding.continue"]
 
-        XCTAssertTrue(app.staticTexts["Say what kind of day you need."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your next adventure, built around you."].waitForExistence(timeout: 5))
         XCTAssertTrue(continueButton.exists)
         XCTAssertTrue(
-            tap(continueButton, until: app.staticTexts["Compare mapped routes."]),
-            "Continue should advance to the route-comparison page."
+            tap(continueButton, until: app.staticTexts["How do you like to move?"]),
+            "The welcome action should advance to activity personalization."
         )
 
+        app.buttons["onboarding.activity.hiking"].tap()
+        continueButton.tap()
+        XCTAssertTrue(app.staticTexts["What feels like a good day out?"].waitForExistence(timeout: 5))
+
+        app.buttons["onboarding.distance.15"].tap()
+        continueButton.tap()
+        XCTAssertTrue(app.staticTexts["How much challenge do you enjoy?"].waitForExistence(timeout: 5))
+
+        app.buttons["onboarding.effort.moderate"].tap()
+        continueButton.tap()
+        XCTAssertTrue(app.staticTexts["What should your request prioritize?"].waitForExistence(timeout: 5))
+
+        app.buttons["onboarding.interest.views"].tap()
+        continueButton.tap()
         XCTAssertTrue(
-            tap(continueButton, until: app.staticTexts["Plan with current local information."]),
-            "Continue should advance to the planning-safety page."
+            app.staticTexts["Real routes. Clear limits."].waitForExistence(timeout: 5),
+            "Continue should advance to the planning-safety step."
         )
 
+        continueButton.tap()
+        XCTAssertTrue(app.staticTexts["Your route planner is ready."].waitForExistence(timeout: 5))
         XCTAssertTrue(waitForLabel("Start planning", on: continueButton))
         XCTAssertTrue(
             tap(continueButton, until: app.buttons["home.typeInstead"]),

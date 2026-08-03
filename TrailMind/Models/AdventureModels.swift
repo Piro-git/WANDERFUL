@@ -1,6 +1,6 @@
 import Foundation
 
-enum ActivityType: String, CaseIterable, Identifiable, Hashable, Sendable {
+enum ActivityType: String, CaseIterable, Codable, Identifiable, Hashable, Sendable {
     case hiking = "Hiking"
     case biking = "Biking"
     case trailRunning = "Trail running"
@@ -16,7 +16,7 @@ enum ActivityType: String, CaseIterable, Identifiable, Hashable, Sendable {
     }
 }
 
-enum RouteDifficulty: String, CaseIterable, Hashable, Sendable {
+enum RouteDifficulty: String, CaseIterable, Codable, Hashable, Sendable {
     case easy = "Easy"
     case moderate = "Moderate"
     case challenging = "Challenging"
@@ -1962,7 +1962,7 @@ struct RouteSuggestion: Identifiable, Hashable {
     }
 }
 
-struct UserPreferences: Hashable {
+struct UserPreferences: Codable, Hashable, Sendable {
     var preferredActivity: ActivityType = .hiking
     var fitnessLevel: RouteDifficulty = .moderate
     var preferredDistanceKilometers: Double = 15

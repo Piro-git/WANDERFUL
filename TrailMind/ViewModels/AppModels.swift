@@ -5,10 +5,51 @@ import Observation
 @Observable
 final class AppModel {
     let savedRoutes: SavedRoutesModel
-    var preferences = UserPreferences()
+    private let preferencesStore: UserPreferencesStore?
+    var preferences: UserPreferences
 
-    init(savedRoutes: SavedRoutesModel = SavedRoutesModel()) {
+    init(
+        savedRoutes: SavedRoutesModel = SavedRoutesModel(),
+        preferences: UserPreferences = UserPreferences(),
+        preferencesStore: UserPreferencesStore? = nil
+    ) {
         self.savedRoutes = savedRoutes
+        self.preferences = preferences
+        self.preferencesStore = preferencesStore
+    }
+
+    func updatePreferences(_ preferences: UserPreferences) {
+        self.preferences = preferences
+        preferencesStore?.save(preferences)
+    }
+}
+
+struct UserPreferencesStore {
+    static let defaultKey = "trailmind.user-preferences.v1"
+
+    private let defaults: UserDefaults
+    private let key: String
+
+    init(
+        defaults: UserDefaults = .standard,
+        key: String = UserPreferencesStore.defaultKey
+    ) {
+        self.defaults = defaults
+        self.key = key
+    }
+
+    func load() -> UserPreferences {
+        guard let data = defaults.data(forKey: key),
+              let preferences = try? JSONDecoder().decode(UserPreferences.self, from: data)
+        else {
+            return UserPreferences()
+        }
+        return preferences
+    }
+
+    func save(_ preferences: UserPreferences) {
+        guard let data = try? JSONEncoder().encode(preferences) else { return }
+        defaults.set(data, forKey: key)
     }
 }
 

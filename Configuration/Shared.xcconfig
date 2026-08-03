@@ -5,4 +5,6 @@ PRODUCTION_BACKEND_BASE_URL = https:/$()/backend-zeta-amber-69.vercel.app
 OUTDOOR_EVIDENCE_ENABLED = false
 // Research-guided orchestration is an iOS-only seam and remains opt-in.
 RESEARCH_GUIDED_PLANNING_ENABLED = false
+// Superwall uses a public SDK key, but keep environment-specific values local.
+SUPERWALL_API_KEY =
 #include? "Local.xcconfig"

@@ -101,6 +101,7 @@ struct HomeView: View {
     }
 
     @Environment(TrailTheme.self) private var theme
+    @Environment(AppModel.self) private var appModel
     let initialPrompt: String
     let automaticallyPresentsComposer: Bool
     let onPlan: (String) -> Void
@@ -144,7 +145,7 @@ struct HomeView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
-                            ForEach(Self.routeExamples) { example in
+                            ForEach(displayedRouteExamples) { example in
                                 PromptChip(
                                     title: example.title,
                                     symbol: example.symbol,
@@ -177,6 +178,38 @@ struct HomeView: View {
                 .presentationBackground(theme.warmWhite)
         }
         .onAppear(perform: presentComposerForEditingIfNeeded)
+    }
+
+    private var displayedRouteExamples: [HomeRouteExample] {
+        [personalizedRouteExample] + Self.routeExamples
+    }
+
+    private var personalizedRouteExample: HomeRouteExample {
+        let preferences = appModel.preferences
+        let distance = Int(preferences.preferredDistanceKilometers.rounded())
+        let requestedFeatures = preferences.interests
+            .sorted()
+            .prefix(2)
+            .map { $0.lowercased() }
+            .joined(separator: " and ")
+        let featureSuffix = requestedFeatures.isEmpty ? "" : " with \(requestedFeatures)"
+
+        let prompt: String
+        switch preferences.preferredActivity {
+        case .hiking:
+            prompt = "Plan a \(distance) km hiking loop from Ilsenburg\(featureSuffix)"
+        case .trailRunning:
+            prompt = "Plan a \(distance) km trail run loop from Ilsenburg\(featureSuffix)"
+        case .biking:
+            prompt = "Plan a \(distance) km bike loop from Lüneburg\(featureSuffix)"
+        }
+
+        return HomeRouteExample(
+            id: "personalized",
+            title: "Your \(distance) km \(preferences.preferredActivity.rawValue.lowercased())",
+            prompt: prompt,
+            symbol: preferences.preferredActivity.symbol
+        )
     }
 
     private var hero: some View {

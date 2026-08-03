@@ -6,6 +6,7 @@ struct TrailMindApp: App {
     @State private var theme = TrailTheme()
     @State private var appModel: AppModel
     @State private var sessionStartup = TrailMindSessionStartupState()
+    private let superwallOnboardingClient: SuperwallOnboardingClient
     #if DEBUG
     private let stagingProofComposition:
         StagingProofLaunchComposition?
@@ -17,6 +18,7 @@ struct TrailMindApp: App {
     private let gpxService = DefaultGPXService()
 
     init() {
+        superwallOnboardingClient = SuperwallOnboardingClient()
         #if DEBUG
         let stagingProofComposition =
             StagingProofLaunchComposition.resolve()
@@ -28,18 +30,26 @@ struct TrailMindApp: App {
             initialValue:
                 stagingProofComposition?.appModel ??
                 uiTestComposition?.appModel ??
-                AppModel()
+                Self.makeProductionAppModel()
         )
         #else
         _appModel = State(
             initialValue:
                 stagingProofComposition?.appModel ??
-                AppModel()
+                Self.makeProductionAppModel()
         )
         #endif
         #else
-        _appModel = State(initialValue: AppModel())
+        _appModel = State(initialValue: Self.makeProductionAppModel())
         #endif
+    }
+
+    private static func makeProductionAppModel() -> AppModel {
+        let preferencesStore = UserPreferencesStore()
+        return AppModel(
+            preferences: preferencesStore.load(),
+            preferencesStore: preferencesStore
+        )
     }
 
     var body: some Scene {
@@ -105,7 +115,10 @@ struct TrailMindApp: App {
         if hasCompletedOnboarding {
             AppShellView()
         } else {
-            OnboardingView(isComplete: $hasCompletedOnboarding)
+            SuperwallOnboardingHost(
+                isComplete: $hasCompletedOnboarding,
+                client: superwallOnboardingClient
+            )
         }
     }
 }
