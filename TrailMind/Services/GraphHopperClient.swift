@@ -147,7 +147,7 @@ enum GraphHopperError: LocalizedError, Sendable {
         case .invalidEndpoint:
             "The GraphHopper endpoint could not be created."
         case .invalidResponse:
-            "GraphHopper returned a response TrailMind couldn’t validate."
+            "GraphHopper returned a response Wanderful couldn’t validate."
         case .noRouteFound:
             "GraphHopper couldn’t find a walkable route between these points."
         case let .api(statusCode, message, hints):
@@ -915,7 +915,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             throw CancellationError()
         } catch RouteTransportValidationError.responseTooLarge {
             throw GraphHopperError.decoding(
-                message: "The route response exceeded TrailMind’s safety limit."
+                message: "The route response exceeded Wanderful’s safety limit."
             )
         } catch let error as GraphHopperError {
             throw error
@@ -976,7 +976,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             throw CancellationError()
         } catch RouteTransportValidationError.responseTooLarge {
             throw GraphHopperError.decoding(
-                message: "The route response exceeded TrailMind’s safety limit."
+                message: "The route response exceeded Wanderful’s safety limit."
             )
         } catch let error as GraphHopperError {
             throw error
@@ -1004,7 +1004,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
     ) throws -> GraphHopperRouteResponse {
         guard data.count <= limits.maximumSuccessBodyBytes else {
             throw GraphHopperError.decoding(
-                message: "The route response exceeded TrailMind’s safety limit."
+                message: "The route response exceeded Wanderful’s safety limit."
             )
         }
 
@@ -1021,7 +1021,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             case .direct:
                 "GraphHopper returned an unexpected response."
             case .backend:
-                "TrailMind’s routing service returned an unexpected response."
+                "Wanderful’s routing service returned an unexpected response."
             }
             throw GraphHopperError.decoding(message: message)
         }

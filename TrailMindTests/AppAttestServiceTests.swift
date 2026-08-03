@@ -15,7 +15,7 @@ final class AppAttestServiceTests: XCTestCase {
             XCTAssertEqual(error as? AppAttestServiceError, .unsupported)
             XCTAssertEqual(
                 error.localizedDescription,
-                "TrailMind couldn’t verify this app installation. Check your connection and try again."
+                "Wanderful couldn’t verify this app installation. Check your connection and try again."
             )
         }
     }

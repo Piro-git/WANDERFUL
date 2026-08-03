@@ -18,7 +18,7 @@ struct ProfilePreferencesView: View {
                     }
                 } header: {
                     sectionHeader(
-                        "TrailMind today",
+                        "Wanderful today",
                         accessibilityIdentifier: TrailMindAboutAccessibilityID.currentCapabilitiesSection
                     )
                 }
@@ -86,7 +86,7 @@ struct ProfilePreferencesView: View {
             .frame(width: 62, height: 62)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("TrailMind")
+                Text("Wanderful")
                     .font(.trailSection)
                 Text("A focused planner for real outdoor routes.")
                     .font(.subheadline)
@@ -95,7 +95,7 @@ struct ProfilePreferencesView: View {
         }
         .padding(.vertical, 14)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("TrailMind. A focused planner for real outdoor routes.")
+        .accessibilityLabel("Wanderful. A focused planner for real outdoor routes.")
         .accessibilityIdentifier(TrailMindAboutAccessibilityID.header)
     }
 

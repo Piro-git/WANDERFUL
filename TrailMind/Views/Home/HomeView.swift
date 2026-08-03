@@ -217,7 +217,7 @@ struct HomeView: View {
             HStack {
                 HStack(spacing: 8) {
                     Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
-                    Text("TrailMind")
+                    Text("Wanderful")
                         .fontWeight(.bold)
                 }
                 .font(.subheadline)
@@ -231,7 +231,7 @@ struct HomeView: View {
                 .foregroundStyle(.white)
                 .tracking(-1.1)
 
-            Text("Describe a route. TrailMind calculates it on mapped paths.")
+            Text("Describe a route. Wanderful calculates it on mapped paths.")
                 .font(.body)
                 .foregroundStyle(.white.opacity(0.68))
                 .padding(.top, 12)
@@ -602,9 +602,9 @@ struct PromptComposerView: View {
         guard case let .permissionDenied(reason) = voiceModel.state else { return "" }
         return switch reason {
         case .microphone:
-            "TrailMind needs microphone access to turn your route request into text."
+            "Wanderful needs microphone access to turn your route request into text."
         case .speechRecognition:
-            "TrailMind needs speech recognition access to transcribe your route request."
+            "Wanderful needs speech recognition access to transcribe your route request."
         case .restricted:
             "Speech recognition is restricted on this device."
         }

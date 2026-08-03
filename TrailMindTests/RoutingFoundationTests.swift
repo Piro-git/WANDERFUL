@@ -274,7 +274,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertEqual(
             result.notice,
-            "GraphHopper could not build a direct round trip, so TrailMind tried alternate loop shapes from the same start."
+            "GraphHopper could not build a direct round trip, so Wanderful tried alternate loop shapes from the same start."
         )
     }
 
@@ -306,7 +306,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertEqual(
             result.notice,
-            "TrailMind found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct real loop options from the same start for comparison."
         )
     }
 
@@ -335,7 +335,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertEqual(
             result.notice,
-            "TrailMind found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct real loop options from the same start for comparison."
         )
     }
 
@@ -1502,7 +1502,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertNotNil(mismatch)
         XCTAssertEqual(
             mismatch?.detail,
-            "Requested Easy. Measured 20 km and 900 m climb produce TrailMind’s Challenging estimate."
+            "Requested Easy. Measured 20 km and 900 m climb produce Wanderful’s Challenging estimate."
         )
     }
 

@@ -137,7 +137,7 @@ struct GPXExportFlow: Equatable {
             ? GPXExportError.userMessage(for: GPXExportError.shareFailed)
             : nil
         let cleanupFailureMessage = outcome == .failed
-            ? "TrailMind could not share the GPX file or remove its temporary copy. Retry cleanup before exporting again."
+            ? "Wanderful could not share the GPX file or remove its temporary copy. Retry cleanup before exporting again."
             : GPXExportError.userMessage(for: GPXExportError.cleanupFailed)
         let context = GPXCleanupContext(
             export: export,
@@ -629,7 +629,7 @@ struct RouteDetailView: View {
                     HStack(alignment: .top, spacing: 9) {
                         Image(systemName: "info.circle.fill")
                             .foregroundStyle(theme.moss)
-                        Text("TrailMind found one distinct loop for this start and distance. A nearby trailhead or different distance may yield alternatives.")
+                        Text("Wanderful found one distinct loop for this start and distance. A nearby trailhead or different distance may yield alternatives.")
                             .font(.caption)
                             .foregroundStyle(theme.graphite)
                             .fixedSize(horizontal: false, vertical: true)
@@ -848,7 +848,7 @@ struct RouteDetailView: View {
         let context = GPXCleanupContext(
             export: export,
             completionErrorMessage: nil,
-            cleanupFailureMessage: "TrailMind could not remove the cancelled temporary GPX file. Retry cleanup before exporting again."
+            cleanupFailureMessage: "Wanderful could not remove the cancelled temporary GPX file. Retry cleanup before exporting again."
         )
         exportFlow.requireCleanup(context)
         await retryPendingCleanup()

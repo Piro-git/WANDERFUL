@@ -234,7 +234,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         )
         XCTAssertTrue(
             app.staticTexts[
-                "A precise starting place helps TrailMind research places that can connect to a real routed option."
+                "A precise starting place helps Wanderful research places that can connect to a real routed option."
             ].exists
         )
     }

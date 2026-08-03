@@ -216,8 +216,8 @@ enum ResearchPresentationProjector {
     return ResearchClarificationPresentation(
       title: "Research needs one more detail",
       rationale: hasLocationQuestion
-        ? "A precise starting place helps TrailMind research places that can connect to a real routed option."
-        : "This detail keeps requested preferences separate from information TrailMind can actually verify.",
+        ? "A precise starting place helps Wanderful research places that can connect to a real routed option."
+        : "This detail keeps requested preferences separate from information Wanderful can actually verify.",
       questions: Array(
         questions.prefix(
           ResearchClarificationPresentation.maximumQuestionCount
@@ -1116,7 +1116,7 @@ extension ResearchPresentationProjector {
   ) -> String? {
     switch question.code {
     case .locationRequired:
-      "Which specific town, valley, landmark or trailhead should TrailMind use?"
+      "Which specific town, valley, landmark or trailhead should Wanderful use?"
     case .startRequired:
       "Where should the route start?"
     case .destinationRequired:
@@ -1132,7 +1132,7 @@ extension ResearchPresentationProjector {
     case .transportRequirementRequired:
       "How do you plan to reach the route?"
     case .difficultyClarificationRequired:
-      "What level of technical trail difficulty should TrailMind plan for?"
+      "What level of technical trail difficulty should Wanderful plan for?"
     }
   }
 

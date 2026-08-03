@@ -23,15 +23,15 @@ enum OutdoorAdventurePlanningCoordinatorFailureV1:
         case .unavailable:
             "Outdoor planning is currently unavailable."
         case .authorizationFailed:
-            "TrailMind couldn’t authorize outdoor planning."
+            "Wanderful couldn’t authorize outdoor planning."
         case .rateLimited:
             "Outdoor planning is temporarily busy. Please try again."
         case .timedOut:
             "Outdoor planning took too long. Please try again."
         case .rejected:
-            "TrailMind couldn’t use this planning request."
+            "Wanderful couldn’t use this planning request."
         case .invalidResult:
-            "TrailMind couldn’t verify the planning result."
+            "Wanderful couldn’t verify the planning result."
         }
     }
 

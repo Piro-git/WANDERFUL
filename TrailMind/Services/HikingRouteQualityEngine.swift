@@ -884,7 +884,7 @@ struct HikingRouteQualityEngine {
                 role: .limitation,
                 code: .roadClassEvidenceUnavailable,
                 title: "Road-class evidence unavailable",
-                detail: "TrailMind cannot confirm low major-road exposure without current road-class data.",
+                detail: "Wanderful cannot confirm low major-road exposure without current road-class data.",
                 symbol: "questionmark.circle",
                 voiceOverPrefix: "Data limitation"
             ))
@@ -895,7 +895,7 @@ struct HikingRouteQualityEngine {
                 role: .limitation,
                 code: .requestedPreferencesUnverified,
                 title: "Requested preferences are not yet verified",
-                detail: "Requested: \(labels). TrailMind does not yet have route-corridor evidence for these preferences.",
+                detail: "Requested: \(labels). Wanderful does not yet have route-corridor evidence for these preferences.",
                 symbol: "checklist.unchecked",
                 voiceOverPrefix: "Evidence limitation"
             ))

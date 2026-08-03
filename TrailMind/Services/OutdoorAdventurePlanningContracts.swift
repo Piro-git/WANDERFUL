@@ -656,15 +656,15 @@ enum OutdoorAdventurePlanningClientFailure: LocalizedError, Equatable, Sendable 
     var errorDescription: String? {
         switch self {
         case .invalidRequest, .requestTooLarge, .rejected:
-            "TrailMind couldn’t use this planning request."
+            "Wanderful couldn’t use this planning request."
         case .authorizationFailed:
-            "TrailMind couldn’t authorize outdoor planning."
+            "Wanderful couldn’t authorize outdoor planning."
         case .rateLimited:
             "Outdoor planning is temporarily busy. Please try again."
         case .timedOut:
             "Outdoor planning took too long. Please try again."
         case .invalidResponse, .responseTooLarge:
-            "TrailMind couldn’t verify the planning result."
+            "Wanderful couldn’t verify the planning result."
         case .unavailable:
             "Outdoor planning is currently unavailable."
         }

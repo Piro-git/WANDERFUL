@@ -197,7 +197,7 @@ struct PlanningClarificationView: View {
                         .accessibilityIdentifier(PlanningAccessibilityID.cancel)
                 }
 
-                Text("TrailMind will only add this answer to the missing part of your request.")
+                Text("Wanderful will only add this answer to the missing part of your request.")
                     .font(.caption)
                     .foregroundStyle(theme.secondaryText)
                     .multilineTextAlignment(.center)
@@ -267,7 +267,7 @@ struct PlanningClarificationView: View {
                             }
                         }
                         .accessibilityLabel("Specific town, valley or trailhead")
-                        .accessibilityHint("Enter a precise place TrailMind can safely use to calculate the route.")
+                        .accessibilityHint("Enter a precise place Wanderful can use to calculate the route.")
                         .accessibilityIdentifier(PlanningAccessibilityID.clarificationAnswer)
                 }
             }

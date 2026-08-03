@@ -121,7 +121,7 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
             throw CancellationError()
         } catch RouteTransportValidationError.responseTooLarge {
             throw GraphHopperError.decoding(
-                message: "The route response exceeded TrailMind’s safety limit."
+                message: "The route response exceeded Wanderful’s safety limit."
             )
         } catch let error as BackendRouteGatewayError {
             throw error
@@ -134,9 +134,9 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
             if error.code == .timedOut {
                 throw GraphHopperError.network(message: "The route calculation timed out.")
             }
-            throw GraphHopperError.network(message: "TrailMind’s routing service could not be reached.")
+            throw GraphHopperError.network(message: "Wanderful’s routing service could not be reached.")
         } catch {
-            throw GraphHopperError.network(message: "TrailMind’s routing service could not be reached.")
+            throw GraphHopperError.network(message: "Wanderful’s routing service could not be reached.")
         }
     }
 
@@ -168,7 +168,7 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
         default:
             return GraphHopperError.api(
                 statusCode: statusCode,
-                message: "TrailMind’s routing service rejected the request.",
+                message: "Wanderful’s routing service rejected the request.",
                 hints: []
             )
         }

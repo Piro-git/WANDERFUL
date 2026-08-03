@@ -519,7 +519,7 @@ enum LocationResolutionPolicy {
         return LocationClarification(
             query: context.originalQuery,
             question: question,
-            supportingText: "\(region.scopeDescription) Enter a nearby town, valley or trailhead so TrailMind can build the right route.",
+            supportingText: "\(region.scopeDescription) Enter a nearby town, valley or trailhead so Wanderful can build the right route.",
             candidates: [],
             allowsFreeText: true
         )
@@ -534,7 +534,7 @@ enum LocationResolutionPolicy {
             question: context.requestedField == .endLocationQuery
                 ? "Which specific place should be the destination?"
                 : "Where should the hike start?",
-            supportingText: "This place covers a wider area. Enter a nearby town, valley or trailhead so TrailMind does not route from an arbitrary map center.",
+            supportingText: "This place covers a wider area. Enter a nearby town, valley or trailhead so Wanderful does not route from an arbitrary map center.",
             candidates: Array(candidates.prefix(maximumClarificationCandidates)),
             allowsFreeText: true
         )

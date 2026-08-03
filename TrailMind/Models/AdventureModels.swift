@@ -1059,7 +1059,7 @@ enum RouteQualityExplanationGenerator {
         explanations.append(
             RouteQualityExplanation(
                 title: "Harder than requested",
-                detail: "Requested \(requestedDifficulty.rawValue). Measured \(distanceLabel(route.distanceKilometers)) and \(route.elevationGainMeters) m climb produce TrailMind’s \(route.difficulty.rawValue) estimate.",
+                detail: "Requested \(requestedDifficulty.rawValue). Measured \(distanceLabel(route.distanceKilometers)) and \(route.elevationGainMeters) m climb produce Wanderful’s \(route.difficulty.rawValue) estimate.",
                 symbol: "exclamationmark.triangle.fill"
             )
         )

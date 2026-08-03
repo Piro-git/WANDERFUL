@@ -17,11 +17,11 @@ struct TrailMindAboutCredit: Identifiable, Equatable, Sendable {
 
 enum TrailMindPermissionCopy {
     static let microphone =
-        "TrailMind uses the microphone to turn your spoken route request into text."
+        "Wanderful uses the microphone to turn your spoken route request into text."
     static let appleSpeechServerDisclosure =
         "Apple Speech can send captured audio to Apple's servers for processing."
     static let speechRecognition =
-        appleSpeechServerDisclosure + " TrailMind does not retain raw audio or send it to its own backend."
+        appleSpeechServerDisclosure + " Wanderful does not retain raw audio or send it to its own backend."
 }
 
 enum TrailMindAboutAccessibilityID {
@@ -74,13 +74,13 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.data.deviceLocation",
             title: "Device location",
-            detail: "TrailMind does not currently access your device's location. Enter a place name when choosing a route start.",
+            detail: "Wanderful does not currently access your device's location. Enter a place name when choosing a route start.",
             symbol: "location.slash.fill"
         ),
         TrailMindAboutItem(
             id: "about.data.routing",
             title: "Geocoding and routing",
-            detail: "Apple geocoding resolves the place names you enter. TrailMind then sends route coordinates and routing constraints to its backend, which asks GraphHopper to calculate the route.",
+            detail: "Apple geocoding resolves the place names you enter. Wanderful then sends route coordinates and routing constraints to its backend, which asks GraphHopper to calculate the route.",
             symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
         ),
         TrailMindAboutItem(
@@ -92,31 +92,31 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.data.gpx",
             title: "Temporary GPX files",
-            detail: "Export creates a protected temporary GPX file containing route coordinates. The app or person you select in the share sheet receives those coordinates. TrailMind runs cleanup after sharing and recovers abandoned TrailMind export files on a later launch.",
+            detail: "Export creates a protected temporary GPX file containing route coordinates. The app or person you select in the share sheet receives those coordinates. Wanderful runs cleanup after sharing and recovers abandoned export files on a later launch.",
             symbol: "doc.badge.arrow.up.fill"
         ),
         TrailMindAboutItem(
             id: "about.data.voice",
             title: "Optional voice input",
-            detail: TrailMindPermissionCopy.appleSpeechServerDisclosure + " TrailMind does not retain raw audio or send it to its own backend; you can review the transcript before planning.",
+            detail: TrailMindPermissionCopy.appleSpeechServerDisclosure + " Wanderful does not retain raw audio or send it to its own backend; you can review the transcript before planning.",
             symbol: "waveform.and.mic"
         ),
         TrailMindAboutItem(
             id: "about.data.appAttest",
             title: "Request protection",
-            detail: "Apple App Attest helps protect backend requests. Its key identifier is stored in the device Keychain. TrailMind's backend keeps an app-scoped installation record and stores a one-way hash of the request connection source for rate limiting. This is not a TrailMind account and is not used for tracking.",
+            detail: "Apple App Attest helps protect backend requests. Its key identifier is stored in the device Keychain. Wanderful's backend keeps an app-scoped installation record and stores a one-way hash of the request connection source for rate limiting. This is not a Wanderful account and is not used for tracking.",
             symbol: "checkmark.shield.fill"
         )
     ]
 
     static let dataFlowFooter =
-        "TrailMind currently has no user accounts, cloud sync, advertising or analytics."
+        "Wanderful currently has no user accounts, cloud sync, advertising or analytics."
 
     static let planningBoundaryItems = [
         TrailMindAboutItem(
             id: "about.boundary.review",
             title: "Review before starting",
-            detail: "TrailMind is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
+            detail: "Wanderful is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
             symbol: "checklist"
         ),
         TrailMindAboutItem(

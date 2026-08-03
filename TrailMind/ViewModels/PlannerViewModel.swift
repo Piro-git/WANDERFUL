@@ -843,7 +843,7 @@ private extension PlannerViewModel {
                             ? "Which specific place in this area should be the destination?"
                             : "Where in this area should the hike start?",
                         kind: pending.kind,
-                        supportingText: "Enter a nearby town, valley or trailhead so TrailMind does not route from an arbitrary map center.",
+                        supportingText: "Enter a nearby town, valley or trailhead so Wanderful does not route from an arbitrary map center.",
                         locationCandidates: [],
                         allowsFreeText: true,
                         preparedAttempt: preparedAttempt
@@ -1017,9 +1017,9 @@ private extension PlannerViewModel {
             case .timedOut:
                 "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
             case .unverifiedRoutes:
-                "TrailMind couldn’t verify the returned route. Try again or edit the request."
+                "Wanderful couldn’t verify the returned route. Try again or edit the request."
             case .unsupportedClarification:
-                "TrailMind couldn’t apply that clarification without changing your request. Edit the prompt and try again."
+                "Wanderful couldn’t apply that clarification without changing your request. Edit the prompt and try again."
             }
         }
         if let error = error as? RoutePromptParserError {
@@ -1038,13 +1038,13 @@ private extension PlannerViewModel {
             case .emptyQuery:
                 "Add a start location, then try again."
             case let .noResults(query):
-                "TrailMind couldn’t find “\(query)”. Check the spelling or choose a nearby trailhead."
+                "Wanderful couldn’t find “\(query)”. Check the spelling or choose a nearby trailhead."
             case .endpointsTooClose:
                 "Start and destination are too close together. Choose a more specific destination."
             case let .needsClarification(query):
-                "TrailMind needs a more specific town, valley or trailhead for “\(query)”."
+                "Wanderful needs a more specific town, valley or trailhead for “\(query)”."
             case .network:
-                "TrailMind couldn’t reach location search. Check your connection and try again."
+                "Wanderful couldn’t reach location search. Check your connection and try again."
             case .requestInProgress:
                 "Location search is still busy. Try again in a moment."
             case .unavailable, .failed:
@@ -1056,27 +1056,27 @@ private extension PlannerViewModel {
             case .missingAPIKey:
                 "Live routing isn’t configured yet. Try again after routing setup is complete."
             case .noRouteFound:
-                "TrailMind couldn’t find a mapped route between these places. Try a nearby trailhead or edit the request."
+                "Wanderful couldn’t find a mapped route between these places. Try a nearby trailhead or edit the request."
             case let .network(message) where message.localizedCaseInsensitiveContains("timed out"):
                 "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
             case .network:
-                "TrailMind couldn’t reach the routing service. Check your connection and try again."
+                "Wanderful couldn’t reach the routing service. Check your connection and try again."
             case .api, .invalidEndpoint, .invalidResponse, .decoding:
-                "TrailMind couldn’t calculate this route. Try again or edit the request."
+                "Wanderful couldn’t calculate this route. Try again or edit the request."
             }
         }
         if error is RoutingError {
-            return "TrailMind couldn’t build a useful loop from this start. Try a nearby trailhead or a different distance."
+            return "Wanderful couldn’t build a useful loop from this start. Try a nearby trailhead or a different distance."
         }
         if error is RouteEligibilityError {
-            return "TrailMind couldn’t verify the returned route. Try again or edit the request."
+            return "Wanderful couldn’t verify the returned route. Try again or edit the request."
         }
         if let error = error as? URLError {
             return error.code == .timedOut
                 ? "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
-                : "TrailMind couldn’t connect. Check your network and try again."
+                : "Wanderful couldn’t connect. Check your network and try again."
         }
-        return "TrailMind couldn’t build this route. Try again or edit the request."
+        return "Wanderful couldn’t build this route. Try again or edit the request."
     }
 
     static func isNoRoutesError(_ error: Error) -> Bool {
@@ -1424,7 +1424,7 @@ private extension PlannerViewModel {
                 parserDebugInfo: preparedAttempt.parserDebugInfo,
                 question: "Which specific town, valley or trailhead should the route start from?",
                 kind: .location(.startLocationQuery),
-                supportingText: "Choose a precise route anchor so TrailMind does not route from an arbitrary map center.",
+                supportingText: "Choose a precise route anchor so Wanderful does not route from an arbitrary map center.",
                 locationCandidates: [],
                 allowsFreeText: true,
                 preparedAttempt: preparedAttempt,
@@ -2056,7 +2056,7 @@ private extension PlannerViewModel {
                     question: field == .endLocationQuery
                         ? "Which specific place should be the destination?"
                         : "Where should the hike start?",
-                    supportingText: "Enter a nearby town, valley or trailhead so TrailMind does not route from an arbitrary map center.",
+                    supportingText: "Enter a nearby town, valley or trailhead so Wanderful does not route from an arbitrary map center.",
                     candidates: [candidate],
                     allowsFreeText: true
                 )
@@ -2188,7 +2188,7 @@ private extension PlannerViewModel {
 
         throw PlannerIssue.invalidIntent(
             validationResult.validationError?.localizedDescription
-                ?? "TrailMind couldn’t understand enough of that request to plan it truthfully."
+                ?? "Wanderful couldn’t understand enough of that request to plan it truthfully."
         )
     }
 
@@ -2202,7 +2202,7 @@ private extension PlannerViewModel {
         state = .noRoutes(
             PlanningRecovery(
                 originalPrompt: originalPrompt,
-                message: "TrailMind couldn’t find a valid mapped route for this request. Try a nearby trailhead, a different distance, or edit the request.",
+                message: "Wanderful couldn’t find a valid mapped route for this request. Try a nearby trailhead, a different distance, or edit the request.",
                 stage: .routing,
                 kind: .routing,
                 preparedAttempt: preparedAttempt

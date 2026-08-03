@@ -147,7 +147,7 @@ struct ChatBubble: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 if message.kind == .copilot {
-                    Label("TrailMind", systemImage: "sparkles")
+                    Label("Wanderful", systemImage: "sparkles")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(theme.moss)
                 }

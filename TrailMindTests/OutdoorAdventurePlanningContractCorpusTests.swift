@@ -310,7 +310,7 @@ final class OutdoorAdventurePlanningContractCorpusTests: XCTestCase {
                 let text = error.localizedDescription
                 XCTAssertEqual(
                     text,
-                    "TrailMind couldn’t verify the planning result.",
+                    "Wanderful couldn’t verify the planning result.",
                     id
                 )
                 for sentinel in leakSentinels {

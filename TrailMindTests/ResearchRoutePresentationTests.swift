@@ -571,7 +571,7 @@ final class ResearchRoutePresentationTests: XCTestCase {
     )
     XCTAssertEqual(
       presentation.questions.first,
-      "Which specific town, valley, landmark or trailhead should TrailMind use?"
+      "Which specific town, valley, landmark or trailhead should Wanderful use?"
     )
     XCTAssertFalse(
       presentation.questions.joined().contains("location_required")

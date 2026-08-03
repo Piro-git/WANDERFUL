@@ -1753,9 +1753,9 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         let researchNotice =
             "A standard routed option was built because research-guided matching was unavailable."
         let flexibleModeNotice =
-            "GraphHopper round trips need flexible mode on this API plan, so TrailMind built loop options from normal routed segments."
+            "GraphHopper round trips need flexible mode on this API plan, so Wanderful built loop options from normal routed segments."
         let loopComparisonNotice =
-            "TrailMind found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct real loop options from the same start for comparison."
         let cases: [
             (
                 name: String,
@@ -1939,7 +1939,7 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         XCTAssertEqual(recovery.kind, .unverified)
         XCTAssertEqual(
             recovery.message,
-            "TrailMind couldn’t verify the returned route. Try again or edit the request."
+            "Wanderful couldn’t verify the returned route. Try again or edit the request."
         )
     }
 

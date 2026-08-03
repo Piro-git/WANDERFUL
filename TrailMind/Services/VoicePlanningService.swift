@@ -61,7 +61,7 @@ enum VoicePlanningServiceError: LocalizedError, Equatable, Sendable {
         case .inputChanged:
             "The microphone input changed. Please try again."
         case .couldNotStart:
-            "TrailMind could not start listening. Please try again."
+            "Wanderful could not start listening. Please try again."
         }
     }
 }

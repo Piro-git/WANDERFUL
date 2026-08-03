@@ -12,7 +12,7 @@ enum AppAttestServiceError: LocalizedError, Sendable, Equatable {
     case networkUnavailable
 
     var errorDescription: String? {
-        "TrailMind couldn’t verify this app installation. Check your connection and try again."
+        "Wanderful couldn’t verify this app installation. Check your connection and try again."
     }
 }
 

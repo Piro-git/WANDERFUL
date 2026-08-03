@@ -97,7 +97,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.voice"),
             expectedServerDisclosure
-                + " TrailMind does not retain raw audio or send it to its own backend; you can review the transcript before planning."
+                + " Wanderful does not retain raw audio or send it to its own backend; you can review the transcript before planning."
         )
     }
 
@@ -115,7 +115,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
 
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.routing"),
-            "Apple geocoding resolves the place names you enter. TrailMind then sends route coordinates and routing constraints to its backend, which asks GraphHopper to calculate the route."
+            "Apple geocoding resolves the place names you enter. Wanderful then sends route coordinates and routing constraints to its backend, which asks GraphHopper to calculate the route."
         )
     }
 
@@ -141,7 +141,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
         // storage, share-lifecycle cleanup and abandoned-export recovery.
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.gpx"),
-            "Export creates a protected temporary GPX file containing route coordinates. The app or person you select in the share sheet receives those coordinates. TrailMind runs cleanup after sharing and recovers abandoned TrailMind export files on a later launch."
+            "Export creates a protected temporary GPX file containing route coordinates. The app or person you select in the share sheet receives those coordinates. Wanderful runs cleanup after sharing and recovers abandoned export files on a later launch."
         )
     }
 
@@ -194,7 +194,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
 
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.appAttest"),
-            "Apple App Attest helps protect backend requests. Its key identifier is stored in the device Keychain. TrailMind's backend keeps an app-scoped installation record and stores a one-way hash of the request connection source for rate limiting. This is not a TrailMind account and is not used for tracking."
+            "Apple App Attest helps protect backend requests. Its key identifier is stored in the device Keychain. Wanderful's backend keeps an app-scoped installation record and stores a one-way hash of the request connection source for rate limiting. This is not a Wanderful account and is not used for tracking."
         )
     }
 
@@ -225,7 +225,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
 
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.deviceLocation"),
-            "TrailMind does not currently access your device's location. Enter a place name when choosing a route start."
+            "Wanderful does not currently access your device's location. Enter a place name when choosing a route start."
         )
     }
 
@@ -265,7 +265,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
         XCTAssertEqual(
             TrailMindAboutContent.planningBoundaryItems.map(\.detail),
             [
-                "TrailMind is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
+                "Wanderful is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
                 "Requested features are shown separately unless mapped route data verifies them."
             ]
         )

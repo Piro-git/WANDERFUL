@@ -205,8 +205,8 @@ struct RoutingCoordinator: RoutingCoordinating {
             where routingIntent.request.routeType == .loop && error.shouldTryLoopFallback
         {
             let notice = error.isFlexibleModeUnavailable
-                ? "GraphHopper round trips need flexible mode on this API plan, so TrailMind built loop options from normal routed segments."
-                : "GraphHopper could not build a direct round trip, so TrailMind tried alternate loop shapes from the same start."
+                ? "GraphHopper round trips need flexible mode on this API plan, so Wanderful built loop options from normal routed segments."
+                : "GraphHopper could not build a direct round trip, so Wanderful tried alternate loop shapes from the same start."
             do {
                 let fallback = try await fallbackSearch(
                     for: routingIntent,
@@ -265,7 +265,7 @@ struct RoutingCoordinator: RoutingCoordinating {
             )
             let comparableSuggestions = combinedNormalization.suggestions
             let notice = comparableSuggestions.count >= loopSearchPolicy.minimumComparableSuggestionCount
-                ? "TrailMind found distinct real loop options from the same start for comparison."
+                ? "Wanderful found distinct real loop options from the same start for comparison."
                 : nil
             return loopResult(
                 suggestions: comparableSuggestions,

@@ -37,26 +37,26 @@ nonisolated enum GPXExportError: LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .temporaryStorageUnavailable:
-            "TrailMind could not prepare a private temporary export location."
+            "Wanderful could not prepare a private temporary export location."
         case .fileWriteFailed:
-            "TrailMind could not create the GPX file."
+            "Wanderful could not create the GPX file."
         case .fileProtectionFailed:
-            "TrailMind could not protect the GPX file."
+            "Wanderful could not protect the GPX file."
         case .invalidDocument:
-            "TrailMind could not create a valid GPX document."
+            "Wanderful could not create a valid GPX document."
         case .shareFailed:
-            "TrailMind could not share the GPX file."
+            "Wanderful could not share the GPX file."
         case .cleanupFailed:
-            "TrailMind could not remove the temporary GPX file."
+            "Wanderful could not remove the temporary GPX file."
         }
     }
 
     static func userMessage(for error: Error) -> String {
         if let cleanupRequired = error as? GPXCleanupRequiredError {
             if cleanupRequired.primaryError == nil {
-                return "TrailMind could not remove the cancelled temporary GPX file. Retry cleanup before exporting again."
+                return "Wanderful could not remove the cancelled temporary GPX file. Retry cleanup before exporting again."
             }
-            return "TrailMind could not finish the GPX export or remove its temporary file. Retry cleanup before exporting again."
+            return "Wanderful could not finish the GPX export or remove its temporary file. Retry cleanup before exporting again."
         }
         if error is RouteEligibilityError {
             return "This route cannot be exported because its verified route data is unavailable or invalid."
@@ -64,14 +64,14 @@ nonisolated enum GPXExportError: LocalizedError, Equatable, Sendable {
         if let exportError = error as? GPXExportError {
             switch exportError {
             case .shareFailed:
-                return "TrailMind could not share the GPX file. Please try again."
+                return "Wanderful could not share the GPX file. Please try again."
             case .cleanupFailed:
-                return "TrailMind could not remove the temporary GPX file. Retry cleanup before exporting again."
+                return "Wanderful could not remove the temporary GPX file. Retry cleanup before exporting again."
             case .temporaryStorageUnavailable, .fileWriteFailed, .fileProtectionFailed, .invalidDocument:
                 break
             }
         }
-        return "TrailMind could not create a protected GPX file. Please try again."
+        return "Wanderful could not create a protected GPX file. Please try again."
     }
 }
 
@@ -223,9 +223,9 @@ nonisolated private struct GPXRouteSnapshot: Sendable {
 }
 
 nonisolated struct DefaultGPXService: GPXService {
-    static let creator = "TrailMind"
+    static let creator = "Wanderful"
     static let namespace = "http://www.topografix.com/GPX/1/1"
-    static let fallbackFilename = "TrailMind-Route.gpx"
+    static let fallbackFilename = "Wanderful-Route.gpx"
     static let maximumFilenameStemBytes = 96
 
     private static let exportRootName = "TrailMind-GPX-Exports"
@@ -711,7 +711,7 @@ nonisolated struct DefaultGPXService: GPXService {
             cleanText.unicodeScalars.append(scalar)
         }
         if cleanText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            cleanText = "TrailMind Route"
+            cleanText = "Wanderful Route"
         }
 
         var escaped = ""
