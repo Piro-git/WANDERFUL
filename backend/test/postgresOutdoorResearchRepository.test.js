@@ -261,6 +261,25 @@ describe("PostGIS outdoor research repository", () => {
     assert.match(queries.routeMemberships, /relationship\.evidence_class/);
     assert.match(queries.routeMemberships, /nearby\.evidence_class/);
     assert.match(queries.routeMemberships, /membership_rank <= \$7/);
+    assert.match(queries.routeMemberships, /membership_segment_ids AS MATERIALIZED/);
+    assert.match(queries.routeMemberships, /candidate_segments AS MATERIALIZED/);
+    assert.match(queries.routeMemberships, /nearby_segments AS MATERIALIZED/);
+    assert.match(
+      queries.routeMemberships,
+      /ST_PointOnSurface\(segment\.projected_geometry\) && ST_Expand/
+    );
+    assert.match(
+      queries.routeMemberships,
+      /ST_DWithin\([\s\S]*segment\.candidate_point::geography/
+    );
+    assert.match(queries.routeMemberships, /ST_CoveredBy\(/);
+    assert.match(queries.routeMemberships, /ORDER BY nearby\.distance_meters/);
+    assert.match(queries.routeMemberships, /LIMIT \$6$/);
+    assert.doesNotMatch(queries.routeMemberships, /selected_routes AS/);
+    assert.equal(
+      [...queries.routeMemberships.matchAll(/ST_PointOnSurface\(/g)].length,
+      2
+    );
     assert.match(queries.routeAssertions, /LIMIT \$4/);
   });
 
@@ -310,7 +329,7 @@ describe("PostGIS outdoor research repository", () => {
     ]);
     assert.equal(highlightCall.values[8], 75);
     const membershipCall = harness.queryCalls.find((call) =>
-      call.text.includes("selected_routes AS")
+      call.text.includes("membership_segment_ids AS")
     );
     assert.deepEqual(membershipCall.values.slice(1), [
       "harz-v1",
@@ -482,7 +501,7 @@ function repositoryHarness(options = {}) {
       if (text.includes("candidates AS")) {
         return { rows: options.highlightRows ?? [] };
       }
-      if (text.includes("selected_routes AS")) {
+      if (text.includes("membership_segment_ids AS")) {
         return { rows: options.membershipRows ?? [] };
       }
       if (text.includes("projection.entity_id = ANY")) {

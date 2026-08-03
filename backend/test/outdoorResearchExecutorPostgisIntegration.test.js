@@ -84,7 +84,8 @@ describe("outdoor research executor real PostGIS integration", {
       "002_outdoor_evidence.sql",
       "003_outdoor_research_graph.sql",
       "004_osm_outdoor_research_projection.sql",
-      "005_outdoor_research_projection_geometry.sql"
+      "005_outdoor_research_projection_geometry.sql",
+      "006_outdoor_route_membership_point_index.sql"
     ]) {
       const migration = await readFile(
         new URL(`../migrations/${migrationName}`, import.meta.url),
@@ -129,7 +130,7 @@ describe("outdoor research executor real PostGIS integration", {
     if (administrativePool) await administrativePool.end();
   });
 
-  it("applies migrations 002/003/004 twice and retains spatial indexes", async () => {
+  it("applies evidence and research migrations twice and retains spatial indexes", async () => {
     const relations = await pool.query(
       `SELECT to_regclass('outdoor_evidence_regions') IS NOT NULL AS regions,
               to_regclass('outdoor_research_sources') IS NOT NULL AS sources,
@@ -147,12 +148,13 @@ describe("outdoor research executor real PostGIS integration", {
           AND indexname IN (
             'outdoor_evidence_regions_boundary_gist_idx',
             'outdoor_research_projection_entities_geometry_gist_idx',
+            'outdoor_research_projection_entities_trail_point_gist_idx',
             'outdoor_research_projection_assertions_lookup_idx',
             'outdoor_research_projection_relationships_subject_idx'
           )`,
       [schemaName]
     );
-    assert.equal(indexes.rowCount, 4);
+    assert.equal(indexes.rowCount, 5);
   });
 
   it("resolves exact Harz and Innsbruck boundaries without cross-region leakage", async () => {
@@ -590,6 +592,60 @@ describe("outdoor research executor real PostGIS integration", {
     }
   });
 
+  it("cancels repeatedly through a distinct pool and rolls every transaction back", async () => {
+    const lockClient = await pool.connect();
+    const cancellationPool = new Pool({
+      connectionString,
+      options: `-c search_path=${schemaName},public`,
+      max: 2,
+      allowExitOnIdle: true
+    });
+    const events = [];
+    const repository = new PostgresOutdoorResearchRepository({
+      pool,
+      cancellationPool,
+      statementTimeoutMs: 2_500,
+      transactionLifecycleObserver(event) {
+        events.push(event);
+      }
+    });
+    try {
+      await lockClient.query("BEGIN");
+      await lockClient.query(
+        "LOCK TABLE outdoor_evidence_regions IN ACCESS EXCLUSIVE MODE"
+      );
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const controller = new AbortController();
+        const pending = repository.withConsistentSnapshot(
+          { signal: controller.signal },
+          (session) => session.resolveCapabilities(
+            binding(REGIONS[0]),
+            REGIONS[0].anchor,
+            NOW
+          )
+        );
+        setTimeout(() => controller.abort(), 25);
+        await assert.rejects(pending, hasCode("request_cancelled"));
+        assert.deepEqual(events.splice(0), [
+          "began",
+          "query_cancelled_after_abort",
+          "rollback_completed_after_cancel"
+        ]);
+        assert.equal(pool.waitingCount, 0);
+        assert.equal(cancellationPool.waitingCount, 0);
+        assert.deepEqual((await pool.query("SELECT 1 AS available")).rows, [
+          { available: 1 }
+        ]);
+      }
+      assert(cancellationPool.totalCount <= 2);
+      assert.equal(cancellationPool.idleCount, cancellationPool.totalCount);
+    } finally {
+      await lockClient.query("ROLLBACK");
+      lockClient.release();
+      await cancellationPool.end();
+    }
+  });
+
   it("uses the projection geometry GiST index for bounded spatial access", async () => {
     const ids = seeded.get("harz-v1");
     const client = await pool.connect();
@@ -619,6 +675,41 @@ describe("outdoor research executor real PostGIS integration", {
       assert.doesNotMatch(
         outdoorResearchRepositoryQueriesForTesting.highlights,
         /ST_AsGeoJSON|ST_AsText/
+      );
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("uses the representative-point GiST index for mapped route membership", async () => {
+    const region = REGIONS[0];
+    const ids = seeded.get(region.operationalRegionId);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL enable_seqscan = off");
+      const plan = await client.query(
+        `EXPLAIN (FORMAT JSON)
+         ${outdoorResearchRepositoryQueriesForTesting.routeMemberships}`,
+        [
+          ids.runId,
+          region.operationalRegionId,
+          region.anchor.longitude,
+          region.anchor.latitude,
+          10_000,
+          24,
+          1
+        ]
+      );
+      const text = JSON.stringify(plan.rows[0]["QUERY PLAN"]);
+      assert.match(
+        text,
+        /outdoor_research_projection_entities_trail_point_gist_idx/
+      );
+      assert.doesNotMatch(
+        text,
+        /"Node Type":"Seq Scan","Parallel Aware":false,"Async Capable":false,"Relation Name":"outdoor_research_projection_entities"/
       );
       await client.query("ROLLBACK");
     } finally {

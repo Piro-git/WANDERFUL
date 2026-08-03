@@ -245,6 +245,66 @@ SELECT candidate.entity_id,
 const ROUTE_MEMBERSHIP_QUERY = `
 WITH anchor AS (
   SELECT ST_SetSRID(ST_MakePoint($3, $4), 4326)::geometry(Point, 4326) AS point
+), membership_segment_ids AS MATERIALIZED (
+  SELECT DISTINCT projected_relationship.subject_entity_id AS entity_id
+    FROM outdoor_research_projection_relationships projected_relationship
+   WHERE projected_relationship.projection_run_id = $1
+     AND projected_relationship.relationship_type =
+       'trail_segment_member_of_route'
+), candidate_segments AS MATERIALIZED (
+  SELECT segment.projection_run_id,
+         segment.entity_id,
+         ST_PointOnSurface(segment.projected_geometry) AS candidate_point
+    FROM membership_segment_ids membership
+    JOIN outdoor_research_projection_entities segment
+      ON segment.projection_run_id = $1
+     AND segment.entity_id = membership.entity_id
+    JOIN outdoor_research_active_projection_runs active_run
+      ON active_run.projection_run_id = segment.projection_run_id
+     AND active_run.region_id = $2
+    JOIN outdoor_research_entities segment_entity
+      ON segment_entity.entity_id = segment.entity_id
+     AND segment_entity.lifecycle_state = 'active'
+    JOIN outdoor_evidence_regions region
+      ON region.region_id = active_run.region_id
+     AND region.enabled = true
+     AND region.active_import_id = active_run.input_import_id
+    CROSS JOIN anchor
+   WHERE segment.projection_run_id = $1
+     AND segment.entity_category = 'trail_segment'
+     AND segment.projected_geometry IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1
+         FROM outdoor_research_projection_quarantines quarantine
+        WHERE quarantine.projection_run_id = segment.projection_run_id
+          AND quarantine.osm_type = segment.osm_type
+          AND quarantine.osm_id = segment.osm_id
+     )
+     AND ST_CoveredBy(segment.projected_geometry, region.boundary)
+     AND ST_PointOnSurface(segment.projected_geometry) && ST_Expand(
+       anchor.point,
+       $5::double precision / (
+         111000.0 * GREATEST(
+           COS(RADIANS(ST_Y(anchor.point))),
+           0.01
+         )
+       ),
+       $5::double precision / 110000.0
+     )
+), nearby_segments AS MATERIALIZED (
+  SELECT segment.projection_run_id,
+         segment.entity_id,
+         ST_Distance(
+           segment.candidate_point::geography,
+           anchor.point::geography
+         )::double precision AS distance_meters
+    FROM candidate_segments segment
+    CROSS JOIN anchor
+   WHERE ST_DWithin(
+     segment.candidate_point::geography,
+     anchor.point::geography,
+     $5::double precision
+   )
 ), nearby AS (
   SELECT relationship.relationship_id,
          relationship.subject_entity_id AS segment_entity_id,
@@ -258,20 +318,17 @@ WITH anchor AS (
          relationship.provenance_identifier,
          projected_relationship.record_provenance,
          relationship.source_id,
-         ST_Distance(
-           ST_PointOnSurface(segment.projected_geometry)::geography,
-           anchor.point::geography
-         )::double precision AS distance_meters,
+         segment.distance_meters,
          row_number() OVER (
            PARTITION BY relationship.object_entity_id
-           ORDER BY ST_Distance(
-             ST_PointOnSurface(segment.projected_geometry)::geography,
-             anchor.point::geography
-           ),
+           ORDER BY segment.distance_meters,
            relationship.subject_entity_id,
            relationship.relationship_id
          ) AS membership_rank
-    FROM outdoor_research_projection_relationships projected_relationship
+    FROM nearby_segments segment
+    JOIN outdoor_research_projection_relationships projected_relationship
+      ON projected_relationship.projection_run_id = segment.projection_run_id
+     AND projected_relationship.subject_entity_id = segment.entity_id
     JOIN outdoor_research_active_relationships relationship
       ON relationship.relationship_id = projected_relationship.relationship_id
      AND relationship.relationship_type = 'trail_segment_member_of_route'
@@ -279,13 +336,10 @@ WITH anchor AS (
       ON active_run.projection_run_id = projected_relationship.projection_run_id
      AND active_run.source_id = relationship.source_id
      AND active_run.region_id = $2
-    JOIN outdoor_research_projection_entities segment
-      ON segment.projection_run_id = projected_relationship.projection_run_id
-     AND segment.entity_id = relationship.subject_entity_id
-     AND segment.entity_category = 'trail_segment'
-    JOIN outdoor_research_entities segment_entity
-      ON segment_entity.entity_id = segment.entity_id
-     AND segment_entity.lifecycle_state = 'active'
+    JOIN outdoor_research_projection_entities projected_segment
+      ON projected_segment.projection_run_id = projected_relationship.projection_run_id
+     AND projected_segment.entity_id = relationship.subject_entity_id
+     AND projected_segment.entity_category = 'trail_segment'
     JOIN outdoor_research_projection_entities route
       ON route.projection_run_id = projected_relationship.projection_run_id
      AND route.entity_id = relationship.object_entity_id
@@ -297,16 +351,7 @@ WITH anchor AS (
       ON region.region_id = active_run.region_id
      AND region.enabled = true
      AND region.active_import_id = active_run.input_import_id
-    CROSS JOIN anchor
-     WHERE projected_relationship.projection_run_id = $1
-       AND segment.projected_geometry IS NOT NULL
-     AND NOT EXISTS (
-       SELECT 1
-         FROM outdoor_research_projection_quarantines quarantine
-        WHERE quarantine.projection_run_id = segment.projection_run_id
-          AND quarantine.osm_type = segment.osm_type
-          AND quarantine.osm_id = segment.osm_id
-     )
+   WHERE projected_relationship.projection_run_id = $1
      AND NOT EXISTS (
        SELECT 1
          FROM outdoor_research_projection_quarantines quarantine
@@ -314,28 +359,6 @@ WITH anchor AS (
           AND quarantine.osm_type = route.osm_type
           AND quarantine.osm_id = route.osm_id
      )
-     AND ST_CoveredBy(segment.projected_geometry, region.boundary)
-     AND segment.projected_geometry && ST_Expand(
-       anchor.point,
-       $5::double precision / (
-         111000.0 * GREATEST(
-           COS(RADIANS(ST_Y(anchor.point))),
-           0.01
-         )
-       ),
-       $5::double precision / 110000.0
-     )
-     AND ST_DWithin(
-       ST_PointOnSurface(segment.projected_geometry)::geography,
-       anchor.point::geography,
-       $5::double precision
-     )
-), selected_routes AS (
-  SELECT route_entity_id, min(distance_meters) AS distance_meters
-    FROM nearby
-   GROUP BY route_entity_id
-   ORDER BY distance_meters, route_entity_id
-   LIMIT $6
 )
 SELECT nearby.relationship_id,
        nearby.segment_entity_id,
@@ -356,8 +379,6 @@ SELECT nearby.relationship_id,
        source.attribution_requirements,
        run.adapter_schema_version
   FROM nearby
-  JOIN selected_routes
-    ON selected_routes.route_entity_id = nearby.route_entity_id
   JOIN outdoor_research_active_projection_runs run
     ON run.projection_run_id = $1
    AND run.region_id = $2
@@ -365,11 +386,12 @@ SELECT nearby.relationship_id,
     ON source.source_id = run.source_id
    AND source.source_id = nearby.source_id
  WHERE nearby.membership_rank <= $7
- ORDER BY selected_routes.distance_meters,
+ ORDER BY nearby.distance_meters,
           nearby.route_entity_id,
           nearby.membership_rank,
           nearby.segment_entity_id,
-          nearby.relationship_id`;
+          nearby.relationship_id
+ LIMIT $6`;
 
 const ROUTE_ASSERTION_QUERY = `
 SELECT projection.entity_id,

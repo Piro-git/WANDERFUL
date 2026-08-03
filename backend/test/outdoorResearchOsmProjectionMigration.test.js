@@ -10,6 +10,15 @@ const geometryMigrationURL = new URL(
   "../migrations/005_outdoor_research_projection_geometry.sql",
   import.meta.url
 );
+const membershipPointIndexMigrationURL = new URL(
+  "../migrations/006_outdoor_route_membership_point_index.sql",
+  import.meta.url
+);
+const migrationRunnerURL = new URL("../scripts/migrate.js", import.meta.url);
+const membershipPerformanceRecordURL = new URL(
+  "../../docs/OUTDOOR_MAPPED_ROUTE_MEMBERSHIP_PERFORMANCE_V1.md",
+  import.meta.url
+);
 
 describe("OSM projection migration contract", () => {
   it("is additive, restrictive and creates no source activation", async () => {
@@ -72,5 +81,32 @@ describe("OSM projection migration contract", () => {
     assert.match(source, /ST_IsValid\(projected_geometry\)/);
     assert.match(source, /ST_CoveredBy\(/);
     assert.doesNotMatch(source, /DROP\s+TABLE/i);
+  });
+
+  it("indexes the exact mapped-route representative point without changing rows", async () => {
+    const source = await readFile(membershipPointIndexMigrationURL, "utf8");
+    assert.match(source, /CREATE INDEX IF NOT EXISTS/);
+    assert.match(
+      source,
+      /outdoor_research_projection_entities_trail_point_gist_idx/
+    );
+    assert.match(source, /USING GIST \(ST_PointOnSurface\(projected_geometry\)\)/);
+    assert.match(source, /entity_category = 'trail_segment'/);
+    assert.match(source, /projected_geometry IS NOT NULL/);
+    assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|DROP|TRUNCATE)\b/i);
+  });
+
+  it("keeps the index compatible with the transactional runner and documents its write lock", async () => {
+    const [migration, runner, performanceRecord] = await Promise.all([
+      readFile(membershipPointIndexMigrationURL, "utf8"),
+      readFile(migrationRunnerURL, "utf8"),
+      readFile(membershipPerformanceRecordURL, "utf8")
+    ]);
+    assert.doesNotMatch(migration, /CREATE\s+INDEX\s+CONCURRENTLY/i);
+    assert.match(runner, /client\.query\("BEGIN"\)/);
+    assert.match(runner, /client\.query\("ROLLBACK"\)/);
+    assert.match(performanceRecord, /`ShareLock`/);
+    assert.match(performanceRecord, /write-quiet maintenance window/);
+    assert.match(performanceRecord, /projection history is append-only/);
   });
 });

@@ -103,7 +103,8 @@ describe("outdoor research graph PostGIS integration", { skip: !connectionString
       "002_outdoor_evidence.sql",
       "003_outdoor_research_graph.sql",
       "004_osm_outdoor_research_projection.sql",
-      "005_outdoor_research_projection_geometry.sql"
+      "005_outdoor_research_projection_geometry.sql",
+      "006_outdoor_route_membership_point_index.sql"
     ]);
   });
 
