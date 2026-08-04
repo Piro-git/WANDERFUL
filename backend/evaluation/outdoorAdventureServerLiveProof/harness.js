@@ -74,6 +74,14 @@ export async function runServerLivePipelineProofV1({
   finalize = false,
   diagnosticMode = false,
   maximumProposals = 3,
+  providerCallLimit = SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT,
+  maximumConcurrency = 2,
+  minimumProviderSpacingMilliseconds = 0,
+  consecutiveImmediateFailureLimit = 0,
+  immediateFailureThresholdMilliseconds = 1_000,
+  graphHopperAttemptTimeoutMs = 8_000,
+  totalDeadlineMs = 25_000,
+  validatePublishedSummary = true,
   signal,
   now = () => new Date(),
   fetchImpl = globalThis.fetch
@@ -92,7 +100,33 @@ export async function runServerLivePipelineProofV1({
     signal,
     fetchImpl
   });
-  if (!Number.isInteger(maximumProposals) || maximumProposals < 1 || maximumProposals > 3) {
+  if (
+    !Number.isInteger(maximumProposals) ||
+    maximumProposals < 1 ||
+    maximumProposals > 3 ||
+    !Number.isInteger(providerCallLimit) ||
+    providerCallLimit < 1 ||
+    providerCallLimit > SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT ||
+    !Number.isInteger(maximumConcurrency) ||
+    maximumConcurrency < 1 ||
+    maximumConcurrency > 2 ||
+    !Number.isInteger(minimumProviderSpacingMilliseconds) ||
+    minimumProviderSpacingMilliseconds < 0 ||
+    minimumProviderSpacingMilliseconds > 60_000 ||
+    !Number.isInteger(consecutiveImmediateFailureLimit) ||
+    consecutiveImmediateFailureLimit < 0 ||
+    consecutiveImmediateFailureLimit > 3 ||
+    !Number.isInteger(immediateFailureThresholdMilliseconds) ||
+    immediateFailureThresholdMilliseconds < 1 ||
+    immediateFailureThresholdMilliseconds > 10_000 ||
+    !Number.isInteger(graphHopperAttemptTimeoutMs) ||
+    graphHopperAttemptTimeoutMs < 1_000 ||
+    graphHopperAttemptTimeoutMs > 30_000 ||
+    !Number.isInteger(totalDeadlineMs) ||
+    totalDeadlineMs < 1_000 ||
+    totalDeadlineMs > 45_000 ||
+    typeof validatePublishedSummary !== "boolean"
+  ) {
     throw new ServerLiveProofError("invalid_run_dependencies");
   }
   const generatedAt = now();
@@ -100,7 +134,14 @@ export async function runServerLivePipelineProofV1({
   if (configuration.baseUrl !== OFFICIAL_GRAPHHOPPER_BASE_URL) {
     throw new ServerLiveProofError("non_official_provider_base_url");
   }
-  const ledger = new ProviderUsageLedgerV1(usageLedgerPath);
+  const ledger = new ProviderUsageLedgerV1(usageLedgerPath, {
+    limit: providerCallLimit
+  });
+  const providerSchedule = new ProviderCallScheduleV1({
+    minimumSpacingMilliseconds: minimumProviderSpacingMilliseconds,
+    consecutiveImmediateFailureLimit,
+    immediateFailureThresholdMilliseconds
+  });
   await ledger.initialize();
   let ledgerClosed = false;
   try {
@@ -124,6 +165,7 @@ export async function runServerLivePipelineProofV1({
 
     const currentCases = [];
     for (const evaluationCase of cases) {
+      if (providerSchedule.stopped) break;
       if (signal?.aborted) throw new ServerLiveProofError("cancelled");
       currentCases.push(await executeCase({
         evaluationCase,
@@ -132,8 +174,13 @@ export async function runServerLivePipelineProofV1({
         ledger,
         fetchImpl,
         maximumProposals,
+        maximumConcurrency,
+        graphHopperAttemptTimeoutMs,
+        totalDeadlineMs,
+        providerSchedule,
         signal
       }));
+      if (providerSchedule.stopped) break;
     }
     const allCases = [...priorCases, ...currentCases].sort((left, right) =>
       SERVER_LIVE_PROOF_CASE_IDS.indexOf(left.caseId) -
@@ -148,9 +195,15 @@ export async function runServerLivePipelineProofV1({
       officialSummary,
       ledgerSnapshot,
       finalize,
-      env
+      env,
+      providerCallLimit,
+      maximumConcurrency,
+      minimumProviderSpacingMilliseconds,
+      providerSchedule
     });
-    validateServerLiveProofPublishedSummaryV1(summary);
+    if (validatePublishedSummary) {
+      validateServerLiveProofPublishedSummaryV1(summary);
+    }
     await ledger.close();
     ledgerClosed = true;
     await atomicWrite(outputPath, `${stableSerialize(summary)}\n`);
@@ -161,11 +214,17 @@ export async function runServerLivePipelineProofV1({
 }
 
 export class ProviderUsageLedgerV1 {
-  constructor(path) {
+  constructor(path, options = {}) {
     if (typeof path !== "string" || path.length < 1) {
       throw new ServerLiveProofError("invalid_usage_ledger");
     }
     this.path = path;
+    this.limit = Number.isInteger(options.limit)
+      ? options.limit
+      : SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT;
+    if (this.limit < 1 || this.limit > SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT) {
+      throw new ServerLiveProofError("invalid_usage_ledger");
+    }
     this.lockPath = `${path}.lock`;
     this.lockHandle = null;
     this.queue = Promise.resolve();
@@ -181,7 +240,7 @@ export class ProviderUsageLedgerV1 {
       throw new ServerLiveProofError("invalid_usage_ledger");
     }
     try {
-      validateLedger(JSON.parse(await readFile(this.path, "utf8")));
+      validateLedger(JSON.parse(await readFile(this.path, "utf8")), this.limit);
     } catch (error) {
       if (error?.code !== "ENOENT") {
         await this.close().catch(() => {});
@@ -189,7 +248,7 @@ export class ProviderUsageLedgerV1 {
         throw new ServerLiveProofError("invalid_usage_ledger");
       }
       try {
-        await atomicWrite(this.path, `${stableSerialize(emptyLedger())}\n`);
+        await atomicWrite(this.path, `${stableSerialize(emptyLedger(this.limit))}\n`);
       } catch (writeError) {
         await this.close().catch(() => {});
         throw writeError;
@@ -222,7 +281,7 @@ export class ProviderUsageLedgerV1 {
 
   async reserve({ caseId, callDigest, requestedWaypointCount }) {
     return this.#mutate((ledger) => {
-      if (ledger.calls.length >= SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT) {
+      if (ledger.calls.length >= this.limit) {
         throw new ServerLiveProofError("provider_call_limit_reached");
       }
       const callId = ledger.calls.length + 1;
@@ -263,7 +322,7 @@ export class ProviderUsageLedgerV1 {
     const scheduled = this.queue.then(async () => {
       const ledger = await this.#read();
       const result = operation(ledger);
-      validateLedger(ledger);
+      validateLedger(ledger, this.limit);
       await atomicWrite(this.path, `${stableSerialize(ledger)}\n`);
       return result;
     });
@@ -278,8 +337,95 @@ export class ProviderUsageLedgerV1 {
     } catch {
       throw new ServerLiveProofError("invalid_usage_ledger");
     }
-    validateLedger(value);
+    validateLedger(value, this.limit);
     return value;
+  }
+}
+
+export class ProviderCallScheduleV1 {
+  constructor({
+    minimumSpacingMilliseconds = 0,
+    consecutiveImmediateFailureLimit = 0,
+    immediateFailureThresholdMilliseconds = 1_000,
+    nowMilliseconds = () => Date.now(),
+    sleep = wait
+  } = {}) {
+    if (
+      !Number.isInteger(minimumSpacingMilliseconds) ||
+      minimumSpacingMilliseconds < 0 ||
+      minimumSpacingMilliseconds > 60_000 ||
+      !Number.isInteger(consecutiveImmediateFailureLimit) ||
+      consecutiveImmediateFailureLimit < 0 ||
+      consecutiveImmediateFailureLimit > 3 ||
+      !Number.isInteger(immediateFailureThresholdMilliseconds) ||
+      immediateFailureThresholdMilliseconds < 1 ||
+      immediateFailureThresholdMilliseconds > 10_000 ||
+      typeof nowMilliseconds !== "function" ||
+      typeof sleep !== "function"
+    ) {
+      throw new ServerLiveProofError("invalid_run_dependencies");
+    }
+    this.minimumSpacingMilliseconds = minimumSpacingMilliseconds;
+    this.consecutiveImmediateFailureLimit =
+      consecutiveImmediateFailureLimit;
+    this.immediateFailureThresholdMilliseconds =
+      immediateFailureThresholdMilliseconds;
+    this.nowMilliseconds = nowMilliseconds;
+    this.sleep = sleep;
+    this.nextEligibleAt = 0;
+    this.consecutiveImmediateFailureCode = null;
+    this.consecutiveImmediateFailureCount = 0;
+    this.stopped = false;
+    this.stopReason = null;
+  }
+
+  async beforeCall(signal) {
+    if (this.stopped) {
+      throw new ServerLiveProofError("provider_batch_stopped");
+    }
+    const delay = Math.max(0, this.nextEligibleAt - this.nowMilliseconds());
+    if (delay > 0) await this.sleep(delay);
+    if (signal?.aborted) throw new ServerLiveProofError("cancelled");
+    if (this.stopped) {
+      throw new ServerLiveProofError("provider_batch_stopped");
+    }
+  }
+
+  observe({ outcome, errorCode, latencyMilliseconds, retryAfterMilliseconds }) {
+    const now = this.nowMilliseconds();
+    const retryDelay = boundedRetryAfterMilliseconds(retryAfterMilliseconds);
+    this.nextEligibleAt = Math.max(
+      now + this.minimumSpacingMilliseconds,
+      retryDelay === null ? 0 : now + retryDelay
+    );
+    if (outcome === "success") {
+      this.consecutiveImmediateFailureCode = null;
+      this.consecutiveImmediateFailureCount = 0;
+      return;
+    }
+    const immediate = outcome === "failed" &&
+      typeof errorCode === "string" &&
+      Number.isFinite(latencyMilliseconds) &&
+      latencyMilliseconds <= this.immediateFailureThresholdMilliseconds;
+    if (!immediate) {
+      this.consecutiveImmediateFailureCode = null;
+      this.consecutiveImmediateFailureCount = 0;
+      return;
+    }
+    if (this.consecutiveImmediateFailureCode === errorCode) {
+      this.consecutiveImmediateFailureCount += 1;
+    } else {
+      this.consecutiveImmediateFailureCode = errorCode;
+      this.consecutiveImmediateFailureCount = 1;
+    }
+    if (
+      this.consecutiveImmediateFailureLimit > 0 &&
+      this.consecutiveImmediateFailureCount >=
+        this.consecutiveImmediateFailureLimit
+    ) {
+      this.stopped = true;
+      this.stopReason = "repeated_immediate_provider_failure";
+    }
   }
 }
 
@@ -288,13 +434,15 @@ export function createMeteredGraphHopperProviderV1({
   controlledFailureAfterFirstSuccess,
   env,
   ledger,
-  fetchImpl
+  fetchImpl,
+  providerSchedule = null
 }) {
   let caseCallOrdinal = 0;
   return Object.freeze({
     async route(request, context = {}) {
       caseCallOrdinal += 1;
       const ordinal = caseCallOrdinal;
+      await providerSchedule?.beforeCall(context.signal);
       const callDigest = safeProofDigestV1({
         caseId,
         ordinal,
@@ -312,10 +460,12 @@ export function createMeteredGraphHopperProviderV1({
       });
       const startedAt = performance.now();
       let responseBytes = null;
+      let retryAfterMilliseconds = null;
       const provider = createGraphHopperProvider({
         env,
         fetchImpl: async (url, init) => {
           const response = await fetchImpl(url, init);
+          retryAfterMilliseconds = retryAfterFromHeaders(response.headers);
           const bytes = await response.arrayBuffer();
           responseBytes = bytes.byteLength;
           return new Response(bytes, {
@@ -327,6 +477,7 @@ export function createMeteredGraphHopperProviderV1({
       });
       try {
         const result = await provider.route(request, context);
+        const latencyMilliseconds = performance.now() - startedAt;
         const controlledFailure =
           controlledFailureAfterFirstSuccess && ordinal === 1;
         await ledger.complete(callId, {
@@ -336,9 +487,7 @@ export function createMeteredGraphHopperProviderV1({
             : "returned_to_pipeline",
           errorCode: null,
           responseBytes,
-          latencyMilliseconds: coarseMilliseconds(
-            performance.now() - startedAt
-          ),
+          latencyMilliseconds: coarseMilliseconds(latencyMilliseconds),
           returnedPathCount: result.paths.length,
           routeMetrics: result.paths.map((path) => ({
             distanceKm: round(path.distance / 1_000, 3),
@@ -347,22 +496,35 @@ export function createMeteredGraphHopperProviderV1({
             descentMeters: round(path.descend ?? 0, 1)
           }))
         });
+        providerSchedule?.observe({
+          outcome: "success",
+          errorCode: null,
+          latencyMilliseconds,
+          retryAfterMilliseconds
+        });
         if (controlledFailure) throw routeError("routing_unavailable");
         return result;
       } catch (error) {
         const snapshot = await ledger.snapshot();
         const active = snapshot.calls.find((item) => item.callId === callId);
         if (active?.outcome === "in_flight") {
+          const latencyMilliseconds = performance.now() - startedAt;
+          const outcome = providerOutcome(error, context.signal);
+          const errorCode = safeProviderErrorCode(error);
           await ledger.complete(callId, {
-            outcome: providerOutcome(error, context.signal),
+            outcome,
             pipelineDisposition: "provider_error",
-            errorCode: safeProviderErrorCode(error),
+            errorCode,
             responseBytes,
-            latencyMilliseconds: coarseMilliseconds(
-              performance.now() - startedAt
-            ),
+            latencyMilliseconds: coarseMilliseconds(latencyMilliseconds),
             returnedPathCount: 0,
             routeMetrics: []
+          });
+          providerSchedule?.observe({
+            outcome,
+            errorCode,
+            latencyMilliseconds,
+            retryAfterMilliseconds
           });
         }
         throw error;
@@ -378,6 +540,10 @@ async function executeCase({
   ledger,
   fetchImpl,
   maximumProposals,
+  maximumConcurrency,
+  graphHopperAttemptTimeoutMs,
+  totalDeadlineMs,
+  providerSchedule,
   signal
 }) {
   const before = await ledger.snapshot();
@@ -396,7 +562,8 @@ async function executeCase({
       ),
     env,
     ledger,
-    fetchImpl
+    fetchImpl,
+    providerSchedule
   });
   let response = null;
   let errorCode = null;
@@ -446,7 +613,13 @@ async function executeCase({
           validateRoutedAlternatives:
             validateResearchGuidedRoutedAlternativesV1
         },
-        { maximumProposals, signal }
+        {
+          maximumProposals,
+          maximumConcurrency,
+          graphHopperAttemptTimeoutMs,
+          totalDeadlineMs,
+          signal
+        }
       )
     );
   } catch (error) {
@@ -783,7 +956,11 @@ function buildSummary({
   officialSummary,
   ledgerSnapshot,
   finalize,
-  env
+  env,
+  providerCallLimit,
+  maximumConcurrency,
+  minimumProviderSpacingMilliseconds,
+  providerSchedule
 }) {
   const executedIds = new Set(allCases.map((item) => item.caseId));
   const notRun = SERVER_LIVE_PROOF_CASE_IDS.filter((caseId) =>
@@ -795,7 +972,7 @@ function buildSummary({
   if (ledgerSnapshot.calls.some((call) => call.outcome === "in_flight")) {
     finalFailures.push("provider_call_unsettled");
   }
-  if (ledgerSnapshot.calls.length > SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT) {
+  if (ledgerSnapshot.calls.length > providerCallLimit) {
     finalFailures.push("provider_call_limit_exceeded");
   }
   if (evidence.regions.some((region) =>
@@ -837,9 +1014,15 @@ function buildSummary({
     notRunCaseCount: notRun.length,
     notRunCaseIds: Object.freeze(notRun),
     providerCalls: Object.freeze({
-      limit: SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT,
+      limit: providerCallLimit,
       exactAttempted: ledgerSnapshot.calls.length,
       ...accounting
+    }),
+    providerScheduling: Object.freeze({
+      maximumConcurrency,
+      minimumSpacingMilliseconds: minimumProviderSpacingMilliseconds,
+      stopped: providerSchedule.stopped,
+      stopReason: providerSchedule.stopReason
     }),
     evidence: Object.freeze({
       ...evidence,
@@ -1050,13 +1233,16 @@ function validateSanitizedCaseReceipt(receipt) {
   }
 }
 
-function validateLedger(value) {
+function validateLedger(
+  value,
+  expectedLimit = SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT
+) {
   if (
     !value ||
     value.schemaVersion !== 1 ||
-    value.limit !== SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT ||
+    value.limit !== expectedLimit ||
     !Array.isArray(value.calls) ||
-    value.calls.length > SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT ||
+    value.calls.length > expectedLimit ||
     value.calls.some((call, index) =>
       call.callId !== index + 1 ||
       !SERVER_LIVE_PROOF_CASE_IDS.includes(call.caseId) ||
@@ -1069,10 +1255,10 @@ function validateLedger(value) {
   }
 }
 
-function emptyLedger() {
+function emptyLedger(limit = SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT) {
   return {
     schemaVersion: 1,
-    limit: SERVER_LIVE_PROOF_PROVIDER_CALL_LIMIT,
+    limit,
     calls: []
   };
 }
@@ -1131,6 +1317,30 @@ function round(value, digits) {
   if (!Number.isFinite(value)) return null;
   const scale = 10 ** digits;
   return Math.round(value * scale) / scale;
+}
+
+function retryAfterFromHeaders(headers) {
+  const value = headers?.get?.("retry-after");
+  if (typeof value !== "string" || value.length > 128) return null;
+  const seconds = Number(value.trim());
+  if (Number.isFinite(seconds)) {
+    return boundedRetryAfterMilliseconds(Math.ceil(seconds * 1_000));
+  }
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return boundedRetryAfterMilliseconds(date.getTime() - Date.now());
+}
+
+function boundedRetryAfterMilliseconds(value) {
+  if (!Number.isFinite(value)) return null;
+  const rounded = Math.ceil(value);
+  return rounded >= 0 && rounded <= 15_000 ? rounded : null;
+}
+
+function wait(milliseconds) {
+  return new Promise((resolvePromise) => {
+    setTimeout(resolvePromise, milliseconds);
+  });
 }
 
 async function atomicWrite(path, contents) {

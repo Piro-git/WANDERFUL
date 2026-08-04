@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
+  ProviderCallScheduleV1,
   ProviderUsageLedgerV1,
   createMeteredGraphHopperProviderV1,
   reassessSanitizedCaseReceiptV1,
@@ -28,6 +36,13 @@ import {
   evaluateServerLiveRouteQualityV1,
   pairwiseSimilarityV1
 } from "../evaluation/outdoorAdventureServerLiveProof/quality.js";
+import {
+  buildTargetedLiveProofV3Summary,
+  cleanupTargetedLiveProofV3Resources,
+  validateTargetedLiveProofV3DatabaseUrl,
+  validateTargetedLiveProofV3Paths,
+  validateTargetedLiveProofV3Summary
+} from "../scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v3.js";
 
 describe("outdoor adventure server live proof", () => {
   it("loads only the bounded reviewed fixture subset", async () => {
@@ -92,9 +107,184 @@ describe("outdoor adventure server live proof", () => {
   it("imports every proof script without executing live work", async () => {
     await Promise.all([
       import("../scripts/run-outdoor-adventure-server-live-proof.js"),
+      import("../scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v3.js"),
       import("../scripts/reconcile-outdoor-adventure-server-live-proof.js"),
       import("../scripts/seal-outdoor-adventure-server-live-proof-cleanup.js")
     ]);
+  });
+
+  it("protects historical proof outputs and rejects non-proof database principals", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "trailmind-v3-runner-paths-"));
+    try {
+      const safePaths = {
+        outputPath: join(directory, "v3-summary.json"),
+        usageLedgerPath: join(directory, "v3-ledger.json"),
+        acquisitionMetadataPath: join(directory, "acquisition.json")
+      };
+      assert.equal(await validateTargetedLiveProofV3Paths(safePaths), true);
+      await assert.rejects(
+        validateTargetedLiveProofV3Paths({
+          ...safePaths,
+          outputPath: safePaths.usageLedgerPath
+        }),
+        hasCode("unsafe_output_path")
+      );
+
+      const releaseDirectory = fileURLToPath(new URL(
+        "../../docs/release/",
+        import.meta.url
+      ));
+      const historicalOutput = join(
+        releaseDirectory,
+        "OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.summary.json"
+      );
+      await assert.rejects(
+        validateTargetedLiveProofV3Paths({
+          ...safePaths,
+          outputPath: historicalOutput
+        }),
+        hasCode("unsafe_output_path")
+      );
+      await assert.rejects(
+        validateTargetedLiveProofV3Paths({
+          ...safePaths,
+          outputPath: historicalOutput.toLowerCase()
+        }),
+        hasCode("unsafe_output_path")
+      );
+      const releaseAlias = join(directory, "release-alias");
+      await symlink(releaseDirectory, releaseAlias);
+      await assert.rejects(
+        validateTargetedLiveProofV3Paths({
+          ...safePaths,
+          outputPath: join(
+            releaseAlias,
+            "OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.md"
+          )
+        }),
+        hasCode("unsafe_output_path")
+      );
+
+      assert.equal(validateTargetedLiveProofV3DatabaseUrl(
+        "postgresql://trailmind_proof@localhost/trailmind_disposable_proof"
+      ), true);
+      for (const rejected of [
+        "postgresql://postgres@localhost/trailmind_disposable_proof",
+        "postgresql://app_user@localhost/trailmind_disposable_proof",
+        "postgresql://production_proof@localhost/trailmind_disposable_proof"
+      ]) {
+        assert.throws(
+          () => validateTargetedLiveProofV3DatabaseUrl(rejected),
+          hasCode("database_not_disposable_loopback")
+        );
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("requires bounded runner cleanup before a result can succeed", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "trailmind-v3-cleanup-"));
+    const capturePath = join(directory, "capture.json");
+    try {
+      await writeFile(capturePath, "{}\n", "utf8");
+      let poolEnded = false;
+      assert.equal(await cleanupTargetedLiveProofV3Resources({
+        pool: {
+          async end() {
+            poolEnded = true;
+          }
+        },
+        capturePath,
+        timeoutMilliseconds: 100
+      }), true);
+      assert.equal(poolEnded, true);
+      await assert.rejects(readFile(capturePath), { code: "ENOENT" });
+
+      await assert.rejects(
+        cleanupTargetedLiveProofV3Resources({
+          pool: { end: () => new Promise(() => {}) },
+          timeoutMilliseconds: 10
+        }),
+        hasCode("cleanup_failed")
+      );
+      await assert.rejects(
+        cleanupTargetedLiveProofV3Resources({
+          capturePath,
+          timeoutMilliseconds: 100,
+          async unlinkImpl() {
+            throw Object.assign(new Error("denied"), { code: "EACCES" });
+          }
+        }),
+        hasCode("cleanup_failed")
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps a circuit-stopped partial batch failed and rejects sensitive receipts", () => {
+    const summary = buildTargetedLiveProofV3Summary({
+      generatedAt: "2026-08-04T07:59:13.065Z",
+      cases: [
+        "case-15-partial-provider-failure-survivor",
+        "case-04-harz-brocken-must-have-landmark",
+        "case-07-innsbruck-viewpoint-loop",
+        "case-08-innsbruck-easy-conservative-loop"
+      ].map((caseId) => ({ caseId, passed: true })),
+      providerCalls: {
+        exactAttempted: 2,
+        successful: 0,
+        failed: 2,
+        timedOut: 0,
+        cancelled: 0,
+        controlledFailureAfterSuccess: 0
+      },
+      providerScheduling: {
+        maximumConcurrency: 1,
+        minimumSpacingMilliseconds: 2_000,
+        stopped: true,
+        stopReason: "repeated_immediate_provider_failure"
+      },
+      evidence: {},
+      graphHopper: {
+        source: "real_graphhopper",
+        officialBaseUrlPinned: true,
+        rawResponsesRetained: false,
+        completeGeometryRetainedInSummary: false
+      },
+      officialCanonical18CaseSummary: {
+        status: "not_run",
+        caseCount: 18,
+        executedCaseCount: 0,
+        providerCallCount: 0
+      },
+      featureFlags: SERVER_LIVE_PROOF_FEATURE_FLAGS.map((name) => ({
+        name,
+        enabled: false
+      }))
+    }, {});
+    assert.equal(summary.status, "failed");
+    assert.ok(summary.failureReasons.includes(
+      "repeated_immediate_provider_failure_stop"
+    ));
+    assert.doesNotThrow(() => validateTargetedLiveProofV3Summary(summary));
+    assert.throws(
+      () => validateTargetedLiveProofV3Summary({
+        ...summary,
+        providerDiagnostic: {
+          providerUrl: "https://graphhopper.com/api/1"
+        }
+      }),
+      hasCode("invalid_targeted_summary")
+    );
+    assert.throws(
+      () => validateTargetedLiveProofV3Summary({
+        ...summary,
+        status: "passed"
+      }),
+      hasCode("invalid_targeted_summary")
+    );
   });
 
   it("schema-validates publication and rejects sensitive durable fields", () => {
@@ -361,6 +551,53 @@ describe("outdoor adventure server live proof", () => {
     }
   });
 
+  it("keeps a rate-limit response distinct from a controlled post-success failure", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "trailmind-live-proof-rate-limit-"));
+    const ledgerPath = join(directory, "usage.json");
+    let ledger;
+    try {
+      ledger = new ProviderUsageLedgerV1(ledgerPath, { limit: 15 });
+      await ledger.initialize();
+      const provider = createMeteredGraphHopperProviderV1({
+        caseId: SERVER_LIVE_PROOF_CASE_IDS.at(-1),
+        controlledFailureAfterFirstSuccess: true,
+        env: {
+          GRAPHHOPPER_API_KEY: "test-only-placeholder",
+          GRAPHHOPPER_BASE_URL: "https://graphhopper.com/api/1"
+        },
+        ledger,
+        async fetchImpl() {
+          return new Response("{}", {
+            status: 429,
+            headers: { "retry-after": "5" }
+          });
+        }
+      });
+      await assert.rejects(
+        provider.route({
+          profile: "foot",
+          routeType: "loop",
+          points: [{ latitude: 51, longitude: 10 }],
+          algorithm: "round_trip",
+          roundTrip: { distanceMeters: 1_000, seed: 11 },
+          locale: "en",
+          includePathDetails: ["surface", "road_class", "hike_rating"]
+        }),
+        hasCode("routing_rate_limited")
+      );
+      const snapshot = await ledger.snapshot();
+      assert.equal(snapshot.calls.length, 1);
+      assert.equal(snapshot.calls[0].outcome, "failed");
+      assert.equal(snapshot.calls[0].errorCode, "routing_rate_limited");
+      assert.equal(snapshot.calls[0].pipelineDisposition, "provider_error");
+      assert.equal(snapshot.calls[0].pipelineDisposition ===
+        "controlled_failure_after_success", false);
+    } finally {
+      await ledger?.close();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("reserves the hard provider budget atomically under concurrency", async () => {
     const directory = await mkdtemp(join(tmpdir(), "trailmind-live-proof-budget-"));
     const ledgerPath = join(directory, "usage.json");
@@ -399,6 +636,93 @@ describe("outdoor adventure server live proof", () => {
       await ledger?.close();
       await rm(directory, { recursive: true, force: true });
     }
+  });
+
+  it("enforces a narrower task-authorized provider ceiling without changing the V1 default", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "trailmind-targeted-proof-budget-"));
+    const ledgerPath = join(directory, "usage.json");
+    let ledger;
+    try {
+      ledger = new ProviderUsageLedgerV1(ledgerPath, { limit: 15 });
+      await ledger.initialize();
+      for (let index = 0; index < 15; index += 1) {
+        await ledger.reserve({
+          caseId: SERVER_LIVE_PROOF_CASE_IDS[index %
+            SERVER_LIVE_PROOF_CASE_IDS.length],
+          callDigest: `call_${String(index + 1).padStart(24, "0")}`,
+          requestedWaypointCount: 3
+        });
+      }
+      await assert.rejects(
+        ledger.reserve({
+          caseId: SERVER_LIVE_PROOF_CASE_IDS[0],
+          callDigest: "call_over_targeted_budget",
+          requestedWaypointCount: 3
+        }),
+        hasCode("provider_call_limit_reached")
+      );
+      const snapshot = await ledger.snapshot();
+      assert.equal(snapshot.limit, 15);
+      assert.equal(snapshot.calls.length, 15);
+    } finally {
+      await ledger?.close();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("serially paces calls, honors bounded retry delay, and stops after repeated immediate failures", async () => {
+    let clock = 10_000;
+    const delays = [];
+    const schedule = new ProviderCallScheduleV1({
+      minimumSpacingMilliseconds: 2_000,
+      consecutiveImmediateFailureLimit: 2,
+      immediateFailureThresholdMilliseconds: 1_000,
+      nowMilliseconds: () => clock,
+      async sleep(milliseconds) {
+        delays.push(milliseconds);
+        clock += milliseconds;
+      }
+    });
+    await schedule.beforeCall();
+    schedule.observe({
+      outcome: "failed",
+      errorCode: "routing_unavailable",
+      latencyMilliseconds: 30,
+      retryAfterMilliseconds: 5_000
+    });
+    await schedule.beforeCall();
+    assert.deepEqual(delays, [5_000]);
+    schedule.observe({
+      outcome: "failed",
+      errorCode: "routing_unavailable",
+      latencyMilliseconds: 40,
+      retryAfterMilliseconds: null
+    });
+    assert.equal(schedule.stopped, true);
+    assert.equal(schedule.stopReason, "repeated_immediate_provider_failure");
+    await assert.rejects(
+      schedule.beforeCall(),
+      hasCode("provider_batch_stopped")
+    );
+
+    clock = 30_000;
+    const boundedDelays = [];
+    const boundedSchedule = new ProviderCallScheduleV1({
+      minimumSpacingMilliseconds: 2_000,
+      nowMilliseconds: () => clock,
+      async sleep(milliseconds) {
+        boundedDelays.push(milliseconds);
+        clock += milliseconds;
+      }
+    });
+    boundedSchedule.observe({
+      outcome: "failed",
+      errorCode: "routing_rate_limited",
+      latencyMilliseconds: 30,
+      retryAfterMilliseconds: 15_001
+    });
+    await boundedSchedule.beforeCall();
+    assert.deepEqual(boundedDelays, [2_000]);
   });
 
   it("cannot reset or detach the provider ledger across phased and diagnostic runs", () => {

@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 1,
+  "proofClassification": "targeted_server_side_live_route_quality_proof",
+  "baselineCommit": "81358cb6e022983e4fe698b195893c72eb281ec0",
+  "generatedAt": "2026-08-04T07:59:13.065Z",
+  "status": "failed",
+  "configuredCaseCount": 4,
+  "executedCaseCount": 4,
+  "passedCaseCount": 1,
+  "failedCaseCount": 3,
+  "notRunCaseCount": 0,
+  "providerAuthorization": {
+    "hardLimit": 15,
+    "scope": "four_reviewed_harz_innsbruck_nonproduction_fixtures",
+    "expiredAtTaskCompletion": true
+  },
+  "providerCalls": {
+    "attempted": 10,
+    "successful": 8,
+    "failed": 2,
+    "timedOut": 0,
+    "cancelled": 0,
+    "controlledFailureAfterSuccess": 1,
+    "unused": 5,
+    "reconciled": true
+  },
+  "providerScheduling": {
+    "maximumConcurrency": 1,
+    "minimumSpacingMilliseconds": 2000,
+    "boundedRetryAfterMaximumMilliseconds": 15000,
+    "consecutiveImmediateFailureLimit": 2,
+    "stopped": true,
+    "stopReason": "repeated_immediate_provider_failure"
+  },
+  "providerReliability": {
+    "successesBeforeRepeatedFailure": 8,
+    "consecutiveImmediateSafeFailures": 2,
+    "safeFailureClassification": "routing_rate_limited",
+    "failureLatenciesMilliseconds": [40, 50],
+    "additionalProbeAfterStop": false,
+    "benchmarkClaim": false
+  },
+  "evidence": {
+    "sourceReplicationTimestamp": "2026-08-03T20:21:36Z",
+    "publisherChecksumsVerified": true,
+    "sourceReceipts": [
+      {
+        "source": "niedersachsen",
+        "bytes": 501484194,
+        "publisherMd5": "a8b51cb14b3aaf2cacc2fc929957fc20",
+        "sha256": "7b99d9fdba2b44c0f45c51526f1cfea8b20f1113a1f04a3dad572956ae79e217"
+      },
+      {
+        "source": "sachsen-anhalt",
+        "bytes": 173218793,
+        "publisherMd5": "f10b48251b8bd63a75d7b15159800e1c",
+        "sha256": "10e903892a649627e756fadb845bb1d3b69e79e554fe026092064d8bb56437a7"
+      },
+      {
+        "source": "thueringen",
+        "bytes": 158907056,
+        "publisherMd5": "f661ce5c6fabe24400624b7b4b631467",
+        "sha256": "7dbb8448dc62ffceee15bd8dc88564a6d766c69986f11084c673fe54a6a228e7"
+      },
+      {
+        "source": "austria",
+        "bytes": 805997426,
+        "publisherMd5": "69c2343b98f151b0fa3b48e7eac4af42",
+        "sha256": "709df4aa7dfcb68070f7817d2fea2595cfe6ed604ad14697a6bfb60a0be6e7ba"
+      }
+    ],
+    "boundedExtractsCompleteWays": true,
+    "missingWayNodeReferences": 0,
+    "boundedExtracts": [
+      {
+        "regionId": "harz-v1",
+        "bytes": 40347075,
+        "sha256": "c58294b12bdeed54946d8e69a182d8f241854bd421c18d3a8d1317f0f89198f2",
+        "nodes": 3775840,
+        "ways": 562221,
+        "relations": 8232,
+        "lastObjectTimestamp": "2026-08-03T19:54:46Z"
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "bytes": 24424179,
+        "sha256": "dafa32db6008fe687da279ce6c3465c77be8ccc1c50c01a5d2e34b64883bfbdf",
+        "nodes": 2471032,
+        "ways": 245645,
+        "relations": 4572,
+        "lastObjectTimestamp": "2026-08-03T18:45:22Z"
+      }
+    ],
+    "postgresVersion": "17.10",
+    "postgisVersion": "3.6.4",
+    "regions": [
+      {
+        "regionId": "harz-v1",
+        "entities": 144459,
+        "assertions": 167366,
+        "relationships": 29308,
+        "quarantined": 0,
+        "coveredGeometries": 142755,
+        "geometries": 143572,
+        "activePolicy": true,
+        "provenanceValidated": true
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "entities": 76855,
+        "assertions": 91474,
+        "relationships": 7763,
+        "quarantined": 0,
+        "coveredGeometries": 76019,
+        "geometries": 76355,
+        "activePolicy": true,
+        "provenanceValidated": true
+      }
+    ],
+    "regionalIsolationValidated": true,
+    "lineageMismatches": 0
+  },
+  "databaseGate": {
+    "migrationsApplied": [1, 2, 3, 4, 5, 6],
+    "secondMigrationRunNoOp": true,
+    "indexName": "outdoor_research_projection_entities_trail_point_gist_idx",
+    "indexValid": true,
+    "indexReady": true,
+    "representativePlansUsedIndex": true,
+    "applicationTimeoutMilliseconds": 2500,
+    "applicationTimeoutChanged": false,
+    "workMem": "4MB",
+    "workMemChanged": false,
+    "maximumRepresentativeTransactionMilliseconds": 1049.4,
+    "requiredMaximumMilliseconds": 2000,
+    "perFixtureMilliseconds": [
+      {
+        "fixture": "controlled_survivor",
+        "maximum": 152.1,
+        "median": 93.5,
+        "p95": 152.1,
+        "rows": 24
+      },
+      {
+        "fixture": "brocken",
+        "maximum": 742,
+        "median": 118.8,
+        "p95": 742,
+        "rows": 24
+      },
+      {
+        "fixture": "innsbruck_viewpoint",
+        "maximum": 1049.4,
+        "median": 115.4,
+        "p95": 1049.4,
+        "rows": 24
+      },
+      {
+        "fixture": "innsbruck_easy",
+        "maximum": 104.6,
+        "median": 102.1,
+        "p95": 104.6,
+        "rows": 24
+      }
+    ],
+    "bulkProjectionTriggerWorkaround": {
+      "used": true,
+      "concurrentWriters": false,
+      "triggerImmediatelyReenabled": true,
+      "setBasedLineageValidationPassed": true,
+      "runtimeQueryChanged": false
+    },
+    "passed": true
+  },
+  "candidatePreflight": {
+    "allPointsEvidenceOwned": true,
+    "allPointsCurrentActiveSameRegion": true,
+    "allPointsAcceptedAndNonQuarantined": true,
+    "originalPoiCoordinatesPreserved": true,
+    "inventedAccessCoordinates": false,
+    "mappedTrailProximityLimitMeters": 75,
+    "maximumSelectedHighlightDistanceMeters": {
+      "controlled_survivor": 5.3,
+      "brocken": 29.4,
+      "innsbruck_viewpoint": 6.7,
+      "innsbruck_easy": 28.1
+    },
+    "providerSnappingAuthoritative": true
+  },
+  "cases": [
+    {
+      "caseId": "case-15-partial-provider-failure-survivor",
+      "status": "failed",
+      "providerCalls": 3,
+      "providerSuccesses": 3,
+      "controlledFailureAfterSuccess": 1,
+      "eligibleAlternativeCount": 0,
+      "failureReasons": [
+        "no_independently_eligible_survivor",
+        "excessive_backtracking"
+      ],
+      "observedRoutes": [
+        {
+          "distanceKm": 11.988,
+          "targetDeviationRatio": 0.001,
+          "maximumSnapMeters": 5.3,
+          "waypointsReached": 3,
+          "waypointCount": 3,
+          "backtrackingRatio": 0.7311,
+          "overlapRatio": 0.7311,
+          "eligible": false
+        },
+        {
+          "distanceKm": 18.94,
+          "targetDeviationRatio": 0.5784,
+          "maximumSnapMeters": 194.6,
+          "waypointsReached": 2,
+          "waypointCount": 3,
+          "backtrackingRatio": 0.6552,
+          "overlapRatio": 0.6817,
+          "eligible": false
+        }
+      ]
+    },
+    {
+      "caseId": "case-04-harz-brocken-must-have-landmark",
+      "status": "passed",
+      "providerCalls": 3,
+      "providerSuccesses": 3,
+      "eligibleAlternativeCount": 1,
+      "selectedRoute": {
+        "distanceKm": 23.799,
+        "targetDeviationRatio": 0.5866,
+        "durationMinutes": 358.1,
+        "ascentMeters": 772.3,
+        "descentMeters": 772.3,
+        "maximumSnapMeters": 41.9,
+        "waypointsReached": 3,
+        "waypointCount": 3,
+        "mustHaveReached": true,
+        "genuineLoop": true,
+        "waypointOrderPreserved": true,
+        "backtrackingRatio": 0.1647,
+        "overlapRatio": 0.1647,
+        "shapeScore": 0.566,
+        "trailPathRatio": 0.7299,
+        "majorRoadRatio": 0,
+        "roadCoverageRatio": 0.9971,
+        "maximumHikeRating": 1,
+        "eligible": true
+      }
+    },
+    {
+      "caseId": "case-07-innsbruck-viewpoint-loop",
+      "status": "failed",
+      "providerCalls": 3,
+      "providerSuccesses": 2,
+      "providerFailures": 1,
+      "eligibleAlternativeCount": 0,
+      "failureReasons": [
+        "target_distance_deviation",
+        "waypoint_snapping",
+        "mapped_evidence_provider_routable_graph_mismatch"
+      ],
+      "observedRoutes": [
+        {
+          "distanceKm": 21.201,
+          "targetDeviationRatio": 0.7667,
+          "ascentMeters": 1629.2,
+          "maximumSnapMeters": 427.6,
+          "waypointsReached": 0,
+          "waypointCount": 3,
+          "backtrackingRatio": 0.4849,
+          "overlapRatio": 0.4861,
+          "trailPathRatio": 0.8895,
+          "eligible": false
+        },
+        {
+          "distanceKm": 21.29,
+          "targetDeviationRatio": 0.7741,
+          "ascentMeters": 1629.8,
+          "maximumSnapMeters": 441.1,
+          "waypointsReached": 1,
+          "waypointCount": 3,
+          "backtrackingRatio": 0.4826,
+          "overlapRatio": 0.485,
+          "trailPathRatio": 0.8889,
+          "eligible": false
+        }
+      ]
+    },
+    {
+      "caseId": "case-08-innsbruck-easy-conservative-loop",
+      "status": "failed",
+      "providerCalls": 1,
+      "providerSuccesses": 0,
+      "providerFailures": 1,
+      "eligibleAlternativeCount": 0,
+      "routeMetricsObserved": false,
+      "failureReasons": [
+        "routing_rate_limited",
+        "provider_batch_stopped"
+      ]
+    }
+  ],
+  "comparison": {
+    "v1ViewpointDiagnosticReproduced": true,
+    "v1ViewpointImprovementProven": false,
+    "v2DatabaseBlockerRemoved": true,
+    "brockenEligibleSurvivorProven": true,
+    "easyRouteQualityEvaluated": false
+  },
+  "defects": [
+    "mapped_trail_proximity_does_not_prove_provider_foot_graph_access",
+    "controlled_fixture_has_no_current_eligible_survivor",
+    "easy_fixture_blocked_by_provider_circuit_breaker",
+    "bulk_projection_row_trigger_exceeds_operation_deadline",
+    "brocken_selected_route_materially_exceeds_target"
+  ],
+  "correctionsMade": [
+    "dedicated_import_safe_v3_runner",
+    "hard_15_call_ledger_limit",
+    "serialized_conservative_provider_scheduler",
+    "bounded_retry_after_handling",
+    "repeated_immediate_failure_circuit_breaker",
+    "backward_compatible_harness_controls",
+    "scheduler_and_ledger_tests",
+    "protected_historical_output_targets",
+    "proof_only_loopback_database_principal",
+    "bounded_required_runner_cleanup",
+    "checkpoint_regression_tests"
+  ],
+  "verification": {
+    "focusedBackendTests": {
+      "passed": 200,
+      "failed": 0,
+      "suiteCount": 10
+    },
+    "currentDataPerformanceTests": {
+      "passed": 2,
+      "failed": 0
+    },
+    "realPostgisIntegrationTests": {
+      "passed": 44,
+      "failed": 0,
+      "suiteCount": 5
+    },
+    "completeBackendTests": {
+      "passed": 585,
+      "failed": 0,
+      "suiteCount": 63
+    },
+    "independentCheckpointReview": {
+      "focusedOfflineTests": {
+        "passed": 141,
+        "failed": 0,
+        "suiteCount": 9
+      },
+      "serverLiveProofTests": {
+        "passed": 18,
+        "failed": 0,
+        "suiteCount": 1
+      },
+      "historicalOutputProtectionPassed": true,
+      "proofDatabasePrincipalGatePassed": true,
+      "boundedRequiredCleanupPassed": true
+    },
+    "backendBuildPassed": true,
+    "offlineQualityEvaluation": {
+      "passed": 101,
+      "failed": 0,
+      "skipped": 0,
+      "policyViolations": 0
+    },
+    "xcodeRunRequired": false,
+    "swiftFilesChanged": false
+  },
+  "featureFlags": [
+    { "name": "OUTDOOR_RESEARCH_PLANNING_ENABLED", "enabled": false },
+    { "name": "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL", "enabled": false },
+    { "name": "OUTDOOR_EVIDENCE_PROVIDER_ENABLED", "enabled": false },
+    { "name": "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING", "enabled": false },
+    { "name": "INTENT_ALLOW_INSECURE_LOCAL_PARSING", "enabled": false },
+    { "name": "APP_ATTEST_ALLOW_IN_MEMORY", "enabled": false }
+  ],
+  "officialCanonical18CaseSummary": {
+    "status": "not_run",
+    "executedCaseCount": 0,
+    "modified": false
+  },
+  "historicalArtifactsModified": false,
+  "cleanup": {
+    "databaseStopped": true,
+    "loopbackPortClosed": true,
+    "disposableArtifactsRemoved": true,
+    "removedKiB": 5858436
+  },
+  "physicalIPhoneAppAttestProven": false,
+  "closedBetaEligible": false,
+  "providerSuperiorityClaim": false,
+  "thresholdsChanged": false,
+  "credentialsRetained": false,
+  "rawProviderMaterialRetained": false,
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "enabled": false
+}
