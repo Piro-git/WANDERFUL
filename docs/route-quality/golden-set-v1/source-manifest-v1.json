@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 1,
+  "manifestId": "trailmind-route-quality-golden-set-source-manifest-v1",
+  "retrievalDate": "2026-08-04",
+  "purpose": "Public-source provenance and reuse boundaries for TrailMind Expert Route Quality Golden Set V1. This is a benchmark research manifest, not runtime evidence or legal advice.",
+  "sources": [
+    {
+      "sourceId": "SRC-OSM-FOUNDATION",
+      "organization": "OpenStreetMap Foundation and OpenStreetMap contributors",
+      "sourceCategory": "openstreetmap_open_mapping",
+      "url": "https://www.openstreetmap.org/copyright",
+      "retrievalDate": "2026-08-04",
+      "region": "cross_region",
+      "authorityClassification": "open_mapping_foundation",
+      "accessMethod": "public license and attribution page; benchmark uses no public runtime API",
+      "licensingReuseClassification": "ODbL-1.0; attribution and share-alike analysis required for database distribution",
+      "attributionRequirements": "Credit OpenStreetMap and its contributors and identify the ODbL; follow the medium-specific attribution guidance.",
+      "expectedRefreshCadence": "license review on change; imported evidence no older than the regional 14-day policy",
+      "predicatesOrFactsItMaySupport": [
+        "mapped entity category",
+        "mapped trail or route-relation presence",
+        "mapped trail-access candidate derivation with full element and import provenance"
+      ],
+      "factsItCannotEstablish": [
+        "official route status",
+        "current opening or closure",
+        "public or legal access",
+        "safety",
+        "scenic quality",
+        "drinking-water availability",
+        "provider connectivity"
+      ],
+      "knownRisksOrLimitations": [
+        "community mapping can be incomplete or stale",
+        "missing tags mean unknown, not permitted",
+        "public OSM APIs and standard tiles are not production acquisition infrastructure"
+      ]
+    },
+    {
+      "sourceId": "SRC-HARZ-NP-LEGAL",
+      "organization": "Nationalparkverwaltung Harz",
+      "sourceCategory": "official_authority",
+      "url": "https://www.nationalpark-harz.de/de/der-nationalpark-harz/wir-ueber-uns/rechtliche-grundlagen.php/",
+      "retrievalDate": "2026-08-04",
+      "region": "harz-v1",
+      "authorityClassification": "competent_protected_area_authority_within_national_park",
+      "accessMethod": "public HTML and linked Wegeplan; link-only pending explicit machine-data reuse permission",
+      "licensingReuseClassification": "legal_review_required_link_only",
+      "attributionRequirements": "Name Nationalparkverwaltung Harz and link to the exact source page; do not copy plan geometry without permission.",
+      "expectedRefreshCadence": "check before each controlled evaluation and on published legal-plan change",
+      "predicatesOrFactsItMaySupport": [
+        "published National Park legal basis",
+        "published marked-way obligations and protected-area rules",
+        "official network context within the authority's scope"
+      ],
+      "factsItCannotEstablish": [
+        "a specific route is currently open",
+        "provider routability",
+        "trail safety",
+        "conditions outside the National Park",
+        "water or facility availability"
+      ],
+      "knownRisksOrLimitations": [
+        "public presentation is not a reusable data license",
+        "park authority scope does not cover the entire Harz region",
+        "field signs and newer orders can supersede a static page"
+      ]
+    },
+    {
+      "sourceId": "SRC-HARZ-NP-CLOSURES",
+      "organization": "Nationalparkverwaltung Harz",
+      "sourceCategory": "official_authority",
+      "url": "https://www.nationalpark-harz.de/de/startseite/Wegesperrungen_Aktuell/?js=false&settings=show",
+      "retrievalDate": "2026-08-04",
+      "region": "harz-v1",
+      "authorityClassification": "competent_current_status_authority_within_national_park",
+      "accessMethod": "public current-status page; link-only, not scraped or normalized",
+      "licensingReuseClassification": "legal_review_required_live_link",
+      "attributionRequirements": "Name Nationalparkverwaltung Harz, preserve the observation date, and deep-link to the current notice.",
+      "expectedRefreshCadence": "at review time and immediately before any real-world use",
+      "predicatesOrFactsItMaySupport": [
+        "an explicitly listed closure or impairment within its stated scope and time"
+      ],
+      "factsItCannotEstablish": [
+        "absence of all closures",
+        "general route safety",
+        "conditions outside the authority's scope",
+        "future openness"
+      ],
+      "knownRisksOrLimitations": [
+        "no completeness guarantee or reusable feed license",
+        "absence of a notice never means open",
+        "notices and field signage can change quickly"
+      ]
+    },
+    {
+      "sourceId": "SRC-HARZ-BROCKEN",
+      "organization": "Harzer Tourismusverband e.V.",
+      "sourceCategory": "official_operator",
+      "url": "https://www.harzinfo.de/erlebnisse/wandern/die-wege-zum-brocken",
+      "retrievalDate": "2026-08-04",
+      "region": "harz-v1",
+      "authorityClassification": "regional_tourism_organization",
+      "accessMethod": "public route-information page; factual benchmark reference only",
+      "licensingReuseClassification": "partnership_required_link_only",
+      "attributionRequirements": "Name Harzer Tourismusverband e.V. and link to the source; do not reuse route geometry, GPX, photos, or prose.",
+      "expectedRefreshCadence": "quarterly metadata check and before benchmark revision",
+      "predicatesOrFactsItMaySupport": [
+        "Brocken landmark existence",
+        "published named approaches",
+        "published general distance and difficulty context"
+      ],
+      "factsItCannotEstablish": [
+        "current access or closure status",
+        "provider connectivity",
+        "route safety",
+        "guaranteed views",
+        "current facility operation"
+      ],
+      "knownRisksOrLimitations": [
+        "tourism wording is promotional rather than operational proof",
+        "website publication does not grant route-data reuse",
+        "route facts must be recomputed by the routing provider"
+      ]
+    },
+    {
+      "sourceId": "SRC-HARZ-ODERTEICH",
+      "organization": "Nationalparkverwaltung Harz",
+      "sourceCategory": "official_authority",
+      "url": "https://www.nationalpark-harz.de/de/natur-erleben/wandern/w6oderteich/?js=false&show=false&zoom=groesser",
+      "retrievalDate": "2026-08-04",
+      "region": "harz-v1",
+      "authorityClassification": "competent_protected_area_authority_within_national_park",
+      "accessMethod": "public official tour page; link-only benchmark reference",
+      "licensingReuseClassification": "legal_review_required_link_only",
+      "attributionRequirements": "Name Nationalparkverwaltung Harz and link to the page; do not copy map, flyer, or route geometry.",
+      "expectedRefreshCadence": "quarterly and before benchmark revision",
+      "predicatesOrFactsItMaySupport": [
+        "Oderteich landmark existence",
+        "officially published loop context",
+        "published terrain and group-suitability cautions"
+      ],
+      "factsItCannotEstablish": [
+        "current openness",
+        "provider-routed geometry or distance",
+        "universal child or mobility suitability",
+        "safe ice or water conditions"
+      ],
+      "knownRisksOrLimitations": [
+        "page expressly notes root paths and narrow boardwalk sections",
+        "field conditions can differ from the publication",
+        "official description is not a safety guarantee"
+      ]
+    },
+    {
+      "sourceId": "SRC-HARZ-SCHARFENSTEIN",
+      "organization": "Nationalparkverwaltung Harz",
+      "sourceCategory": "official_operator",
+      "url": "https://www.nationalpark-harz.de/de/besucherzentren/scharfenstein?js=false&openNav=move-left&page-style=schwarz&show=false",
+      "retrievalDate": "2026-08-04",
+      "region": "harz-v1",
+      "authorityClassification": "protected_area_site_operator",
+      "accessMethod": "public facility and landmark page; link-only benchmark reference",
+      "licensingReuseClassification": "legal_review_required_link_only",
+      "attributionRequirements": "Name Nationalparkverwaltung Harz and link to the exact page.",
+      "expectedRefreshCadence": "at review time for any facility claim",
+      "predicatesOrFactsItMaySupport": [
+        "Scharfenstein landmark and ranger-station existence",
+        "published access context",
+        "published steep-path caution"
+      ],
+      "factsItCannotEstablish": [
+        "current facility opening unless freshly observed",
+        "provider connectivity",
+        "guaranteed viewpoint quality",
+        "trail safety"
+      ],
+      "knownRisksOrLimitations": [
+        "facility status is time-sensitive",
+        "marketing descriptions cannot verify scenery",
+        "the page does not license route geometry"
+      ]
+    },
+    {
+      "sourceId": "SRC-HARZ-HIKING",
+      "organization": "Harzer Tourismusverband e.V.",
+      "sourceCategory": "official_operator",
+      "url": "https://www.harzinfo.de/erlebnisse/wandern",
+      "retrievalDate": "2026-08-04",
+      "region": "harz-v1",
+      "authorityClassification": "regional_tourism_organization",
+      "accessMethod": "public overview page; link-only benchmark context",
+      "licensingReuseClassification": "partnership_required_link_only",
+      "attributionRequirements": "Name Harzer Tourismusverband e.V. and link to the source; do not copy route content or assets.",
+      "expectedRefreshCadence": "quarterly and before benchmark revision",
+      "predicatesOrFactsItMaySupport": [
+        "regional hiking context",
+        "named publicly advertised hiking destinations"
+      ],
+      "factsItCannotEstablish": [
+        "current trail status",
+        "route quality",
+        "provider geometry",
+        "safety or legal access",
+        "verified scenic quality"
+      ],
+      "knownRisksOrLimitations": [
+        "promotional source",
+        "mixed content rights",
+        "not a completeness or current-status feed"
+      ]
+    },
+    {
+      "sourceId": "SRC-INNSBRUCK-HIKING",
+      "organization": "Tourismusverband Innsbruck und seine Feriendörfer",
+      "sourceCategory": "official_operator",
+      "url": "https://www.innsbruck.info/en/hiking.html",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "public_regional_tourism_body",
+      "accessMethod": "public overview and route links; link-only benchmark reference",
+      "licensingReuseClassification": "partnership_required_all_rights_reserved",
+      "attributionRequirements": "Name Innsbruck Tourismus and link to the exact source; do not reuse route geometry, GPX, images, or prose.",
+      "expectedRefreshCadence": "quarterly and before benchmark revision",
+      "predicatesOrFactsItMaySupport": [
+        "publicly advertised hiking destinations",
+        "published category, length, duration, and ascent context",
+        "existence context for lakes, viewpoints, and huts"
+      ],
+      "factsItCannotEstablish": [
+        "current opening or access",
+        "provider-routed facts",
+        "route safety",
+        "guaranteed views",
+        "current hut service"
+      ],
+      "knownRisksOrLimitations": [
+        "all rights reserved",
+        "tourism descriptions are not operational evidence",
+        "published route facts are reference expectations, not provider truth"
+      ]
+    },
+    {
+      "sourceId": "SRC-INNSBRUCK-NORDKETTE",
+      "organization": "Tourismusverband Innsbruck und seine Feriendörfer",
+      "sourceCategory": "official_operator",
+      "url": "https://www.innsbruck.info/en/sightseeing/nordkette.html",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "public_regional_tourism_body",
+      "accessMethod": "public destination page; link-only benchmark reference",
+      "licensingReuseClassification": "partnership_required_all_rights_reserved",
+      "attributionRequirements": "Name Innsbruck Tourismus and link to the page; do not copy media or proprietary route content.",
+      "expectedRefreshCadence": "quarterly and at review time for lift-dependent expectations",
+      "predicatesOrFactsItMaySupport": [
+        "Nordkette and Hafelekar destination existence",
+        "published short-walk and viewpoint context",
+        "published lift dependency context"
+      ],
+      "factsItCannotEstablish": [
+        "current lift operation",
+        "visibility",
+        "provider access",
+        "trail safety",
+        "current alpine conditions"
+      ],
+      "knownRisksOrLimitations": [
+        "lift and mountain conditions are time-sensitive",
+        "marketing superlatives are not benchmark facts",
+        "route geometry is not licensed for reuse"
+      ]
+    },
+    {
+      "sourceId": "SRC-INNSBRUCK-PERSPECTIVES",
+      "organization": "Tourismusverband Innsbruck und seine Feriendörfer",
+      "sourceCategory": "official_operator",
+      "url": "https://www.innsbruck.info/en/hiking/m/the-path-of-perspectives.html",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "public_regional_tourism_body",
+      "accessMethod": "public route page; factual benchmark reference only",
+      "licensingReuseClassification": "partnership_required_all_rights_reserved",
+      "attributionRequirements": "Name Innsbruck Tourismus and link to the source; do not reuse the route map, GPX, media, or text.",
+      "expectedRefreshCadence": "quarterly and at review time for access dependencies",
+      "predicatesOrFactsItMaySupport": [
+        "Path of Perspectives destination existence",
+        "published loop, difficulty, distance, duration, and ascent context"
+      ],
+      "factsItCannotEstablish": [
+        "current access or lift operation",
+        "provider geometry",
+        "guaranteed panorama",
+        "safety"
+      ],
+      "knownRisksOrLimitations": [
+        "route starts at a lift-accessed alpine station",
+        "all rights reserved",
+        "current conditions remain unknown"
+      ]
+    },
+    {
+      "sourceId": "SRC-INNSBRUCK-ZIRBENWEG",
+      "organization": "Tourismusverband Innsbruck und seine Feriendörfer",
+      "sourceCategory": "official_operator",
+      "url": "https://www.innsbruck.info/en/hiking/m/the-zirbenweg-trail.html",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "public_regional_tourism_body",
+      "accessMethod": "public route page; factual benchmark reference only",
+      "licensingReuseClassification": "partnership_required_all_rights_reserved",
+      "attributionRequirements": "Name Innsbruck Tourismus and link to the page; do not reuse GPX, map, photos, or prose.",
+      "expectedRefreshCadence": "quarterly and at review time for cable-car dependencies",
+      "predicatesOrFactsItMaySupport": [
+        "Zirbenweg trail and named hut destination existence",
+        "published point-to-point, distance, duration, ascent, and difficulty context"
+      ],
+      "factsItCannotEstablish": [
+        "current lift or hut opening",
+        "provider connectivity",
+        "public access today",
+        "safety",
+        "guaranteed scenery"
+      ],
+      "knownRisksOrLimitations": [
+        "published route is point-to-point while the current beta surface is loop-only",
+        "transport and lift dependencies are time-sensitive",
+        "all rights reserved"
+      ]
+    },
+    {
+      "sourceId": "SRC-INNSBRUCK-RAUSCHBRUNNEN",
+      "organization": "Tourismusverband Innsbruck und seine Feriendörfer",
+      "sourceCategory": "official_operator",
+      "url": "https://www.innsbruck.info/en/hiking/m/a-hike-to-the-rauschbrunnen-mountain-hut.html",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "public_regional_tourism_body",
+      "accessMethod": "public route page; factual benchmark reference only",
+      "licensingReuseClassification": "partnership_required_all_rights_reserved",
+      "attributionRequirements": "Name Innsbruck Tourismus and link to the page; do not reuse route geometry, GPX, images, or prose.",
+      "expectedRefreshCadence": "quarterly for route context; current operator check required for food/opening claims",
+      "predicatesOrFactsItMaySupport": [
+        "Rauschbrunnen destination existence",
+        "published hiking, distance, duration, ascent, and difficulty context"
+      ],
+      "factsItCannotEstablish": [
+        "current opening or lunch service",
+        "drinking-water availability",
+        "provider route facts",
+        "route safety"
+      ],
+      "knownRisksOrLimitations": [
+        "facility operation is time-sensitive",
+        "all rights reserved",
+        "tourism classification is not a safety guarantee"
+      ]
+    },
+    {
+      "sourceId": "SRC-INNSBRUCK-CLASSIFICATION",
+      "organization": "Tourismusverband Innsbruck und seine Feriendörfer",
+      "sourceCategory": "official_operator",
+      "url": "https://www.innsbruck.info/en/hiking/service/classifications-of-hiking-routes.html",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "public_regional_tourism_body_citing_regional_classification",
+      "accessMethod": "public explanatory page; link-only",
+      "licensingReuseClassification": "partnership_required_all_rights_reserved",
+      "attributionRequirements": "Name Innsbruck Tourismus and preserve the original classification vocabulary.",
+      "expectedRefreshCadence": "annual and on classification-policy change",
+      "predicatesOrFactsItMaySupport": [
+        "published blue, red, and black route-class semantics",
+        "classification factors explicitly described on the page"
+      ],
+      "factsItCannotEstablish": [
+        "route length or current conditions",
+        "absence of alpine hazards",
+        "individual suitability",
+        "safety"
+      ],
+      "knownRisksOrLimitations": [
+        "the source says length and ordinary alpine risks are outside the class",
+        "classification must not be collapsed into a safety claim",
+        "all rights reserved"
+      ]
+    },
+    {
+      "sourceId": "SRC-ALPENVEREIN-HUTS",
+      "organization": "Österreichischer Alpenverein and participating Alpine Clubs",
+      "sourceCategory": "official_operator",
+      "url": "https://www.alpenverein.at/portal/huetten-wege/index.php",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "operator_network_directory",
+      "accessMethod": "public directory; link-only pending written data permission",
+      "licensingReuseClassification": "partnership_required",
+      "attributionRequirements": "Name the responsible Alpine Club/operator and link to the exact hut record; written permission is required for data reuse.",
+      "expectedRefreshCadence": "operator check at review time and immediately before a real visit",
+      "predicatesOrFactsItMaySupport": [
+        "operator-listed hut existence",
+        "operator contact and published season context when freshly checked"
+      ],
+      "factsItCannotEstablish": [
+        "bed availability",
+        "current opening without a fresh operator observation",
+        "drinking water",
+        "safe or legal access",
+        "provider connectivity"
+      ],
+      "knownRisksOrLimitations": [
+        "explicit data-reuse permission is required",
+        "opening and booking are time-sensitive",
+        "existence does not imply route suitability"
+      ]
+    },
+    {
+      "sourceId": "SRC-TIROL-GIP",
+      "organization": "GIP.at and Austrian public authorities",
+      "sourceCategory": "official_authority",
+      "url": "https://www.gip.gv.at/en/",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "public_authority_transport_graph",
+      "accessMethod": "scheduled OGD bulk dataset; no runtime request in this benchmark",
+      "licensingReuseClassification": "CC-BY-4.0 approved candidate subject to semantic validation",
+      "attributionRequirements": "Use the published attribution 'Datenquelle: gip.gv.at' and retain release and source lineage.",
+      "expectedRefreshCadence": "check every two weeks; import each published release after validation",
+      "predicatesOrFactsItMaySupport": [
+        "documented public-authority graph attributes",
+        "pedestrian access corroboration only where semantics and coverage are validated"
+      ],
+      "factsItCannotEstablish": [
+        "complete hiking-trail coverage",
+        "current closure",
+        "mountain difficulty",
+        "safety",
+        "provider connectivity"
+      ],
+      "knownRisksOrLimitations": [
+        "pedestrian semantics and completeness require a bounded validation",
+        "missing data remains unknown",
+        "not a live conditions feed"
+      ]
+    },
+    {
+      "sourceId": "SRC-DIGIWAY",
+      "organization": "European Region Tyrol-South Tyrol-Trentino and DIGIWAY partners",
+      "sourceCategory": "official_authority",
+      "url": "https://www.europaregion.info/en/euregio/projekte/nachhaltigkeit/digiway-geodata-for-safety-in-the-mountains/software-for-harmonising-official-trail-data/",
+      "retrievalDate": "2026-08-04",
+      "region": "innsbruck-alps-v1",
+      "authorityClassification": "official_harmonized_trail_data_program",
+      "accessMethod": "public documentation and endpoints; no data imported by this benchmark",
+      "licensingReuseClassification": "legal_review_required_license_chain_unresolved",
+      "attributionRequirements": "Do not ingest until the package and upstream source licenses and attribution manifest are explicit.",
+      "expectedRefreshCadence": "reassess before implementation; documented dataset publication may be daily",
+      "predicatesOrFactsItMaySupport": [
+        "documented availability of harmonized FC1 path and FC2 official-route structures",
+        "potential future official trail provenance after license approval"
+      ],
+      "factsItCannotEstablish": [
+        "current openness unless closure semantics are present",
+        "safety",
+        "provider connectivity",
+        "permission to reuse the current package"
+      ],
+      "knownRisksOrLimitations": [
+        "unified package and upstream license chain is not explicit enough for ingestion",
+        "public endpoints are not permission",
+        "official route membership does not prove current access"
+      ]
+    }
+  ]
+}
