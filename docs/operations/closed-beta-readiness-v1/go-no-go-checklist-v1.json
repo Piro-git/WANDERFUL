@@ -1,0 +1,498 @@
+{
+  "schemaVersion": 1,
+  "checklistVersion": "wanderful-closed-beta-go-no-go-v1",
+  "evaluatedOn": "2026-08-04",
+  "currentDecision": "NO_GO",
+  "currentProductClassification": "research_guided_closed_beta_not_ready",
+  "decisionPolicy": {
+    "goRule": "GO is valid only when every mandatory requirement has currentState verified, non-empty evidenceReferences, an accountable ownerRole, no unresolved blocker, no critical or high open incident, and signatures from the product, security, and operations approvers.",
+    "missingEvidenceRule": "Absent, partial, stale, not-run, skipped, insufficient-data, or failed evidence is NO_GO.",
+    "changeRule": "A material code, migration, configuration, dependency, signing, provider, data, contract, presentation, monitoring, or rollback change invalidates the affected evidence.",
+    "receiptRule": "Historical receipts are immutable. Corrections append a new receipt and never rewrite prior evidence."
+  },
+  "currentDecisionReasons": [
+    "physical_iphone_app_attest_proof_absent",
+    "signed_testflight_production_environment_proof_absent",
+    "https_staging_and_durable_postgis_not_proved",
+    "current_harz_and_innsbruck_imports_absent",
+    "access_v2_and_migration_007_review_incomplete",
+    "v4_provider_and_quality_proof_not_run",
+    "provider_flags_not_fail_closed_for_missing_or_malformed_values",
+    "rollback_and_monitoring_not_rehearsed",
+    "operational_privacy_and_product_ownership_unassigned"
+  ],
+  "domains": [
+    {
+      "id": "domain-physical-device-security",
+      "name": "Physical-device security readiness",
+      "requirements": [
+        {
+          "id": "security-apple-team-app-id",
+          "title": "Apple team, explicit App ID, and App Attest capability are approved",
+          "mandatory": true,
+          "ownerRole": "apple_release_owner",
+          "evidenceRequired": ["Apple team role approval", "explicit application identifier capability receipt", "non-secret owner approval reference"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/release/APPLE_TEAM_GATES.md"],
+          "blocker": "Owner/team access and capability evidence are unresolved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "security-signed-entitlement-profile",
+          "title": "Signed build entitlement, application identifier, profile, and environment match",
+          "mandatory": true,
+          "ownerRole": "apple_release_owner",
+          "evidenceRequired": ["signed archive inspection", "development physical-device build inspection", "TestFlight production-environment inspection"],
+          "currentState": "partial",
+          "evidenceReferences": ["TrailMind/TrailMindRelease.entitlements", "docs/release/ARCHIVE_VERIFICATION.md"],
+          "blocker": "Repository entitlement exists, but no signed device/distribution proof exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "security-physical-positive-flow",
+          "title": "Physical registration, assertion, route session, and bounded planning flow pass",
+          "mandatory": true,
+          "ownerRole": "ios_security_proof_owner",
+          "evidenceRequired": ["signed physical-iPhone receipt", "durable counter/session receipt", "single provider-call reconciliation", "final flags false"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md"],
+          "blocker": "Protocol and physical harness have not been executed/provided.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "security-physical-negative-cases",
+          "title": "Replay, wrong challenge/application/environment, expiry, malformed, cancellation, and rate-limit cases fail closed",
+          "mandatory": true,
+          "ownerRole": "ios_security_proof_owner",
+          "evidenceRequired": ["all named negative case receipts", "zero unauthorized provider work", "lease/cleanup confirmation"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md", "backend/test/appAttestVerifier.test.js"],
+          "blocker": "Repository tests are not physical-device proof.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "security-testflight-production-attest",
+          "title": "TestFlight production App Attest environment passes independently",
+          "mandatory": true,
+          "ownerRole": "apple_release_owner",
+          "evidenceRequired": ["TestFlight build receipt", "production-environment registration/assertion/replay result", "allowed build/category match"],
+          "currentState": "absent",
+          "evidenceReferences": ["backend/docs/app-attest-device-verification.md"],
+          "blocker": "No TestFlight App Attest proof exists.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-database",
+      "name": "Database readiness",
+      "requirements": [
+        {
+          "id": "database-staging-postgis",
+          "title": "Isolated staging PostgreSQL/PostGIS is provisioned, private, backed up, and recoverable",
+          "mandatory": true,
+          "ownerRole": "database_operations_owner",
+          "evidenceRequired": ["service/version receipt", "private network and backup policy", "restore test", "environment isolation"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md"],
+          "blocker": "No staging database deployment was performed.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "database-least-privilege-roles",
+          "title": "Provisioner, migration, import, projection, runtime, pruner, and audit roles are separated",
+          "mandatory": true,
+          "ownerRole": "database_security_owner",
+          "evidenceRequired": ["grant/RLS policy digests", "denied-access tests", "separate product/cancellation pool roles"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md"],
+          "blocker": "Role design is documented but not provisioned or tested.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "database-migrations-repeatable",
+          "title": "Migrations 001 through the latest independently reviewed migration apply repeatably",
+          "mandatory": true,
+          "ownerRole": "database_release_owner",
+          "evidenceRequired": ["clean candidate migration digests", "first/second migration ledger receipts", "schema/index/RLS verification"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/scripts/migrate.js", "backend/migrations/001_app_attest.sql", "backend/migrations/006_outdoor_route_membership_point_index.sql"],
+          "blocker": "Migration 007 is concurrent, untracked, and not yet independently accepted.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "database-readonly-cancellation",
+          "title": "Read-only repeatable snapshots, statement timeout, cancellation, rollback, and pool recovery pass",
+          "mandatory": true,
+          "ownerRole": "backend_database_owner",
+          "evidenceRequired": ["staging transaction receipt", "query cancellation receipt", "rollback/lease/pool recovery receipt"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/outdoorResearch/postgresOutdoorResearchRepository.js", "backend/test/outdoorResearchExecutorPostgisIntegration.test.js"],
+          "blocker": "Static/test contract exists; staging behavior is unproved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "database-app-attest-durable",
+          "title": "Durable App Attest repository, pruning, replay, budgets, and leases pass in staging",
+          "mandatory": true,
+          "ownerRole": "backend_security_owner",
+          "evidenceRequired": ["durable repository integration receipt", "pruner schedule/alert", "weighted budget/concurrency/replay evidence"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/appAttest/postgresAppAttestRepository.js", "backend/docs/app-attest-durable-storage.md"],
+          "blocker": "Repository implementation exists; deployed staging proof is absent.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-regional-data",
+      "name": "Regional-data readiness",
+      "requirements": [
+        {
+          "id": "regional-harz-current-import",
+          "title": "Harz import is bounded, checksum-verified, current, active, and reversible",
+          "mandatory": true,
+          "ownerRole": "regional_data_owner",
+          "evidenceRequired": ["publisher/checksum provenance digest", "input SHA-256 receipt", "active import/projection receipt", "rollback result"],
+          "currentState": "absent",
+          "evidenceReferences": ["backend/config/outdoor-regions/harz-v1.json", "backend/scripts/import-outdoor-evidence.js"],
+          "blocker": "Earlier proof data was disposable and removed; no current staging import exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "regional-innsbruck-current-import",
+          "title": "Innsbruck import is bounded, checksum-verified, current, active, and reversible",
+          "mandatory": true,
+          "ownerRole": "regional_data_owner",
+          "evidenceRequired": ["publisher/checksum provenance digest", "input SHA-256 receipt", "active import/projection receipt", "rollback result"],
+          "currentState": "absent",
+          "evidenceReferences": ["backend/config/outdoor-regions/innsbruck-alps-v1.json", "backend/scripts/import-outdoor-evidence.js"],
+          "blocker": "Earlier proof data was disposable and removed; no current staging import exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "regional-projection-isolation",
+          "title": "Evidence Graph projections are active, current, quarantined correctly, and region-isolated",
+          "mandatory": true,
+          "ownerRole": "research_data_owner",
+          "evidenceRequired": ["dry-run and promotion receipts", "same-region active import binding", "cross-region isolation checks", "broad-region clarification check"],
+          "currentState": "absent",
+          "evidenceReferences": ["backend/scripts/project-osm-outdoor-research.js", "backend/src/outdoorResearch/postgresOutdoorResearchRepository.js"],
+          "blocker": "No staging projections exist.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "regional-index-latency-gates",
+          "title": "Corridor, route-membership, and access queries use reviewed GiST indexes and meet latency gates",
+          "mandatory": true,
+          "ownerRole": "database_performance_owner",
+          "evidenceRequired": ["valid/ready index receipt", "current-volume explain-plan receipt", "route-membership p95 below 1500 ms", "all access operations below 2000 ms"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/test/outdoorRouteMembershipPerformance.test.js", "backend/test/outdoorResearchExecutorPostgisIntegration.test.js"],
+          "blocker": "Repository gates exist; current staging-volume evidence and accepted migration 007 are absent.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-provider",
+      "name": "Provider readiness",
+      "requirements": [
+        {
+          "id": "provider-credential-containment",
+          "title": "GraphHopper credential is backend-only, access-controlled, rotatable, and absent from iOS/receipts",
+          "mandatory": true,
+          "ownerRole": "provider_credential_owner",
+          "evidenceRequired": ["secret ownership and access review", "iOS/archive absence scan", "rotation/revocation drill", "egress boundary receipt"],
+          "currentState": "partial",
+          "evidenceReferences": ["docs/release/RELEASE_CONFIGURATION.md", "backend/config.example.env"],
+          "blocker": "Repository architecture is backend-only; deployed secret/rotation evidence is absent.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "provider-exact-fail-closed-flags",
+          "title": "Provider flags are false for missing, empty, unknown, or malformed values",
+          "mandatory": true,
+          "ownerRole": "backend_security_owner",
+          "evidenceRequired": ["reviewed parser or deployment-admission correction", "negative configuration tests", "deployed flag-state receipt"],
+          "currentState": "failed",
+          "evidenceReferences": ["backend/src/appAttest/routeSessionAuthorizer.js", "docs/operations/closed-beta-readiness-v1/feature-flag-state-matrix-v1.json"],
+          "blocker": "Current ROUTE_PROVIDER_ENABLED and INTENT_PROVIDER_ENABLED semantics default open unless exactly false.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "provider-v4-bounded-controls",
+          "title": "V4 uses new authorization, hard ceiling, serialized spacing, Retry-After bounds, circuit breaker, and reconciled ledger",
+          "mandatory": true,
+          "ownerRole": "provider_proof_owner",
+          "evidenceRequired": ["authorization reference", "15-call ceiling receipt", "scheduler/circuit receipt", "complete reconciliation and cleanup"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/V4_OPERATIONAL_PROTOCOL.md"],
+          "blocker": "V4 has not run.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "provider-beta-budget-ownership",
+          "title": "Closed-beta provider cost, rate, concurrency, circuit, and incident ownership are approved",
+          "mandatory": true,
+          "ownerRole": "provider_operations_owner",
+          "evidenceRequired": ["traffic/cost budget", "rate/concurrency configuration", "on-call and escalation", "canary/resume policy"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/OBSERVABILITY_AND_PRIVACY_V1.md"],
+          "blocker": "No owner-approved beta provider budget exists.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-route-quality",
+      "name": "Route-quality readiness",
+      "requirements": [
+        {
+          "id": "quality-access-v2-review",
+          "title": "Routable-highlight access V2 and migration 007 pass independent correction review",
+          "mandatory": true,
+          "ownerRole": "route_contract_review_owner",
+          "evidenceRequired": ["reviewed clean commit", "strict V2 backend/Swift corpus", "migration review", "no overlap with concurrent changes"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/ROUTABLE_HIGHLIGHT_ACCESS_POINTS_V1.md"],
+          "blocker": "Concurrent lane remains dirty and independently unaccepted.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "quality-v4-four-cases",
+          "title": "Brocken, Innsbruck viewpoint/easy, and controlled survivor pass V4 truthfully",
+          "mandatory": true,
+          "ownerRole": "route_quality_owner",
+          "evidenceRequired": ["four canonical case receipts", "access snap and highlight approach metrics", "target deviation and repeat/backtracking metrics", "typed failures/not-run states"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/V4_OPERATIONAL_PROTOCOL.md", "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md"],
+          "blocker": "V4 after access-point integration has not run.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "quality-golden-set-accepted",
+          "title": "Independent expert route-quality golden set is accepted without threshold weakening",
+          "mandatory": true,
+          "ownerRole": "independent_quality_review_owner",
+          "evidenceRequired": ["versioned golden set", "reviewed expected outcomes", "candidate evaluation receipt", "regression disposition"],
+          "currentState": "absent",
+          "evidenceReferences": [],
+          "blocker": "The golden-set lane is concurrent and has not supplied accepted evidence to this task.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "quality-truth-boundaries",
+          "title": "No route, access, scenic, water, legal, opening, or safety claim exceeds verified evidence",
+          "mandatory": true,
+          "ownerRole": "product_trust_owner",
+          "evidenceRequired": ["contract/presentation review", "partial/unverified state review", "false-claim regression tests", "participant copy review"],
+          "currentState": "partial",
+          "evidenceReferences": ["TrailMind/Views/Research/ResearchRoutePresentation.swift", "docs/OUTDOOR_RESEARCH_PRESENTATION_UX_V1.md"],
+          "blocker": "Current concurrent V2 presentation is not independently accepted on a signed beta build.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-ios-presentation",
+      "name": "iOS presentation readiness",
+      "requirements": [
+        {
+          "id": "ios-strict-v2-client",
+          "title": "Signed iOS client sends strict V2 only when both access/research gates are active and rejects malformed/foreign results",
+          "mandatory": true,
+          "ownerRole": "ios_release_owner",
+          "evidenceRequired": ["signed-build contract corpus", "gate dependency receipt", "malformed/lineage rejection", "no sensitive safe-error output"],
+          "currentState": "partial",
+          "evidenceReferences": ["TrailMind/Services/OutdoorAdventurePlanningClient.swift", "TrailMindTests/OutdoorAdventurePlanningClientTests.swift"],
+          "blocker": "Concurrent V2 client changes and signed-device behavior are unreviewed/unproved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "ios-backend-before-client",
+          "title": "Backend gates and rollback are proved before distributing a client-on build",
+          "mandatory": true,
+          "ownerRole": "release_operations_owner",
+          "evidenceRequired": ["backend admission receipt", "client build flag receipt", "disabled backend response", "rollback timing"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/feature-flag-state-matrix-v1.json"],
+          "blocker": "No deployed flag transition has been proved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "ios-emergency-client-disposition",
+          "title": "Build-time client kill-switch limitation has an approved containment and replacement-build procedure",
+          "mandatory": true,
+          "ownerRole": "product_release_approver",
+          "evidenceRequired": ["backend immediate kill proof", "owner risk acceptance or remote-gate implementation", "client-off signed build procedure"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md"],
+          "blocker": "No owner acceptance or remote gate exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "ios-beta-surface-qa",
+          "title": "Declared iPhone/iOS surface, accessibility, cancellation, outage, and truthful route states pass on signed devices",
+          "mandatory": true,
+          "ownerRole": "ios_qa_owner",
+          "evidenceRequired": ["device matrix", "accessibility and network QA", "partial/unavailable presentation", "release archive verification"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/release/ARCHIVE_VERIFICATION.md", "docs/release/RELEASE_CONFIGURATION.md"],
+          "blocker": "Only prior Simulator/unsigned evidence exists.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-privacy",
+      "name": "Privacy readiness",
+      "requirements": [
+        {
+          "id": "privacy-allowlisted-observability",
+          "title": "Deployed logs/metrics use exact low-cardinality schemas and reject forbidden data",
+          "mandatory": true,
+          "ownerRole": "privacy_engineering_owner",
+          "evidenceRequired": ["event schema version", "synthetic sentinel test", "sink rejection test", "dashboard field review"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/OBSERVABILITY_AND_PRIVACY_V1.md"],
+          "blocker": "Policy exists; deployed pipeline is unproved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "privacy-retention-deletion",
+          "title": "Log, metric, App Attest receipt, proof receipt, PBF, and import retention/deletion are approved and enforced",
+          "mandatory": true,
+          "ownerRole": "privacy_legal_owner",
+          "evidenceRequired": ["approved periods", "access controls", "deletion/pruning receipts", "participant request process"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/OBSERVABILITY_AND_PRIVACY_V1.md", "docs/release/DATA_FLOW_RETENTION_AND_DELETION.md"],
+          "blocker": "Proposed defaults lack owner/legal approval and deployed enforcement.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "privacy-public-support-policy",
+          "title": "Public privacy/support information and App Privacy answers match the beta",
+          "mandatory": true,
+          "ownerRole": "privacy_legal_owner",
+          "evidenceRequired": ["public policy and support locations", "App Privacy review", "participant disclosure", "incident contact"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/release/APP_PRIVACY_DRAFT.md", "docs/release/PRIVACY_POLICY_DRAFT.md"],
+          "blocker": "Drafts and owner decisions remain unresolved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "privacy-osm-attribution-legal",
+          "title": "OSM attribution, ODbL obligations, and product placement are approved",
+          "mandatory": true,
+          "ownerRole": "data_licensing_owner",
+          "evidenceRequired": ["legal review", "discoverable attribution placement", "data flow/derivative disposition", "beta copy review"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/docs/outdoor-evidence.md"],
+          "blocker": "Repository attribution exists; final legal/product placement approval is absent.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-rollback",
+      "name": "Rollback readiness",
+      "requirements": [
+        {
+          "id": "rollback-backend-provider-drill",
+          "title": "Backend access/research/provider disablement and credential rotation are rehearsed",
+          "mandatory": true,
+          "ownerRole": "incident_commander",
+          "evidenceRequired": ["kill-sequence receipt", "zero-work proof", "provider stop/rotation canary", "lease reconciliation"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md"],
+          "blocker": "No deployed rollback drill exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "rollback-regional-import-drills",
+          "title": "Harz and Innsbruck each pass atomic import rollback and re-projection",
+          "mandatory": true,
+          "ownerRole": "regional_data_owner",
+          "evidenceRequired": ["same-region transaction receipts", "restored freshness/isolation/index/latency checks", "roll-forward plan"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md"],
+          "blocker": "No staging imports exist to rehearse.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "rollback-deployment-drill",
+          "title": "Application deployment rollback preserves fail-closed security and database compatibility",
+          "mandatory": true,
+          "ownerRole": "release_operations_owner",
+          "evidenceRequired": ["previous artifact digest rollback", "health and disabled probes", "migration compatibility decision", "configuration isolation"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md"],
+          "blocker": "No HTTPS staging deployment/rollback exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "rollback-immutable-evidence",
+          "title": "Rollback and incidents preserve append-only proof/import history without sensitive data",
+          "mandatory": true,
+          "ownerRole": "security_audit_owner",
+          "evidenceRequired": ["receipt store access/immutability", "pre/post historical hashes", "forbidden-field scan", "corrective append-only receipt"],
+          "currentState": "partial",
+          "evidenceReferences": ["docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md"],
+          "blocker": "Historical inputs exist, but staging receipt-store controls are not deployed.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-operations",
+      "name": "Operational ownership",
+      "requirements": [
+        {
+          "id": "operations-named-owners-oncall",
+          "title": "Security, backend, database, regional data, provider, privacy, support, quality, release, and incident owners are assigned",
+          "mandatory": true,
+          "ownerRole": "product_owner",
+          "evidenceRequired": ["non-secret owner roster", "on-call schedule", "escalation matrix", "decision authority"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/release/APPLE_TEAM_GATES.md"],
+          "blocker": "Required roles are unassigned in repository evidence.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "operations-alerts-daily-review",
+          "title": "Alert routing, daily quality/privacy review, and stage reporting are staffed",
+          "mandatory": true,
+          "ownerRole": "beta_operations_owner",
+          "evidenceRequired": ["alert destinations", "daily review checklist", "coverage schedule", "stage close report"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/OBSERVABILITY_AND_PRIVACY_V1.md", "docs/operations/closed-beta-readiness-v1/CLOSED_BETA_ROLLOUT_V1.md"],
+          "blocker": "No monitored beta operations function exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "operations-cohort-budget-approval",
+          "title": "Cohort, device, region, activity, cost, and support limits are owner-approved",
+          "mandatory": true,
+          "ownerRole": "product_owner",
+          "evidenceRequired": ["stage ceilings", "participant criteria", "provider/infrastructure budgets", "support and emergency communication"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/CLOSED_BETA_ROLLOUT_V1.md"],
+          "blocker": "The proposed conservative stages are not owner-approved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "operations-final-go-signatures",
+          "title": "Product, security, operations, privacy, and quality approvers sign the exact candidate state",
+          "mandatory": true,
+          "ownerRole": "product_release_approver",
+          "evidenceRequired": ["candidate/build/deployment/import/contract digests", "all mandatory items verified", "no open high/critical incident", "signed GO receipt"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/go-no-go-checklist-v1.json"],
+          "blocker": "Mandatory evidence is incomplete; GO signatures are forbidden.",
+          "liveActionExecuted": false
+        }
+      ]
+    }
+  ]
+}

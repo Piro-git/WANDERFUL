@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "closed-beta-feature-flags-v1",
+  "currentClassification": "production_off",
+  "currentDecision": "NO_GO",
+  "defaultPolicy": {
+    "booleanAdmission": "Only the exact normalized strings true and false are allowed in deployed configuration. Missing, empty, unknown, or malformed values are rejected by deployment admission and treated as false by the effective feature contract.",
+    "enableOrder": [
+      "database_and_security_preflight",
+      "backend_route_provider_when_authorized",
+      "backend_research_planning",
+      "backend_routable_highlight_access",
+      "ios_research_guided_planning",
+      "ios_routable_highlight_access"
+    ],
+    "disableOrder": [
+      "backend_routable_highlight_access",
+      "backend_research_planning",
+      "backend_outdoor_evidence",
+      "backend_route_provider",
+      "backend_intent_provider",
+      "ios_flags_in_next_reviewed_build"
+    ],
+    "proofExitState": "production_off"
+  },
+  "releaseBlockers": [
+    {
+      "id": "flag-blocker-route-provider-default-open",
+      "description": "The current route-session authorizer treats ROUTE_PROVIDER_ENABLED as enabled unless its value is exactly false; missing and malformed values are therefore not fail-closed.",
+      "requiredResolution": "Change and review the production parser or enforce an independently verified exact-value deployment admission gate before GO."
+    },
+    {
+      "id": "flag-blocker-intent-provider-default-open",
+      "description": "The current intent-session authorizer treats INTENT_PROVIDER_ENABLED as enabled unless its value is exactly false; missing and malformed values are therefore not fail-closed.",
+      "requiredResolution": "Keep the remote intent provider false for this beta and change/review the parser or enforce exact-value deployment admission before GO."
+    },
+    {
+      "id": "flag-blocker-ios-build-time-kill-switch",
+      "description": "The iOS flags are embedded build settings and cannot immediately disable an installed beta build.",
+      "requiredResolution": "Prove immediate backend kill behavior and obtain explicit owner acceptance or implement a separately reviewed remote client gate."
+    }
+  ],
+  "flags": [
+    {
+      "id": "ios_outdoor_evidence",
+      "surface": "ios",
+      "key": "OUTDOOR_EVIDENCE_ENABLED",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1", "boolean_true", "number_1"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["valid_https_backend"],
+      "providerCapable": true
+    },
+    {
+      "id": "ios_research_guided_planning",
+      "surface": "ios",
+      "key": "RESEARCH_GUIDED_PLANNING_ENABLED",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["valid_https_backend", "backend_research_planning"],
+      "providerCapable": true
+    },
+    {
+      "id": "ios_routable_highlight_access",
+      "surface": "ios",
+      "key": "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["ios_research_guided_planning", "backend_routable_highlight_access"],
+      "providerCapable": true
+    },
+    {
+      "id": "backend_outdoor_evidence",
+      "surface": "backend",
+      "key": "OUTDOOR_EVIDENCE_PROVIDER_ENABLED",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["durable_app_attest", "current_regional_data"],
+      "providerCapable": false
+    },
+    {
+      "id": "backend_research_planning",
+      "surface": "backend",
+      "key": "OUTDOOR_RESEARCH_PLANNING_ENABLED",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["durable_app_attest", "current_regional_data", "backend_route_provider"],
+      "providerCapable": true
+    },
+    {
+      "id": "backend_routable_highlight_access",
+      "surface": "backend",
+      "key": "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["backend_research_planning", "reviewed_access_v2", "reviewed_migration_007"],
+      "providerCapable": true
+    },
+    {
+      "id": "backend_route_provider",
+      "surface": "backend",
+      "key": "ROUTE_PROVIDER_ENABLED",
+      "trackedDefault": true,
+      "currentAcceptedTrueValues": ["missing", "empty", "true", "malformed_non_false"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "currentContractCompliant": false,
+      "dependencies": ["explicit_provider_authorization", "backend_only_credential", "durable_app_attest"],
+      "providerCapable": true
+    },
+    {
+      "id": "backend_intent_provider",
+      "surface": "backend",
+      "key": "INTENT_PROVIDER_ENABLED",
+      "trackedDefault": true,
+      "currentAcceptedTrueValues": ["missing", "empty", "true", "malformed_non_false"],
+      "requiredOperationalTrueValue": "true",
+      "missingOrMalformedEffectiveValue": false,
+      "currentContractCompliant": false,
+      "dependencies": ["explicit_provider_authorization", "durable_app_attest"],
+      "providerCapable": true,
+      "betaRequired": false
+    },
+    {
+      "id": "backend_research_insecure_local",
+      "surface": "backend",
+      "key": "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
+      "requiredOperationalTrueValue": "never_in_staging_or_beta",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["development_or_test_only"],
+      "providerCapable": true
+    },
+    {
+      "id": "backend_route_insecure_local",
+      "surface": "backend",
+      "key": "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true"],
+      "requiredOperationalTrueValue": "never_in_staging_or_beta",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["development_or_test_only"],
+      "providerCapable": true
+    },
+    {
+      "id": "backend_intent_insecure_local",
+      "surface": "backend",
+      "key": "INTENT_ALLOW_INSECURE_LOCAL_PARSING",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true"],
+      "requiredOperationalTrueValue": "never_in_staging_or_beta",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["development_or_test_only"],
+      "providerCapable": true
+    },
+    {
+      "id": "backend_app_attest_in_memory",
+      "surface": "backend",
+      "key": "APP_ATTEST_ALLOW_IN_MEMORY",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true"],
+      "requiredOperationalTrueValue": "never_in_staging_or_beta",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["development_or_test_only"],
+      "providerCapable": false
+    },
+    {
+      "id": "backend_intent_deterministic_mock",
+      "surface": "backend",
+      "key": "INTENT_ALLOW_DETERMINISTIC_MOCK",
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true"],
+      "requiredOperationalTrueValue": "never_in_staging_or_beta",
+      "missingOrMalformedEffectiveValue": false,
+      "dependencies": ["development_or_test_only"],
+      "providerCapable": false
+    }
+  ],
+  "states": [
+    {
+      "id": "production_off",
+      "purpose": "Tracked/default and inter-proof state; no protected research or provider work.",
+      "flags": {
+        "ios_outdoor_evidence": false,
+        "ios_research_guided_planning": false,
+        "ios_routable_highlight_access": false,
+        "backend_outdoor_evidence": false,
+        "backend_research_planning": false,
+        "backend_routable_highlight_access": false,
+        "backend_route_provider": false,
+        "backend_intent_provider": false,
+        "backend_research_insecure_local": false,
+        "backend_route_insecure_local": false,
+        "backend_intent_insecure_local": false,
+        "backend_app_attest_in_memory": false,
+        "backend_intent_deterministic_mock": false
+      },
+      "providerAuthorizationRequired": false,
+      "hardProviderCallCeiling": 0,
+      "exitRequirement": "Zero-work probe passes."
+    },
+    {
+      "id": "staging_infrastructure_verification",
+      "purpose": "HTTPS, durable App Attest, migrations, imports, projections, indexes, latency, cancellation, and rollback with provider traffic off.",
+      "flags": {
+        "ios_outdoor_evidence": false,
+        "ios_research_guided_planning": false,
+        "ios_routable_highlight_access": false,
+        "backend_outdoor_evidence": false,
+        "backend_research_planning": false,
+        "backend_routable_highlight_access": false,
+        "backend_route_provider": false,
+        "backend_intent_provider": false,
+        "backend_research_insecure_local": false,
+        "backend_route_insecure_local": false,
+        "backend_intent_insecure_local": false,
+        "backend_app_attest_in_memory": false,
+        "backend_intent_deterministic_mock": false
+      },
+      "providerAuthorizationRequired": false,
+      "hardProviderCallCeiling": 0,
+      "exitRequirement": "Database and rollback receipts pass, then return to production_off."
+    },
+    {
+      "id": "physical_app_attest_proof",
+      "purpose": "One signed physical-device proof with exactly one provider-capable planning case.",
+      "flags": {
+        "ios_outdoor_evidence": false,
+        "ios_research_guided_planning": true,
+        "ios_routable_highlight_access": false,
+        "backend_outdoor_evidence": false,
+        "backend_research_planning": true,
+        "backend_routable_highlight_access": false,
+        "backend_route_provider": true,
+        "backend_intent_provider": false,
+        "backend_research_insecure_local": false,
+        "backend_route_insecure_local": false,
+        "backend_intent_insecure_local": false,
+        "backend_app_attest_in_memory": false,
+        "backend_intent_deterministic_mock": false
+      },
+      "providerAuthorizationRequired": true,
+      "hardProviderCallCeiling": 1,
+      "subphaseRule": "The true research/provider flags are allowed only for proof case 5. Cases 1-4 and 6-15 use the production_off backend/provider profile.",
+      "exitRequirement": "All 15 cases and receipt validation pass; all flags false."
+    },
+    {
+      "id": "v4_bounded_proof",
+      "purpose": "Server-side V2 access and four-case quality proof after database and review gates.",
+      "flags": {
+        "ios_outdoor_evidence": false,
+        "ios_research_guided_planning": false,
+        "ios_routable_highlight_access": false,
+        "backend_outdoor_evidence": false,
+        "backend_research_planning": true,
+        "backend_routable_highlight_access": true,
+        "backend_route_provider": true,
+        "backend_intent_provider": false,
+        "backend_research_insecure_local": false,
+        "backend_route_insecure_local": false,
+        "backend_intent_insecure_local": false,
+        "backend_app_attest_in_memory": false,
+        "backend_intent_deterministic_mock": false
+      },
+      "providerAuthorizationRequired": true,
+      "hardProviderCallCeiling": 15,
+      "maximumConcurrency": 1,
+      "exitRequirement": "Ledger reconciles, protected receipts unchanged, cleanup complete, and all flags false."
+    },
+    {
+      "id": "closed_beta_enabled",
+      "purpose": "Owner-approved narrow Harz/Innsbruck hiking and trail-running loop beta.",
+      "flags": {
+        "ios_outdoor_evidence": false,
+        "ios_research_guided_planning": true,
+        "ios_routable_highlight_access": true,
+        "backend_outdoor_evidence": false,
+        "backend_research_planning": true,
+        "backend_routable_highlight_access": true,
+        "backend_route_provider": true,
+        "backend_intent_provider": false,
+        "backend_research_insecure_local": false,
+        "backend_route_insecure_local": false,
+        "backend_intent_insecure_local": false,
+        "backend_app_attest_in_memory": false,
+        "backend_intent_deterministic_mock": false
+      },
+      "providerAuthorizationRequired": true,
+      "hardProviderCallCeiling": "owner_approved_beta_budget_enforced_by_rate_and_concurrency_controls",
+      "exitRequirement": "Stage receipt closes or emergency rollback is entered."
+    },
+    {
+      "id": "emergency_rollback",
+      "purpose": "Immediate backend containment followed by a reviewed client-off build.",
+      "flags": {
+        "ios_outdoor_evidence": false,
+        "ios_research_guided_planning": false,
+        "ios_routable_highlight_access": false,
+        "backend_outdoor_evidence": false,
+        "backend_research_planning": false,
+        "backend_routable_highlight_access": false,
+        "backend_route_provider": false,
+        "backend_intent_provider": false,
+        "backend_research_insecure_local": false,
+        "backend_route_insecure_local": false,
+        "backend_intent_insecure_local": false,
+        "backend_app_attest_in_memory": false,
+        "backend_intent_deterministic_mock": false
+      },
+      "providerAuthorizationRequired": false,
+      "hardProviderCallCeiling": 0,
+      "effectiveImmediateControl": "Backend flags stop work; false iOS values take effect only in a newly distributed build.",
+      "exitRequirement": "Incident closure and a new complete GO evaluation; never return directly to closed_beta_enabled."
+    }
+  ],
+  "allowedTransitions": [
+    {"from": "production_off", "to": "staging_infrastructure_verification"},
+    {"from": "staging_infrastructure_verification", "to": "production_off"},
+    {"from": "production_off", "to": "physical_app_attest_proof"},
+    {"from": "physical_app_attest_proof", "to": "production_off"},
+    {"from": "production_off", "to": "v4_bounded_proof"},
+    {"from": "v4_bounded_proof", "to": "production_off"},
+    {"from": "production_off", "to": "closed_beta_enabled"},
+    {"from": "closed_beta_enabled", "to": "emergency_rollback"},
+    {"from": "closed_beta_enabled", "to": "production_off"},
+    {"from": "emergency_rollback", "to": "production_off"}
+  ],
+  "invariants": [
+    {
+      "id": "flag-invariant-unknown-false",
+      "rule": "Unknown, missing, empty, or malformed deployed boolean values never enable a capability."
+    },
+    {
+      "id": "flag-invariant-backend-before-client",
+      "rule": "A backend gate is enabled and proved before the matching iOS gate is distributed."
+    },
+    {
+      "id": "flag-invariant-access-requires-research",
+      "rule": "Routable highlight access V2 cannot be true unless research planning is true on the same surface and the backend access gate is true."
+    },
+    {
+      "id": "flag-invariant-provider-upstream-gates",
+      "rule": "Provider work is forbidden when any phase-required security, research, access, authorization, budget, or freshness gate is false."
+    },
+    {
+      "id": "flag-invariant-release-false-until-go",
+      "rule": "Release/client ordinary flags remain false until every mandatory GO item has evidence and explicit approval."
+    },
+    {
+      "id": "flag-invariant-proof-cleanup",
+      "rule": "Physical and V4 proof flags return to false after execution, failure, cancellation, or timeout."
+    },
+    {
+      "id": "flag-invariant-insecure-never-beta",
+      "rule": "Insecure routing/parsing/research, deterministic mock, and in-memory App Attest flags are always false in staging proofs and closed beta."
+    },
+    {
+      "id": "flag-invariant-intent-provider-off",
+      "rule": "The remote intent provider remains false because the declared Release parser is local and remote intent is outside this beta."
+    }
+  ]
+}
