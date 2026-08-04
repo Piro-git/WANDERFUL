@@ -21,8 +21,37 @@ import {
   OUTDOOR_RESEARCH_REGION_BINDINGS_V1,
   validateOutdoorResearchRegionBindingsV1
 } from "./regionBindings.js";
+import {
+  buildResearchTrailAccessResolutionV1
+} from "../routeResearch/trailAccessCandidateResolver.js";
+import {
+  RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1
+} from "../routeResearch/trailAccessCandidatePolicy.js";
 
 export async function researchOutdoorAdventureV1(intentInput, dependencies) {
+  return researchOutdoorAdventure(
+    intentInput,
+    dependencies,
+    false
+  );
+}
+
+export async function researchOutdoorAdventureWithTrailAccessV1(
+  intentInput,
+  dependencies
+) {
+  return researchOutdoorAdventure(
+    intentInput,
+    dependencies,
+    true
+  );
+}
+
+async function researchOutdoorAdventure(
+  intentInput,
+  dependencies,
+  includeTrailAccess
+) {
   const preflight = safePlan(intentInput, {});
   if (preflight.state === "clarification_required") {
     return freeze({
@@ -106,15 +135,72 @@ export async function researchOutdoorAdventureV1(intentInput, dependencies) {
           evidenceRecords
         });
         throwIfAborted(signal);
-        return freeze({
+        const baseResult = {
           state: "ready",
           normalizedIntent: planned.normalizedIntent,
           planningGaps: planned.planningGaps,
           dossier
-        });
+        };
+        if (!includeTrailAccess) return freeze(baseResult);
+        if (typeof session.resolveTrailAccessCandidates !== "function") {
+          throw outdoorResearchExecutorError("invalid_dependencies");
+        }
+        const highlights = dossier.candidateHighlights.map((candidate) => ({
+          entityId: candidate.entityId,
+          highlightCategory: candidate.highlightCategory,
+          evidenceCoordinate: candidate.coordinate
+        }));
+        const accessPolicy =
+          RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1;
+        const rows = highlights.length === 0
+          ? []
+          : await session.resolveTrailAccessCandidates({
+            projectionRunId: capabilityResult.snapshot.projectionRunId,
+            operationalRegionId:
+              capabilityResult.snapshot.operationalRegionId,
+            highlights,
+            maximumDistanceMeters:
+              accessPolicy.maximumPoiToTrailDistanceMeters,
+            maximumCandidatesPerHighlight:
+              accessPolicy.limits.maximumCandidatesPerHighlight,
+            eligibleHighwayClasses: accessPolicy.eligibleHighwayClasses,
+            highlightCategories: accessPolicy.highlightCategories,
+            maximumRows: accessPolicy.limits.maximumCandidates
+          });
+        validateRowArray(rows);
+        const trailAccessResolution =
+          buildResearchTrailAccessResolutionV1({
+            operationalRegionId:
+              capabilityResult.snapshot.operationalRegionId,
+            projectionRunId: capabilityResult.snapshot.projectionRunId,
+            sourceSnapshot: trailAccessSourceSnapshot(
+              capabilityResult.snapshot
+            ),
+            highlights,
+            rows
+          });
+        throwIfAborted(signal);
+        return freeze({ ...baseResult, trailAccessResolution });
       }
     )
   );
+}
+
+function trailAccessSourceSnapshot(snapshot) {
+  return {
+    operationalRegionId: snapshot.operationalRegionId,
+    projectionRunId: snapshot.projectionRunId,
+    importId: snapshot.importId,
+    sourceId: snapshot.sourceId,
+    sourcePolicyId: snapshot.sourcePolicyId,
+    sourcePolicyVersion: snapshot.sourcePolicyVersion,
+    adapterSchemaVersion: snapshot.adapterSchemaVersion,
+    freshness: {
+      state: "current",
+      sourceDataDate: snapshot.sourceDataAt.slice(0, 10),
+      retrievedDate: snapshot.retrievedAt.slice(0, 10)
+    }
+  };
 }
 
 async function executeOperation(
@@ -339,6 +425,10 @@ function validateCapabilityResult(value, binding, generatedAt) {
   if (snapshot.regionEntityId !== binding.regionEntityId ||
       snapshot.operationalRegionId !== binding.operationalRegionId ||
       snapshot.sourceId !== snapshot.source?.sourceId ||
+      typeof snapshot.sourcePolicyVersion !== "string" ||
+      snapshot.sourcePolicyVersion.length === 0 ||
+      typeof snapshot.adapterSchemaVersion !== "string" ||
+      snapshot.adapterSchemaVersion.length === 0 ||
       snapshot.source?.sourceCategory !== "openstreetmap_open_mapping" ||
       snapshot.source?.sourceKey !== "osm_foundational_data" ||
       !Number.isFinite(snapshot.boundaryDistanceMeters) ||

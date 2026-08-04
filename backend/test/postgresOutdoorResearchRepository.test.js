@@ -281,6 +281,74 @@ describe("PostGIS outdoor research repository", () => {
       2
     );
     assert.match(queries.routeAssertions, /LIMIT \$4/);
+    assert.match(queries.trailAccessCandidates, /ST_ClosestPoint\(/);
+    assert.match(
+      queries.trailAccessCandidates,
+      /ST_DWithin\([\s\S]*projected_geometry::geography[\s\S]*evidence_point::geography/
+    );
+    assert.match(queries.trailAccessCandidates, /ST_Distance\(/);
+    assert.match(queries.trailAccessCandidates, /active_import_id = run\.input_import_id/);
+    assert.match(queries.trailAccessCandidates, /import\.status = 'active'/);
+    assert.match(queries.trailAccessCandidates, /lifecycle_state = 'active'/);
+    assert.match(queries.trailAccessCandidates, /projection_quarantines/);
+    assert.match(queries.trailAccessCandidates, /access_restriction/);
+    assert.match(queries.trailAccessCandidates, /closure_status/);
+    assert.match(
+      queries.trailAccessCandidates,
+      /value_text IS DISTINCT FROM 'open'/
+    );
+    assert.match(
+      queries.trailAccessCandidates,
+      /trail_category_evidence_claim_ids/
+    );
+    assert.match(queries.trailAccessCandidates, /source_trail\.osm_id::text/);
+    assert.match(queries.trailAccessCandidates, /source_trail\.highway_class = ANY/);
+    assert.match(queries.trailAccessCandidates, /ORDER BY eligible\.poi_to_access_distance_meters/);
+    assert.match(queries.trailAccessCandidates, /LIMIT \$8$/);
+    assert.doesNotMatch(queries.trailAccessCandidates, /ST_Expand/);
+    assert.doesNotMatch(queries.trailAccessCandidates, /ST_PointOnSurface\(trail/);
+  });
+
+  it("passes only reviewed bounded parameters to the access-point query", async () => {
+    const highlight = {
+      entityId: "11111111-1111-4111-8111-111111111111",
+      highlightCategory: "viewpoint",
+      evidenceCoordinate: ANCHOR
+    };
+    const harness = repositoryHarness({ trailAccessRows: [] });
+    await harness.repository.withConsistentSnapshot({}, (session) =>
+      session.resolveTrailAccessCandidates({
+        projectionRunId: activeSnapshotRow().projection_run_id,
+        operationalRegionId: "harz-v1",
+        highlights: [highlight],
+        maximumDistanceMeters: 75,
+        maximumCandidatesPerHighlight: 3,
+        eligibleHighwayClasses: [
+          "path", "footway", "track", "steps", "bridleway", "pedestrian"
+        ],
+        highlightCategories: [
+          "viewpoint", "waterfall", "peak", "lake", "alpine_hut",
+          "wilderness_hut", "landmark"
+        ],
+        maximumRows: 64
+      })
+    );
+    const call = harness.queryCalls.find((item) =>
+      item.text.includes("ST_ClosestPoint")
+    );
+    assert.deepEqual(call.values, [
+      activeSnapshotRow().projection_run_id,
+      "harz-v1",
+      [highlight.entityId],
+      75,
+      3,
+      ["path", "footway", "track", "steps", "bridleway", "pedestrian"],
+      [
+        "viewpoint", "waterfall", "peak", "lake", "alpine_hut",
+        "wilderness_hut", "landmark"
+      ],
+      64
+    ]);
   });
 
   it("passes only bounded typed parameters to highlight and route query shapes", async () => {
@@ -497,6 +565,9 @@ function repositoryHarness(options = {}) {
       if (options.queryError) throw options.queryError;
       if (text.includes("SELECT region.region_id")) {
         return { rows: options.snapshotRow ? [options.snapshotRow] : [] };
+      }
+      if (text.includes("ST_ClosestPoint")) {
+        return { rows: options.trailAccessRows ?? [] };
       }
       if (text.includes("candidates AS")) {
         return { rows: options.highlightRows ?? [] };

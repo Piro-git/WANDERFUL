@@ -75,6 +75,182 @@ describe("outdoor-adventure planning endpoint v1", () => {
     }
   });
 
+  it("keeps schema V2 behind its independent default-off access flag", async () => {
+    for (const value of [undefined, "", "false", "0", "enabled"]) {
+      let calls = 0;
+      const endpoint = successfulEndpoint({
+        env: enabledEnv({
+          OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: value
+        }),
+        orchestratorV2: async () => {
+          calls += 1;
+          assert.fail("V2 orchestrator called while access flag is disabled");
+        }
+      });
+      const result = await endpoint({
+        ...request(unresolvedIntent()),
+        schemaVersion: 2
+      });
+      assert.equal(result.statusCode, 503);
+      assert.equal(result.payload.error.code, "feature_unavailable");
+      assert.equal(calls, 0);
+    }
+  });
+
+  it("requires both V2 flags before any authorization, database or provider work", async () => {
+    const disabled = [undefined, "", "false", "0", "enabled"];
+    const combinations = [
+      ...disabled.map((research) => [research, "true"]),
+      ...disabled.map((access) => ["true", access]),
+      [undefined, undefined],
+      ["false", "false"]
+    ];
+    for (const [research, access] of combinations) {
+      let authorizationCalls = 0;
+      let repositoryCalls = 0;
+      let providerCalls = 0;
+      let orchestratorCalls = 0;
+      const endpoint = createOutdoorAdventurePlanningEndpoint({
+        env: {
+          NODE_ENV: "test",
+          OUTDOOR_RESEARCH_PLANNING_ENABLED: research,
+          OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: access
+        },
+        authorizer: { async authorize() { authorizationCalls += 1; } },
+        repository: {
+          async withConsistentSnapshot() { repositoryCalls += 1; }
+        },
+        provider: { async route() { providerCalls += 1; } },
+        orchestratorV2: async () => { orchestratorCalls += 1; }
+      });
+      const result = await endpoint({
+        ...request(unresolvedIntent()),
+        schemaVersion: 2
+      });
+      assert.equal(result.statusCode, 503, `${research}:${access}`);
+      assert.equal(result.payload.error.code, "feature_unavailable");
+      assert.deepEqual(
+        {
+          authorizationCalls,
+          repositoryCalls,
+          providerCalls,
+          orchestratorCalls
+        },
+        {
+          authorizationCalls: 0,
+          repositoryCalls: 0,
+          providerCalls: 0,
+          orchestratorCalls: 0
+        },
+        `${research}:${access}`
+      );
+    }
+  });
+
+  it("selects the declared V2 contract only after explicit access enablement", async () => {
+    let v1Calls = 0;
+    let v2Calls = 0;
+    const endpoint = successfulEndpoint({
+      env: enabledEnv({
+        OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true"
+      }),
+      orchestrator: async () => {
+        v1Calls += 1;
+        assert.fail("V1 orchestrator called for a schema V2 request");
+      },
+      orchestratorV2: async (planningRequest) => {
+        v2Calls += 1;
+        return {
+          schemaVersion: 2,
+          policyVersion: "outdoor-adventure-orchestration-v2",
+          state: "clarification_required",
+          normalizedIntent: planningRequest.intent,
+          planningGaps: [],
+          clarificationQuestions:
+            planningRequest.intent.unresolvedClarificationQuestions,
+          routedAlternatives: null
+        };
+      }
+    });
+    const result = await endpoint({
+      ...request(unresolvedIntent()),
+      schemaVersion: 2
+    });
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.payload.schemaVersion, 2);
+    assert.equal(v1Calls, 0);
+    assert.equal(v2Calls, 1);
+  });
+
+  it("never dispatches a schema V1 request to the V2 orchestrator", async () => {
+    let v1Calls = 0;
+    let v2Calls = 0;
+    const endpoint = successfulEndpoint({
+      env: enabledEnv({
+        OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true"
+      }),
+      orchestrator: async (planningRequest) => {
+        v1Calls += 1;
+        return clarificationResponse(planningRequest.intent);
+      },
+      orchestratorV2: async () => {
+        v2Calls += 1;
+        assert.fail("V2 orchestrator called for a schema V1 request");
+      }
+    });
+
+    const result = await endpoint(request(unresolvedIntent()));
+
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.payload.schemaVersion, 1);
+    assert.equal(v1Calls, 1);
+    assert.equal(v2Calls, 0);
+  });
+
+  it("fails an unknown schema closed before authorization or dependency work", async () => {
+    let authorizationCalls = 0;
+    let repositoryCalls = 0;
+    let providerCalls = 0;
+    let v1Calls = 0;
+    let v2Calls = 0;
+    const endpoint = createOutdoorAdventurePlanningEndpoint({
+      env: enabledEnv({
+        OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true"
+      }),
+      authorizer: { async authorize() { authorizationCalls += 1; } },
+      repository: {
+        async withConsistentSnapshot() { repositoryCalls += 1; }
+      },
+      provider: { async route() { providerCalls += 1; } },
+      orchestrator: async () => { v1Calls += 1; },
+      orchestratorV2: async () => { v2Calls += 1; }
+    });
+
+    const result = await endpoint({
+      ...request(unresolvedIntent()),
+      schemaVersion: 3
+    });
+
+    assert.equal(result.statusCode, 400);
+    assert.equal(result.payload.error.code, "invalid_request");
+    assert.deepEqual(
+      {
+        authorizationCalls,
+        repositoryCalls,
+        providerCalls,
+        v1Calls,
+        v2Calls
+      },
+      {
+        authorizationCalls: 0,
+        repositoryCalls: 0,
+        providerCalls: 0,
+        v1Calls: 0,
+        v2Calls: 0
+      }
+    );
+  });
+
   it("authorizes before orchestration with one fixed maximum cost and releases once", async () => {
     const order = [];
     let authorizationContext;

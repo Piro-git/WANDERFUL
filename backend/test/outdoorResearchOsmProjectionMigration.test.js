@@ -14,6 +14,10 @@ const membershipPointIndexMigrationURL = new URL(
   "../migrations/006_outdoor_route_membership_point_index.sql",
   import.meta.url
 );
+const trailAccessIndexMigrationURL = new URL(
+  "../migrations/007_routable_highlight_access_geography_index.sql",
+  import.meta.url
+);
 const migrationRunnerURL = new URL("../scripts/migrate.js", import.meta.url);
 const membershipPerformanceRecordURL = new URL(
   "../../docs/OUTDOOR_MAPPED_ROUTE_MEMBERSHIP_PERFORMANCE_V1.md",
@@ -108,5 +112,14 @@ describe("OSM projection migration contract", () => {
     assert.match(performanceRecord, /`ShareLock`/);
     assert.match(performanceRecord, /write-quiet maintenance window/);
     assert.match(performanceRecord, /projection history is append-only/);
+  });
+
+  it("adds only the deterministic trail geography lookup index", async () => {
+    const source = await readFile(trailAccessIndexMigrationURL, "utf8");
+    assert.match(source, /CREATE INDEX IF NOT EXISTS/);
+    assert.match(source, /projected_geometry::geography/);
+    assert.match(source, /entity_category = 'trail_segment'/);
+    assert.doesNotMatch(source, /CREATE\s+INDEX\s+CONCURRENTLY/i);
+    assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|DROP|TRUNCATE)\b/i);
   });
 });

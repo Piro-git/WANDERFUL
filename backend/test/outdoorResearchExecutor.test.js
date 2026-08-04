@@ -1092,6 +1092,8 @@ function activeSnapshot(binding) {
     projectionRunId: PROJECTION_RUN_ID,
     sourceId: SOURCE_ID,
     sourcePolicyId: "20000000-0000-4000-8000-000000000002",
+    sourcePolicyVersion: "osm-foundational-v1",
+    adapterSchemaVersion: "osm-evidence-graph-v1",
     importId: "20000000-0000-4000-8000-000000000003",
     sourceDataAt: "2026-07-24T10:00:00.000Z",
     retrievedAt: "2026-07-24T10:00:00.000Z",

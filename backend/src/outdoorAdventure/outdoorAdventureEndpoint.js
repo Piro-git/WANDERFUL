@@ -17,6 +17,10 @@ import {
   validateOutdoorAdventurePlanningRequestV1
 } from "./orchestrationContract.js";
 import {
+  serializeOutdoorAdventurePlanningResponseV2,
+  validateOutdoorAdventurePlanningRequestV2
+} from "./orchestrationContractV2.js";
+import {
   OutdoorAdventureOrchestrationError,
   outdoorAdventureOrchestrationError,
   outdoorAdventureOrchestrationErrorResult
@@ -25,11 +29,17 @@ import {
   planAndRouteOutdoorAdventureV1
 } from "./outdoorAdventureOrchestrator.js";
 import {
+  planAndRouteOutdoorAdventureV2
+} from "./outdoorAdventureOrchestratorV2.js";
+import {
   outdoorAdventureDurationBucket,
   outdoorAdventureInsecureLocalEnabled,
   outdoorAdventureOrchestrationConfigurationV1,
   outdoorAdventurePlanningEnabled
 } from "./orchestrationPolicy.js";
+import {
+  routableHighlightAccessEnabled
+} from "./orchestrationPolicyV2.js";
 
 export function createOutdoorAdventurePlanningEndpoint(options = {}) {
   const env = options.env ?? process.env;
@@ -58,8 +68,13 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
       }
       const configuration =
         outdoorAdventureOrchestrationConfigurationV1(env);
-      const request =
-        validateOutdoorAdventurePlanningRequestV1(body);
+      const useTrailAccessV2 = body?.schemaVersion === 2;
+      if (useTrailAccessV2 && !routableHighlightAccessEnabled(env)) {
+        throw outdoorAdventureOrchestrationError("feature_unavailable");
+      }
+      const request = useTrailAccessV2
+        ? validateOutdoorAdventurePlanningRequestV2(body)
+        : validateOutdoorAdventurePlanningRequestV1(body);
       safeMetadata = metadataFromIntent(request.intent);
       const authorizer = resolveAuthorizer(options, env);
       authorization = await authorizeRouteRequest(authorizer, {
@@ -83,8 +98,10 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
         options,
         configuration
       );
-      const orchestrator =
-        options.orchestrator ?? planAndRouteOutdoorAdventureV1;
+      const orchestrator = useTrailAccessV2
+        ? options.orchestratorV2 ?? options.orchestrator ??
+          planAndRouteOutdoorAdventureV2
+        : options.orchestrator ?? planAndRouteOutdoorAdventureV1;
       const payload = await orchestrator(
         request,
         dependencies,
@@ -98,8 +115,9 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
           totalDeadlineMs: configuration.totalDeadlineMs
         }
       );
-      const serialized =
-        serializeOutdoorAdventurePlanningResponseV1(payload);
+      const serialized = useTrailAccessV2
+        ? serializeOutdoorAdventurePlanningResponseV2(payload)
+        : serializeOutdoorAdventurePlanningResponseV1(payload);
       if (
         Buffer.byteLength(serialized, "utf8") >
         configuration.responseBytes

@@ -11,6 +11,9 @@ import {
   recognizedOsmProjectionPolicy
 } from "./osmProjectionPolicy.js";
 import { validateResearchPlannerCapabilitiesV1 } from "./researchPlanner.js";
+import {
+  RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1
+} from "../routeResearch/trailAccessCandidatePolicy.js";
 
 const TRANSACTION_LIFECYCLE_OBSERVERS = new WeakMap();
 const TRANSACTION_LIFECYCLE_EVENTS = new Set([
@@ -440,6 +443,228 @@ SELECT projection.entity_id,
           assertion.assertion_id
  LIMIT $4`;
 
+const TRAIL_ACCESS_CANDIDATE_QUERY = `
+WITH requested AS (
+  SELECT unnest($3::uuid[]) AS entity_id
+), snapshot AS MATERIALIZED (
+  SELECT run.projection_run_id,
+         run.region_id,
+         run.input_import_id,
+         run.source_id,
+         run.source_policy_id,
+         run.source_policy_version,
+         run.adapter_schema_version,
+         run.input_source_data_at,
+         run.input_retrieved_at,
+         region.boundary
+    FROM outdoor_research_active_projection_runs run
+    JOIN outdoor_evidence_regions region
+      ON region.region_id = run.region_id
+     AND region.enabled = true
+     AND region.active_import_id = run.input_import_id
+    JOIN outdoor_evidence_imports import
+      ON import.import_id = run.input_import_id
+     AND import.region_id = run.region_id
+     AND import.status = 'active'
+   WHERE run.projection_run_id = $1
+     AND run.region_id = $2
+), highlights AS MATERIALIZED (
+  SELECT highlight.entity_id,
+         highlight.entity_category,
+         ST_PointOnSurface(highlight.projected_geometry) AS evidence_point,
+         snapshot.*,
+         name_assertion.value_text AS display_name
+    FROM requested
+    JOIN outdoor_research_projection_entities highlight
+      ON highlight.projection_run_id = $1
+     AND highlight.entity_id = requested.entity_id
+    JOIN outdoor_research_entities highlight_entity
+      ON highlight_entity.entity_id = highlight.entity_id
+     AND highlight_entity.lifecycle_state = 'active'
+    JOIN outdoor_research_source_entities highlight_source_entity
+      ON highlight_source_entity.source_entity_link_id =
+           highlight.source_entity_link_id
+     AND highlight_source_entity.entity_id = highlight.entity_id
+     AND highlight_source_entity.source_id = highlight.source_id
+     AND highlight_source_entity.matching_status = 'matched'
+    CROSS JOIN snapshot
+    LEFT JOIN LATERAL (
+      SELECT assertion.value_text
+        FROM outdoor_research_projection_assertions projection_assertion
+        JOIN outdoor_research_active_assertions assertion
+          ON assertion.assertion_id = projection_assertion.assertion_id
+         AND assertion.entity_id = highlight.entity_id
+         AND assertion.source_id = snapshot.source_id
+         AND assertion.predicate = 'name'
+         AND assertion.value_type = 'text'
+         AND assertion.freshness_state = 'current'
+       WHERE projection_assertion.projection_run_id = $1
+         AND projection_assertion.entity_id = highlight.entity_id
+       ORDER BY assertion.assertion_id
+       LIMIT 1
+    ) name_assertion ON true
+   WHERE highlight.source_id = snapshot.source_id
+     AND highlight.entity_category = ANY($7::text[])
+     AND highlight.projected_geometry IS NOT NULL
+     AND GeometryType(highlight.projected_geometry) IN (
+       'POINT', 'POLYGON', 'MULTIPOLYGON'
+     )
+     AND ST_SRID(highlight.projected_geometry) = 4326
+     AND ST_NDims(highlight.projected_geometry) = 2
+     AND NOT ST_IsEmpty(highlight.projected_geometry)
+     AND ST_IsValid(highlight.projected_geometry)
+     AND ST_CoveredBy(highlight.projected_geometry, snapshot.boundary)
+     AND NOT EXISTS (
+       SELECT 1
+         FROM outdoor_research_projection_quarantines quarantine
+        WHERE quarantine.projection_run_id = highlight.projection_run_id
+          AND quarantine.osm_type = highlight.osm_type
+          AND quarantine.osm_id = highlight.osm_id
+     )
+), candidates AS (
+  SELECT highlight.entity_id AS highlight_entity_id,
+         highlight.entity_category AS highlight_category,
+         ST_Y(highlight.evidence_point)::double precision AS evidence_latitude,
+         ST_X(highlight.evidence_point)::double precision AS evidence_longitude,
+         access.trail_entity_id,
+         ST_Y(access.routing_point)::double precision AS routing_latitude,
+         ST_X(access.routing_point)::double precision AS routing_longitude,
+         access.poi_to_access_distance_meters,
+         access.highway_class,
+         access.trail_category_evidence_claim_ids,
+         access.trail_osm_type,
+         access.trail_osm_id,
+         highlight.display_name,
+         highlight.region_id AS operational_region_id,
+         highlight.projection_run_id,
+         highlight.input_import_id AS import_id,
+         highlight.source_id,
+         highlight.source_policy_id,
+         highlight.source_policy_version,
+         highlight.adapter_schema_version,
+         highlight.input_source_data_at AS source_data_at,
+         highlight.input_retrieved_at AS retrieved_at
+    FROM highlights highlight
+    CROSS JOIN LATERAL (
+      SELECT eligible.trail_entity_id,
+             eligible.routing_point,
+             eligible.poi_to_access_distance_meters,
+             eligible.highway_class,
+             eligible.trail_category_evidence_claim_ids,
+             eligible.trail_osm_type,
+             eligible.trail_osm_id
+        FROM (
+          WITH nearby_trails AS MATERIALIZED (
+            SELECT trail.*
+              FROM outdoor_research_projection_entities trail
+             WHERE trail.projection_run_id = highlight.projection_run_id
+               AND trail.source_id = highlight.source_id
+               AND trail.entity_category = 'trail_segment'
+               AND trail.projected_geometry IS NOT NULL
+               AND GeometryType(trail.projected_geometry) IN (
+                 'LINESTRING', 'MULTILINESTRING'
+               )
+               AND ST_SRID(trail.projected_geometry) = 4326
+               AND ST_NDims(trail.projected_geometry) = 2
+               AND NOT ST_IsEmpty(trail.projected_geometry)
+               AND ST_IsValid(trail.projected_geometry)
+               AND ST_DWithin(
+                 trail.projected_geometry::geography,
+                 highlight.evidence_point::geography,
+                 $4::double precision
+               )
+          )
+          SELECT trail.entity_id AS trail_entity_id,
+                 ST_ClosestPoint(
+                   trail.projected_geometry,
+                   highlight.evidence_point
+                 ) AS routing_point,
+                 ST_Distance(
+                   highlight.evidence_point::geography,
+                   ST_ClosestPoint(
+                     trail.projected_geometry,
+                     highlight.evidence_point
+                   )::geography
+                 )::double precision AS poi_to_access_distance_meters,
+                 source_trail.highway_class,
+                 source_trail.osm_type AS trail_osm_type,
+                 source_trail.osm_id::text AS trail_osm_id,
+                 ARRAY[category_assertion.assertion_id]
+                   AS trail_category_evidence_claim_ids
+            FROM nearby_trails trail
+            JOIN outdoor_research_entities trail_entity
+              ON trail_entity.entity_id = trail.entity_id
+             AND trail_entity.lifecycle_state = 'active'
+            JOIN outdoor_research_source_entities trail_source_entity
+              ON trail_source_entity.source_entity_link_id =
+                   trail.source_entity_link_id
+             AND trail_source_entity.entity_id = trail.entity_id
+             AND trail_source_entity.source_id = trail.source_id
+             AND trail_source_entity.matching_status = 'matched'
+            JOIN outdoor_evidence_trail_segments source_trail
+              ON source_trail.import_id = highlight.input_import_id
+             AND source_trail.region_id = highlight.region_id
+             AND source_trail.osm_type = trail.osm_type
+             AND source_trail.osm_id = trail.osm_id
+             AND source_trail.highway_class = ANY($6::text[])
+            JOIN outdoor_research_projection_assertions projected_category
+              ON projected_category.projection_run_id = trail.projection_run_id
+             AND projected_category.entity_id = trail.entity_id
+             AND projected_category.predicate = 'entity_category'
+            JOIN outdoor_research_active_assertions category_assertion
+              ON category_assertion.assertion_id =
+                   projected_category.assertion_id
+             AND category_assertion.entity_id = trail.entity_id
+             AND category_assertion.source_id = highlight.source_id
+             AND category_assertion.predicate = 'entity_category'
+             AND category_assertion.value_type = 'text'
+             AND category_assertion.value_text = 'trail_segment'
+             AND category_assertion.freshness_state = 'current'
+           WHERE ST_CoveredBy(trail.projected_geometry, highlight.boundary)
+             AND NOT EXISTS (
+               SELECT 1
+                 FROM outdoor_research_projection_quarantines quarantine
+                WHERE quarantine.projection_run_id = trail.projection_run_id
+                  AND quarantine.osm_type = trail.osm_type
+                  AND quarantine.osm_id = trail.osm_id
+             )
+             AND NOT EXISTS (
+               SELECT 1
+                 FROM outdoor_research_projection_assertions restriction_link
+                 JOIN outdoor_research_active_assertions restriction
+                   ON restriction.assertion_id = restriction_link.assertion_id
+                  AND restriction.entity_id = trail.entity_id
+                  AND restriction.source_id = highlight.source_id
+                  AND restriction.freshness_state = 'current'
+                WHERE restriction_link.projection_run_id =
+                        trail.projection_run_id
+                  AND restriction_link.entity_id = trail.entity_id
+                  AND (
+                    restriction.predicate = 'access_restriction' OR
+                    (
+                      restriction.predicate = 'closure_status' AND
+                      (
+                        restriction.value_type <> 'text' OR
+                        restriction.value_text IS DISTINCT FROM 'open'
+                      )
+                    )
+                  )
+             )
+        ) eligible
+       WHERE ST_CoveredBy(eligible.routing_point, highlight.boundary)
+         AND eligible.poi_to_access_distance_meters <= $4::double precision
+       ORDER BY eligible.poi_to_access_distance_meters,
+                eligible.trail_entity_id
+       LIMIT $5
+    ) access
+)
+SELECT *
+  FROM candidates
+ ORDER BY highlight_entity_id,
+          poi_to_access_distance_meters,
+          trail_entity_id
+ LIMIT $8`;
+
 export class PostgresOutdoorResearchRepository {
   constructor(options = {}) {
     if (!options.pool?.connect) {
@@ -650,6 +875,71 @@ class PostgresOutdoorResearchSnapshotSession {
     return { memberships: memberships.rows, assertions: assertions.rows };
   }
 
+  async resolveTrailAccessCandidates(request) {
+    const policy = OUTDOOR_RESEARCH_EXECUTOR_POLICY_V1;
+    const accessPolicy = RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1;
+    if (
+      !request ||
+      typeof request !== "object" ||
+      Array.isArray(request) ||
+      Object.keys(request).some((key) => ![
+        "projectionRunId",
+        "operationalRegionId",
+        "highlights",
+        "maximumDistanceMeters",
+        "maximumCandidatesPerHighlight",
+        "eligibleHighwayClasses",
+        "highlightCategories",
+        "maximumRows"
+      ].includes(key)) ||
+      !Array.isArray(request.highlights) ||
+      request.highlights.length < 1 ||
+      request.highlights.length > policy.maximumHighlightsPerOperation ||
+      request.maximumDistanceMeters !==
+        accessPolicy.maximumPoiToTrailDistanceMeters ||
+      !Number.isInteger(request.maximumCandidatesPerHighlight) ||
+      request.maximumCandidatesPerHighlight < 1 ||
+      request.maximumCandidatesPerHighlight >
+        accessPolicy.limits.maximumCandidatesPerHighlight ||
+      !Number.isInteger(request.maximumRows) ||
+      request.maximumRows < 1 ||
+      request.maximumRows > accessPolicy.limits.maximumCandidates ||
+      !Array.isArray(request.eligibleHighwayClasses) ||
+      request.eligibleHighwayClasses.length !==
+        accessPolicy.eligibleHighwayClasses.length ||
+      request.eligibleHighwayClasses.some(
+        (value, index) =>
+          value !== accessPolicy.eligibleHighwayClasses[index]
+      ) ||
+      !Array.isArray(request.highlightCategories) ||
+      request.highlightCategories.length !==
+        accessPolicy.highlightCategories.length ||
+      request.highlightCategories.some(
+        (value, index) => value !== accessPolicy.highlightCategories[index]
+      )
+    ) {
+      throw outdoorResearchExecutorError("operation_scope_violation");
+    }
+    const entityIds = request.highlights.map((item) => item.entityId);
+    if (new Set(entityIds).size !== entityIds.length) {
+      throw outdoorResearchExecutorError("operation_scope_violation");
+    }
+    const result = await this.query(TRAIL_ACCESS_CANDIDATE_QUERY, [
+      request.projectionRunId,
+      request.operationalRegionId,
+      entityIds,
+      request.maximumDistanceMeters,
+      request.maximumCandidatesPerHighlight,
+      request.eligibleHighwayClasses,
+      request.highlightCategories,
+      request.maximumRows
+    ]);
+    if (result.rows.length > request.maximumRows) {
+      throw outdoorResearchExecutorError("result_too_large");
+    }
+    return result.rows;
+  }
+
   async query(text, values) {
     throwIfAborted(this.signal);
     let result;
@@ -794,6 +1084,8 @@ function deriveCapabilityResult(row, binding, nowInput) {
       projectionRunId: row.projection_run_id,
       sourceId: row.source_id,
       sourcePolicyId: row.source_policy_id,
+      sourcePolicyVersion: row.source_policy_version,
+      adapterSchemaVersion: row.adapter_schema_version,
       importId: row.active_import_id,
       sourceDataAt: sourceDataAt.toISOString(),
       retrievedAt: retrievedAt.toISOString(),
@@ -876,5 +1168,6 @@ export const outdoorResearchRepositoryQueriesForTesting = Object.freeze({
   snapshotContext: SNAPSHOT_CONTEXT_QUERY,
   highlights: HIGHLIGHT_QUERY,
   routeMemberships: ROUTE_MEMBERSHIP_QUERY,
-  routeAssertions: ROUTE_ASSERTION_QUERY
+  routeAssertions: ROUTE_ASSERTION_QUERY,
+  trailAccessCandidates: TRAIL_ACCESS_CANDIDATE_QUERY
 });
