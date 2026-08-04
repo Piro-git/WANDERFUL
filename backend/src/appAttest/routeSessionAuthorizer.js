@@ -7,6 +7,7 @@ import {
 
 const AUTHORIZATION_PREFIX = "TrailMindRouteSession ";
 const LEASE_TIMEOUT_MARGIN_MS = 1_000;
+const ENABLED_PROVIDER_FLAG_VALUES = new Set(["true", "yes", "1"]);
 
 export function createRouteSessionAuthorizer(options) {
   return createSessionAuthorizer(options, "route", routeAuthorizationConfiguration(options?.env ?? process.env));
@@ -70,7 +71,7 @@ export function routeAuthorizationConfiguration(env = process.env) {
     throw appAttestError("authorization_unavailable");
   }
   return {
-    providerEnabled: env.ROUTE_PROVIDER_ENABLED !== "false",
+    providerEnabled: providerFlagEnabled(env.ROUTE_PROVIDER_ENABLED),
     installationMaximumCost: integer(env.APP_ATTEST_INSTALLATION_MAX_COST, 60, 1, 10_000),
     installationWindowMs: integer(env.APP_ATTEST_INSTALLATION_WINDOW_SECONDS, 300, 10, 86_400) * 1_000,
     globalMaximumCost: integer(env.ROUTE_GLOBAL_MAX_COST, 5_000, 1, 1_000_000),
@@ -82,7 +83,7 @@ export function routeAuthorizationConfiguration(env = process.env) {
 
 export function intentAuthorizationConfiguration(env = process.env) {
   return {
-    providerEnabled: env.INTENT_PROVIDER_ENABLED !== "false",
+    providerEnabled: providerFlagEnabled(env.INTENT_PROVIDER_ENABLED),
     requestCost: integer(env.INTENT_REQUEST_COST, 3, 1, 12),
     installationMaximumCost: integer(env.APP_ATTEST_INTENT_INSTALLATION_MAX_COST, 30, 1, 10_000),
     installationWindowMs: integer(env.APP_ATTEST_INTENT_INSTALLATION_WINDOW_SECONDS, 300, 10, 86_400) * 1_000,
@@ -91,6 +92,11 @@ export function intentAuthorizationConfiguration(env = process.env) {
     globalMaximumConcurrency: integer(env.INTENT_GLOBAL_MAX_CONCURRENCY, 10, 1, 1_000),
     leaseTtlMs: integer(env.INTENT_GLOBAL_LEASE_TTL_SECONDS, 60, 10, 600) * 1_000
   };
+}
+
+function providerFlagEnabled(value) {
+  return typeof value === "string" &&
+    ENABLED_PROVIDER_FLAG_VALUES.has(value.trim().toLowerCase());
 }
 
 function unavailableAuthorizer() {

@@ -4,7 +4,7 @@
   "currentClassification": "production_off",
   "currentDecision": "NO_GO",
   "defaultPolicy": {
-    "booleanAdmission": "Only the exact normalized strings true and false are allowed in deployed configuration. Missing, empty, unknown, or malformed values are rejected by deployment admission and treated as false by the effective feature contract.",
+    "booleanAdmission": "The application provider parser enables only string values that trim and case-normalize to true, yes, or 1; every other value is false. Deployed operational admission remains stricter and permits only exact true or false.",
     "enableOrder": [
       "database_and_security_preflight",
       "backend_route_provider_when_authorized",
@@ -25,14 +25,14 @@
   },
   "releaseBlockers": [
     {
-      "id": "flag-blocker-route-provider-default-open",
-      "description": "The current route-session authorizer treats ROUTE_PROVIDER_ENABLED as enabled unless its value is exactly false; missing and malformed values are therefore not fail-closed.",
-      "requiredResolution": "Change and review the production parser or enforce an independently verified exact-value deployment admission gate before GO."
+      "id": "flag-blocker-route-provider-review-and-deployment",
+      "description": "The route-session authorizer now has a locally verified strict opt-in parser, but the correction has not completed independent review or deployed flag-state verification.",
+      "requiredResolution": "Independently review the parser and prove exact-value deployment admission plus disabled-state behavior before GO."
     },
     {
-      "id": "flag-blocker-intent-provider-default-open",
-      "description": "The current intent-session authorizer treats INTENT_PROVIDER_ENABLED as enabled unless its value is exactly false; missing and malformed values are therefore not fail-closed.",
-      "requiredResolution": "Keep the remote intent provider false for this beta and change/review the parser or enforce exact-value deployment admission before GO."
+      "id": "flag-blocker-intent-provider-review-and-deployment",
+      "description": "The intent-session authorizer now has a locally verified strict opt-in parser, but the correction has not completed independent review or deployed flag-state verification.",
+      "requiredResolution": "Keep the remote intent provider false for this beta, independently review the parser, and prove exact-value deployment admission before GO."
     },
     {
       "id": "flag-blocker-ios-build-time-kill-switch",
@@ -111,11 +111,11 @@
       "id": "backend_route_provider",
       "surface": "backend",
       "key": "ROUTE_PROVIDER_ENABLED",
-      "trackedDefault": true,
-      "currentAcceptedTrueValues": ["missing", "empty", "true", "malformed_non_false"],
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
       "requiredOperationalTrueValue": "true",
       "missingOrMalformedEffectiveValue": false,
-      "currentContractCompliant": false,
+      "currentContractCompliant": true,
       "dependencies": ["explicit_provider_authorization", "backend_only_credential", "durable_app_attest"],
       "providerCapable": true
     },
@@ -123,11 +123,11 @@
       "id": "backend_intent_provider",
       "surface": "backend",
       "key": "INTENT_PROVIDER_ENABLED",
-      "trackedDefault": true,
-      "currentAcceptedTrueValues": ["missing", "empty", "true", "malformed_non_false"],
+      "trackedDefault": false,
+      "currentAcceptedTrueValues": ["true", "yes", "1"],
       "requiredOperationalTrueValue": "true",
       "missingOrMalformedEffectiveValue": false,
-      "currentContractCompliant": false,
+      "currentContractCompliant": true,
       "dependencies": ["explicit_provider_authorization", "durable_app_attest"],
       "providerCapable": true,
       "betaRequired": false

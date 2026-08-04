@@ -34,7 +34,10 @@ describe("route-session integration", () => {
       expiresAt: Date.now() + 120_000,
       maximumCost: 12
     });
-    const authorizer = createRouteSessionAuthorizer({ repository, env: { NODE_ENV: "test" } });
+    const authorizer = createRouteSessionAuthorizer({
+      repository,
+      env: { NODE_ENV: "test", ROUTE_PROVIDER_ENABLED: "true" }
+    });
     let active = 0;
     let maximumActive = 0;
     const endpoint = createRouteEndpoint({
@@ -75,7 +78,10 @@ describe("route-session integration", () => {
       expiresAt: Date.now() + 120_000,
       maximumCost: 12
     });
-    const authorizer = createRouteSessionAuthorizer({ repository, env: { NODE_ENV: "test" } });
+    const authorizer = createRouteSessionAuthorizer({
+      repository,
+      env: { NODE_ENV: "test", ROUTE_PROVIDER_ENABLED: "true" }
+    });
     let providerCalls = 0;
     const endpoint = createRouteEndpoint({
       env: { NODE_ENV: "production" },

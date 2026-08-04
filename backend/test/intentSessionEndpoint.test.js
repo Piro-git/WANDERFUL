@@ -34,7 +34,12 @@ describe("attested intent endpoint", () => {
       expiresAt: Date.now() + 120_000,
       maximumCost: 12
     });
-    const env = { NODE_ENV: "test", INTENT_REQUEST_COST: "3" };
+    const env = {
+      NODE_ENV: "test",
+      INTENT_PROVIDER_ENABLED: "true",
+      INTENT_REQUEST_COST: "3",
+      ROUTE_PROVIDER_ENABLED: "true"
+    };
     const endpoint = createIntentSessionEndpoint({
       env,
       appAttestRepository: repository,

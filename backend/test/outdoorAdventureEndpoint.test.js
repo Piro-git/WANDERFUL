@@ -354,7 +354,7 @@ describe("outdoor-adventure planning endpoint v1", () => {
     });
     let orchestratorCalls = 0;
     const endpoint = createOutdoorAdventurePlanningEndpoint({
-      env: enabledEnv(),
+      env: enabledEnv({ ROUTE_PROVIDER_ENABLED: "true" }),
       appAttestRepository,
       repository: {},
       provider: {},

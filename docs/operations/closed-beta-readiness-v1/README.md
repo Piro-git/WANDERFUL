@@ -21,9 +21,9 @@ The product remains **NO-GO**. In particular:
 - no V4 provider proof exists after access-point integration;
 - current Harz and Innsbruck imports from earlier proofs were disposable and
   were removed;
-- `ROUTE_PROVIDER_ENABLED` and `INTENT_PROVIDER_ENABLED` currently treat a
-  missing or malformed value as enabled, contrary to this plan's required
-  exact-value fail-closed policy;
+- `ROUTE_PROVIDER_ENABLED` and `INTENT_PROVIDER_ENABLED` now use a locally
+  verified strict opt-in parser, but independent review and a deployed
+  flag-state receipt are still absent;
 - iOS feature flags are build-time settings, not an immediate remote kill
   switch; emergency control therefore starts at the backend;
 - privacy, operational ownership, Apple-team, support, and retention decisions
@@ -86,6 +86,9 @@ physical iPhone
 - Production refuses an in-memory repository. Compare-and-set counters,
   one-time challenge consumption, request replay prevention, cost debiting,
   rate limiting, and lease acquisition are transactional.
+- Route and intent provider flags enable only for string values that normalize
+  to `true`, `yes`, or `1`. Missing, empty, false, malformed, and non-string
+  values remain disabled; the tracked example configuration keeps both false.
 - The HTTP handler short-circuits a disabled research-planning endpoint before
   body parsing. The endpoint then checks the V2 access gate, validates the
   request, authorizes the fixed cost, and only afterward resolves PostGIS and
@@ -154,7 +157,8 @@ device identifiers, or temporary paths.
 
 1. Merge and independently accept the access-point correction lane and its
    migration; identify a clean reviewed commit.
-2. Resolve the exact-value provider-flag blocker and approve owners.
+2. Independently review the strict provider-flag correction, prove deployed
+   admission and disabled-state behavior, and approve owners.
 3. Provision isolated HTTPS staging and least-privilege PostgreSQL/PostGIS.
 4. Apply reviewed migrations repeatably and import/project current Harz and
    Innsbruck data.

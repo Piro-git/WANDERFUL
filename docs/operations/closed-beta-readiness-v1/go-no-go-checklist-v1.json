@@ -17,7 +17,7 @@
     "current_harz_and_innsbruck_imports_absent",
     "access_v2_and_migration_007_review_incomplete",
     "v4_provider_and_quality_proof_not_run",
-    "provider_flags_not_fail_closed_for_missing_or_malformed_values",
+    "provider_flag_correction_requires_independent_review_and_deployed_receipt",
     "rollback_and_monitoring_not_rehearsed",
     "operational_privacy_and_product_ownership_unassigned"
   ],
@@ -215,9 +215,9 @@
           "mandatory": true,
           "ownerRole": "backend_security_owner",
           "evidenceRequired": ["reviewed parser or deployment-admission correction", "negative configuration tests", "deployed flag-state receipt"],
-          "currentState": "failed",
-          "evidenceReferences": ["backend/src/appAttest/routeSessionAuthorizer.js", "docs/operations/closed-beta-readiness-v1/feature-flag-state-matrix-v1.json"],
-          "blocker": "Current ROUTE_PROVIDER_ENABLED and INTENT_PROVIDER_ENABLED semantics default open unless exactly false.",
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/appAttest/routeSessionAuthorizer.js", "backend/test/providerFeatureFlags.test.js", "backend/config.example.env", "docs/operations/closed-beta-readiness-v1/feature-flag-state-matrix-v1.json"],
+          "blocker": "Strict parsing and deterministic negative tests are implemented locally; independent review, deployment admission, and a deployed flag-state receipt are absent.",
           "liveActionExecuted": false
         },
         {

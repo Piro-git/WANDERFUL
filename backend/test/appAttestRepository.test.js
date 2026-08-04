@@ -64,7 +64,10 @@ describe("App Attest repository", () => {
       expiresAt: Date.now() + 60_000,
       maximumCost: 6
     });
-    const authorizer = createRouteSessionAuthorizer({ repository, env: { NODE_ENV: "test" } });
+    const authorizer = createRouteSessionAuthorizer({
+      repository,
+      env: { NODE_ENV: "test", ROUTE_PROVIDER_ENABLED: "true" }
+    });
     const attempts = await Promise.allSettled(
       Array.from({ length: 4 }, () => authorizer.authorize({
         cost: 2,
@@ -92,7 +95,10 @@ describe("App Attest repository", () => {
       expiresAt: Date.now() + 60_000,
       maximumCost: 12
     });
-    const authorizer = createRouteSessionAuthorizer({ repository, env: { NODE_ENV: "test" } });
+    const authorizer = createRouteSessionAuthorizer({
+      repository,
+      env: { NODE_ENV: "test", ROUTE_PROVIDER_ENABLED: "true" }
+    });
     const requestId = randomUUID();
     const headers = {
       authorization: `TrailMindRouteSession ${token}`,

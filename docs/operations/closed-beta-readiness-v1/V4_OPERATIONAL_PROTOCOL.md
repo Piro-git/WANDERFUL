@@ -43,9 +43,12 @@ states pass; a pass in one lane never fills another lane.
    and a new non-secret approval reference are recorded.
 8. A new explicit authorization permits exactly 15 non-production route calls
    for only the four fixtures below and expires at task completion.
-9. Ordinary client flags remain false. Backend research/access/provider flags
-   may be true only in the isolated V4 process/environment and must return false
-   in terminal cleanup. Every insecure/local/in-memory flag remains false.
+9. Ordinary client flags remain false. Provider parsing enables only string
+   values that normalize to `true`, `yes`, or `1`; missing, empty, unknown,
+   malformed, and non-string values remain false. V4 admission is stricter:
+   backend research/access/provider flags may use exact `true` only in the
+   isolated V4 process/environment and must return exact `false` in terminal
+   cleanup. Every insecure/local/in-memory flag remains false.
 10. The proof runner enforces safe receipt schemas and rejects provider URLs,
     bodies, headers, credentials, database URLs, prompts, precise coordinates,
     geometry, App Attest material, temporary paths, or unbounded errors.
@@ -129,7 +132,9 @@ server-side diagnostic classification and can never produce beta GO.
 1. Reconfirm the 15-call approval is current and the credential is visible only
    to the backend proof process.
 2. Enable exact `ROUTE_PROVIDER_ENABLED=true`, then backend research, then
-   backend V2 access. Ordinary iOS flags remain false.
+   backend V2 access. Parser aliases remain forbidden by V4 operational
+   admission even though the application parser recognizes reviewed ordinary
+   values. Ordinary iOS flags remain false.
 3. Start the empty ledger with `authorized=15`, `attempted=0`, and
    `unused=15`. Validate the circuit state is closed.
 
