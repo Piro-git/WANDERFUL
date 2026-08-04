@@ -44,6 +44,8 @@ struct BackendOutdoorAdventurePlanningClientV1:
     private let authorizer: any RouteSessionAuthorizing
     private let limits: OutdoorAdventurePlanningTransportLimitsV1
     private let adapter: ResearchGuidedRoutingContractAdapterV1
+    private let adapterV2: ResearchGuidedRoutingContractAdapterV2
+    private let usesRoutableHighlightAccessV2: Bool
     private let responseValidationDidFinish:
         @Sendable (Duration) -> Void
 
@@ -53,6 +55,8 @@ struct BackendOutdoorAdventurePlanningClientV1:
         authorizer: (any RouteSessionAuthorizing)? = nil,
         limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard,
         adapter: ResearchGuidedRoutingContractAdapterV1? = nil,
+        adapterV2: ResearchGuidedRoutingContractAdapterV2? = nil,
+        usesRoutableHighlightAccessV2: Bool = false,
         responseValidationDidFinish:
             @escaping @Sendable (Duration) -> Void = { _ in }
     ) {
@@ -64,6 +68,10 @@ struct BackendOutdoorAdventurePlanningClientV1:
         self.adapter = adapter ?? ResearchGuidedRoutingContractAdapterV1(
             limits: limits.routeTransportLimits
         )
+        self.adapterV2 = adapterV2 ?? ResearchGuidedRoutingContractAdapterV2(
+            limits: limits.routeTransportLimits
+        )
+        self.usesRoutableHighlightAccessV2 = usesRoutableHighlightAccessV2
         self.responseValidationDidFinish =
             responseValidationDidFinish
     }
@@ -85,7 +93,13 @@ struct BackendOutdoorAdventurePlanningClientV1:
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
-            body = try encoder.encode(request)
+            if usesRoutableHighlightAccessV2 {
+                body = try encoder.encode(
+                    OutdoorAdventurePlanningRequestV2(intent: request.intent)
+                )
+            } else {
+                body = try encoder.encode(request)
+            }
         } catch {
             throw OutdoorAdventurePlanningClientFailure.invalidRequest
         }
@@ -176,11 +190,18 @@ struct BackendOutdoorAdventurePlanningClientV1:
                 )
             }
             try Task.checkCancellation()
+            if usesRoutableHighlightAccessV2 {
+                return try OutdoorAdventurePlanningResponseValidatorV1
+                    .validateV2(
+                        data,
+                        adapter: adapterV2,
+                        validationDidFinish: responseValidationDidFinish
+                    )
+            }
             return try OutdoorAdventurePlanningResponseValidatorV1.validate(
                 data,
                 adapter: adapter,
-                validationDidFinish:
-                    responseValidationDidFinish
+                validationDidFinish: responseValidationDidFinish
             )
         } catch is CancellationError {
             throw CancellationError()
@@ -282,7 +303,11 @@ enum OutdoorAdventurePlanningClientFactory {
             baseURL: baseURL,
             session: session,
             authorizer: authorizer,
-            limits: limits
+            limits: limits,
+            usesRoutableHighlightAccessV2:
+                TrailMindBackendConfiguration.routableHighlightAccessEnabled(
+                    bundle: bundle
+                )
         )
     }
 }

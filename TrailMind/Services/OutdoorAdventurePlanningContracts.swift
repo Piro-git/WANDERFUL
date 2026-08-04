@@ -549,6 +549,15 @@ struct OutdoorAdventurePlanningRequestV1: Encodable, Equatable, Sendable {
     }
 }
 
+struct OutdoorAdventurePlanningRequestV2: Encodable, Equatable, Sendable {
+    let schemaVersion = 2
+    let intent: AdventureResearchIntentV1
+
+    init(intent: AdventureResearchIntentV1) {
+        self.intent = intent
+    }
+}
+
 enum OutdoorAdventurePlanningStateV1: String, Equatable, Sendable {
     case clarificationRequired = "clarification_required"
     case unsupported
@@ -749,7 +758,7 @@ private enum OutdoorAdventurePlanningContractValidationV1 {
 }
 
 extension AdventureResearchIntentV1 {
-    fileprivate init(validatingJSONObject input: Any) throws {
+    init(validatingJSONObject input: Any) throws {
         let value = try StrictOutdoorAdventurePlanningJSONV1.object(
             input,
             exactKeys: OutdoorAdventurePlanningContractValidationV1.intentFields
@@ -1420,6 +1429,229 @@ enum OutdoorAdventurePlanningResponseValidatorV1 {
         }
     }
 
+    private static func eligibleRouteResultCount(
+        _ routedObject: [String: Any]
+    ) throws -> Int {
+        let attempts = try StrictOutdoorAdventurePlanningJSONV1.array(
+            routedObject["attempts"]
+        )
+        return try attempts.reduce(into: 0) { count, raw in
+            let attempt = try StrictOutdoorAdventurePlanningJSONV1.object(raw)
+            let results = try StrictOutdoorAdventurePlanningJSONV1.array(
+                attempt["routeResults"]
+            )
+            count += try results.reduce(into: 0) { eligible, resultRaw in
+                let result = try StrictOutdoorAdventurePlanningJSONV1.object(
+                    resultRaw
+                )
+                if try StrictOutdoorAdventurePlanningJSONV1.string(
+                    result["verificationState"]
+                ) == "eligible" {
+                    eligible += 1
+                }
+            }
+        }
+    }
+
+    private static func resultV2(
+        state: OutdoorAdventurePlanningStateV1,
+        intent: AdventureResearchIntentV1,
+        gaps: [OutdoorAdventurePlanningGapV1],
+        questions: [AdventureResearchClarificationQuestionV1],
+        routedObject: [String: Any]?,
+        selection: ResearchGuidedRouteSelectionV1?
+    ) throws -> OutdoorAdventurePlanningResultV1 {
+        let nestedState = try routedObject.map {
+            try StrictOutdoorAdventurePlanningJSONV1.enumValue(
+                $0["state"],
+                as: ResearchGuidedRoutedEnvelopeStateV1.self
+            )
+        }
+        let routeResultCount = try routedObject.map(routeResultCount) ?? 0
+        let eligibleResultCount = try routedObject.map(
+            eligibleRouteResultCount
+        ) ?? 0
+
+        if state == .clarificationRequired {
+            guard routedObject == nil,
+                  !questions.isEmpty,
+                  questions == intent.unresolvedClarificationQuestions
+            else {
+                throw OutdoorAdventurePlanningClientFailure.invalidResponse
+            }
+            return .clarificationRequired(
+                OutdoorAdventurePlanningNonRoutedStateV1(
+                    state: state,
+                    normalizedIntent: intent,
+                    planningGaps: gaps,
+                    clarificationQuestions: questions
+                )
+            )
+        }
+
+        guard questions.isEmpty else {
+            throw OutdoorAdventurePlanningClientFailure.invalidResponse
+        }
+        if state == .unsupported {
+            guard routedObject == nil ||
+                (nestedState == .unsupported && routeResultCount == 0)
+            else {
+                throw OutdoorAdventurePlanningClientFailure.invalidResponse
+            }
+            return .unsupported(
+                OutdoorAdventurePlanningNonRoutedStateV1(
+                    state: state,
+                    normalizedIntent: intent,
+                    planningGaps: gaps,
+                    clarificationQuestions: []
+                )
+            )
+        }
+        if state == .noViableRoute {
+            guard routedObject == nil ||
+                (nestedState == .noViableRoute && routeResultCount == 0)
+            else {
+                throw OutdoorAdventurePlanningClientFailure.invalidResponse
+            }
+            return .noViableRoute(
+                OutdoorAdventurePlanningNonRoutedStateV1(
+                    state: state,
+                    normalizedIntent: intent,
+                    planningGaps: gaps,
+                    clarificationQuestions: []
+                )
+            )
+        }
+
+        guard let selection,
+              let nestedState,
+              routeResultCount >= 1,
+              nestedState == .routed || nestedState == .partial
+        else {
+            throw OutdoorAdventurePlanningClientFailure.invalidResponse
+        }
+        if state == .routed {
+            guard nestedState == .routed,
+                  eligibleResultCount >= 1,
+                  gaps.isEmpty
+            else {
+                throw OutdoorAdventurePlanningClientFailure.invalidResponse
+            }
+            return .routed(
+                OutdoorAdventurePlanningRoutedStateV1(
+                    state: state,
+                    normalizedIntent: intent,
+                    planningGaps: gaps,
+                    routeSelection: selection
+                )
+            )
+        }
+        guard state == .partial else {
+            throw OutdoorAdventurePlanningClientFailure.invalidResponse
+        }
+        return .partial(
+            OutdoorAdventurePlanningRoutedStateV1(
+                state: state,
+                normalizedIntent: intent,
+                planningGaps: gaps,
+                routeSelection: selection
+            )
+        )
+    }
+
+}
+
+extension OutdoorAdventurePlanningResponseValidatorV1 {
+    static func validateV2(
+        _ data: Data,
+        adapter: ResearchGuidedRoutingContractAdapterV2,
+        validationDidFinish:
+            @Sendable (Duration) -> Void = { _ in }
+    ) throws -> OutdoorAdventurePlanningResultV1 {
+        let validationStartedAt = ContinuousClock().now
+        defer {
+            validationDidFinish(
+                validationStartedAt.duration(to: ContinuousClock().now)
+            )
+        }
+        let root: Any
+        do {
+            root = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            throw OutdoorAdventurePlanningClientFailure.invalidResponse
+        }
+        do {
+            let value = try StrictOutdoorAdventurePlanningJSONV1.object(
+                root,
+                exactKeys: responseFields
+            )
+            guard try StrictOutdoorAdventurePlanningJSONV1.integer(
+                value["schemaVersion"]
+            ) == 2,
+                try StrictOutdoorAdventurePlanningJSONV1.string(
+                    value["policyVersion"]
+                ) == "outdoor-adventure-orchestration-v2"
+            else {
+                throw OutdoorAdventurePlanningClientFailure.invalidResponse
+            }
+            let state = try StrictOutdoorAdventurePlanningJSONV1.enumValue(
+                value["state"],
+                as: OutdoorAdventurePlanningStateV1.self
+            )
+            let intent = try AdventureResearchIntentV1(
+                validatingJSONObject: value["normalizedIntent"] as Any
+            )
+            let gaps = try planningGaps(value["planningGaps"])
+            let questions = try AdventureResearchIntentV1
+                .clarificationQuestions(value["clarificationQuestions"])
+            guard Set(questions).count == questions.count else {
+                throw OutdoorAdventurePlanningClientFailure.invalidResponse
+            }
+
+            let routedObject: [String: Any]?
+            let selection: ResearchGuidedRouteSelectionV1?
+            if StrictOutdoorAdventurePlanningJSONV1.isNull(
+                value["routedAlternatives"]
+            ) {
+                routedObject = nil
+                selection = nil
+            } else {
+                let object = try StrictOutdoorAdventurePlanningJSONV1.object(
+                    value["routedAlternatives"]
+                )
+                let nestedIntent = try AdventureResearchIntentV1(
+                    validatingJSONObject: object["normalizedIntent"] as Any
+                )
+                guard nestedIntent == intent else {
+                    throw OutdoorAdventurePlanningClientFailure.invalidResponse
+                }
+                let nestedData = try JSONSerialization.data(
+                    withJSONObject: object,
+                    options: [.sortedKeys]
+                )
+                do {
+                    selection = try adapter.decodeConvertAndSelect(nestedData)
+                } catch ResearchGuidedRoutingContractErrorV1.envelopeTooLarge {
+                    throw OutdoorAdventurePlanningClientFailure.responseTooLarge
+                } catch {
+                    throw OutdoorAdventurePlanningClientFailure.invalidResponse
+                }
+                routedObject = object
+            }
+            return try resultV2(
+                state: state,
+                intent: intent,
+                gaps: gaps,
+                questions: questions,
+                routedObject: routedObject,
+                selection: selection
+            )
+        } catch let failure as OutdoorAdventurePlanningClientFailure {
+            throw failure
+        } catch {
+            throw OutdoorAdventurePlanningClientFailure.invalidResponse
+        }
+    }
 }
 
 private enum StrictOutdoorAdventurePlanningJSONV1 {

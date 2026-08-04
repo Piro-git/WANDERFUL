@@ -379,6 +379,22 @@ enum TrailMindBackendConfiguration {
         }
         return baseURL(bundle: bundle) != nil
     }
+
+    nonisolated static func routableHighlightAccessEnabled(
+        bundle: Bundle = .main
+    ) -> Bool {
+        guard researchGuidedPlanningEnabled(bundle: bundle),
+              let value = bundle.object(
+                forInfoDictionaryKey: "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED"
+              ) as? String
+        else {
+            return false
+        }
+        return ["true", "yes", "1"].contains(
+            value.trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+        )
+    }
 }
 
 private struct ChallengeRequest: Encodable { let purpose: String; let keyId: String? }

@@ -130,6 +130,71 @@ final class ResearchRoutePresentationTests: XCTestCase {
     )
   }
 
+  func testV2ApproachStatesUseTruthfulConciseCopyWithoutCoordinates() throws {
+    let suggestion = makeSuggestion(index: 40)
+    let viewpoint = makeWaypoint(
+      id: "11111111-1111-4111-8111-111111111111",
+      category: .viewpoint,
+      role: .mustHave
+    )
+    let cases: [(ResearchHighlightApproachStateV2, Bool, String)] = [
+      (.passesNear, true,
+       "Passes near a selected viewpoint; the highlight itself is not reached."),
+      (.notReached, true, "Selected viewpoint not reached."),
+      (.unverified, false,
+       "Access point for a selected viewpoint is unverified.")
+    ]
+    for (state, providerVerified, expected) in cases {
+      let context = makeContext(
+        outcome: .partial,
+        suggestion: suggestion,
+        waypoints: [viewpoint],
+        visits: [makeVisit(entityID: viewpoint.entityID, reached: true)],
+        highlightApproaches: [makeApproach(
+          entityID: viewpoint.entityID,
+          state: state,
+          providerVerified: providerVerified
+        )]
+      )
+      let presentation = try XCTUnwrap(
+        ResearchPresentationProjector.routePresentation(
+          suggestion: suggestion,
+          allSuggestions: [suggestion],
+          context: context
+        )
+      )
+      XCTAssertTrue(presentation.highlights.isEmpty)
+      XCTAssertTrue(presentation.limitations.contains { $0.title == expected })
+      let copy = presentationCopy(presentation)
+      XCTAssertFalse(copy.contains("51.84"))
+      XCTAssertFalse(copy.contains("10.68"))
+    }
+
+    let reachedContext = makeContext(
+      outcome: .routed,
+      suggestion: suggestion,
+      waypoints: [viewpoint],
+      visits: [],
+      highlightApproaches: [makeApproach(
+        entityID: viewpoint.entityID,
+        state: .reached,
+        providerVerified: true
+      )]
+    )
+    let reached = try XCTUnwrap(
+      ResearchPresentationProjector.routePresentation(
+        suggestion: suggestion,
+        allSuggestions: [suggestion],
+        context: reachedContext
+      )
+    )
+    XCTAssertEqual(reached.highlights.first?.title, "Visits Viewpoint")
+    XCTAssertEqual(
+      reached.highlights.first?.evidenceLabel,
+      "Route geometry reaches this selected highlight"
+    )
+  }
+
   func testInnsbruckViewpointKeepsAlpineLimitationsConservative() throws {
     let suggestion = makeSuggestion(index: 0, location: "Innsbruck")
     let viewpoint = makeWaypoint(
@@ -724,6 +789,31 @@ extension ResearchRoutePresentationTests {
     )
   }
 
+  fileprivate func makeApproach(
+    entityID: UUID,
+    state: ResearchHighlightApproachStateV2,
+    providerVerified: Bool
+  ) -> ResearchHighlightApproachV2 {
+    ResearchHighlightApproachV2(
+      entityID: entityID,
+      role: .mustHave,
+      evidenceCoordinate: Coordinate(latitude: 51.84, longitude: 10.68),
+      routingCoordinate: Coordinate(latitude: 51.8401, longitude: 10.68),
+      providerSnappedCoordinate: providerVerified
+        ? Coordinate(latitude: 51.8401, longitude: 10.68) : nil,
+      providerSnapDistanceMeters: providerVerified ? 0 : nil,
+      routeClosestApproachCoordinate: Coordinate(
+        latitude: state == .reached ? 51.84 : 51.8405,
+        longitude: 10.68
+      ),
+      routeGeometryDistanceToAccessMeters: providerVerified ? 0 : 125,
+      routeGeometryDistanceToEvidenceMeters:
+        state == .reached ? 0 : state == .passesNear ? 60 : 125,
+      providerVerifiedAccess: providerVerified,
+      state: state
+    )
+  }
+
   fileprivate func makeContext(
     outcome: PlannerViewModel.ResearchPlanningContext.Outcome,
     suggestion: RouteSuggestion,
@@ -734,7 +824,8 @@ extension ResearchRoutePresentationTests {
     remainingLimitations: [String]? = nil,
     rejectionCounts: [String: Int] = [:],
     strategy: String = "must_have_first",
-    requiredVerification: [ResearchVerificationCodeV1] = []
+    requiredVerification: [ResearchVerificationCodeV1] = [],
+    highlightApproaches: [ResearchHighlightApproachV2] = []
   ) -> PlannerViewModel.ResearchPlanningContext {
     makeContext(
       outcome: outcome,
@@ -748,7 +839,8 @@ extension ResearchRoutePresentationTests {
       remainingLimitations: remainingLimitations,
       rejectionCounts: rejectionCounts,
       strategy: strategy,
-      requiredVerification: requiredVerification
+      requiredVerification: requiredVerification,
+      highlightApproaches: highlightApproaches
     )
   }
 
@@ -762,7 +854,8 @@ extension ResearchRoutePresentationTests {
     remainingLimitations: [String]? = nil,
     rejectionCounts: [String: Int] = [:],
     strategy: String = "must_have_first",
-    requiredVerification: [ResearchVerificationCodeV1] = []
+    requiredVerification: [ResearchVerificationCodeV1] = [],
+    highlightApproaches: [ResearchHighlightApproachV2] = []
   ) -> PlannerViewModel.ResearchPlanningContext {
     let provenance = ResearchRouteProvenanceV1(
       proposalID: "rrcpv1_internal",
@@ -783,7 +876,8 @@ extension ResearchRoutePresentationTests {
         attemptID: "internal_attempt_id",
         routeResultID: "internal_route_result_id",
         researchProvenance: provenance,
-        waypointVisits: visits
+        waypointVisits: visits,
+        highlightApproaches: highlightApproaches
       )
     let isPartial: Bool
     switch outcome {

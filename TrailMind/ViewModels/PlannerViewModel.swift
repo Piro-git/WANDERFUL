@@ -269,6 +269,21 @@ final class PlannerViewModel {
             let routeResultID: String
             let researchProvenance: ResearchRouteProvenanceV1
             let waypointVisits: [ResearchWaypointVisitV1]
+            let highlightApproaches: [ResearchHighlightApproachV2]
+
+            init(
+                attemptID: String,
+                routeResultID: String,
+                researchProvenance: ResearchRouteProvenanceV1,
+                waypointVisits: [ResearchWaypointVisitV1],
+                highlightApproaches: [ResearchHighlightApproachV2] = []
+            ) {
+                self.attemptID = attemptID
+                self.routeResultID = routeResultID
+                self.researchProvenance = researchProvenance
+                self.waypointVisits = waypointVisits
+                self.highlightApproaches = highlightApproaches
+            }
         }
 
         let outcome: Outcome
@@ -1520,7 +1535,8 @@ private extension PlannerViewModel {
                     routeResultID: alternative.routeResultID,
                     researchProvenance:
                         alternative.researchProvenance,
-                    waypointVisits: alternative.waypointVisits
+                    waypointVisits: alternative.waypointVisits,
+                    highlightApproaches: alternative.highlightApproaches
                 )
         }
 

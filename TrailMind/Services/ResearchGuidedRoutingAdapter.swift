@@ -164,12 +164,50 @@ struct ResearchWaypointVisitV1: Hashable, Sendable {
     }
 }
 
+enum ResearchHighlightApproachStateV2: String, Hashable, Sendable {
+    case reached
+    case passesNear = "passes_near"
+    case notReached = "not_reached"
+    case unverified
+}
+
+struct ResearchHighlightApproachV2: Hashable, Sendable {
+    let entityID: UUID
+    let role: ResearchCandidateRoleV1
+    let evidenceCoordinate: Coordinate
+    let routingCoordinate: Coordinate
+    let providerSnappedCoordinate: Coordinate?
+    let providerSnapDistanceMeters: Double?
+    let routeClosestApproachCoordinate: Coordinate
+    let routeGeometryDistanceToAccessMeters: Double
+    let routeGeometryDistanceToEvidenceMeters: Double
+    let providerVerifiedAccess: Bool
+    let state: ResearchHighlightApproachStateV2
+}
+
 struct ResearchGuidedRouteAlternativeV1: Hashable {
     let attemptID: String
     let routeResultID: String
     let suggestion: RouteSuggestion
     let researchProvenance: ResearchRouteProvenanceV1
     let waypointVisits: [ResearchWaypointVisitV1]
+    let highlightApproaches: [ResearchHighlightApproachV2]
+
+    init(
+        attemptID: String,
+        routeResultID: String,
+        suggestion: RouteSuggestion,
+        researchProvenance: ResearchRouteProvenanceV1,
+        waypointVisits: [ResearchWaypointVisitV1],
+        highlightApproaches: [ResearchHighlightApproachV2] = []
+    ) {
+        self.attemptID = attemptID
+        self.routeResultID = routeResultID
+        self.suggestion = suggestion
+        self.researchProvenance = researchProvenance
+        self.waypointVisits = waypointVisits
+        self.highlightApproaches = highlightApproaches
+    }
 
     func replacingSuggestion(
         _ suggestion: RouteSuggestion
@@ -179,7 +217,8 @@ struct ResearchGuidedRouteAlternativeV1: Hashable {
             routeResultID: routeResultID,
             suggestion: suggestion,
             researchProvenance: researchProvenance,
-            waypointVisits: waypointVisits
+            waypointVisits: waypointVisits,
+            highlightApproaches: highlightApproaches
         )
     }
 }

@@ -89,6 +89,9 @@ struct ResearchLimitationPresentation: Identifiable, Equatable, Sendable {
     case childSuitability
     case beginnerSuitability
     case unconnectedHighlight
+    case passesNearHighlight
+    case selectedHighlightNotReached
+    case accessPointUnverified
     case researchAttempt
     case scenicQuality
     case technicalDifficulty
@@ -245,16 +248,29 @@ extension ResearchPresentationProjector {
     let selectedWaypoints = uniqueWaypoints(
       sidecar.researchProvenance.selectedWaypoints
     )
-    let reachedEntityIDs = Set(
-      sidecar.waypointVisits.compactMap { visit -> UUID? in
-        guard visit.isResearchWaypointReached else { return nil }
-        return visit.entityID
-      }
-    )
+    let reachedEntityIDs: Set<UUID>
+    if sidecar.highlightApproaches.isEmpty {
+      reachedEntityIDs = Set(
+        sidecar.waypointVisits.compactMap { visit -> UUID? in
+          guard visit.isResearchWaypointReached else { return nil }
+          return visit.entityID
+        }
+      )
+    } else {
+      reachedEntityIDs = Set(
+        sidecar.highlightApproaches.compactMap {
+          $0.providerVerifiedAccess && $0.state == .reached
+            ? $0.entityID : nil
+        }
+      )
+    }
     let reachedWaypoints = selectedWaypoints.filter {
       reachedEntityIDs.contains($0.entityID)
     }
-    let highlights = highlightPresentations(for: reachedWaypoints)
+    let highlights = highlightPresentations(
+      for: reachedWaypoints,
+      usesApproachVerification: !sidecar.highlightApproaches.isEmpty
+    )
     let missedWaypointCount = max(
       0,
       selectedWaypoints.count - reachedWaypoints.count
@@ -264,6 +280,7 @@ extension ResearchPresentationProjector {
       context: context,
       provenance: sidecar.researchProvenance,
       missedWaypointCount: missedWaypointCount,
+      highlightApproaches: sidecar.highlightApproaches,
       isPartial: isPartial
     )
     let kind: ResearchResultKind =
@@ -576,7 +593,8 @@ extension ResearchPresentationProjector {
   }
 
   fileprivate static func highlightPresentations(
-    for waypoints: [ResearchSelectedWaypointV1]
+    for waypoints: [ResearchSelectedWaypointV1],
+    usesApproachVerification: Bool = false
   ) -> [ResearchHighlightPresentation] {
     waypoints.enumerated().map { index, waypoint in
       let category = categoryLabel(waypoint.highlightCategory)
@@ -585,11 +603,15 @@ extension ResearchPresentationProjector {
       )
       return ResearchHighlightPresentation(
         id: index,
-        title: category.capitalized,
+        title: usesApproachVerification
+          ? "Visits \(category.capitalized)"
+          : category.capitalized,
         categoryLabel: category,
-        evidenceLabel: isMappedOnly
-          ? "Mapped place on this routed path"
-          : "Researched place on this routed path",
+        evidenceLabel: usesApproachVerification
+          ? "Route geometry reaches this selected highlight"
+          : isMappedOnly
+            ? "Mapped place on this routed path"
+            : "Researched place on this routed path",
         symbol: categorySymbol(waypoint.highlightCategory),
         isMustHave: waypoint.role == .mustHave
       )
@@ -600,6 +622,7 @@ extension ResearchPresentationProjector {
     context: PlannerViewModel.ResearchPlanningContext,
     provenance: ResearchRouteProvenanceV1,
     missedWaypointCount: Int,
+    highlightApproaches: [ResearchHighlightApproachV2] = [],
     isPartial: Bool
   ) -> [ResearchLimitationPresentation] {
     var indexed: [(Int, ResearchLimitationPresentation)] = []
@@ -625,6 +648,43 @@ extension ResearchPresentationProjector {
     }
     for verification in provenance.requiredVerification {
       append(verificationLimitation(verification))
+    }
+
+    for approach in highlightApproaches where approach.state != .reached {
+      let category = provenance.selectedWaypoints.first {
+        $0.entityID == approach.entityID
+      }.map { categoryLabel($0.highlightCategory) } ?? "highlight"
+      switch approach.state {
+      case .passesNear:
+        append(
+          limitation(
+            code: .passesNearHighlight,
+            title: "Passes near a selected \(category); the highlight itself is not reached.",
+            symbol: "location.circle",
+            priority: .medium
+          )
+        )
+      case .notReached:
+        append(
+          limitation(
+            code: .selectedHighlightNotReached,
+            title: "Selected \(category) not reached.",
+            symbol: "mappin.slash",
+            priority: .high
+          )
+        )
+      case .unverified:
+        append(
+          limitation(
+            code: .accessPointUnverified,
+            title: "Access point for a selected \(category) is unverified.",
+            symbol: "questionmark.diamond",
+            priority: .high
+          )
+        )
+      case .reached:
+        break
+      }
     }
 
     if missedWaypointCount > 0 {
@@ -1090,6 +1150,29 @@ extension ResearchPresentationProjector {
         title: "A researched highlight could not be confirmed on the routed path.",
         symbol: "point.3.connected.trianglepath.dotted",
         priority: .medium
+      )
+    case "provider_access_snap_unavailable",
+      "provider_access_snap_exceeds_tolerance",
+      "route_misses_access_coordinate":
+      return limitation(
+        code: .accessPointUnverified,
+        title: "A selected highlight access point is unverified.",
+        symbol: "questionmark.diamond",
+        priority: .high
+      )
+    case "selected_highlight_passes_near":
+      return limitation(
+        code: .passesNearHighlight,
+        title: "The route passes near a selected highlight but does not reach it.",
+        symbol: "location.circle",
+        priority: .medium
+      )
+    case "selected_highlight_not_reached":
+      return limitation(
+        code: .selectedHighlightNotReached,
+        title: "A selected highlight is not reached.",
+        symbol: "mappin.slash",
+        priority: .high
       )
     case "provider_failure":
       return limitation(

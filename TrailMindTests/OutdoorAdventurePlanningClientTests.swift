@@ -77,6 +77,66 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         )
     }
 
+    func testRoutableHighlightAccessFlagIsIndependentStrictAndDefaultOff()
+        throws
+    {
+        for value: Any? in [nil, "", "false", "0", "enabled", true, 1] {
+            var configuration: [String: Any] = [
+                "INTENT_BACKEND_BASE_URL": "https://example.com",
+                "RESEARCH_GUIDED_PLANNING_ENABLED": "true"
+            ]
+            if let value {
+                configuration["ROUTABLE_HIGHLIGHT_ACCESS_ENABLED"] = value
+            }
+            XCTAssertFalse(
+                TrailMindBackendConfiguration.routableHighlightAccessEnabled(
+                    bundle: try makeConfigurationBundle(configuration)
+                )
+            )
+        }
+        for value in ["true", " TRUE ", "yes", "YeS", "1"] {
+            XCTAssertTrue(
+                TrailMindBackendConfiguration.routableHighlightAccessEnabled(
+                    bundle: try makeConfigurationBundle([
+                        "INTENT_BACKEND_BASE_URL": "https://example.com",
+                        "RESEARCH_GUIDED_PLANNING_ENABLED": "true",
+                        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": value
+                    ])
+                )
+            )
+        }
+        XCTAssertFalse(
+            TrailMindBackendConfiguration.routableHighlightAccessEnabled(
+                bundle: try makeConfigurationBundle([
+                    "INTENT_BACKEND_BASE_URL": "https://example.com",
+                    "RESEARCH_GUIDED_PLANNING_ENABLED": "false",
+                    "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": "true"
+                ])
+            )
+        )
+    }
+
+    func testExplicitV2ModeSendsSchemaTwoAndUsesStrictV2Response() async throws {
+        OutdoorAdventurePlanningURLProtocolStub.reset(
+            responses: [.init(
+                statusCode: 200,
+                data: try v2CorpusEnvelope(named: "noViable")
+            )]
+        )
+
+        let result = try await makeClient(usesV2: true).plan(
+            OutdoorAdventurePlanningRequestV1(intent: try validIntent())
+        )
+
+        XCTAssertEqual(result.state, .noViableRoute)
+        let body = try XCTUnwrap(
+            OutdoorAdventurePlanningURLProtocolStub.requestBodies().first
+        )
+        let root = try jsonDictionary(body)
+        XCTAssertEqual(Set(root.keys), ["schemaVersion", "intent"])
+        XCTAssertEqual(root["schemaVersion"] as? Int, 2)
+    }
+
     func testDisabledClientPerformsNoAuthorizationOrNetworkWork() async throws {
         let bundle = try makeConfigurationBundle([
             "INTENT_BACKEND_BASE_URL": "https://example.com",
@@ -771,6 +831,7 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         authorizer: any RouteSessionAuthorizing =
             RecordingOutdoorAdventurePlanningAuthorizer(),
         limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard,
+        usesV2: Bool = false,
         responseValidationDidFinish:
             @escaping @Sendable (Duration) -> Void = { _ in }
     ) -> BackendOutdoorAdventurePlanningClientV1 {
@@ -779,9 +840,23 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
             session: makeTestSession(),
             authorizer: authorizer,
             limits: limits,
+            usesRoutableHighlightAccessV2: usesV2,
             responseValidationDidFinish:
                 responseValidationDidFinish
         )
+    }
+
+    private func v2CorpusEnvelope(named name: String) throws -> Data {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures")
+            .appendingPathComponent(
+                "outdoor_adventure_planning_v2_contract_corpus.json"
+            )
+        let root = try jsonDictionary(Data(contentsOf: url))
+        let envelopes = try XCTUnwrap(root["envelopes"] as? [String: Any])
+        let envelope = try XCTUnwrap(envelopes[name] as? [String: Any])
+        return try jsonData(envelope)
     }
 
     private func makeTestSession() -> URLSession {
