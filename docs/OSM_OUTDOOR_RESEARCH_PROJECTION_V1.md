@@ -71,6 +71,7 @@ flowchart LR
     D --> E["Operator projection preflight"]
     P["Reviewed versioned source policy"] --> E
     E --> F["Set-based candidate and quarantine tables"]
+    F --> R["Read-only dry-run validation"]
     F --> G["Canonical OSM identities and source links"]
     F --> H["Mapped assertions"]
     F --> I["Mapped route-membership relationships"]
@@ -288,8 +289,13 @@ construction, graph writes, validation, prior-run supersession, and new-run
 activation happen in one transaction. Exactly one active run is allowed for a
 source/region.
 
-A dry run executes the same candidate construction and validation but rolls
-back all writes and returns bounded aggregate counts.
+A dry run executes the same deterministic candidate construction, collision
+checks, provenance checks, count reconciliation, and assertion/relationship
+lineage validation in transaction-local tables. It performs no DML against the
+persistent graph, projection-lineage, or projection-run tables. Rolling back
+the transaction removes only the temporary candidate state. The persistent
+path still relies on the database's append-only, source-policy, supersession,
+relationship-lineage, and RLS enforcement before atomic promotion.
 
 On failure:
 
@@ -303,6 +309,37 @@ On failure:
 
 Repeated projection of the same active
 `region + import + policy + adapter version` returns `unchanged`.
+
+## Current-volume projection performance
+
+The 2026-08-05 current-volume gate reproduced two independent costs without
+changing the 120-second statement timeout:
+
+- the former dry-run path inserted the complete graph and projection lineage,
+  then rolled it back; an immediate Harz persistent run reached the timeout in
+  the canonical assertion insert because the aborted heap/index pages remained;
+- after a Harz projection, the former identity-collision query used tens of
+  thousands of random persistent index probes for Innsbruck and reached the
+  timeout even in read-only mode.
+
+The adapter now keeps dry runs fully temporary and materializes narrow existing
+identity/link sets for hashed set operations and joins. The database-enforced
+persistent write triggers remain unchanged. No `VACUUM`, timeout increase, new
+migration, or operator maintenance step is part of the correction.
+
+Measured on PostgreSQL 17.10, PostGIS 3.6.4, GEOS 3.14.1, and PROJ 9.8.1 with
+network grids disabled:
+
+| Region and sequence | Input scale | Before | Corrected |
+| --- | --- | --- | --- |
+| Harz dry run | 140,623 trails; 29,525 members | 48.491 s and persistent aborted-page growth | 10.988 s; zero persistent rows or bytes changed |
+| Harz immediate persistent run | 144,461 entities; 167,372 assertions; 29,309 relationships | canonical assertion statement timed out at 120 s | 54.060 s; active; zero quarantine |
+| Innsbruck dry run after Harz | 74,740 trails; 7,785 members | identity collision statement timed out at 120 s | 9.397 s; zero persistent rows changed |
+| Innsbruck immediate persistent run | 76,859 entities; 91,477 assertions; 7,763 relationships | not reachable in the standard sequence | 34.767 s; active; zero quarantine |
+
+The Harz proof database remained at exactly 425,984 bytes across the ten
+persistent graph/projection relations before and after the corrected dry run,
+with zero persistent graph rows in both measurements.
 
 ## Operator commands
 
@@ -477,7 +514,8 @@ Automated proof covers:
 - POIs, trails, two routes, and one segment in multiple routes;
 - provenance/attribution and Geofabrik's acquisition-only role;
 - repeat-run `unchanged`;
-- dry-run rollback;
+- dry-run validation before persistent DML, including unchanged persistent row
+  counts and relation sizes;
 - source-category, paused/blocked source, and permission drift rejection;
 - missing/extra authority scope and relationship-scope rejection;
 - wrong-region and empty-import rejection;
@@ -489,17 +527,17 @@ Automated proof covers:
 - policy revocation with audit retention;
 - critical query-plan index eligibility.
 
-During implementation there was no local bounded Harz or Innsbruck PBF and
-available disk headroom was not safe for a new regional download. No data was
-downloaded. Therefore this package has **synthetic real-PostGIS proof, not a new
-real Harz/Innsbruck adapter projection receipt**.
-
-The historical regional-import proof remains in
-`docs/release/OUTDOOR_EVIDENCE_STAGING_PROOF.md`; it does not substitute for a
-fresh projection run through this adapter. Before production enablement, an
-operator must supply current bounded local PBFs or current promoted imports,
-verify their checksums/timestamps, activate the reviewed policy, run dry-run and
-real projection for both regions, inspect counts/quarantines/attribution, and
-record the resulting run IDs.
+The 2026-08-05 gate added fresh disposable real-PostGIS receipts from bounded
+current OSM inputs. The bounded Harz input SHA-256 was
+`4ea0d1394b2f1bc41983ba206b22ee194eae196b298689aee0534fe2503b4b5d`;
+the bounded Innsbruck input SHA-256 was
+`edc3ad6604d87007aaf81cd23bec99308d80cc9308ae156a6567901ef5f4a55c`.
+Both retained complete OSM version/timestamp metadata through
+`2026-08-04T20:20:51Z`. Published checksums were independently matched for the
+Niedersachsen (`0130f5e275009440c4cd1e5b385085dd`), Sachsen-Anhalt
+(`f87b7b7a21ce745fbab11bdf89a32908`), Thüringen
+(`5e719091fb2f199c6462ca5677005624`), and Austria
+(`7e6d148524d67590e160d65ef7b12a4b`) source extracts before clipping. No
+runtime provider, GraphHopper, or AI call was made.
 
 This change does not enable a release or production reader.

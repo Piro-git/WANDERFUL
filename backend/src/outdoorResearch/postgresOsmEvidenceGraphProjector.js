@@ -91,20 +91,9 @@ export class PostgresOsmEvidenceGraphProjector {
       }
       selected = lockedSelection;
 
-      await insertProjectionRun(client, {
-        runId, key, selected, request, startedAt
-      });
-
       await buildCandidateTables(client, selected, runId);
-      await insertQuarantines(client, runId, selected);
+      await buildQuarantineCandidates(client, selected);
       await assertNoIdentityCollisions(client, selected.sourceId);
-      await upsertCanonicalEntities(client, selected.sourceId);
-      await insertProjectionEntities(client, {
-        runId,
-        sourceId: selected.sourceId,
-        importId: selected.importId,
-        selected
-      });
       await buildAssertionCandidates(client, {
         runId,
         sourceId: selected.sourceId,
@@ -112,25 +101,24 @@ export class PostgresOsmEvidenceGraphProjector {
         retrievedAt: selected.retrievedAt,
         selected
       });
-      await insertAssertions(client, {
-        runId,
-        sourceId: selected.sourceId,
-        retrievedAt: selected.retrievedAt
-      });
-      await buildAndInsertRelationships(client, {
+      await assertNoAssertionCollisions(client, selected.sourceId);
+      await buildRelationshipCandidates(client, {
         runId,
         sourceId: selected.sourceId,
         retrievedAt: selected.retrievedAt,
         selected
       });
-      const counts = await validateProjection(client, {
-        runId,
-        selected,
-        policy: selected.policy
-      });
-      const durationMilliseconds = elapsedMilliseconds(startedAt, normalizedNow(this.now()));
+      await assertNoRelationshipCollisions(client, selected.sourceId);
+      await appendMissingRelationshipQuarantines(client, selected);
 
       if (request.dryRun) {
+        const counts = await validateDryProjection(client, {
+          selected,
+          policy: selected.policy
+        });
+        const durationMilliseconds = elapsedMilliseconds(
+          startedAt, normalizedNow(this.now())
+        );
         await client.query("ROLLBACK");
         return freezeSummary({
           status: "dry_run",
@@ -142,6 +130,34 @@ export class PostgresOsmEvidenceGraphProjector {
           durationMilliseconds
         });
       }
+
+      await insertProjectionRun(client, {
+        runId, key, selected, request, startedAt
+      });
+      await upsertCanonicalEntities(client, selected.sourceId);
+      await insertProjectionEntities(client, {
+        runId,
+        sourceId: selected.sourceId,
+        importId: selected.importId,
+        selected
+      });
+      await insertAssertions(client, {
+        runId,
+        sourceId: selected.sourceId,
+        retrievedAt: selected.retrievedAt
+      });
+      await insertRelationships(client, {
+        runId,
+        sourceId: selected.sourceId,
+        retrievedAt: selected.retrievedAt
+      });
+      await insertQuarantines(client, runId);
+      const counts = await validateProjection(client, {
+        runId,
+        selected,
+        policy: selected.policy
+      });
+      const durationMilliseconds = elapsedMilliseconds(startedAt, normalizedNow(this.now()));
 
       await client.query(
         `UPDATE outdoor_research_projection_runs
@@ -643,16 +659,11 @@ async function buildCandidateTables(client, selected, runId) {
   await client.query("ANALYZE tmp_osm_projection_lineage");
 }
 
-async function insertQuarantines(client, runId, selected) {
+async function buildQuarantineCandidates(client, selected) {
   await client.query(
-    `INSERT INTO outdoor_research_projection_quarantines
-       (quarantine_id, projection_run_id, reason_code, record_kind, osm_type, osm_id)
-     SELECT outdoor_research_deterministic_uuid_v3(
-              'outdoor-research-projection-quarantine',
-              $1::text || ':' || reason_code || ':' || record_kind || ':' ||
-              osm_type || ':' || osm_id::text
-            ),
-            $1::uuid, reason_code, record_kind, osm_type, osm_id
+    `CREATE TEMP TABLE tmp_osm_projection_quarantine_candidates
+       ON COMMIT DROP AS
+     SELECT reason_code, record_kind, osm_type, osm_id
        FROM (
          SELECT candidate.record_kind, candidate.osm_type, candidate.osm_id,
                 'missing_source_version'::text AS reason_code
@@ -690,41 +701,100 @@ async function insertQuarantines(client, runId, selected) {
          SELECT candidate.record_kind, candidate.osm_type, candidate.osm_id,
                 'invalid_value'
            FROM tmp_osm_projection_candidates candidate
-          WHERE candidate.source_timestamp > $2::timestamptz OR
-                candidate.source_timestamp > $3::timestamptz
-       ) quarantined
+          WHERE candidate.source_timestamp > $1::timestamptz OR
+                candidate.source_timestamp > $2::timestamptz
+       ) quarantined`,
+    [selected.retrievedAt, selected.sourceDataAt]
+  );
+  await client.query(
+    `CREATE UNIQUE INDEX tmp_osm_projection_quarantine_candidates_cohort_idx
+        ON tmp_osm_projection_quarantine_candidates (
+          reason_code, record_kind, osm_type, osm_id
+        )`
+  );
+}
+
+async function insertQuarantines(client, runId) {
+  await client.query(
+    `INSERT INTO outdoor_research_projection_quarantines
+       (quarantine_id, projection_run_id, reason_code, record_kind, osm_type, osm_id)
+     SELECT outdoor_research_deterministic_uuid_v3(
+              'outdoor-research-projection-quarantine',
+              $1::text || ':' || reason_code || ':' || record_kind || ':' ||
+              osm_type || ':' || osm_id::text
+            ),
+            $1::uuid, reason_code, record_kind, osm_type, osm_id
+       FROM tmp_osm_projection_quarantine_candidates
      ON CONFLICT DO NOTHING`,
-    [runId, selected.retrievedAt, selected.sourceDataAt]
+    [runId]
   );
 }
 
 async function assertNoIdentityCollisions(client, sourceId) {
   const collision = await client.query(
-    `SELECT EXISTS (
-       SELECT 1
-         FROM tmp_osm_projection_lineage candidate
-         JOIN outdoor_research_entities entity ON entity.entity_id = candidate.entity_id
-         LEFT JOIN outdoor_research_osm_entity_identities identity
-           ON identity.source_id = $1
-          AND identity.osm_type = candidate.osm_type
-          AND identity.osm_id = candidate.osm_id
-        WHERE identity.entity_id IS NULL OR identity.entity_id <> candidate.entity_id
+    `WITH candidates AS MATERIALIZED (
+       SELECT entity_id, source_entity_link_id, osm_type, osm_id
+         FROM tmp_osm_projection_lineage
+     ), existing_entities AS MATERIALIZED (
+       SELECT entity_id
+         FROM outdoor_research_entities
+     ), existing_identities AS MATERIALIZED (
+       SELECT osm_type, osm_id, entity_id
+         FROM outdoor_research_osm_entity_identities
+        WHERE source_id = $1
+     ), existing_source_links AS MATERIALIZED (
+       SELECT source_entity_link_id, entity_id, external_type, external_id,
+              matching_status
+         FROM outdoor_research_source_entities
+        WHERE source_id = $1
+     ), existing_candidate_entity_ids AS MATERIALIZED (
+       SELECT entity_id FROM candidates
+       INTERSECT
+       SELECT entity_id FROM existing_entities
+     ), exact_identity_entity_ids AS MATERIALIZED (
+       SELECT entity_id
+         FROM (
+           SELECT entity_id, osm_type, osm_id FROM candidates
+           INTERSECT
+           SELECT entity_id, osm_type, osm_id FROM existing_identities
+         ) exact_identity
+     )
+     SELECT EXISTS (
+       SELECT 1 FROM (
+         SELECT entity_id FROM existing_candidate_entity_ids
+         EXCEPT
+         SELECT entity_id FROM exact_identity_entity_ids
+       ) missing_identity
      ) OR EXISTS (
        SELECT 1
-         FROM tmp_osm_projection_lineage candidate
-         JOIN outdoor_research_osm_entity_identities identity
-           ON identity.source_id = $1 AND identity.entity_id = candidate.entity_id
+         FROM candidates candidate
+         JOIN existing_identities identity ON identity.entity_id = candidate.entity_id
         WHERE identity.osm_type <> candidate.osm_type OR identity.osm_id <> candidate.osm_id
      ) OR EXISTS (
        SELECT 1
-         FROM tmp_osm_projection_lineage candidate
-         JOIN outdoor_research_source_entities link
-           ON link.source_id = $1
-          AND link.external_type = candidate.osm_type
+         FROM candidates candidate
+         JOIN existing_identities identity
+           ON identity.osm_type = candidate.osm_type
+          AND identity.osm_id = candidate.osm_id
+        WHERE identity.entity_id <> candidate.entity_id
+     ) OR EXISTS (
+       SELECT 1
+         FROM candidates candidate
+         JOIN existing_source_links link
+           ON link.external_type = candidate.osm_type
           AND link.external_id = candidate.osm_id::text
         WHERE link.entity_id <> candidate.entity_id OR
               link.matching_status <> 'matched' OR
               link.source_entity_link_id <> candidate.source_entity_link_id
+     ) OR EXISTS (
+       SELECT 1
+         FROM candidates candidate
+         JOIN existing_source_links link
+           ON link.source_entity_link_id = candidate.source_entity_link_id
+        WHERE link.entity_id <> candidate.entity_id OR
+              link.external_type <> candidate.osm_type OR
+              link.external_id <> candidate.osm_id::text OR
+              link.matching_status <> 'matched'
      ) AS collided`,
     [sourceId]
   );
@@ -977,7 +1047,7 @@ async function buildAssertionCandidates(client, input) {
   );
 }
 
-async function insertAssertions(client, input) {
+async function assertNoAssertionCollisions(client, sourceId) {
   const collision = await client.query(
     `SELECT EXISTS (
        SELECT 1
@@ -991,11 +1061,14 @@ async function insertAssertions(client, input) {
               assertion.value_text IS DISTINCT FROM candidate.value_text OR
               assertion.value_boolean IS DISTINCT FROM candidate.value_boolean
      ) AS collided`,
-    [input.sourceId]
+    [sourceId]
   );
   if (collision.rows[0]?.collided) {
     throw new OsmProjectionError("deterministic_assertion_collision");
   }
+}
+
+async function insertAssertions(client, input) {
   await client.query(
     `INSERT INTO outdoor_research_assertions
        (assertion_id, entity_id, source_id, predicate, value_type,
@@ -1029,7 +1102,7 @@ async function insertAssertions(client, input) {
   );
 }
 
-async function buildAndInsertRelationships(client, input) {
+async function buildRelationshipCandidates(client, input) {
   await client.query(
     `CREATE TEMP TABLE tmp_osm_relationship_candidates ON COMMIT DROP AS
      SELECT outdoor_research_deterministic_uuid_v3(
@@ -1111,6 +1184,9 @@ async function buildAndInsertRelationships(client, input) {
           relationship_type, subject_entity_id, object_entity_id
         )`
   );
+}
+
+async function assertNoRelationshipCollisions(client, sourceId) {
   const collision = await client.query(
     `SELECT EXISTS (
        SELECT 1
@@ -1122,11 +1198,14 @@ async function buildAndInsertRelationships(client, input) {
               relationship.subject_entity_id <> candidate.subject_entity_id OR
               relationship.object_entity_id <> candidate.object_entity_id
      ) AS collided`,
-    [input.sourceId]
+    [sourceId]
   );
   if (collision.rows[0]?.collided) {
     throw new OsmProjectionError("deterministic_relationship_collision");
   }
+}
+
+async function insertRelationships(client, input) {
   await client.query(
     `INSERT INTO outdoor_research_relationships
        (relationship_id, relationship_type, subject_entity_id, object_entity_id,
@@ -1147,18 +1226,17 @@ async function buildAndInsertRelationships(client, input) {
        FROM tmp_osm_relationship_candidates`,
     [input.runId]
   );
+}
+
+async function appendMissingRelationshipQuarantines(client, selected) {
   await client.query(
-    `INSERT INTO outdoor_research_projection_quarantines
-       (quarantine_id, projection_run_id, reason_code, record_kind, osm_type, osm_id)
-     SELECT outdoor_research_deterministic_uuid_v3(
-              'outdoor-research-projection-quarantine',
-              $1::text || ':missing_related_entity:hiking_relation_member:relation:' ||
-              member.relation_osm_id::text
-            ),
-            $1::uuid, 'missing_related_entity', 'hiking_relation_member',
+    `INSERT INTO tmp_osm_projection_quarantine_candidates
+       (reason_code, record_kind, osm_type, osm_id)
+     SELECT DISTINCT
+            'missing_related_entity', 'hiking_relation_member',
             'relation', member.relation_osm_id
        FROM outdoor_evidence_hiking_relation_members member
-      WHERE member.import_id = $2 AND member.region_id = $3
+      WHERE member.import_id = $1 AND member.region_id = $2
         AND NOT EXISTS (
           SELECT 1 FROM tmp_osm_relationship_candidates relationship
            JOIN tmp_osm_projection_lineage relation
@@ -1169,8 +1247,105 @@ async function buildAndInsertRelationships(client, input) {
             AND segment.osm_id = member.segment_osm_id
         )
      ON CONFLICT DO NOTHING`,
-    [input.runId, input.selected.importId, input.selected.regionId]
+    [selected.importId, selected.regionId]
   );
+}
+
+async function validateDryProjection(client, input) {
+  const result = await client.query(
+    `SELECT
+       (SELECT count(*)::integer FROM tmp_osm_projection_lineage) AS entities,
+       (SELECT count(*)::integer FROM tmp_osm_projection_lineage
+         WHERE entity_category = 'trail_segment') AS trail_segments,
+       (SELECT count(*)::integer FROM tmp_osm_projection_lineage
+         WHERE entity_category = 'hiking_route') AS hiking_routes,
+       (SELECT count(*)::integer FROM tmp_osm_projection_lineage
+         WHERE entity_category NOT IN ('trail_segment', 'hiking_route')) AS pois,
+       (SELECT count(*)::integer FROM tmp_osm_assertion_candidates) AS assertions,
+       (SELECT count(*)::integer FROM tmp_osm_assertion_candidates
+         WHERE assertion_state = 'retracts') AS retractions,
+       (SELECT count(*)::integer FROM tmp_osm_relationship_candidates)
+         AS relationships,
+       (SELECT count(*)::integer FROM tmp_osm_projection_quarantine_candidates)
+         AS quarantined,
+       (SELECT count(*)::integer
+          FROM (
+            SELECT DISTINCT record_kind, osm_type, osm_id
+              FROM tmp_osm_projection_quarantine_candidates
+             WHERE record_kind <> 'hiking_relation_member'
+          ) quarantined_entity) AS quarantined_entity_rows,
+       (SELECT count(*)::integer FROM tmp_osm_projection_lineage)
+         AS stable_source_links,
+       (SELECT count(*)::integer
+          FROM tmp_osm_assertion_candidates assertion
+         WHERE assertion.predicate = ANY($1::text[]) OR
+               NOT (assertion.predicate = ANY($2::text[]))) AS forbidden_assertions,
+       (SELECT count(*)::integer
+          FROM tmp_osm_projection_lineage entity
+         WHERE NOT (
+           entity.record_provenance ?& ARRAY[
+             'source_key', 'evidence_authority', 'acquisition_channel',
+             'osm_type', 'osm_id', 'osm_version', 'osm_timestamp',
+             'input_import_id', 'dataset_name', 'extract_identifier',
+             'dataset_timestamp', 'retrieved_at', 'imported_at',
+             'input_file_sha256', 'projection_run_id', 'license', 'attribution'
+           ]
+         ) OR (
+           entity.record_provenance->>'acquisition_channel' =
+             'geofabrik_regional_extract' AND
+           NOT (entity.record_provenance ?& ARRAY[
+             'source_checksum_algorithm', 'source_checksum',
+             'source_checksum_verified_at'
+           ])
+         )) AS incomplete_provenance,
+       (SELECT count(*)::integer
+          FROM tmp_osm_relationship_candidates relationship
+         WHERE NOT (
+           relationship.record_provenance ?& ARRAY[
+             'source_key', 'evidence_authority', 'acquisition_channel',
+             'input_import_id', 'dataset_name', 'extract_identifier',
+             'dataset_timestamp', 'retrieved_at', 'imported_at',
+             'input_file_sha256', 'projection_run_id', 'license', 'attribution'
+           ]
+         ) OR (
+           relationship.record_provenance->>'acquisition_channel' =
+             'geofabrik_regional_extract' AND
+           NOT (relationship.record_provenance ?& ARRAY[
+             'source_checksum_algorithm', 'source_checksum',
+             'source_checksum_verified_at'
+           ])
+         )) AS incomplete_relationship_provenance,
+       (SELECT count(*)::integer
+          FROM tmp_osm_projection_lineage entity
+         WHERE NOT EXISTS (
+           SELECT 1
+             FROM tmp_osm_assertion_candidates assertion
+            WHERE assertion.entity_id = entity.entity_id
+              AND assertion.predicate = 'entity_category'
+              AND assertion.assertion_state <> 'retracts'
+         )) AS missing_category_assertions,
+       (SELECT count(*)::integer
+          FROM tmp_osm_assertion_candidates candidate
+          LEFT JOIN outdoor_research_assertions target
+            ON target.assertion_id = candidate.prior_assertion_id
+         WHERE candidate.assertion_state IN ('supersedes', 'retracts') AND (
+           target.assertion_id IS NULL OR
+           target.entity_id <> candidate.entity_id OR
+           target.predicate <> candidate.predicate OR
+           target.source_id <> $3::uuid OR
+           target.assertion_state = 'retracts' OR
+           target.retrieved_at > $4::timestamptz OR
+           (
+             target.observed_at IS NOT NULL AND
+             candidate.source_timestamp < target.observed_at
+           )
+         )) AS invalid_dry_assertions`,
+    [
+      OSM_FORBIDDEN_HIGH_STAKES_PREDICATES, OSM_ALLOWED_ASSERTION_PREDICATES,
+      input.selected.sourceId, input.selected.retrievedAt
+    ]
+  );
+  return validatedProjectionCounts(result.rows[0], input);
 }
 
 async function validateProjection(client, input) {
@@ -1275,7 +1450,10 @@ async function validateProjection(client, input) {
       OSM_FORBIDDEN_HIGH_STAKES_PREDICATES, OSM_ALLOWED_ASSERTION_PREDICATES
     ]
   );
-  const row = result.rows[0];
+  return validatedProjectionCounts(result.rows[0], input);
+}
+
+function validatedProjectionCounts(row, input) {
   const counts = Object.freeze({
     input: input.selected.inputCounts,
     entities: integerCount(row.entities),
@@ -1293,7 +1471,8 @@ async function validateProjection(client, input) {
       Number(row.forbidden_assertions) !== 0 ||
       Number(row.incomplete_provenance) !== 0 ||
       Number(row.incomplete_relationship_provenance) !== 0 ||
-      Number(row.missing_category_assertions) !== 0) {
+      Number(row.missing_category_assertions) !== 0 ||
+      Number(row.invalid_dry_assertions ?? 0) !== 0) {
     throw new OsmProjectionError("projection_invariant_failed");
   }
   const projectedEntityRows = counts.entities + integerCount(row.quarantined_entity_rows);

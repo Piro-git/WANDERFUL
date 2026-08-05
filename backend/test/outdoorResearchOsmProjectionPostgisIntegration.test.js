@@ -357,6 +357,74 @@ describe("OSM Evidence Graph projection PostGIS integration", {
       (error) => error?.code === "23514"
     );
 
+    const lockClient = await pool.connect();
+    let timeoutLockReleased = false;
+    try {
+      await lockClient.query("BEGIN");
+      await lockClient.query(
+        "LOCK TABLE outdoor_research_entities IN ACCESS EXCLUSIVE MODE"
+      );
+      const timeoutProjector = new PostgresOsmEvidenceGraphProjector({
+        pool,
+        now: () => BASE_NOW,
+        statementTimeoutMs: 1_000
+      });
+      await assert.rejects(
+        timeoutProjector.project(projectionRequest(firstImportId, false)),
+        hasCode("projection_timed_out")
+      );
+      await lockClient.query("ROLLBACK");
+      timeoutLockReleased = true;
+      const timedOut = await pool.query(
+        `SELECT projection_run_id, failure_code
+           FROM outdoor_research_projection_runs
+          WHERE input_import_id = $1 AND status = 'failed'`,
+        [firstImportId]
+      );
+      assert.equal(timedOut.rowCount, 1);
+      assert.equal(timedOut.rows[0].failure_code, "projection_timed_out");
+      const timedOutWrites = await pool.query(
+        `SELECT
+           (SELECT count(*)::integer
+              FROM outdoor_research_projection_entities
+             WHERE projection_run_id = $1) AS entities,
+           (SELECT count(*)::integer
+              FROM outdoor_research_projection_assertions
+             WHERE projection_run_id = $1) AS assertions,
+           (SELECT count(*)::integer
+              FROM outdoor_research_projection_relationships
+             WHERE projection_run_id = $1) AS relationships,
+           (SELECT count(*)::integer
+              FROM outdoor_research_entities) AS canonical_entities`,
+        [timedOut.rows[0].projection_run_id]
+      );
+      assert.deepEqual(timedOutWrites.rows, [{
+        entities: 0,
+        assertions: 0,
+        relationships: 0,
+        canonical_entities: 0
+      }]);
+    } finally {
+      if (!timeoutLockReleased) {
+        try { await lockClient.query("ROLLBACK"); } catch {}
+      }
+      lockClient.release();
+    }
+
+    const auditBeforeInitialDryRun = await projectionAuditCounts(pool);
+    const storageBeforeInitialDryRun = await projectionStorageBytes(pool);
+    const initialDryRun = await projector.project(
+      projectionRequest(firstImportId, true)
+    );
+    assert.equal(initialDryRun.status, "dry_run");
+    assert.deepEqual(initialDryRun.counts.input, {
+      pois: 6, trails: 2, relations: 2, members: 3
+    });
+    assert.equal(initialDryRun.counts.entities, 10);
+    assert.equal(initialDryRun.counts.relationships, 3);
+    assert.deepEqual(await projectionAuditCounts(pool), auditBeforeInitialDryRun);
+    assert.deepEqual(await projectionStorageBytes(pool), storageBeforeInitialDryRun);
+
     const first = await projector.project(projectionRequest(firstImportId, false));
     assert.equal(first.status, "active");
     assert.deepEqual(first.counts.input, {
@@ -369,14 +437,21 @@ describe("OSM Evidence Graph projection PostGIS integration", {
     assert.equal(first.counts.relationships, 3);
     assert.equal(first.counts.quarantined, 0);
 
+    const auditBeforeSameInputDryRun = await projectionAuditCounts(pool);
+    const storageBeforeSameInputDryRun = await projectionStorageBytes(pool);
     const sameInputDryRun = await projector.project(
       projectionRequest(firstImportId, true)
     );
     assert.equal(sameInputDryRun.status, "dry_run");
     const runsAfterSameInputDryRun = await pool.query(
-      "SELECT count(*)::integer AS count FROM outdoor_research_projection_runs"
+      `SELECT
+         count(*) FILTER (WHERE status = 'active')::integer AS active,
+         count(*) FILTER (WHERE status = 'failed')::integer AS failed
+       FROM outdoor_research_projection_runs`
     );
-    assert.equal(runsAfterSameInputDryRun.rows[0].count, 1);
+    assert.deepEqual(runsAfterSameInputDryRun.rows, [{ active: 1, failed: 1 }]);
+    assert.deepEqual(await projectionAuditCounts(pool), auditBeforeSameInputDryRun);
+    assert.deepEqual(await projectionStorageBytes(pool), storageBeforeSameInputDryRun);
 
     const unchanged = await projector.project(projectionRequest(firstImportId, false));
     assert.equal(unchanged.status, "unchanged");
@@ -1035,6 +1110,27 @@ async function projectionAuditCounts(pool) {
          AS policy_scopes`
   );
   return result.rows[0];
+}
+
+async function projectionStorageBytes(pool) {
+  const result = await pool.query(
+    `SELECT relation_name,
+            pg_total_relation_size(relation_name::regclass)::text AS bytes
+       FROM unnest(ARRAY[
+         'outdoor_research_entities',
+         'outdoor_research_osm_entity_identities',
+         'outdoor_research_source_entities',
+         'outdoor_research_assertions',
+         'outdoor_research_relationships',
+         'outdoor_research_projection_runs',
+         'outdoor_research_projection_entities',
+         'outdoor_research_projection_assertions',
+         'outdoor_research_projection_relationships',
+         'outdoor_research_projection_quarantines'
+       ]) AS relation_name
+      ORDER BY relation_name`
+  );
+  return result.rows;
 }
 
 async function expectFailureDuringTemporaryMutation(pool, projector, input) {

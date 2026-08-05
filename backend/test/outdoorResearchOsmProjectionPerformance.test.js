@@ -8,6 +8,43 @@ const projectorURL = new URL(
 );
 
 describe("OSM projection candidate preparation", () => {
+  it("validates dry runs before any persistent projection write", async () => {
+    const source = await readFile(projectorURL, "utf8");
+    const projectStart = source.indexOf("  async project(input = {})");
+    const preflightStart = source.indexOf("  async preflight(", projectStart);
+    const project = source.slice(projectStart, preflightStart);
+    const dryBranch = project.indexOf("if (request.dryRun)");
+    const dryValidation = project.indexOf("validateDryProjection", dryBranch);
+    const dryRollback = project.indexOf('client.query("ROLLBACK")', dryBranch);
+    const firstPersistentWrite = project.indexOf("insertProjectionRun", dryBranch);
+
+    for (const position of [
+      projectStart,
+      preflightStart,
+      dryBranch,
+      dryValidation,
+      dryRollback,
+      firstPersistentWrite
+    ]) {
+      assert.notEqual(position, -1);
+    }
+    assert(
+      dryBranch < dryValidation &&
+      dryValidation < dryRollback &&
+      dryRollback < firstPersistentWrite
+    );
+    for (const write of [
+      "upsertCanonicalEntities",
+      "insertProjectionEntities",
+      "insertAssertions",
+      "insertRelationships",
+      "insertQuarantines"
+    ]) {
+      assert(project.indexOf(write, dryBranch) > dryRollback);
+    }
+    assert.doesNotMatch(project, /VACUUM/i);
+  });
+
   it("materializes and analyzes filtered candidates before the identity join", async () => {
     const source = await readFile(projectorURL, "utf8");
     const filteredTable = source.indexOf(
@@ -138,6 +175,27 @@ describe("OSM projection candidate preparation", () => {
       /SELECT count\(\*\)\s+FROM tmp_osm_projection_lineage candidate\s+JOIN outdoor_research_source_entities/
     );
     assert.doesNotMatch(persistentIdentityCheck, /LEFT JOIN/);
+  });
+
+  it("checks existing identities with materialized set operations", async () => {
+    const source = await readFile(projectorURL, "utf8");
+    const collisionStart = source.indexOf(
+      "async function assertNoIdentityCollisions"
+    );
+    const canonicalWriteStart = source.indexOf(
+      "async function upsertCanonicalEntities",
+      collisionStart
+    );
+    const collisionCheck = source.slice(collisionStart, canonicalWriteStart);
+
+    assert.match(collisionCheck, /candidates AS MATERIALIZED/);
+    assert.match(collisionCheck, /existing_entities AS MATERIALIZED/);
+    assert.match(collisionCheck, /existing_identities AS MATERIALIZED/);
+    assert.match(collisionCheck, /existing_source_links AS MATERIALIZED/);
+    assert.match(collisionCheck, /WHERE source_id = \$1/);
+    assert.match(collisionCheck, /INTERSECT/);
+    assert.match(collisionCheck, /EXCEPT/);
+    assert.doesNotMatch(collisionCheck, /LEFT JOIN/);
   });
 
   it("materializes each latest active assertion once before candidate joins", async () => {
