@@ -4,6 +4,19 @@ import { readFile } from "node:fs/promises";
 import { after, before, describe, it } from "node:test";
 import pg from "pg";
 import {
+  V4_CASE_BINDINGS,
+  V4_MANIFEST_DIGEST
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/contract.js";
+import {
+  captureV4ProofRunContextAfterImports,
+  reconcileV4DatabaseClockEvidence,
+  runV4DatabasePlanningClockGate
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/databaseGate.js";
+import {
+  createV4ProofClockBinding,
+  validateV4ProofClockBinding
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/proofRunContext.js";
+import {
   planAndRouteOutdoorAdventureV1
 } from "../src/outdoorAdventure/outdoorAdventureOrchestrator.js";
 import {
@@ -166,6 +179,49 @@ describe("outdoor research executor real PostGIS integration", {
       [schemaName]
     );
     assert.equal(indexes.rowCount, 6);
+  });
+
+  it("seals and reconciles one V4 proof clock against real active PostGIS snapshots", async () => {
+    const runContext = await captureV4ProofRunContextAfterImports({
+      pool,
+      authorizationReference: "USER_AUTHORIZED_V4_POSTGIS_CLOCK_TEST",
+      ledgerNamespace: "outdoor-adventure-v4-postgis-clock-test",
+      caseManifestDigest: V4_MANIFEST_DIGEST,
+      clock: () => NOW
+    });
+    const cases = V4_CASE_BINDINGS.map(({ caseId }) => ({ id: caseId }));
+    const intents = new Map(cases.map(({ id }) => [id, { id }]));
+    const observed = [];
+    const diagnostic = await runV4DatabasePlanningClockGate({
+      runContext,
+      cases,
+      intents,
+      repository: {},
+      async researchAdventure(_intent, dependencies) {
+        observed.push(dependencies.clock().toISOString());
+        return {
+          state: "ready",
+          dossier: {},
+          trailAccessResolution: {}
+        };
+      },
+      buildCandidatePlan: () => ({ state: "ready", proposals: [{}] }),
+      validateCandidatePlan: (plan) => plan,
+      validateCandidatePlanForResearch: () => true
+    });
+    assert.deepEqual(observed, Array(V4_CASE_BINDINGS.length).fill(
+      NOW.toISOString()
+    ));
+    assert.equal(await reconcileV4DatabaseClockEvidence(
+      pool,
+      runContext
+    ), true);
+    const binding = createV4ProofClockBinding(runContext, diagnostic);
+    assert.equal(validateV4ProofClockBinding(
+      runContext,
+      diagnostic,
+      binding
+    ), true);
   });
 
   it("leaves migration 007 as a true second-run no-op", async () => {

@@ -9,10 +9,16 @@ import {
 } from "../evaluation/outdoorAdventureServerLiveProof/manifest.js";
 import {
   V4_CASE_BINDINGS,
+  V4_MANIFEST_DIGEST,
   assertNoSensitiveDurableValueV4,
   stableSerializeV4,
   validateV4CaseRecords
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/contract.js";
+import {
+  captureV4ProofRunContextAfterImports,
+  reconcileV4DatabaseClockEvidence,
+  runV4DatabasePlanningClockGate
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/databaseGate.js";
 import {
   disabledV4FlagSnapshot
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/preflight.js";
@@ -27,19 +33,22 @@ import {
   notRunV4CaseRecord
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/quality.js";
 import {
+  admitV4ProviderAfterClockReconciliation,
+  bindV4FutureReceiptClock,
+  createV4ProofClockBinding
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/proofRunContext.js";
+import {
   planAndRouteOutdoorAdventureV2
 } from "../src/outdoorAdventure/outdoorAdventureOrchestratorV2.js";
 import {
   PostgresOutdoorResearchRepository
 } from "../src/outdoorResearch/postgresOutdoorResearchRepository.js";
 import {
+  researchOutdoorAdventureWithTrailAccessV1
+} from "../src/outdoorResearch/outdoorResearchExecutor.js";
+import {
   providerConfiguration
 } from "../src/routing/graphHopperProvider.js";
-
-export const V4_ATTEMPT_FOUR_AUTHORIZATION_REFERENCE =
-  "USER_AUTHORIZED_V4_ATTEMPT_4_2026-08-05_15_CALLS";
-export const V4_ATTEMPT_FOUR_LEDGER_NAMESPACE =
-  "outdoor-adventure-v4-attempt-4-2026-08-05";
 
 const { Pool } = pg;
 const FORBIDDEN_CLAIM_KEYS = new Set([
@@ -62,7 +71,7 @@ async function main() {
   let cancellationPool;
   try {
     const options = parseArguments(process.argv.slice(2));
-    const databaseUrl = process.env.TRAILMIND_V4_ATTEMPT4_DATABASE_URL;
+    const databaseUrl = process.env.TRAILMIND_V4_RUN_DATABASE_URL;
     validateLoopbackProofDatabaseUrl(databaseUrl);
     const initialFlags = disabledV4FlagSnapshot(process.env);
 
@@ -71,29 +80,15 @@ async function main() {
       max: 3,
       connectionTimeoutMillis: 10_000,
       allowExitOnIdle: true,
-      application_name: "trailmind_v4_attempt4_live_proof"
+      application_name: "trailmind_v4_run_scoped_live_proof"
     });
     cancellationPool = new Pool({
       connectionString: databaseUrl,
       max: 2,
       connectionTimeoutMillis: 10_000,
       allowExitOnIdle: true,
-      application_name: "trailmind_v4_attempt4_live_cancel"
+      application_name: "trailmind_v4_run_scoped_live_cancel"
     });
-    await assertDatabaseAdmission(pool);
-
-    // Credential validation is deliberately after every database admission
-    // gate and its returned configuration is never retained.
-    providerConfiguration(process.env);
-
-    ledger = new V4ProviderLedger(options.ledgerPath, {
-      authorizationReference: V4_ATTEMPT_FOUR_AUTHORIZATION_REFERENCE,
-      ledgerNamespace: V4_ATTEMPT_FOUR_LEDGER_NAMESPACE
-    });
-    const initialLedger = await ledger.initialize();
-    if (initialLedger.calls.length !== 0) throw proofError("ledger_not_fresh");
-
-    const scheduler = new V4ProviderScheduler();
     const repository = new PostgresOutdoorResearchRepository({
       pool,
       cancellationPool,
@@ -102,6 +97,46 @@ async function main() {
     const cases = await loadServerLiveProofCasesV1({
       caseIds: V4_CASE_BINDINGS.map((item) => item.caseId)
     });
+    const intents = new Map(cases.map((evaluationCase) => [
+      evaluationCase.id,
+      serverLiveProofCanonicalIntentV1(evaluationCase.input)
+    ]));
+    const runContext = await captureV4ProofRunContextAfterImports({
+      pool,
+      authorizationReference: options.authorizationReference,
+      ledgerNamespace: options.ledgerNamespace,
+      caseManifestDigest: V4_MANIFEST_DIGEST
+    });
+    await assertDatabaseAdmission(pool);
+    const databaseDiagnostic = await runV4DatabasePlanningClockGate({
+      runContext,
+      cases,
+      intents,
+      repository,
+      researchAdventure: researchOutdoorAdventureWithTrailAccessV1
+    });
+    await reconcileV4DatabaseClockEvidence(pool, runContext);
+    const proofClockBinding = createV4ProofClockBinding(
+      runContext,
+      databaseDiagnostic
+    );
+
+    // Credential validation is deliberately after every database admission
+    // gate and its returned configuration is never retained.
+    await admitV4ProviderAfterClockReconciliation({
+      runContext,
+      databaseDiagnostic,
+      proofClockBinding
+    }, () => providerConfiguration(process.env));
+
+    ledger = new V4ProviderLedger(options.ledgerPath, {
+      authorizationReference: options.authorizationReference,
+      ledgerNamespace: options.ledgerNamespace
+    });
+    const initialLedger = await ledger.initialize();
+    if (initialLedger.calls.length !== 0) throw proofError("ledger_not_fresh");
+
+    const scheduler = new V4ProviderScheduler();
     const records = [];
 
     for (const evaluationCase of cases) {
@@ -123,6 +158,7 @@ async function main() {
           },
           {
             repository,
+            clock: runContext.clock,
             provider: createV4MeteredGraphHopperProvider({
               caseId: evaluationCase.id,
               controlledFailureAfterFirstSuccess:
@@ -179,29 +215,30 @@ async function main() {
         settledLedger,
         scheduler.receipt(),
         {
-          authorizationReference: V4_ATTEMPT_FOUR_AUTHORIZATION_REFERENCE,
-          ledgerNamespace: V4_ATTEMPT_FOUR_LEDGER_NAMESPACE
+          authorizationReference: options.authorizationReference,
+          ledgerNamespace: options.ledgerNamespace
         }
       ),
-      authorizationReference: V4_ATTEMPT_FOUR_AUTHORIZATION_REFERENCE,
-      ledgerNamespace: V4_ATTEMPT_FOUR_LEDGER_NAMESPACE,
+      authorizationReference: options.authorizationReference,
+      ledgerNamespace: options.ledgerNamespace,
       ledgerSha256,
       providerCredentialAdmitted: true,
       providerEgressAdmitted: true
     };
     const executionFlags = disabledV4FlagSnapshot(process.env);
-    const capture = {
+    const capture = bindV4FutureReceiptClock({
       schemaVersion: 1,
       receiptVersion:
-        "outdoor-adventure-targeted-live-route-quality-proof-v4-attempt-4-capture",
-      generatedAt: new Date().toISOString(),
-      authorizationReference: V4_ATTEMPT_FOUR_AUTHORIZATION_REFERENCE,
-      ledgerNamespace: V4_ATTEMPT_FOUR_LEDGER_NAMESPACE,
+        "outdoor-adventure-targeted-live-route-quality-proof-v4-run-context-v2-capture",
+      generatedAt: runContext.proofAsOf,
+      authorizationReference: options.authorizationReference,
+      ledgerNamespace: options.ledgerNamespace,
       ledgerSha256,
       status: records.every((record) =>
         record.caseEvaluationOutcome === "pass"
       ) ? "passed" : "failed",
       databaseAdmissionPassed: true,
+      databaseDiagnostic,
       providerAccounting,
       cases: records,
       featureFlags: {
@@ -220,7 +257,7 @@ async function main() {
         appAttestMaterialRetained: false,
         unboundedErrorRetained: false
       }
-    };
+    }, runContext, databaseDiagnostic, proofClockBinding);
     assertNoSensitiveDurableValueV4(capture);
     await writeFile(options.capturePath, `${stableSerializeV4(capture)}\n`, {
       encoding: "utf8",
@@ -337,25 +374,37 @@ function falseClaimCountForRoute({ attempt, result }) {
 }
 
 function parseArguments(values) {
-  if (values.length !== 4 || values[0] !== "--ledger" ||
-      values[2] !== "--capture" || !absoluteTemporaryPath(values[1]) ||
-      !absoluteTemporaryPath(values[3]) || values[1] === values[3]) {
+  if (values.length !== 8 || values[0] !== "--authorization-reference" ||
+      values[2] !== "--ledger-namespace" || values[4] !== "--ledger" ||
+      values[6] !== "--capture" || !runIdentifier(values[1]) ||
+      !runIdentifier(values[3]) || !absoluteTemporaryPath(values[5]) ||
+      !absoluteTemporaryPath(values[7]) || values[5] === values[7]) {
     throw proofError("invalid_arguments");
   }
-  return { ledgerPath: values[1], capturePath: values[3] };
+  return {
+    authorizationReference: values[1],
+    ledgerNamespace: values[3],
+    ledgerPath: values[5],
+    capturePath: values[7]
+  };
 }
 
 function absoluteTemporaryPath(value) {
   return typeof value === "string" &&
-    value.startsWith("/private/tmp/TrailMindV4Attempt4Runtime-") &&
+    value.startsWith("/private/tmp/TrailMindV4RunRuntime-") &&
     !value.includes("..") && value.length <= 500;
+}
+
+function runIdentifier(value) {
+  return typeof value === "string" &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(value);
 }
 
 function validateLoopbackProofDatabaseUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw proofError("database_unavailable"); }
   if (!new Set(["127.0.0.1", "localhost", "::1"]).has(url.hostname) ||
-      !/v4a4.*membership.*perf/i.test(url.pathname) ||
+      !/v4.*proof/i.test(url.pathname) ||
       !/proof/i.test(decodeURIComponent(url.username))) {
     throw proofError("database_unavailable");
   }
@@ -369,7 +418,7 @@ async function safeAttemptedCount(ledger) {
 function safeErrorCode(error) {
   const code = error?.code;
   return typeof code === "string" && /^[a-z0-9_]{1,80}$/.test(code)
-    ? code : "v4_attempt4_failed";
+    ? code : "v4_run_scoped_proof_failed";
 }
 
 function proofError(code) {

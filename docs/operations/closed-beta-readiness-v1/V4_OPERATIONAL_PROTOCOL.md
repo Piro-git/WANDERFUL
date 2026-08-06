@@ -93,6 +93,11 @@ the ephemeral ledger only after a signed aggregate reconciliation is durable.
 
 ## Execution protocol
 
+For every future attempt, first apply
+`V4_PROOF_RUN_CLOCK_CONTRACT.md`. Attempts 1–5 retain their historical
+schema-1 clocks and outcomes. A future attempt may not reuse their fixed
+timestamps.
+
 ### A. Admission and immutable inputs
 
 1. Verify the clean candidate commit and hashes of every protected historical
@@ -110,14 +115,19 @@ the ephemeral ledger only after a signed aggregate reconciliation is durable.
 1. Validate ordered migration ledger and accepted migration digests.
 2. Validate one current active import/projection for each region, acquisition
    checksum provenance, 14-day freshness, quarantine state, and isolation.
-3. Validate required GiST indexes as valid/ready.
-4. Execute each canonical case through research and candidate generation only.
-5. Require route-membership p95 below 1,500 ms, every reviewed measurement
+3. After both imports/projections complete, capture and seal one canonical
+   run-scoped `proofAsOf`; bind both regional timestamp lineages to it.
+4. Validate required GiST indexes as valid/ready.
+5. Execute each canonical case through research and candidate generation only,
+   injecting the sealed clock for every capability and planning operation.
+6. Require route-membership p95 below 1,500 ms, every reviewed measurement
    below 2,000 ms, access resolution below 2,000 ms, bounded row counts, intended
    indexes, and no projection-entity sequential scan.
-6. Require exactly three or the contractually valid bounded number of proposals
+7. Require exactly three or the contractually valid bounded number of proposals
    for each case. Record typed limitations, not raw evidence coordinates.
-7. Any failure sets `databasePreflight=failed`, leaves provider calls zero, and
+8. Reconcile the database diagnostic and active snapshots to the sealed clock
+   immediately before provider admission.
+9. Any failure sets `databasePreflight=failed`, leaves provider calls zero, and
    jumps to cleanup.
 
 ### C. Physical App Attest checkpoint
