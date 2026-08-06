@@ -1,0 +1,525 @@
+{
+  "schemaVersion": 1,
+  "receiptVersion": "outdoor-adventure-targeted-live-route-quality-proof-v4-attempt-5",
+  "semanticReceiptSha256": "7d1a405609f18ed575207b70e45ec228924019857d177f6af4b11470cb4a8822",
+  "attemptNumber": 5,
+  "generatedAt": "2026-08-06T20:48:59Z",
+  "status": "blocked",
+  "blockedReasonCode": "database_preprovider_plan_unsupported",
+  "baselineCommit": "2c3e4e4c3ec319e6e5497cb83435c421fe3bf60f",
+  "candidateCommit": "2c3e4e4c3ec319e6e5497cb83435c421fe3bf60f",
+  "authorizationReference": "USER_AUTHORIZED_V4_ATTEMPT_5_2026-08-06_15_CALLS",
+  "ledgerNamespace": "outdoor-adventure-v4-attempt-5-2026-08-06",
+  "ledgerCreated": false,
+  "ledgerSha256": null,
+  "manifest": {
+    "digest": "1fe9162a45f4edf7506fa903f7b2c8038b771b4f6dae87006a29293c9c893f26",
+    "bindings": [
+      {
+        "caseId": "case-15-partial-provider-failure-survivor",
+        "goldenCaseId": "harz-v1-route-coherence-010",
+        "fixtureDigest": "c2e1f70233c8163392b8dedfa77ea5454cc12d5e42700fd6c5110e04058232af",
+        "goldenCaseDigest": "21529faec10cd3d8e6a38a83d03688b8fe4a4cee899df843b8bcc60a4c091eb6"
+      },
+      {
+        "caseId": "case-04-harz-brocken-must-have-landmark",
+        "goldenCaseId": "harz-v1-peak-focus-005",
+        "fixtureDigest": "177550bc626118d38d808559834f5f10f9e5aaec067e844f56c19e184c197cbe",
+        "goldenCaseDigest": "c472f3b539b38627221aa7fd4784b0397fbf6c288fc0814b6c529cd4969bc1ca"
+      },
+      {
+        "caseId": "case-07-innsbruck-viewpoint-loop",
+        "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004",
+        "fixtureDigest": "3979608b6a17874086d59656faf125e29421c2cd36f65cb48d5655beaab3bdf6",
+        "goldenCaseDigest": "f6ef4fd6144313c82b99b15b1caf2c402f8e5bfc6425e137d5010fc24dc99e5b"
+      },
+      {
+        "caseId": "case-08-innsbruck-easy-conservative-loop",
+        "goldenCaseId": "innsbruck-alps-v1-easy-loop-001",
+        "fixtureDigest": "bc0989ec9040b8a4ab1d854eb4e3a912059300daac026302c372114d05dc543f",
+        "goldenCaseDigest": "f270400dc78fc4421b30b7a829d2f7fe2baadc5d05f0a89245b8abba65bdbdf9"
+      }
+    ]
+  },
+  "goldenSet": {
+    "schemaVersion": 2,
+    "caseCount": 26,
+    "fileSha256": "579c5f3e5b026dc11b5087f04eb2a03f13511d7539d46b7621f846b21bcde661",
+    "fixturesOrThresholdsChanged": false,
+    "attemptFiveValidationState": "not_run_after_database_stop"
+  },
+  "productShapingV3": {
+    "policyVersion": "research-guided-route-product-shaping-v3",
+    "policyFileSha256": "6617dadd2ce8154a48002876409a76fb96b8fbcdc5d4e2811f41418bc4d143aa",
+    "policySemanticSha256": "70a01b65b7c8a19077288bc09fcf47174a0ab1e0058e31a320a5e8e4a2eaba42",
+    "activePipelineVerified": false,
+    "verificationState": "not_run_after_database_stop",
+    "legacyFallbackUsed": false
+  },
+  "decisions": {
+    "storagePreflight": "passed",
+    "databasePreflight": "failed",
+    "productShapingV3Admission": "not_run",
+    "physicalAppAttest": "not_run",
+    "providerCredentialAdmission": "not_run",
+    "providerProof": "not_run",
+    "routeQuality": "not_run",
+    "cleanupAndContainment": "passed"
+  },
+  "preflight": {
+    "headMatchedOriginMain": true,
+    "isolatedDetachedWorktree": true,
+    "initialWorktreeClean": true,
+    "requiredBaselinePresent": true,
+    "providerAdmissionRollbackCommitPresent": true,
+    "productShapingV3CommitPresent": true,
+    "equivalentAttemptFiveFound": false,
+    "conflictingAgentFound": false,
+    "conflictingProcessCount": 0,
+    "proposedLoopbackPortFree": true,
+    "initialSettledStorageSampleCount": 3,
+    "initialSettledFreeKiB": 12270068,
+    "requiredFreeKiB": 10485760,
+    "storageGatePassed": true,
+    "credentialEnvelopeRegularFile": true,
+    "credentialEnvelopeCurrentUserOwned": true,
+    "credentialEnvelopeMode0600": true,
+    "credentialEnvelopeSymlink": false,
+    "credentialContentsRead": false,
+    "localConfigurationInspected": false,
+    "thresholdChanged": false,
+    "sharedMainCleanAndUntouched": true
+  },
+  "databasePreflightEvidence": {
+    "status": "failed",
+    "environmentClassification": "proof_only_disposable_loopback",
+    "loopbackOnly": true,
+    "postgresVersion": "17.10",
+    "postgisVersion": "3.6.4",
+    "proofRoleLeastPrivilege": true,
+    "productionProjectionTimeoutMilliseconds": 120000,
+    "projectionTimeoutChanged": false,
+    "queryThresholdChanged": false,
+    "providerCallsBeforeDatabaseGates": 0,
+    "migrations": {
+      "firstRunAppliedCount": 7,
+      "secondRunAppliedCount": 0,
+      "secondRunTrueNoOp": true
+    },
+    "publisherInputs": [
+      {
+        "regionClass": "niedersachsen",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "752086e94b3dbd65d9e5a66fa2ad428c",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-05T20:21:23Z",
+        "bytes": 501624707
+      },
+      {
+        "regionClass": "sachsen_anhalt",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "7134068b1049e108973d182f6786930b",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-05T20:21:23Z",
+        "bytes": 173244725
+      },
+      {
+        "regionClass": "thueringen",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "0922c961ac7fdcb2e383d4a8aaca53eb",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-05T20:21:23Z",
+        "bytes": 158924926
+      },
+      {
+        "regionClass": "austria",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "156109dfe301dcc7219de2f1a92b1687",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-05T20:21:23Z",
+        "bytes": 806272319
+      }
+    ],
+    "publisherChecksumVerificationPassed": true,
+    "sourceFreshnessPassed": true,
+    "freshnessViolationCount": 0,
+    "boundedInputs": [
+      {
+        "regionId": "harz-v1",
+        "sourceClass": "complete_ways_bounded_merge_of_three_publisher_inputs",
+        "publisherInputCount": 3,
+        "boundedInputSha256": "4ab343a5836200b36c36401a0b8b54701f4fcba8197fdd25fcf069ee177fb7b0"
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "sourceClass": "complete_ways_bounded_extract_from_austria_publisher_input",
+        "publisherInputCount": 1,
+        "boundedInputSha256": "6134edd52dad3515a3e06757188952292dc2ecf8a6bfa7d3a2e273ec1b52f507"
+      }
+    ],
+    "boundedInputDigestVerificationPassed": true,
+    "imports": [
+      {
+        "regionId": "harz-v1",
+        "status": "active",
+        "pois": 2951,
+        "trailSegments": 140625,
+        "mappedHikingRelations": 887,
+        "routeMembers": 29525,
+        "provenanceVerified": true,
+        "freshnessClass": "current"
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "status": "active",
+        "pois": 1619,
+        "trailSegments": 74743,
+        "mappedHikingRelations": 500,
+        "routeMembers": 7785,
+        "provenanceVerified": true,
+        "freshnessClass": "current"
+      }
+    ],
+    "activeImportCount": 2,
+    "projections": [
+      {
+        "regionId": "harz-v1",
+        "dryRunDurationMilliseconds": 13456,
+        "persistentDurationMilliseconds": 72886,
+        "repeatStatus": "unchanged",
+        "entities": 144463,
+        "assertions": 167374,
+        "relationships": 29309,
+        "stableSourceLinks": 144463,
+        "quarantined": 0
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "dryRunDurationMilliseconds": 18697,
+        "persistentDurationMilliseconds": 45399,
+        "repeatStatus": "unchanged",
+        "entities": 76862,
+        "assertions": 91480,
+        "relationships": 7763,
+        "stableSourceLinks": 76862,
+        "quarantined": 0
+      }
+    ],
+    "activeProjectionCount": 2,
+    "aggregateTotals": {
+      "entities": 221325,
+      "assertions": 258854,
+      "relationships": 37072,
+      "stableSourceLinks": 221325,
+      "quarantined": 0
+    },
+    "promotedQuarantineRowCount": 0,
+    "entityLineageViolationCount": 0,
+    "assertionScopeViolationCount": 0,
+    "relationshipScopeViolationCount": 0,
+    "forbiddenActiveAssertionCount": 0,
+    "snapshotInconsistencyCount": 0,
+    "regionalIsolation": {
+      "passed": true,
+      "regionOverlap": false,
+      "mismatchedCaseQueryResultCount": 0,
+      "caseCount": 4
+    },
+    "cancellationAndRollback": {
+      "passed": true,
+      "events": [
+        "began",
+        "query_cancelled_after_abort",
+        "rollback_completed_after_cancel"
+      ],
+      "leakedTransactions": 0,
+      "poolWaitingCount": 0,
+      "cancellationPoolWaitingCount": 0
+    },
+    "queryAndPerformance": {
+      "reviewedGistIndexCount": 6,
+      "allReviewedIndexesValidAndReady": true,
+      "corridorPlanPassed": true,
+      "corridorWallClockMilliseconds": 128.3,
+      "corridorExecutionMilliseconds": 92.2,
+      "corridorRequiredIndexesUsed": 3,
+      "membershipThresholdMilliseconds": 1500,
+      "membershipState": "not_run_after_database_stop",
+      "accessThresholdMilliseconds": 1500,
+      "accessState": "not_run_after_database_stop"
+    },
+    "preProviderPlanning": {
+      "status": "failed",
+      "firstCaseId": "case-15-partial-provider-failure-survivor",
+      "observedResearchState": "unsupported",
+      "requiredResearchState": "ready",
+      "reasonCode": "evaluation_clock_predates_fresh_import",
+      "reviewedGateEvaluationTime": "2026-08-05T21:30:00.000Z",
+      "casesCompleted": 0,
+      "proposalCount": 0,
+      "providerCalls": 0
+    },
+    "allDatabaseGatesPassed": false
+  },
+  "providerAccounting": {
+    "authorizationReference": "USER_AUTHORIZED_V4_ATTEMPT_5_2026-08-06_15_CALLS",
+    "ledgerNamespace": "outdoor-adventure-v4-attempt-5-2026-08-06",
+    "ledgerCreated": false,
+    "ledgerSha256": null,
+    "hardLimit": 15,
+    "maximumConcurrencyAllowed": 1,
+    "minimumCallStartSpacingMilliseconds": 2000,
+    "attempted": 0,
+    "successful": 0,
+    "failed": 0,
+    "timedOut": 0,
+    "cancelled": 0,
+    "controlledPostSuccessFailures": 0,
+    "unused": 15,
+    "reconciled": true,
+    "maximumConcurrencyObserved": 0,
+    "minimumObservedStartSpacingMilliseconds": null,
+    "retriesAttempted": 0,
+    "probesAfterCircuitOpen": 0,
+    "attempt16Prevented": true,
+    "circuitOpened": false,
+    "circuitStopHonored": true,
+    "invalidRetryAfterObserved": false,
+    "invalidRetryAfterStoppedCase": false,
+    "providerCredentialAdmitted": false,
+    "providerEgressAdmitted": false,
+    "credentialAdmissionReasonCode": "not_run_after_database_stop",
+    "officialHttpsBaseUrlPinVerified": false
+  },
+  "cases": [
+    {
+      "caseId": "case-15-partial-provider-failure-survivor",
+      "goldenCaseId": "harz-v1-route-coherence-010",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": {
+        "injectionArmed": false,
+        "genuineProviderSuccessBeforeInjection": false,
+        "independentSurvivorTechnicalPass": false,
+        "independentSurvivorProductPass": false,
+        "resultCode": "database_preprovider_plan_unsupported"
+      },
+      "resultReasonCode": "database_preprovider_plan_unsupported"
+    },
+    {
+      "caseId": "case-04-harz-brocken-must-have-landmark",
+      "goldenCaseId": "harz-v1-peak-focus-005",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "resultReasonCode": "database_preflight_stopped_before_case"
+    },
+    {
+      "caseId": "case-07-innsbruck-viewpoint-loop",
+      "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "resultReasonCode": "database_preflight_stopped_before_case"
+    },
+    {
+      "caseId": "case-08-innsbruck-easy-conservative-loop",
+      "goldenCaseId": "innsbruck-alps-v1-easy-loop-001",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "resultReasonCode": "database_preflight_stopped_before_case"
+    }
+  ],
+  "featureFlags": {
+    "initialAllFalse": true,
+    "executionAllFalse": true,
+    "finalAllFalse": true,
+    "exactAdmissionVerified": true,
+    "flagNames": [
+      "OUTDOOR_EVIDENCE_ENABLED",
+      "RESEARCH_GUIDED_PLANNING_ENABLED",
+      "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "OUTDOOR_EVIDENCE_PROVIDER_ENABLED",
+      "OUTDOOR_RESEARCH_PLANNING_ENABLED",
+      "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "ROUTE_PROVIDER_ENABLED",
+      "INTENT_PROVIDER_ENABLED",
+      "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL",
+      "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING",
+      "INTENT_ALLOW_INSECURE_LOCAL_PARSING",
+      "APP_ATTEST_ALLOW_IN_MEMORY",
+      "INTENT_ALLOW_DETERMINISTIC_MOCK"
+    ]
+  },
+  "verification": {
+    "mandatoryDatabaseGateSuitePassed": false,
+    "mandatoryDatabaseGatePassedTestCount": 4,
+    "mandatoryDatabaseGateFailedTestCount": 1,
+    "mandatoryDatabaseGateFailureCode": "database_preprovider_plan_unsupported",
+    "attemptFiveFocusedTests": "not_run_after_database_stop",
+    "providerControlSuites": "not_run_after_database_stop",
+    "productShapingV3Suites": "not_run_after_database_stop",
+    "candidateAndRoutingAdapterSuites": "not_run_after_database_stop",
+    "completePostgisIntegration": "not_run_after_database_stop",
+    "completeBackendSuite": "not_run_after_database_stop",
+    "offlineQualityEvaluation": "not_run_after_database_stop",
+    "goldenSetValidation": "not_run_after_database_stop",
+    "backendBuild": "not_run_after_database_stop",
+    "receiptValidation": "passed",
+    "diffCheck": "passed",
+    "whitespaceScan": "passed",
+    "conflictMarkerScan": "passed",
+    "highConfidenceCredentialScan": "passed",
+    "mutableTemporaryPathScan": "passed",
+    "generatedArtifactScan": "passed",
+    "swiftOrXcodeFilesChanged": false,
+    "xcodeRunRequired": false
+  },
+  "cleanup": {
+    "cleanupComplete": true,
+    "finalFlagsDisabled": true,
+    "databaseResourcesCreated": 1,
+    "databaseResourcesRemoved": 1,
+    "providerResourcesCreated": 0,
+    "providerResourcesRemoved": 0,
+    "proofProcessesRemaining": 0,
+    "proofListenersRemaining": 0,
+    "taskOwnedRuntimeKiBRemoved": 4380484,
+    "taskOwnedDataRemoved": true,
+    "taskOwnedDependenciesRemoved": true,
+    "downloadedPbfsRemoved": true,
+    "boundedExtractsRemoved": true,
+    "temporaryLedgerRemoved": false,
+    "temporaryLedgerRemovalState": "not_applicable_not_created",
+    "rawCapturesRemoved": true,
+    "credentialEnvelopeDeleted": true,
+    "credentialVariablesPersisted": false,
+    "poolsClosed": true,
+    "leasesReleased": true,
+    "sourceWorktreePreserved": true,
+    "sharedMainUntouched": true,
+    "disabledZeroWorkProbePassed": true,
+    "disabledZeroWorkAuthorizationOperations": 0,
+    "disabledZeroWorkDatabaseOperations": 0,
+    "disabledZeroWorkProviderOperations": 0,
+    "disabledZeroWorkBudgetOperations": 0,
+    "disabledZeroWorkLeaseOperations": 0,
+    "disabledZeroWorkOrchestratorOperations": 0,
+    "finalSettledStorageSampleCount": 3,
+    "finalSettledFreeKiB": 12345268
+  },
+  "protectedHistoricalReceipts": [
+    {
+      "attempt": 1,
+      "markdownSha256": "fc1e00c7063b794136c2368bc3c950f5677077934c45905c25391973abfc5a14",
+      "summarySha256": "5477240eb9a2569cb0ffbf167f61c1edb87ededa7e8c420e271833e4c7f0063c",
+      "postRunIntegrityPassed": true
+    },
+    {
+      "attempt": 2,
+      "markdownSha256": "76650b3392885ba4683d6fdcd336aca3273e2b4040e359fb9aab0bd031b1f09b",
+      "summarySha256": "7aa8a4b992514ded013ef5ebc6a6218f87b559997220a3c240e7fc39a436d737",
+      "postRunIntegrityPassed": true
+    },
+    {
+      "attempt": 3,
+      "markdownSha256": "3e11f9bdee5fa0da85a5f6f33d33d1065c10db017d8d078dc79afcfeca681690",
+      "summarySha256": "9bd4fb94f67c997961254d70fbe58317dd40b4ef6ec111de90a81e3c3b5e2522",
+      "postRunIntegrityPassed": true
+    },
+    {
+      "attempt": 4,
+      "markdownSha256": "c36f664d25e8c4641419f0848d0b117d93207249d336030c37d905a7da245b69",
+      "summarySha256": "f35c64f6cecf5cfb63ecb412e2ad6ae8b2671e2709c90139a4022938fe871119",
+      "postRunIntegrityPassed": true
+    }
+  ],
+  "priorAttempts": {
+    "attemptOne": {
+      "status": "blocked",
+      "reasonCode": "insufficient_settled_free_storage",
+      "providerAttempted": 0,
+      "routeQuality": "not_run"
+    },
+    "attemptTwo": {
+      "status": "blocked",
+      "reasonCode": "authorized_cleanup_candidates_contain_git_metadata",
+      "providerAttempted": 0,
+      "routeQuality": "not_run"
+    },
+    "attemptThree": {
+      "status": "failed",
+      "reasonCode": "database_projection_timed_out",
+      "providerAttempted": 0,
+      "routeQuality": "not_run"
+    },
+    "attemptFour": {
+      "status": "blocked",
+      "reasonCode": "credential_unavailable",
+      "providerAttempted": 0,
+      "routeQuality": "not_run"
+    }
+  },
+  "comparison": {
+    "v1V2V3": "not_comparable_without_attempt_five_route_observations",
+    "attemptFour": "database_projection_and_index_gates_repeated_successfully_but_attempt_five_stopped_earlier_at_preprovider_planning_before_credential_admission",
+    "routeMetricComparisonAvailable": false
+  },
+  "privacy": {
+    "forbiddenFieldCount": 0,
+    "rawProviderMaterialRetained": false,
+    "routeShapeRetained": false,
+    "preciseLocationRetained": false,
+    "providerUrlRetained": false,
+    "credentialRetained": false,
+    "promptRetained": false,
+    "databaseUrlRetained": false,
+    "appAttestMaterialRetained": false,
+    "unboundedErrorRetained": false,
+    "mutableTemporaryPathRetained": false
+  },
+  "physicalAppAttestProved": false,
+  "humanReviewCompleted": false,
+  "closedBetaEligible": false,
+  "staged": false,
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "released": false,
+  "enabled": false,
+  "gitStatusExact": [
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_5.md",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_5.summary.json"
+  ],
+  "blockers": [
+    "database_preprovider_plan_unsupported",
+    "product_shaping_v3_not_verified",
+    "provider_not_run",
+    "route_quality_not_run",
+    "physical_app_attest_not_proved",
+    "human_review_not_completed"
+  ],
+  "nextAction": "review_and_version_the_v4_database_gate_clock_for_current_imports_then_use_a_new_explicit_authorization_and_new_ledger_namespace"
+}
