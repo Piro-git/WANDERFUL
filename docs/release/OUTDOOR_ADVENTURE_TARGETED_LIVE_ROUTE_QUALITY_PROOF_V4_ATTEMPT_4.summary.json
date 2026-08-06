@@ -1,0 +1,610 @@
+{
+  "schemaVersion": 1,
+  "receiptVersion": "outdoor-adventure-targeted-live-route-quality-proof-v4-attempt-4",
+  "authorizationReference": "USER_AUTHORIZED_V4_ATTEMPT_4_2026-08-05_15_CALLS",
+  "baselineCommit": "a4cd746dbd7ba401124bdb6388757f769f68024a",
+  "candidateCommit": "a4cd746dbd7ba401124bdb6388757f769f68024a",
+  "attemptNumber": 4,
+  "generatedAt": "2026-08-05T20:01:32Z",
+  "status": "blocked",
+  "blockedReasonCode": "credential_unavailable",
+  "ledgerNamespace": "outdoor-adventure-v4-attempt-4-2026-08-05",
+  "ledgerSha256": "7abe78ab24a402bfd17d586246f0cec05166f04b5e834a2a6382f9d9ab79e524",
+  "priorAttempts": {
+    "attemptOne": {
+      "preserved": true,
+      "status": "blocked",
+      "reasonCode": "insufficient_settled_free_storage",
+      "markdownSha256": "fc1e00c7063b794136c2368bc3c950f5677077934c45905c25391973abfc5a14",
+      "summarySha256": "5477240eb9a2569cb0ffbf167f61c1edb87ededa7e8c420e271833e4c7f0063c",
+      "providerAttempted": 0,
+      "providerUnused": 15,
+      "finalFlagsDisabled": true,
+      "cleanupComplete": true,
+      "routeQuality": "not_run"
+    },
+    "attemptTwo": {
+      "preserved": true,
+      "status": "blocked",
+      "reasonCode": "authorized_cleanup_candidates_contain_git_metadata",
+      "markdownSha256": "76650b3392885ba4683d6fdcd336aca3273e2b4040e359fb9aab0bd031b1f09b",
+      "summarySha256": "7aa8a4b992514ded013ef5ebc6a6218f87b559997220a3c240e7fc39a436d737",
+      "providerAttempted": 0,
+      "providerUnused": 15,
+      "finalFlagsDisabled": true,
+      "cleanupComplete": true,
+      "routeQuality": "not_run"
+    },
+    "attemptThree": {
+      "preserved": true,
+      "status": "failed",
+      "reasonCode": "database_projection_timed_out",
+      "markdownSha256": "3e11f9bdee5fa0da85a5f6f33d33d1065c10db017d8d078dc79afcfeca681690",
+      "summarySha256": "9bd4fb94f67c997961254d70fbe58317dd40b4ef6ec111de90a81e3c3b5e2522",
+      "providerAttempted": 0,
+      "providerUnused": 15,
+      "finalFlagsDisabled": true,
+      "cleanupComplete": true,
+      "routeQuality": "not_run"
+    }
+  },
+  "preflight": {
+    "headMatchedOriginMain": true,
+    "isolatedDetachedWorktree": true,
+    "initialWorktreeClean": true,
+    "equivalentAttemptFourFound": false,
+    "conflictingAgentFound": false,
+    "conflictingProcessCount": 0,
+    "initialSettledStorageSampleCount": 2,
+    "initialSettledFreeKiB": 13799636,
+    "requiredFreeKiB": 10485760,
+    "storageGatePassed": true,
+    "preservedWorktreeReadOnly": true,
+    "localConfigurationInspected": false,
+    "thresholdChanged": false
+  },
+  "manifest": {
+    "digest": "5adca280a0da8c2bc4b6ead299a6c69d6141af8c2027b3976da0857d538a621a",
+    "bindings": [
+      {
+        "caseId": "case-15-partial-provider-failure-survivor",
+        "goldenCaseId": "harz-v1-route-coherence-010",
+        "fixtureDigest": "c2e1f70233c8163392b8dedfa77ea5454cc12d5e42700fd6c5110e04058232af",
+        "goldenCaseDigest": "21529faec10cd3d8e6a38a83d03688b8fe4a4cee899df843b8bcc60a4c091eb6"
+      },
+      {
+        "caseId": "case-04-harz-brocken-must-have-landmark",
+        "goldenCaseId": "harz-v1-peak-focus-005",
+        "fixtureDigest": "177550bc626118d38d808559834f5f10f9e5aaec067e844f56c19e184c197cbe",
+        "goldenCaseDigest": "c472f3b539b38627221aa7fd4784b0397fbf6c288fc0814b6c529cd4969bc1ca"
+      },
+      {
+        "caseId": "case-07-innsbruck-viewpoint-loop",
+        "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004",
+        "fixtureDigest": "3979608b6a17874086d59656faf125e29421c2cd36f65cb48d5655beaab3bdf6",
+        "goldenCaseDigest": "f6ef4fd6144313c82b99b15b1caf2c402f8e5bfc6425e137d5010fc24dc99e5b"
+      },
+      {
+        "caseId": "case-08-innsbruck-easy-conservative-loop",
+        "goldenCaseId": "innsbruck-alps-v1-easy-loop-001",
+        "fixtureDigest": "bc0989ec9040b8a4ab1d854eb4e3a912059300daac026302c372114d05dc543f",
+        "goldenCaseDigest": "f270400dc78fc4421b30b7a829d2f7fe2baadc5d05f0a89245b8abba65bdbdf9"
+      }
+    ]
+  },
+  "decisions": {
+    "storagePreflight": "passed",
+    "databasePreflight": "passed",
+    "physicalAppAttest": "not_run",
+    "providerCredentialAdmission": "blocked",
+    "providerProof": "not_run",
+    "routeQuality": "not_run",
+    "cleanupAndContainment": "passed"
+  },
+  "databasePreflightEvidence": {
+    "status": "passed",
+    "environmentClassification": "disposable_loopback_postgis",
+    "loopbackOnly": true,
+    "proofRoleLeastPrivilege": true,
+    "projNetworkDisabled": true,
+    "postgresVersion": "17.10",
+    "postgisVersion": "3.6.4",
+    "migrations": {
+      "firstRunAppliedCount": 7,
+      "secondRunAppliedCount": 0,
+      "ledgerRowCount": 7,
+      "secondRunTrueNoOp": true
+    },
+    "publisherInputs": [
+      {
+        "sourceLabel": "niedersachsen",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "0130f5e275009440c4cd1e5b385085dd",
+        "verified": true
+      },
+      {
+        "sourceLabel": "sachsen-anhalt",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "f87b7b7a21ce745fbab11bdf89a32908",
+        "verified": true
+      },
+      {
+        "sourceLabel": "thueringen",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "5e719091fb2f199c6462ca5677005624",
+        "verified": true
+      },
+      {
+        "sourceLabel": "austria",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "7e6d148524d67590e160d65ef7b12a4b",
+        "verified": true
+      }
+    ],
+    "imports": {
+      "harz": {
+        "sourceClass": "complete_ways_bounded_merge_of_three_publisher_inputs",
+        "sourceTimestamp": "2026-08-04T20:20:51Z",
+        "publisherInputCount": 3,
+        "boundedInputSha256": "4ea0d1394b2f1bc41983ba206b22ee194eae196b298689aee0534fe2503b4b5d",
+        "poiCount": 2951,
+        "trailSegmentCount": 140623,
+        "hikingRelationCount": 887,
+        "routeMemberCount": 29525,
+        "sourceCurrent": true,
+        "checksumVerified": true
+      },
+      "innsbruck": {
+        "sourceClass": "complete_ways_bounded_extract_from_austria_publisher_input",
+        "sourceTimestamp": "2026-08-04T20:20:51Z",
+        "publisherInputCount": 1,
+        "boundedInputSha256": "edc3ad6604d87007aaf81cd23bec99308d80cc9308ae156a6567901ef5f4a55c",
+        "poiCount": 1619,
+        "trailSegmentCount": 74740,
+        "hikingRelationCount": 500,
+        "routeMemberCount": 7785,
+        "sourceCurrent": true,
+        "checksumVerified": true
+      }
+    },
+    "projections": {
+      "harz": {
+        "dryRunStatus": "passed",
+        "dryRunDurationMilliseconds": 11967,
+        "persistentStatus": "active",
+        "persistentDurationMilliseconds": 64595,
+        "entityCount": 144461,
+        "assertionCount": 167372,
+        "relationshipCount": 29309,
+        "stableSourceLinkCount": 144461,
+        "quarantinedCount": 0,
+        "repeatStatus": "unchanged",
+        "provenanceComplete": true,
+        "rollbackBehaviorVerified": true,
+        "partialCommitCount": 0
+      },
+      "innsbruck": {
+        "dryRunStatus": "passed",
+        "dryRunDurationMilliseconds": 25419,
+        "persistentStatus": "active",
+        "persistentDurationMilliseconds": 45831,
+        "entityCount": 76859,
+        "assertionCount": 91477,
+        "relationshipCount": 7763,
+        "stableSourceLinkCount": 76859,
+        "quarantinedCount": 0,
+        "repeatStatus": "unchanged",
+        "provenanceComplete": true,
+        "rollbackBehaviorVerified": true,
+        "partialCommitCount": 0
+      }
+    },
+    "activeImportCount": 2,
+    "activeProjectionCount": 2,
+    "publisherChecksumVerificationPassed": true,
+    "boundedInputDigestVerificationPassed": true,
+    "sourceFreshnessPassed": true,
+    "promotedQuarantineRowCount": 0,
+    "snapshotInconsistencyCount": 0,
+    "entityLineageViolationCount": 0,
+    "assertionScopeViolationCount": 0,
+    "relationshipScopeViolationCount": 0,
+    "forbiddenActiveAssertionCount": 0,
+    "freshnessViolationCount": 0,
+    "regionalIsolation": {
+      "regionBoundaryOverlap": false,
+      "crossRegionQueryRowCount": 0,
+      "completeWaysBoundaryCrossingSourceCount": {
+        "harz": 817,
+        "innsbruck": 336
+      },
+      "crossingSourceGeometryFilteredByCoveredBy": true
+    },
+    "queryAndPerformance": {
+      "requiredGistIndexCount": 6,
+      "allRequiredIndexesValidReady": true,
+      "corridorExecutionMilliseconds": 65,
+      "corridorThresholdMilliseconds": 2500,
+      "membershipP95MaximumMilliseconds": 551.5,
+      "membershipP95ThresholdMilliseconds": 1500,
+      "accessP95MaximumMilliseconds": 72,
+      "accessP95ThresholdMilliseconds": 1500,
+      "maximumObservedAccessP95Milliseconds": 169.2,
+      "fullCase15AccessBeforeFixMilliseconds": 6214.2,
+      "fullCase15AccessAfterFixMilliseconds": 149.1,
+      "productionStatementTimeoutMilliseconds": 2500,
+      "initialMembershipRunClassification": "transient_failure_during_postgresql_autoanalyze",
+      "allPerformanceGatesPassed": true
+    },
+    "cancellationAndRollback": {
+      "cancelledQueryClassified": true,
+      "rollbackLifecycleComplete": true,
+      "leakedTransactionCount": 0,
+      "projectionTransactionsAtomic": true,
+      "partialProjectionCommitCount": 0
+    },
+    "preProviderPlanning": {
+      "caseCount": 4,
+      "maximumProposalCount": 3,
+      "caseProposalCounts": {
+        "case15": 3,
+        "case04": 1,
+        "case07": 3,
+        "case08": 3
+      },
+      "accessLineageComplete": true
+    },
+    "providerCallsBeforeDatabaseGates": 0,
+    "productionProjectionTimeoutMilliseconds": 120000,
+    "projectionTimeoutChanged": false,
+    "queryThresholdChanged": false,
+    "policyBypassUsed": false,
+    "allDatabaseGatesPassed": true
+  },
+  "cases": [
+    {
+      "caseId": "case-15-partial-provider-failure-survivor",
+      "goldenCaseId": "harz-v1-route-coherence-010",
+      "fixtureDigest": "c2e1f70233c8163392b8dedfa77ea5454cc12d5e42700fd6c5110e04058232af",
+      "goldenCaseDigest": "21529faec10cd3d8e6a38a83d03688b8fe4a4cee899df843b8bcc60a4c091eb6",
+      "executed": true,
+      "skipped": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "expectedPlanningState": "partial",
+      "technicalPipelineOutcome": "not_run",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "productQualityOutcome": "not_applicable",
+      "expectedProductQualityOutcome": "pass",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": {
+        "injectionArmed": false,
+        "genuineProviderSuccessBeforeInjection": false,
+        "successRelabelledAsFailure": false,
+        "independentSurvivorTechnicalPass": false,
+        "independentSurvivorProductPass": false,
+        "resultCode": "credential_unavailable"
+      },
+      "manualExpertReview": "not_completed",
+      "resultReasonCode": "credential_unavailable"
+    },
+    {
+      "caseId": "case-04-harz-brocken-must-have-landmark",
+      "goldenCaseId": "harz-v1-peak-focus-005",
+      "fixtureDigest": "177550bc626118d38d808559834f5f10f9e5aaec067e844f56c19e184c197cbe",
+      "goldenCaseDigest": "c472f3b539b38627221aa7fd4784b0397fbf6c288fc0814b6c529cd4969bc1ca",
+      "executed": true,
+      "skipped": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "expectedPlanningState": "routed",
+      "technicalPipelineOutcome": "not_run",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "productQualityOutcome": "not_applicable",
+      "expectedProductQualityOutcome": "pass",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": null,
+      "manualExpertReview": "not_completed",
+      "resultReasonCode": "credential_unavailable"
+    },
+    {
+      "caseId": "case-07-innsbruck-viewpoint-loop",
+      "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004",
+      "fixtureDigest": "3979608b6a17874086d59656faf125e29421c2cd36f65cb48d5655beaab3bdf6",
+      "goldenCaseDigest": "f6ef4fd6144313c82b99b15b1caf2c402f8e5bfc6425e137d5010fc24dc99e5b",
+      "executed": true,
+      "skipped": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "expectedPlanningState": "partial",
+      "technicalPipelineOutcome": "not_run",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "productQualityOutcome": "not_applicable",
+      "expectedProductQualityOutcome": "partial",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": null,
+      "manualExpertReview": "not_completed",
+      "resultReasonCode": "credential_unavailable"
+    },
+    {
+      "caseId": "case-08-innsbruck-easy-conservative-loop",
+      "goldenCaseId": "innsbruck-alps-v1-easy-loop-001",
+      "fixtureDigest": "bc0989ec9040b8a4ab1d854eb4e3a912059300daac026302c372114d05dc543f",
+      "goldenCaseDigest": "f270400dc78fc4421b30b7a829d2f7fe2baadc5d05f0a89245b8abba65bdbdf9",
+      "executed": true,
+      "skipped": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "expectedPlanningState": "routed",
+      "technicalPipelineOutcome": "not_run",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "productQualityOutcome": "not_applicable",
+      "expectedProductQualityOutcome": "pass",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": null,
+      "manualExpertReview": "not_completed",
+      "resultReasonCode": "credential_unavailable"
+    }
+  ],
+  "providerAccounting": {
+    "authorizationReference": "USER_AUTHORIZED_V4_ATTEMPT_4_2026-08-05_15_CALLS",
+    "ledgerNamespace": "outdoor-adventure-v4-attempt-4-2026-08-05",
+    "ledgerSha256": "7abe78ab24a402bfd17d586246f0cec05166f04b5e834a2a6382f9d9ab79e524",
+    "hardLimit": 15,
+    "maximumConcurrencyAllowed": 1,
+    "minimumCallStartSpacingMilliseconds": 2000,
+    "attempted": 0,
+    "successful": 0,
+    "failed": 0,
+    "timedOut": 0,
+    "cancelled": 0,
+    "controlledPostSuccessFailures": 0,
+    "unused": 15,
+    "reconciled": true,
+    "maximumConcurrencyObserved": 0,
+    "minimumObservedStartSpacingMilliseconds": null,
+    "retriesAttempted": 0,
+    "probesAfterCircuitOpen": 0,
+    "attempt16Prevented": true,
+    "circuitOpened": false,
+    "circuitStopHonored": true,
+    "invalidRetryAfterObserved": false,
+    "invalidRetryAfterStoppedCase": false,
+    "providerCredentialAdmitted": false,
+    "providerEgressAdmitted": false,
+    "credentialAdmissionReasonCode": "credential_unavailable"
+  },
+  "featureFlags": {
+    "initial": {
+      "exactAdmissionVerified": true,
+      "flags": {
+        "OUTDOOR_EVIDENCE_ENABLED": false,
+        "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ENABLED": false,
+        "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "ROUTE_PROVIDER_ENABLED": false,
+        "INTENT_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": false,
+        "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": false,
+        "INTENT_ALLOW_INSECURE_LOCAL_PARSING": false,
+        "APP_ATTEST_ALLOW_IN_MEMORY": false,
+        "INTENT_ALLOW_DETERMINISTIC_MOCK": false
+      }
+    },
+    "database": {
+      "exactAdmissionVerified": true,
+      "flags": {
+        "OUTDOOR_EVIDENCE_ENABLED": false,
+        "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ENABLED": false,
+        "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "ROUTE_PROVIDER_ENABLED": false,
+        "INTENT_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": false,
+        "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": false,
+        "INTENT_ALLOW_INSECURE_LOCAL_PARSING": false,
+        "APP_ATTEST_ALLOW_IN_MEMORY": false,
+        "INTENT_ALLOW_DETERMINISTIC_MOCK": false
+      }
+    },
+    "admission": {
+      "exactAdmissionVerified": true,
+      "flags": {
+        "OUTDOOR_EVIDENCE_ENABLED": false,
+        "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ENABLED": false,
+        "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "ROUTE_PROVIDER_ENABLED": false,
+        "INTENT_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": false,
+        "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": false,
+        "INTENT_ALLOW_INSECURE_LOCAL_PARSING": false,
+        "APP_ATTEST_ALLOW_IN_MEMORY": false,
+        "INTENT_ALLOW_DETERMINISTIC_MOCK": false
+      }
+    },
+    "final": {
+      "exactAdmissionVerified": true,
+      "flags": {
+        "OUTDOOR_EVIDENCE_ENABLED": false,
+        "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ENABLED": false,
+        "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "ROUTE_PROVIDER_ENABLED": false,
+        "INTENT_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": false,
+        "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": false,
+        "INTENT_ALLOW_INSECURE_LOCAL_PARSING": false,
+        "APP_ATTEST_ALLOW_IN_MEMORY": false,
+        "INTENT_ALLOW_DETERMINISTIC_MOCK": false
+      }
+    }
+  },
+  "physicalAppAttestProved": false,
+  "humanReviewCompleted": false,
+  "closedBetaEligible": false,
+  "verification": {
+    "focusedV4Passed": true,
+    "providerLedgerAndCircuitBreakerPassed": true,
+    "providerFeatureFlagsPassed": true,
+    "osmProjectionPerformancePassed": true,
+    "realPostgisIntegrationPassed": true,
+    "realPostgisIntegrationTestCount": 49,
+    "completeBackendSuitePassed": true,
+    "completeBackendPassedTestCount": 686,
+    "backendBuildPassed": true,
+    "offlineQualityEvaluationPassed": true,
+    "offlineQualityEvaluationCaseCount": 101,
+    "goldenSetValidationPassed": true,
+    "goldenSetCaseCount": 26,
+    "receiptSchemaReconciliationPassed": true,
+    "diffCheckPassed": true,
+    "whitespaceScanPassed": true,
+    "conflictMarkerScanPassed": true,
+    "highConfidenceCredentialScanPassed": true,
+    "generatedArtifactScanPassed": true,
+    "swiftOrXcodeFilesChanged": false,
+    "xcodeRunRequired": false
+  },
+  "cleanup": {
+    "cleanupComplete": true,
+    "finalFlagsDisabled": true,
+    "databaseResourcesCreated": 1,
+    "databaseResourcesRemoved": 1,
+    "providerResourcesCreated": 0,
+    "providerResourcesRemoved": 0,
+    "proofProcessesRemaining": 0,
+    "proofListenersRemaining": 0,
+    "taskOwnedRuntimeKiBRemoved": 4361040,
+    "taskOwnedDataRemoved": true,
+    "downloadedPbfsRemoved": true,
+    "temporaryLedgerRemoved": true,
+    "rawCapturesRemoved": true,
+    "poolsClosed": true,
+    "leasesReleased": true,
+    "sourceWorktreePreserved": true,
+    "preservedV4WorktreeUnmodified": true,
+    "disabledZeroWorkProbePassed": true,
+    "disabledZeroWorkDatabaseOperations": 0,
+    "disabledZeroWorkProviderOperations": 0,
+    "disabledZeroWorkBudgetOperations": 0,
+    "disabledZeroWorkLeaseOperations": 0,
+    "finalSettledStorageSampleCount": 2,
+    "finalSettledFreeKiB": 13789032
+  },
+  "protectedHistoricalReceipts": [
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.md",
+      "beforeSha256": "04b749fb41c44e77121ff25678a60d68b0d763636c4db054935957f92e03ae1d",
+      "afterSha256": "04b749fb41c44e77121ff25678a60d68b0d763636c4db054935957f92e03ae1d",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.summary.json",
+      "beforeSha256": "6c57f5efc9bbec02ad0f49f7ab70bae43f9f61f4467afc8654f6c827ca7f69f3",
+      "afterSha256": "6c57f5efc9bbec02ad0f49f7ab70bae43f9f61f4467afc8654f6c827ca7f69f3",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.md",
+      "beforeSha256": "0fdbdee5e931bdc307f5203e58b6e653269642da0db8b5f3ea397e8773303c0c",
+      "afterSha256": "0fdbdee5e931bdc307f5203e58b6e653269642da0db8b5f3ea397e8773303c0c",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.summary.json",
+      "beforeSha256": "e7614b1267390879c9037f028b40f9739eb0a61b4925fa58845fa5dd40c84e2f",
+      "afterSha256": "e7614b1267390879c9037f028b40f9739eb0a61b4925fa58845fa5dd40c84e2f",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.md",
+      "beforeSha256": "69c9cd93c7ea6361c625a3b8daf506a39d4e16e7363aa045a06e6516c0b1c94a",
+      "afterSha256": "69c9cd93c7ea6361c625a3b8daf506a39d4e16e7363aa045a06e6516c0b1c94a",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.summary.json",
+      "beforeSha256": "18946e87ea615b53c271179d648eae24b1cb427791cb3145b35fe81dfaf2b5f9",
+      "afterSha256": "18946e87ea615b53c271179d648eae24b1cb427791cb3145b35fe81dfaf2b5f9",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md",
+      "beforeSha256": "597b4d0aa6890cf74a3b63b5dfb10e6d52220cace1d02de315aec122b8b2f522",
+      "afterSha256": "597b4d0aa6890cf74a3b63b5dfb10e6d52220cace1d02de315aec122b8b2f522",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.summary.json",
+      "beforeSha256": "6a247c8aeb21f1079cc625eba651ce32b281ab6b1c49690fbfdc183288c211bf",
+      "afterSha256": "6a247c8aeb21f1079cc625eba651ce32b281ab6b1c49690fbfdc183288c211bf",
+      "unchanged": true
+    }
+  ],
+  "privacy": {
+    "forbiddenFieldCount": 0,
+    "rawProviderMaterialRetained": false,
+    "routeShapeRetained": false,
+    "preciseLocationRetained": false,
+    "providerUrlRetained": false,
+    "credentialRetained": false,
+    "promptRetained": false,
+    "databaseUrlRetained": false,
+    "appAttestMaterialRetained": false,
+    "unboundedErrorRetained": false
+  },
+  "blockers": [
+    "credential_unavailable"
+  ],
+  "nextAction": "rerun_in_a_new_authorized_attempt_with_an_approved_process_environment_credential",
+  "gitStatusExact": [
+    " M backend/package.json",
+    " M backend/src/outdoorResearch/postgresOutdoorResearchRepository.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/attempt3Contract.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/attempt4Contract.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/contract.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/preflight.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/providerControl.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/quality.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/receipt.js",
+    "?? backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/resumeContract.js",
+    "?? backend/scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v4.js",
+    "?? backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4.test.js",
+    "?? backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4Attempt2.test.js",
+    "?? backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4Attempt3.test.js",
+    "?? backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4Attempt4.test.js",
+    "?? backend/test/outdoorAdventureV4Attempt4DatabaseGates.test.js",
+    "?? backend/test/outdoorTrailAccessPerformanceV4Attempt4.test.js",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4.md",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4.summary.json",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_2.md",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_2.summary.json",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_3.md",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_3.summary.json",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_4.md",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_4.summary.json"
+  ],
+  "deployed": false,
+  "released": false,
+  "committed": false,
+  "pushed": false,
+  "staged": false,
+  "enabled": false
+}

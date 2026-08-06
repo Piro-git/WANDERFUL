@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "receiptVersion": "outdoor-adventure-targeted-live-route-quality-proof-v4-attempt-2",
+  "authorizationReference": "USER_AUTHORIZED_V4_RESUME_2026-08-05_15_CALLS",
+  "baselineCommit": "cc4f478580ed883223e7eaa6140e686b2e5f5f6d",
+  "candidateCommit": "cc4f478580ed883223e7eaa6140e686b2e5f5f6d",
+  "attemptNumber": 2,
+  "generatedAt": "2026-08-05T07:41:17.000Z",
+  "status": "blocked",
+  "blockedReasonCode": "authorized_cleanup_candidates_contain_git_metadata",
+  "ledgerNamespace": "outdoor-adventure-v4-resume-2026-08-05-attempt-2",
+  "attemptOne": {
+    "preserved": true,
+    "status": "blocked",
+    "blockedReasonCode": "insufficient_settled_free_storage",
+    "markdownSha256": "fc1e00c7063b794136c2368bc3c950f5677077934c45905c25391973abfc5a14",
+    "summarySha256": "5477240eb9a2569cb0ffbf167f61c1edb87ededa7e8c420e271833e4c7f0063c",
+    "databaseWorkCount": 0,
+    "providerAttempted": 0,
+    "providerUnused": 15,
+    "finalFlagsDisabled": true,
+    "cleanupComplete": true,
+    "routeQualityClassification": "not_run_no_route_execution"
+  },
+  "storageRecovery": {
+    "activeConflictProcessCount": 0,
+    "candidateCount": 6,
+    "deletionEligibleCount": 0,
+    "deletedCandidateCount": 0,
+    "nestedGitDirectoryCount": 12,
+    "openHandleCheckOutcome": "not_run_after_content_safety_gate_failed",
+    "settledStorageSampleCount": 2,
+    "settledFreeGiB": 7.837,
+    "requiredFreeGiB": 10,
+    "preferredFreeGiB": 12,
+    "remainingShortfallGiB": 2.163,
+    "storageGatePassed": false,
+    "candidates": [
+      {
+        "name": "WanderfulReleaseDerivedData",
+        "nestedGitDirectoryCount": 2,
+        "deletionEligible": false,
+        "deleted": false
+      },
+      {
+        "name": "WanderfulDerivedData",
+        "nestedGitDirectoryCount": 2,
+        "deletionEligible": false,
+        "deleted": false
+      },
+      {
+        "name": "TrailMindDerivedData-RoutableAccess-Final",
+        "nestedGitDirectoryCount": 2,
+        "deletionEligible": false,
+        "deleted": false
+      },
+      {
+        "name": "TrailMindDerivedData-RoutableAccess-Release",
+        "nestedGitDirectoryCount": 2,
+        "deletionEligible": false,
+        "deleted": false
+      },
+      {
+        "name": "TrailMindDerivedData-RoutableAccess-Debug",
+        "nestedGitDirectoryCount": 2,
+        "deletionEligible": false,
+        "deleted": false
+      },
+      {
+        "name": "TrailMindDerivedData-RoutableAccess",
+        "nestedGitDirectoryCount": 2,
+        "deletionEligible": false,
+        "deleted": false
+      }
+    ]
+  },
+  "decisions": {
+    "storageRecovery": "blocked",
+    "databasePreflight": "not_run",
+    "physicalAppAttest": "not_run",
+    "providerProof": "not_run",
+    "routeQuality": "not_run",
+    "cleanupAndContainment": "passed"
+  },
+  "cases": [
+    {
+      "caseId": "case-15-partial-provider-failure-survivor",
+      "goldenCaseId": "harz-v1-route-coherence-010",
+      "fixtureDigest": "c2e1f70233c8163392b8dedfa77ea5454cc12d5e42700fd6c5110e04058232af",
+      "goldenCaseDigest": "21529faec10cd3d8e6a38a83d03688b8fe4a4cee899df843b8bcc60a4c091eb6",
+      "providerExecuted": false,
+      "providerAttemptCount": 0,
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "not_run"
+    },
+    {
+      "caseId": "case-04-harz-brocken-must-have-landmark",
+      "goldenCaseId": "harz-v1-peak-focus-005",
+      "fixtureDigest": "177550bc626118d38d808559834f5f10f9e5aaec067e844f56c19e184c197cbe",
+      "goldenCaseDigest": "c472f3b539b38627221aa7fd4784b0397fbf6c288fc0814b6c529cd4969bc1ca",
+      "providerExecuted": false,
+      "providerAttemptCount": 0,
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "not_run"
+    },
+    {
+      "caseId": "case-07-innsbruck-viewpoint-loop",
+      "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004",
+      "fixtureDigest": "3979608b6a17874086d59656faf125e29421c2cd36f65cb48d5655beaab3bdf6",
+      "goldenCaseDigest": "f6ef4fd6144313c82b99b15b1caf2c402f8e5bfc6425e137d5010fc24dc99e5b",
+      "providerExecuted": false,
+      "providerAttemptCount": 0,
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "not_run"
+    },
+    {
+      "caseId": "case-08-innsbruck-easy-conservative-loop",
+      "goldenCaseId": "innsbruck-alps-v1-easy-loop-001",
+      "fixtureDigest": "bc0989ec9040b8a4ab1d854eb4e3a912059300daac026302c372114d05dc543f",
+      "goldenCaseDigest": "f270400dc78fc4421b30b7a829d2f7fe2baadc5d05f0a89245b8abba65bdbdf9",
+      "providerExecuted": false,
+      "providerAttemptCount": 0,
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "not_run"
+    }
+  ],
+  "providerAccounting": {
+    "authorizationReference": "USER_AUTHORIZED_V4_RESUME_2026-08-05_15_CALLS",
+    "hardLimit": 15,
+    "maximumConcurrencyAllowed": 1,
+    "minimumCallStartSpacingMilliseconds": 2000,
+    "attempted": 0,
+    "successful": 0,
+    "failed": 0,
+    "timedOut": 0,
+    "cancelled": 0,
+    "controlledPostSuccessFailures": 0,
+    "unused": 15,
+    "reconciled": true,
+    "maximumConcurrencyObserved": 0,
+    "minimumObservedStartSpacingMilliseconds": null,
+    "retriesAttempted": 0,
+    "probesAfterCircuitOpen": 0,
+    "attempt16Prevented": true,
+    "circuitOpened": false,
+    "circuitStopHonored": true,
+    "invalidRetryAfterObserved": false,
+    "invalidRetryAfterStoppedCase": false
+  },
+  "featureFlags": {
+    "initial": {
+      "exactAdmissionVerified": true,
+      "flags": {
+        "OUTDOOR_EVIDENCE_ENABLED": false,
+        "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ENABLED": false,
+        "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "ROUTE_PROVIDER_ENABLED": false,
+        "INTENT_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": false,
+        "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": false,
+        "INTENT_ALLOW_INSECURE_LOCAL_PARSING": false,
+        "APP_ATTEST_ALLOW_IN_MEMORY": false,
+        "INTENT_ALLOW_DETERMINISTIC_MOCK": false
+      }
+    },
+    "execution": {
+      "exactAdmissionVerified": true,
+      "flags": {
+        "OUTDOOR_EVIDENCE_ENABLED": false,
+        "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ENABLED": false,
+        "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "ROUTE_PROVIDER_ENABLED": false,
+        "INTENT_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": false,
+        "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": false,
+        "INTENT_ALLOW_INSECURE_LOCAL_PARSING": false,
+        "APP_ATTEST_ALLOW_IN_MEMORY": false,
+        "INTENT_ALLOW_DETERMINISTIC_MOCK": false
+      }
+    },
+    "final": {
+      "exactAdmissionVerified": true,
+      "flags": {
+        "OUTDOOR_EVIDENCE_ENABLED": false,
+        "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ENABLED": false,
+        "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+        "ROUTE_PROVIDER_ENABLED": false,
+        "INTENT_PROVIDER_ENABLED": false,
+        "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": false,
+        "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": false,
+        "INTENT_ALLOW_INSECURE_LOCAL_PARSING": false,
+        "APP_ATTEST_ALLOW_IN_MEMORY": false,
+        "INTENT_ALLOW_DETERMINISTIC_MOCK": false
+      }
+    }
+  },
+  "physicalAppAttest": "not_run",
+  "manualExpertReview": {
+    "completed": false,
+    "classification": "not_completed"
+  },
+  "cleanup": {
+    "cleanupComplete": true,
+    "finalFlagsDisabled": true,
+    "databaseResourcesCreated": 0,
+    "providerResourcesCreated": 0,
+    "proofProcessesRemaining": 0,
+    "deletedCandidateCount": 0,
+    "disabledZeroWorkProbe": "not_run_after_storage_safety_gate"
+  },
+  "protectedHistoricalReceipts": [
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.md",
+      "beforeSha256": "04b749fb41c44e77121ff25678a60d68b0d763636c4db054935957f92e03ae1d",
+      "afterSha256": "04b749fb41c44e77121ff25678a60d68b0d763636c4db054935957f92e03ae1d",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.summary.json",
+      "beforeSha256": "6c57f5efc9bbec02ad0f49f7ab70bae43f9f61f4467afc8654f6c827ca7f69f3",
+      "afterSha256": "6c57f5efc9bbec02ad0f49f7ab70bae43f9f61f4467afc8654f6c827ca7f69f3",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.md",
+      "beforeSha256": "0fdbdee5e931bdc307f5203e58b6e653269642da0db8b5f3ea397e8773303c0c",
+      "afterSha256": "0fdbdee5e931bdc307f5203e58b6e653269642da0db8b5f3ea397e8773303c0c",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.summary.json",
+      "beforeSha256": "e7614b1267390879c9037f028b40f9739eb0a61b4925fa58845fa5dd40c84e2f",
+      "afterSha256": "e7614b1267390879c9037f028b40f9739eb0a61b4925fa58845fa5dd40c84e2f",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.md",
+      "beforeSha256": "69c9cd93c7ea6361c625a3b8daf506a39d4e16e7363aa045a06e6516c0b1c94a",
+      "afterSha256": "69c9cd93c7ea6361c625a3b8daf506a39d4e16e7363aa045a06e6516c0b1c94a",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.summary.json",
+      "beforeSha256": "18946e87ea615b53c271179d648eae24b1cb427791cb3145b35fe81dfaf2b5f9",
+      "afterSha256": "18946e87ea615b53c271179d648eae24b1cb427791cb3145b35fe81dfaf2b5f9",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md",
+      "beforeSha256": "597b4d0aa6890cf74a3b63b5dfb10e6d52220cace1d02de315aec122b8b2f522",
+      "afterSha256": "597b4d0aa6890cf74a3b63b5dfb10e6d52220cace1d02de315aec122b8b2f522",
+      "unchanged": true
+    },
+    {
+      "repoRelativePath": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.summary.json",
+      "beforeSha256": "6a247c8aeb21f1079cc625eba651ce32b281ab6b1c49690fbfdc183288c211bf",
+      "afterSha256": "6a247c8aeb21f1079cc625eba651ce32b281ab6b1c49690fbfdc183288c211bf",
+      "unchanged": true
+    }
+  ],
+  "privacy": {
+    "forbiddenFieldCount": 0,
+    "rawProviderMaterialRetained": false,
+    "routeShapeRetained": false,
+    "preciseLocationRetained": false,
+    "appAttestMaterialRetained": false,
+    "unboundedErrorRetained": false
+  },
+  "closedBetaEligible": false,
+  "deployed": false,
+  "released": false,
+  "committed": false,
+  "pushed": false
+}
