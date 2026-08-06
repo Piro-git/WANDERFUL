@@ -11,8 +11,29 @@ import {
 import {
   RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2
 } from "./researchGuidedRouteCandidatePolicyV2.js";
+import {
+  deriveResearchGuidedLoopTopologyKeyV3,
+  shapeResearchGuidedLoopSourceProposalV3
+} from "./researchGuidedRouteProductShapingV3.js";
+import {
+  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+} from "./researchGuidedRouteProductShapingPolicyV3.js";
 
 const POLICY = RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2;
+if (
+  POLICY.loopProductShapingPolicyVersion !==
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3.policyVersion ||
+  POLICY.detour.materialRequiredTargetExcessRatio !==
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+      .distance.materialRequiredTargetExcessRatio ||
+  POLICY.limits.maximumSelectedHighlightsPerProposal !==
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+      .limits.maximumSelectedHighlightsPerProposal ||
+  POLICY.limits.maximumProposals !==
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3.limits.maximumProposals
+) {
+  throw new TypeError("inconsistent research-guided route shaping policy");
+}
 
 export function buildResearchGuidedRouteCandidatePlanV2(
   dossier,
@@ -97,9 +118,13 @@ export function validateResearchGuidedRouteCandidatePlanV2ForResearch(
 export function deriveResearchGuidedRouteProposalIdV2(input) {
   const identity = {
     policyVersion: POLICY.policyVersion,
+    productShapingPolicyVersion: input.routeType === "loop"
+      ? POLICY.loopProductShapingPolicyVersion
+      : null,
     normalizedIntent: identityValue(input.normalizedIntent),
     sourceProposalId: input.sourceProposalId,
     strategy: input.strategy,
+    routeType: input.routeType,
     orderedSelection: input.selectedHighlights.map((item) => ({
       entityId: item.entityId,
       evidenceCoordinate: fixedCoordinate(item.evidenceCoordinate),
@@ -142,8 +167,51 @@ function materializePlan(sourcePlanInput, resolutionInput) {
   const candidatesByEntity = groupAccessCandidates(resolution.candidates);
   const rawProposals = [];
   const shortfallRecords = [];
+  const shapedShortfallsByProposalId = new Map();
 
-  for (const sourceProposal of sourcePlan.proposals) {
+  for (const sourceProposal of [...sourcePlan.proposals].sort((left, right) =>
+    compareText(left.proposalId, right.proposalId)
+  )) {
+    if (sourceProposal.routeType === "loop") {
+      const shaped = shapeResearchGuidedLoopSourceProposalV3({
+        anchor: sourcePlan.anchor.coordinate,
+        targetRange: sourcePlan.normalizedIntent.distanceRangeKm,
+        sourceProposal,
+        accessCandidatesByEntity: candidatesByEntity,
+        materializeHighlight
+      });
+      for (const item of shaped.unavailable) {
+        shortfallRecords.push(shortfall(
+          item.via,
+          item.hard
+            ? "required_access_candidate_unavailable"
+            : "optional_access_candidate_unavailable",
+          sourceProposal.proposalId,
+          ["access_candidate_unavailable"]
+        ));
+      }
+      for (const shape of shaped.shapes) {
+        const proposal = materializedProposal({
+          sourcePlan,
+          sourceProposal,
+          selected: shape.selected,
+          riskState: shape.riskState,
+          riskyEntityIds: shape.riskyEntityIds
+        });
+        rawProposals.push(proposal);
+        shapedShortfallsByProposalId.set(
+          proposal.proposalId,
+          shape.removed.map((removed) => shortfall(
+            removed.candidate,
+            removed.code,
+            sourceProposal.proposalId,
+            ["optional_access_removed"]
+          ))
+        );
+      }
+      continue;
+    }
+
     const prepared = [];
     let requiredMissing = false;
     for (const via of sourceProposal.viaCandidates) {
@@ -179,86 +247,46 @@ function materializePlan(sourcePlanInput, resolutionInput) {
     );
     if (distanceGuarded.selected.length === 0) continue;
 
-    const distanceAnalysis = distanceAnalysisFor(
-      sourcePlan.anchor.coordinate,
-      distanceGuarded.selected,
-      sourcePlan.normalizedIntent.distanceRangeKm
-    );
     const requiredRiskEntityIds = backtracking.requiredRiskEntityIds
       .filter((entityId) =>
         distanceGuarded.selected.some((item) => item.entityId === entityId)
       )
       .sort(compareText);
-    const backtrackingRisk = {
-      state: requiredRiskEntityIds.length > 0
+    rawProposals.push(materializedProposal({
+      sourcePlan,
+      sourceProposal,
+      selected: distanceGuarded.selected,
+      riskState: requiredRiskEntityIds.length > 0
         ? "required_mapped_corridor_risk"
         : "none",
       riskyEntityIds: requiredRiskEntityIds
-    };
-    const knownLimitations = orderedUnique([
-      ...sourceProposal.knownLimitations,
-      ...distanceGuarded.selected.flatMap(
-        (item) => item.trailAccessCandidate.knownLimitations
-      ),
-      "provider_verification_required",
-      ...(distanceAnalysis.state === "material_required_detour"
-        ? ["material_required_detour"]
-        : []),
-      ...(backtrackingRisk.state === "required_mapped_corridor_risk"
-        ? ["required_backtracking_risk"]
-        : [])
-    ]);
-    const requiredVerification = orderedUnique([
-      ...sourceProposal.requiredVerification,
-      ...distanceGuarded.selected.flatMap(
-        (item) => item.trailAccessCandidate.requiredVerification
-      )
-    ]);
-    const evidenceClaimIds = orderedUnique([
-      ...sourceProposal.evidenceClaimIds,
-      ...distanceGuarded.selected.flatMap(
-        (item) =>
-          item.trailAccessCandidate.sourceTrailCategoryEvidenceClaimIds
-      )
-    ]);
-    const base = {
-      sourceProposalId: sourceProposal.proposalId,
-      strategy: sourceProposal.strategy,
-      activity: sourceProposal.activity,
-      routeType: sourceProposal.routeType,
-      selectedHighlights: distanceGuarded.selected,
-      mappedNetworkCandidates: sourceProposal.mappedNetworkCandidates,
-      distanceAnalysis,
-      backtrackingRisk,
-      evidenceClaimIds,
-      requiredVerification,
-      knownLimitations
-    };
-    rawProposals.push({
-      proposalId: deriveResearchGuidedRouteProposalIdV2({
-        normalizedIntent: sourcePlan.normalizedIntent,
-        ...base
-      }),
-      ...base
-    });
+    }));
   }
 
   const proposalsById = new Map();
   for (const proposal of rawProposals) {
-    if (!proposalsById.has(proposal.proposalId)) {
-      proposalsById.set(proposal.proposalId, proposal);
+    const prior = proposalsById.get(proposal.proposalId);
+    if (prior && canonical(prior) !== canonical(proposal)) {
+      invalid();
     }
+    if (!prior) proposalsById.set(proposal.proposalId, proposal);
   }
-  const proposals = [...proposalsById.values()].slice(
-    0,
-    POLICY.limits.maximumProposals
+  const proposals = selectMeaningfullyDistinctProposals(
+    [...proposalsById.values()],
+    sourcePlan.normalizedIntent.distanceRangeKm,
+    Math.min(POLICY.limits.maximumProposals, sourcePlan.proposals.length)
   );
+  for (const proposal of proposals) {
+    shortfallRecords.push(
+      ...(shapedShortfallsByProposalId.get(proposal.proposalId) ?? [])
+    );
+  }
   const accessShortfalls = aggregateShortfalls(shortfallRecords);
   const hasRequiredShortfall = accessShortfalls.some((item) =>
     item.code === "required_access_candidate_unavailable"
   );
   const hasRequiredRisk = proposals.some((item) =>
-    item.backtrackingRisk.state === "required_mapped_corridor_risk" ||
+    item.backtrackingRisk.state !== "none" ||
     item.distanceAnalysis.state === "material_required_detour"
   );
   let state;
@@ -293,6 +321,144 @@ function materializePlan(sourcePlanInput, resolutionInput) {
   };
   enforceBytes(result);
   return deepFreeze(result);
+}
+
+function materializedProposal({
+  sourcePlan,
+  sourceProposal,
+  selected,
+  riskState,
+  riskyEntityIds
+}) {
+  const distanceAnalysis = distanceAnalysisFor(
+    sourcePlan.anchor.coordinate,
+    selected,
+    sourcePlan.normalizedIntent.distanceRangeKm
+  );
+  const backtrackingRisk = {
+    state: riskState,
+    riskyEntityIds: [...riskyEntityIds].sort(compareText)
+  };
+  const knownLimitations = orderedUnique([
+    ...sourceProposal.knownLimitations,
+    ...selected.flatMap(
+      (item) => item.trailAccessCandidate.knownLimitations
+    ),
+    "provider_verification_required",
+    ...(distanceAnalysis.state === "material_required_detour"
+      ? ["material_required_detour"]
+      : []),
+    ...(backtrackingRisk.state === "required_mapped_corridor_risk"
+      ? ["required_backtracking_risk"]
+      : []),
+    ...(backtrackingRisk.state === "pre_routing_backtracking_risk"
+      ? ["pre_routing_backtracking_risk"]
+      : [])
+  ]);
+  const requiredVerification = orderedUnique([
+    ...sourceProposal.requiredVerification,
+    ...selected.flatMap(
+      (item) => item.trailAccessCandidate.requiredVerification
+    )
+  ]);
+  const evidenceClaimIds = orderedUnique([
+    ...sourceProposal.evidenceClaimIds,
+    ...selected.flatMap(
+      (item) =>
+        item.trailAccessCandidate.sourceTrailCategoryEvidenceClaimIds
+    )
+  ]);
+  const base = {
+    sourceProposalId: sourceProposal.proposalId,
+    strategy: sourceProposal.strategy,
+    activity: sourceProposal.activity,
+    routeType: sourceProposal.routeType,
+    selectedHighlights: selected,
+    mappedNetworkCandidates: sourceProposal.mappedNetworkCandidates,
+    distanceAnalysis,
+    backtrackingRisk,
+    evidenceClaimIds,
+    requiredVerification,
+    knownLimitations
+  };
+  return {
+    proposalId: deriveResearchGuidedRouteProposalIdV2({
+      normalizedIntent: sourcePlan.normalizedIntent,
+      ...base
+    }),
+    ...base
+  };
+}
+
+function selectMeaningfullyDistinctProposals(
+  proposals,
+  targetRange,
+  maximumProposals
+) {
+  const ranked = [...proposals].sort((left, right) =>
+    compareMaterializedProposals(left, right, targetRange)
+  );
+  const preferredBySource = new Map();
+  for (const proposal of ranked) {
+    if (!preferredBySource.has(proposal.sourceProposalId)) {
+      preferredBySource.set(proposal.sourceProposalId, proposal);
+    }
+  }
+  const selected = new Map();
+  const selectedProposalIds = new Set();
+  const add = (proposal) => {
+    if (selected.size >= maximumProposals) return;
+    const key = deriveResearchGuidedLoopTopologyKeyV3(
+      proposal.selectedHighlights
+    );
+    if (selected.has(key)) return;
+    selected.set(key, proposal);
+    selectedProposalIds.add(proposal.proposalId);
+  };
+  for (const proposal of preferredBySource.values()) add(proposal);
+  for (const proposal of ranked) {
+    if (!selectedProposalIds.has(proposal.proposalId)) add(proposal);
+  }
+  return [...selected.values()].sort((left, right) =>
+    compareMaterializedProposals(left, right, targetRange)
+  );
+}
+
+function compareMaterializedProposals(left, right, targetRange) {
+  const distanceStateRank = {
+    not_ruled_out: 0,
+    target_unspecified: 0,
+    lower_bound_exceeds_target: 1,
+    material_required_detour: 2
+  };
+  const riskStateRank = {
+    none: 0,
+    pre_routing_backtracking_risk: 1,
+    required_mapped_corridor_risk: 2
+  };
+  return distanceStateRank[left.distanceAnalysis.state] -
+      distanceStateRank[right.distanceAnalysis.state] ||
+    proposalTargetPenalty(left, targetRange) -
+      proposalTargetPenalty(right, targetRange) ||
+    riskStateRank[left.backtrackingRisk.state] -
+      riskStateRank[right.backtrackingRisk.state] ||
+    right.selectedHighlights.length - left.selectedHighlights.length ||
+    left.distanceAnalysis.lowerBoundKm - right.distanceAnalysis.lowerBoundKm ||
+    compareText(left.proposalId, right.proposalId);
+}
+
+function proposalTargetPenalty(proposal, targetRange) {
+  if (targetRange === null) return 0;
+  const lowerBound = proposal.distanceAnalysis.lowerBoundKm;
+  if (lowerBound > targetRange.max) {
+    return 1 + (lowerBound - targetRange.max) /
+      Math.max(targetRange.max, 0.001);
+  }
+  const center = (targetRange.min + targetRange.max) / 2;
+  const heuristicDistance = lowerBound *
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+      .distance.heuristicRouteMultiplier;
+  return Math.abs(heuristicDistance - center) / Math.max(center, 0.001);
 }
 
 function assertResolutionMatchesSourcePlan(sourcePlan, resolution) {
@@ -461,17 +627,21 @@ function applyDistanceGuard(
 }
 
 function distanceAnalysisFor(anchor, selected, targetRange) {
-  const value = roundDistance(lowerBoundKm(anchor, selected));
+  const rawLowerBoundKm = lowerBoundKm(anchor, selected);
+  const value = roundDistance(rawLowerBoundKm);
+  const requiredLowerBoundKm = lowerBoundKm(
+    anchor,
+    selected.filter((item) => isHardRole(item.role))
+  );
   let state;
   if (targetRange === null) {
     state = "target_unspecified";
   } else if (
-    value > targetRange.max *
-      (1 + POLICY.detour.materialRequiredTargetExcessRatio) &&
-    selected.every((item) => isHardRole(item.role))
+    requiredLowerBoundKm > targetRange.max *
+      (1 + POLICY.detour.materialRequiredTargetExcessRatio)
   ) {
     state = "material_required_detour";
-  } else if (value > targetRange.max) {
+  } else if (rawLowerBoundKm > targetRange.max) {
     state = "lower_bound_exceeds_target";
   } else {
     state = "not_ruled_out";

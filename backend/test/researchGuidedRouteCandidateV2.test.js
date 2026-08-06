@@ -1,8 +1,18 @@
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, it } from "node:test";
+import {
+  planAndRouteOutdoorAdventureV2
+} from "../src/outdoorAdventure/outdoorAdventureOrchestratorV2.js";
 import { routeError } from "../src/routing/routeErrors.js";
 import {
+  researchGuidedRouteProductShapingInternalsForTesting
+} from "../src/routeResearch/researchGuidedRouteProductShapingV3.js";
+import {
+  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+} from "../src/routeResearch/researchGuidedRouteProductShapingPolicyV3.js";
+import {
+  RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2,
   RESEARCH_GUIDED_ROUTED_ALTERNATIVES_POLICY_V2,
   ResearchGuidedRoutingAdapterError,
   buildResearchGuidedRouteCandidatePlanV1,
@@ -89,7 +99,7 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
     );
   });
 
-  it("removes optional target-distance detours without displacing must-haves", () => {
+  it("preserves must-haves while target shaping remains a lower-bound heuristic", () => {
     const dossier = multiHighlightDossier({
       distanceRangeKm: { min: 2, max: 2 },
       mustHaveExperiences: [{ experience: "viewpoint", minimumCount: 1 }],
@@ -106,9 +116,8 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
     assert(proposal.selectedHighlights.some((item) =>
       item.role === "must_have" && item.highlightCategory === "viewpoint"
     ));
-    assert(plan.accessShortfalls.some((item) =>
-      item.code === "optional_removed_for_target_distance"
-    ));
+    assert.equal(proposal.distanceAnalysis.kind, "straight_line_lower_bound");
+    assert.equal(proposal.distanceAnalysis.limitationCode, "requires_real_routing");
   });
 
   it("removes duplicate optional mapped-corridor points and preserves hard ones", () => {
@@ -161,6 +170,154 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
     );
   });
 
+  it("chooses a farther validated access candidate only for material target improvement", () => {
+    const calibrationDossier = singleMustHaveDossier();
+    const calibrationResolution = accessResolution(
+      calibrationDossier.candidateHighlights
+    );
+    const calibratedFarther = fartherAccessCandidate(
+      calibrationResolution.candidates[0]
+    );
+    const fartherOnly = buildResearchGuidedRouteCandidatePlanV2(
+      calibrationDossier,
+      { ...calibrationResolution, candidates: [calibratedFarther] }
+    );
+    const targetKm = Number((
+      fartherOnly.proposals[0].distanceAnalysis.lowerBoundKm *
+      RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+        .distance.heuristicRouteMultiplier
+    ).toFixed(3));
+    const targetedDossier = singleMustHaveDossier({
+      distanceRangeKm: { min: targetKm, max: targetKm }
+    });
+    const targetedResolution = accessResolution(
+      targetedDossier.candidateHighlights
+    );
+    targetedResolution.candidates.push(fartherAccessCandidate(
+      targetedResolution.candidates[0]
+    ));
+    const targeted = buildResearchGuidedRouteCandidatePlanV2(
+      targetedDossier,
+      targetedResolution
+    );
+    const selectedCandidate = targeted.proposals[0].selectedHighlights[0]
+      .trailAccessCandidate;
+    assert.notEqual(
+      selectedCandidate.candidateId,
+      targetedResolution.candidates[0].candidateId
+    );
+
+    const untargetedDossier = singleMustHaveDossier();
+    const untargetedResolution = accessResolution(
+      untargetedDossier.candidateHighlights
+    );
+    untargetedResolution.candidates.push(fartherAccessCandidate(
+      untargetedResolution.candidates[0]
+    ));
+    const untargeted = buildResearchGuidedRouteCandidatePlanV2(
+      untargetedDossier,
+      untargetedResolution
+    );
+    assert.equal(
+      untargeted.proposals[0].selectedHighlights[0]
+        .trailAccessCandidate.candidateId,
+      untargetedResolution.candidates[0].candidateId
+    );
+
+    const reordered = buildResearchGuidedRouteCandidatePlanV2(
+      targetedDossier,
+      {
+        ...targetedResolution,
+        candidates: [...targetedResolution.candidates].reverse()
+      }
+    );
+    assert.equal(
+      targeted.proposals[0].proposalId,
+      reordered.proposals[0].proposalId
+    );
+  });
+
+  it("keeps exact lower-bound targets inclusive and exposes unavoidable hard detours", () => {
+    const dossier = singleMustHaveDossier();
+    const resolution = accessResolution(dossier.candidateHighlights);
+    const untargeted = buildResearchGuidedRouteCandidatePlanV2(
+      dossier,
+      resolution
+    );
+    const boundaryKm = researchGuidedRouteProductShapingInternalsForTesting
+      .lowerBoundKm(
+        untargeted.anchor.coordinate,
+        untargeted.proposals[0].selectedHighlights
+      );
+    assert(
+      untargeted.proposals[0].distanceAnalysis.lowerBoundKm > boundaryKm,
+      "fixture must exercise display rounding above the exact lower bound"
+    );
+    const boundaryDossier = singleMustHaveDossier({
+      distanceRangeKm: { min: boundaryKm, max: boundaryKm }
+    });
+    const boundary = buildResearchGuidedRouteCandidatePlanV2(
+      boundaryDossier,
+      accessResolution(boundaryDossier.candidateHighlights)
+    );
+    assert.equal(boundary.proposals[0].distanceAnalysis.state, "not_ruled_out");
+
+    const impossibleDossier = singleMustHaveDossier({
+      distanceRangeKm: { min: 0.1, max: 0.1 }
+    });
+    const impossible = buildResearchGuidedRouteCandidatePlanV2(
+      impossibleDossier,
+      accessResolution(impossibleDossier.candidateHighlights)
+    );
+    assert.equal(
+      impossible.proposals[0].distanceAnalysis.state,
+      "material_required_detour"
+    );
+    assert(impossible.proposals[0].knownLimitations.includes(
+      "material_required_detour"
+    ));
+
+    const mixedDossier = multiHighlightDossier({
+      distanceRangeKm: { min: 0.1, max: 0.1 },
+      mustHaveExperiences: [{ experience: "viewpoint", minimumCount: 1 }],
+      preferredExperiences: ["waterfall"]
+    });
+    const mixed = buildResearchGuidedRouteCandidatePlanV2(
+      mixedDossier,
+      accessResolution(mixedDossier.candidateHighlights, {
+        distinctTrailSegments: true
+      })
+    );
+    assert(mixed.proposals.length > 0);
+    assert(mixed.proposals.every((proposal) =>
+      proposal.distanceAnalysis.state === "material_required_detour" &&
+      proposal.knownLimitations.includes("material_required_detour")
+    ));
+  });
+
+  it("preserves requested difficulty as an unresolved constraint and honors proposal caps", () => {
+    const dossier = multiHighlightDossier({
+      distanceRangeKm: null,
+      maximumTechnicalDifficulty: "hiking",
+      mustHaveExperiences: [{ experience: "viewpoint", minimumCount: 1 }],
+      preferredExperiences: ["waterfall", "peak"]
+    });
+    const plan = buildResearchGuidedRouteCandidatePlanV2(
+      dossier,
+      accessResolution(dossier.candidateHighlights, {
+        distinctTrailSegments: true
+      }),
+      { maximumProposals: 1 }
+    );
+    assert.equal(plan.normalizedIntent.maximumTechnicalDifficulty, "hiking");
+    assert(plan.proposals.length <= 1);
+    assert.equal(
+      serializeResearchGuidedRouteCandidatePlanV2(plan)
+        .includes("verifiedDifficulty"),
+      false
+    );
+  });
+
   it("keeps V1 and V2 strict and version-declared", () => {
     const dossier = singleMustHaveDossier();
     const plan = buildResearchGuidedRouteCandidatePlanV2(
@@ -180,6 +337,80 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
       serializeResearchGuidedRouteCandidatePlanV2(plan),
       serializeResearchGuidedRouteCandidatePlanV2(reverseKeys(plan))
     );
+    assert.equal(
+      RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2
+        .loopProductShapingPolicyVersion,
+      RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3.policyVersion
+    );
+    assert.equal(
+      plan.proposals[0].proposalId,
+      buildResearchGuidedRouteCandidatePlanV2(
+        dossier,
+        accessResolution(dossier.candidateHighlights)
+      ).proposals[0].proposalId
+    );
+  });
+
+  it("uses V3 access coordinates and ordering through the shipping V2 orchestration path", async () => {
+    const dossier = multiHighlightDossier({
+      distanceRangeKm: null,
+      mustHaveExperiences: [{ experience: "viewpoint", minimumCount: 1 }],
+      preferredExperiences: ["waterfall", "peak"]
+    });
+    const resolution = accessResolution(dossier.candidateHighlights, {
+      distinctTrailSegments: true
+    });
+    const expectedPlan = buildResearchGuidedRouteCandidatePlanV2(
+      dossier,
+      resolution,
+      { maximumProposals: 3 }
+    );
+    const providerRequests = [];
+    const result = await planAndRouteOutdoorAdventureV2(
+      { schemaVersion: 2, intent: dossier.normalizedIntent },
+      {
+        researchAdventure: async (normalizedIntent) => ({
+          state: "ready",
+          normalizedIntent,
+          planningGaps: [],
+          dossier,
+          trailAccessResolution: resolution
+        }),
+        provider: {
+          async route(request) {
+            providerRequests.push(structuredClone(request));
+            return providerResponse(request);
+          }
+        }
+      },
+      { maximumProposals: 3 }
+    );
+
+    assert(expectedPlan.proposals.some((proposal) =>
+      proposal.selectedHighlights.length >= 2
+    ));
+    assert.equal(providerRequests.length, expectedPlan.proposals.length);
+    for (let index = 0; index < expectedPlan.proposals.length; index += 1) {
+      const expected = expectedPlan.proposals[index];
+      assert.deepEqual(providerRequests[index].points, [
+        expectedPlan.anchor.coordinate,
+        ...expected.selectedHighlights.map((item) => item.routingCoordinate),
+        expectedPlan.anchor.coordinate
+      ]);
+      assert.deepEqual(
+        result.routedAlternatives.attempts[index]
+          .provenance.selectedHighlights.map((item) => ({
+            entityId: item.entityId,
+            accessCandidateId: item.trailAccessCandidate.candidateId,
+            routingCoordinate: item.routingCoordinate
+          })),
+        expected.selectedHighlights.map((item) => ({
+          entityId: item.entityId,
+          accessCandidateId: item.trailAccessCandidate.candidateId,
+          routingCoordinate: item.routingCoordinate
+        }))
+      );
+    }
   });
 
   it("rejects self-consistent provenance tampering against the research snapshot", () => {
@@ -422,6 +653,10 @@ describe("research-guided routing adapter v2", () => {
   it("keeps an independent eligible survivor after a partial provider failure", async () => {
     const plan = twoProposalV2Plan();
     assert.equal(plan.proposals.length, 2);
+    assert.equal(
+      new Set(plan.proposals.map((item) => item.sourceProposalId)).size,
+      2
+    );
     let calls = 0;
     const result = await routeResearchGuidedCandidatesV2(plan, {
       provider: { async route(value) {
@@ -440,6 +675,28 @@ describe("research-guided routing adapter v2", () => {
       result.attempts[1].routeResults[0].verificationState,
       "eligible"
     );
+  });
+
+  it("retains a completed eligible route when a later provider attempt fails", async () => {
+    const plan = twoProposalV2Plan();
+    let calls = 0;
+    const result = await routeResearchGuidedCandidatesV2(plan, {
+      provider: { async route(value) {
+        calls += 1;
+        if (calls === 1) return providerResponse(value);
+        throw routeError("routing_unavailable");
+      } }
+    }, { maximumConcurrency: 1 });
+
+    assert.equal(result.state, "partial");
+    assert.deepEqual(result.attempts.map((item) => item.state), [
+      "routed", "failed"
+    ]);
+    assert.equal(
+      result.attempts[0].routeResults[0].verificationState,
+      "eligible"
+    );
+    assert.equal(result.attempts[1].failureCode, "routing_unavailable");
   });
 
   it("does not let an optional access failure poison reached must-haves", async () => {
@@ -583,7 +840,7 @@ describe("research-guided routing adapter v2", () => {
   });
 });
 
-function singleMustHaveDossier() {
+function singleMustHaveDossier(intentOverrides = {}) {
   return adventureResearchDossier({
     normalizedIntent: completeAdventureResearchIntent({
       distanceRangeKm: null,
@@ -594,7 +851,8 @@ function singleMustHaveDossier() {
       preferredExperiences: [],
       avoidedExperiences: [],
       requiredFacilities: [],
-      dateOrSeason: null
+      dateOrSeason: null,
+      ...intentOverrides
     }),
     regionCoverage: {
       state: "full",
@@ -604,6 +862,23 @@ function singleMustHaveDossier() {
     evidenceGaps: [],
     freshnessState: "current"
   });
+}
+
+function fartherAccessCandidate(nearest) {
+  const candidate = structuredClone(nearest);
+  candidate.routingCoordinate = {
+    latitude: candidate.evidenceCoordinate.latitude + 0.00066,
+    longitude: candidate.evidenceCoordinate.longitude
+  };
+  candidate.poiToAccessPointDistanceMeters = distanceMeters(
+    candidate.evidenceCoordinate,
+    candidate.routingCoordinate
+  );
+  candidate.sourceTrailSegmentEntityId =
+    "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd";
+  candidate.sourceTrailRecord.osmId = "99";
+  candidate.candidateId = deriveResearchTrailAccessCandidateIdV1(candidate);
+  return candidate;
 }
 
 function multiHighlightDossier(intentOverrides) {

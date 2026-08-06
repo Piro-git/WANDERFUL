@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "classification": "synthetic_topology_only",
+  "anchor": { "latitude": 0, "longitude": 0 },
+  "topologies": {
+    "triangle": [
+      { "latitude": 0.02, "longitude": 0 },
+      { "latitude": -0.01, "longitude": 0.018 },
+      { "latitude": -0.01, "longitude": -0.018 }
+    ],
+    "radial": [
+      { "latitude": 0, "longitude": 0.01 },
+      { "latitude": 0, "longitude": 0.02 },
+      { "latitude": 0, "longitude": 0.03 }
+    ],
+    "spread": [
+      { "latitude": 0.018, "longitude": 0.002 },
+      { "latitude": -0.012, "longitude": 0.016 },
+      { "latitude": -0.014, "longitude": -0.014 },
+      { "latitude": 0.004, "longitude": -0.019 },
+      { "latitude": 0.012, "longitude": 0.014 }
+    ]
+  }
+}

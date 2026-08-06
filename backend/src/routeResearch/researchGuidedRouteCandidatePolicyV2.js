@@ -1,6 +1,8 @@
 const policy = {
   schemaVersion: 2,
   policyVersion: "research-guided-route-candidates-v2",
+  loopProductShapingPolicyVersion:
+    "research-guided-route-product-shaping-v3",
   sourceCandidatePlanPolicyVersion: "research-guided-route-candidates-v1",
   trailAccessPolicyVersion: "research-trail-access-candidates-v1",
   limits: {
@@ -17,6 +19,7 @@ const policy = {
     "required_access_candidate_unavailable",
     "optional_access_candidate_unavailable",
     "optional_removed_for_target_distance",
+    "optional_removed_for_loop_shape",
     "optional_near_duplicate_access_candidate",
     "optional_same_mapped_corridor_risk"
   ],
@@ -25,6 +28,7 @@ const policy = {
     "optional_access_removed",
     "material_required_detour",
     "required_backtracking_risk",
+    "pre_routing_backtracking_risk",
     "provider_verification_required"
   ],
   distanceAnalysisStates: [
@@ -33,7 +37,11 @@ const policy = {
     "lower_bound_exceeds_target",
     "material_required_detour"
   ],
-  backtrackingRiskStates: ["none", "required_mapped_corridor_risk"],
+  backtrackingRiskStates: [
+    "none",
+    "pre_routing_backtracking_risk",
+    "required_mapped_corridor_risk"
+  ],
   detour: {
     materialRequiredTargetExcessRatio: 0.15
   },
