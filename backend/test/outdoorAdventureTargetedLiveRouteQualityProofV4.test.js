@@ -242,8 +242,9 @@ describe("bounded V4 route-quality proof contract", () => {
       sleep: async (milliseconds) => { now += milliseconds; }
     });
     const caseId = V4_CASE_BINDINGS[0].caseId;
-    await scheduler.beforeCall(caseId);
-    scheduler.observe({
+    const admission = await scheduler.beforeCall(caseId);
+    scheduler.commitAdmission(admission);
+    scheduler.observe(admission, {
       caseId,
       outcome: "failed",
       failureCode: "routing_rate_limited",
@@ -270,8 +271,9 @@ describe("bounded V4 route-quality proof contract", () => {
     });
     const caseId = V4_CASE_BINDINGS[0].caseId;
     for (let index = 0; index < 2; index += 1) {
-      await scheduler.beforeCall(caseId);
-      scheduler.observe({
+      const admission = await scheduler.beforeCall(caseId);
+      scheduler.commitAdmission(admission);
+      scheduler.observe(admission, {
         caseId,
         outcome: "failed",
         failureCode: "routing_rate_limited",
@@ -534,8 +536,9 @@ describe("bounded V4 provider ledger", () => {
       sleep: async (milliseconds) => { now += milliseconds; }
     });
     const caseId = V4_CASE_BINDINGS[0].caseId;
-    await scheduler.beforeCall(caseId);
-    scheduler.observe({
+    const firstAdmission = await scheduler.beforeCall(caseId);
+    scheduler.commitAdmission(firstAdmission);
+    scheduler.observe(firstAdmission, {
       caseId,
       outcome: "success",
       failureCode: null,
@@ -543,8 +546,9 @@ describe("bounded V4 provider ledger", () => {
       retryAfterHeader: null
     });
     now += 500;
-    await scheduler.beforeCall(caseId);
-    scheduler.observe({
+    const secondAdmission = await scheduler.beforeCall(caseId);
+    scheduler.commitAdmission(secondAdmission);
+    scheduler.observe(secondAdmission, {
       caseId,
       outcome: "success",
       failureCode: null,

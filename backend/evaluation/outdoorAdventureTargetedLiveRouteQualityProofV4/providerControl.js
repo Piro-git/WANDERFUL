@@ -199,6 +199,10 @@ export class V4ProviderLedger {
 }
 
 export class V4ProviderScheduler {
+  #admissions;
+  #pendingAdmission;
+  #activeAdmission;
+
   constructor({
     nowMilliseconds = Date.now,
     sleep = wait
@@ -221,6 +225,9 @@ export class V4ProviderScheduler {
     this.invalidRetryAfterStoppedCase = false;
     this.consecutiveImmediateFailureCode = null;
     this.consecutiveImmediateFailureCount = 0;
+    this.#admissions = new WeakMap();
+    this.#pendingAdmission = null;
+    this.#activeAdmission = null;
   }
 
   async beforeCall(caseId, signal) {
@@ -233,21 +240,51 @@ export class V4ProviderScheduler {
     if (this.stoppedCaseIds.has(caseId)) {
       throw new V4ProofContractError("provider_case_stopped");
     }
-    if (this.active >= V4_MAXIMUM_CONCURRENCY) {
+    if (this.active >= V4_MAXIMUM_CONCURRENCY ||
+        this.#pendingAdmission !== null || this.#activeAdmission !== null) {
       throw new V4ProofContractError("provider_concurrency_exceeded");
     }
-    const delay = Math.max(0, this.nextEligibleAt - this.nowMilliseconds());
-    if (delay > 0) await this.sleep(delay);
-    if (signal?.aborted) throw new V4ProofContractError("cancelled");
-    if (this.circuitOpened || this.stoppedCaseIds.has(caseId)) {
-      throw new V4ProofContractError("provider_batch_stopped");
+    const admission = Object.freeze({});
+    this.#admissions.set(admission, { caseId, state: "pending" });
+    this.#pendingAdmission = admission;
+    try {
+      const delay = Math.max(0, this.nextEligibleAt - this.nowMilliseconds());
+      if (delay > 0) await this.sleep(delay);
+      if (signal?.aborted) throw new V4ProofContractError("cancelled");
+      if (this.circuitOpened || this.stoppedCaseIds.has(caseId)) {
+        throw new V4ProofContractError("provider_batch_stopped");
+      }
+      const readyAt = this.nowMilliseconds();
+      if (this.lastCallStartMilliseconds !== null &&
+          readyAt - this.lastCallStartMilliseconds <
+            V4_MINIMUM_CALL_START_SPACING_MILLISECONDS) {
+        throw new V4ProofContractError("provider_spacing_violation");
+      }
+      return admission;
+    } catch (error) {
+      const record = this.#admissions.get(admission);
+      record.state = "rejected";
+      this.#pendingAdmission = null;
+      throw error;
+    }
+  }
+
+  commitAdmission(admission) {
+    const record = this.#admissions.get(admission);
+    if (!record || record.state !== "pending" ||
+        this.#pendingAdmission !== admission ||
+        this.#activeAdmission !== null || this.active !== 0) {
+      invalidScheduler();
     }
     const startedAt = this.nowMilliseconds();
     if (this.lastCallStartMilliseconds !== null &&
         startedAt - this.lastCallStartMilliseconds <
           V4_MINIMUM_CALL_START_SPACING_MILLISECONDS) {
-      throw new V4ProofContractError("provider_spacing_violation");
+      invalidScheduler();
     }
+    record.state = "active";
+    this.#pendingAdmission = null;
+    this.#activeAdmission = admission;
     this.active += 1;
     this.maximumConcurrencyObserved = Math.max(
       this.maximumConcurrencyObserved, this.active
@@ -259,17 +296,32 @@ export class V4ProviderScheduler {
     return startedAt;
   }
 
-  observe({
+  rollbackAdmission(admission) {
+    const record = this.#admissions.get(admission);
+    if (!record || record.state !== "pending" ||
+        this.#pendingAdmission !== admission) {
+      invalidScheduler();
+    }
+    record.state = "rolled_back";
+    this.#pendingAdmission = null;
+  }
+
+  observe(admission, {
     caseId,
     outcome,
     failureCode,
     durationMilliseconds,
     retryAfterHeader
   }) {
-    if (this.active !== 1 || !SETTLED_OUTCOMES.has(outcome) ||
+    const record = this.#admissions.get(admission);
+    if (!record || record.state !== "active" ||
+        record.caseId !== caseId || this.#activeAdmission !== admission ||
+        this.active !== 1 || !SETTLED_OUTCOMES.has(outcome) ||
         !Number.isFinite(durationMilliseconds) || durationMilliseconds < 0) {
       throw new V4ProofContractError("invalid_provider_scheduler");
     }
+    record.state = "observed";
+    this.#activeAdmission = null;
     this.active -= 1;
     if (outcome === "success") {
       this.consecutiveImmediateFailureCode = null;
@@ -334,6 +386,9 @@ export function createV4MeteredGraphHopperProvider({
   if (!CASE_IDS.includes(caseId) || typeof controlledFailureAfterFirstSuccess !==
       "boolean" || !env || typeof ledger?.reserve !== "function" ||
       typeof scheduler?.beforeCall !== "function" ||
+      typeof scheduler?.commitAdmission !== "function" ||
+      typeof scheduler?.rollbackAdmission !== "function" ||
+      typeof scheduler?.observe !== "function" ||
       typeof fetchImpl !== "function") {
     throw new V4ProofContractError("invalid_provider_dependencies");
   }
@@ -341,10 +396,20 @@ export function createV4MeteredGraphHopperProvider({
   let controlledFailureInjected = false;
   return Object.freeze({
     async route(request, context = {}) {
-      proposalOrdinal += 1;
-      const ordinal = proposalOrdinal;
-      await scheduler.beforeCall(caseId, context.signal);
-      const sequence = await ledger.reserve({ caseId, proposalOrdinal: ordinal });
+      const ordinal = proposalOrdinal + 1;
+      const admission = await scheduler.beforeCall(caseId, context.signal);
+      let sequence;
+      try {
+        sequence = await ledger.reserve({
+          caseId,
+          proposalOrdinal: ordinal
+        });
+      } catch (error) {
+        scheduler.rollbackAdmission(admission);
+        throw error;
+      }
+      scheduler.commitAdmission(admission);
+      proposalOrdinal = ordinal;
       const startedAt = performance.now();
       let retryAfterHeader = null;
       const provider = createGraphHopperProvider({
@@ -362,7 +427,7 @@ export function createV4MeteredGraphHopperProvider({
         await ledger.settle(sequence, {
           outcome: "success", durationMilliseconds, failureCode: null
         });
-        scheduler.observe({
+        scheduler.observe(admission, {
           caseId, outcome: "success", failureCode: null,
           durationMilliseconds, retryAfterHeader
         });
@@ -385,7 +450,7 @@ export function createV4MeteredGraphHopperProvider({
           await ledger.settle(sequence, {
             outcome, durationMilliseconds, failureCode
           });
-          scheduler.observe({
+          scheduler.observe(admission, {
             caseId, outcome, failureCode,
             durationMilliseconds, retryAfterHeader
           });
@@ -527,6 +592,10 @@ function coarseTimeBucket(milliseconds) {
 
 function invalidLedger() {
   throw new V4ProofContractError("invalid_provider_ledger");
+}
+
+function invalidScheduler() {
+  throw new V4ProofContractError("invalid_provider_scheduler");
 }
 
 function wait(milliseconds) {
