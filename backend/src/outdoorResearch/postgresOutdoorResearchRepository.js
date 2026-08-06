@@ -444,8 +444,14 @@ SELECT projection.entity_id,
  LIMIT $4`;
 
 const TRAIL_ACCESS_CANDIDATE_QUERY = `
-WITH requested AS (
+WITH requested AS MATERIALIZED (
   SELECT unnest($3::uuid[]) AS entity_id
+), requested_highlights AS MATERIALIZED (
+  SELECT highlight.*
+    FROM requested
+    JOIN outdoor_research_projection_entities highlight
+      ON highlight.projection_run_id = $1
+     AND highlight.entity_id = requested.entity_id
 ), snapshot AS MATERIALIZED (
   SELECT run.projection_run_id,
          run.region_id,
@@ -474,10 +480,7 @@ WITH requested AS (
          ST_PointOnSurface(highlight.projected_geometry) AS evidence_point,
          snapshot.*,
          name_assertion.value_text AS display_name
-    FROM requested
-    JOIN outdoor_research_projection_entities highlight
-      ON highlight.projection_run_id = $1
-     AND highlight.entity_id = requested.entity_id
+    FROM requested_highlights highlight
     JOIN outdoor_research_entities highlight_entity
       ON highlight_entity.entity_id = highlight.entity_id
      AND highlight_entity.lifecycle_state = 'active'
