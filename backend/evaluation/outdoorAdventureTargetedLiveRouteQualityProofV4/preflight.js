@@ -10,6 +10,11 @@ import {
 } from "./contract.js";
 
 const execFileAsync = promisify(execFile);
+const V4_EXECUTION_TRUE_FLAGS = new Set([
+  "OUTDOOR_RESEARCH_PLANNING_ENABLED",
+  "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+  "ROUTE_PROVIDER_ENABLED"
+]);
 
 export const V4_REQUIRED_SETTLED_FREE_GIB = 10;
 export const V4_STORAGE_SAMPLE_COUNT = 2;
@@ -39,6 +44,37 @@ export function disabledV4FlagSnapshot(env = process.env) {
     exactAdmissionVerified: true,
     flags: Object.freeze(flags)
   });
+}
+
+export function enableAndCaptureV4ExecutionFlags(env = process.env) {
+  disabledV4FlagSnapshot(env);
+  for (const name of V4_FLAG_NAMES) {
+    env[name] = V4_EXECUTION_TRUE_FLAGS.has(name) ? "true" : "false";
+  }
+  return captureV4ExecutionFlags(env);
+}
+
+export function captureV4ExecutionFlags(env = process.env) {
+  const flags = {};
+  for (const name of V4_FLAG_NAMES) {
+    const expected = V4_EXECUTION_TRUE_FLAGS.has(name) ? "true" : "false";
+    if (env[name] !== expected) {
+      throw new V4ProofContractError("v4_flag_not_exact_execution_state");
+    }
+    flags[name] = expected === "true";
+  }
+  return Object.freeze({
+    exactAdmissionVerified: true,
+    flags: Object.freeze(flags)
+  });
+}
+
+export function disableV4ProofProcessEnvironment(env = process.env) {
+  for (const name of V4_FLAG_NAMES) env[name] = "false";
+  delete env.GRAPHHOPPER_API_KEY;
+  delete env.GRAPHHOPPER_BASE_URL;
+  delete env.ROUTE_REQUEST_TIMEOUT_MS;
+  return disabledV4FlagSnapshot(env);
 }
 
 export async function sampleSettledFreeStorageV4({

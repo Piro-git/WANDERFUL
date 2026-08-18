@@ -35,7 +35,10 @@ import {
   notRunV4CaseRecord
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/quality.js";
 import {
+  captureV4ExecutionFlags,
+  disableV4ProofProcessEnvironment,
   disabledV4FlagSnapshot,
+  enableAndCaptureV4ExecutionFlags,
   runDisabledZeroWorkEndpointProbeV4,
   sampleSettledFreeStorageV4,
   scanConflictingProcessesV4
@@ -378,6 +381,29 @@ describe("bounded V4 route-quality proof contract", () => {
       () => disabledV4FlagSnapshot({ ROUTE_PROVIDER_ENABLED: "true" }),
       errorCode("v4_flag_not_exact_false")
     );
+  });
+
+  it("captures only the exact bounded execution flag transition", () => {
+    const env = Object.fromEntries(V4_FLAG_NAMES.map((name) => [
+      name, "false"
+    ]));
+    const execution = enableAndCaptureV4ExecutionFlags(env);
+    assert.equal(execution.flags.ROUTE_PROVIDER_ENABLED, true);
+    assert.equal(
+      execution.flags.OUTDOOR_RESEARCH_PLANNING_ENABLED,
+      true
+    );
+    assert.equal(
+      execution.flags.OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED,
+      true
+    );
+    assert.equal(execution.flags.OUTDOOR_EVIDENCE_ENABLED, false);
+    assert.deepEqual(captureV4ExecutionFlags(env), execution);
+    const final = disableV4ProofProcessEnvironment(env);
+    assert.equal(Object.values(final.flags).every((value) => !value), true);
+    assert.throws(() => enableAndCaptureV4ExecutionFlags({
+      ROUTE_PROVIDER_ENABLED: "true"
+    }), errorCode("v4_flag_not_exact_false"));
   });
 
   it("samples settled storage and fails the hard 10 GiB gate closed", async () => {

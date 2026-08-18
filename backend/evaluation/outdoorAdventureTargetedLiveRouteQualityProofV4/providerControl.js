@@ -33,7 +33,9 @@ export class V4ProviderLedger {
   constructor(path, {
     nowMilliseconds = Date.now,
     authorizationReference = V4_AUTHORIZATION_REFERENCE,
-    ledgerNamespace = null
+    ledgerNamespace = null,
+    proofRunIdentityDigest = null,
+    proofRunIdentityArtifactDigest = null
   } = {}) {
     if (typeof path !== "string" || path.length < 1 ||
         typeof nowMilliseconds !== "function" ||
@@ -42,12 +44,22 @@ export class V4ProviderLedger {
         (ledgerNamespace !== null && (
           typeof ledgerNamespace !== "string" ||
           !/^[a-z0-9][a-z0-9-]{9,159}$/.test(ledgerNamespace)
-        ))) invalidLedger();
+        )) ||
+        ((proofRunIdentityDigest === null) !==
+          (proofRunIdentityArtifactDigest === null)) ||
+        (proofRunIdentityDigest !== null &&
+          !/^[a-f0-9]{64}$/.test(proofRunIdentityDigest)) ||
+        (proofRunIdentityArtifactDigest !== null &&
+          !/^[a-f0-9]{64}$/.test(proofRunIdentityArtifactDigest))) {
+      invalidLedger();
+    }
     this.path = path;
     this.lockPath = `${path}.lock`;
     this.nowMilliseconds = nowMilliseconds;
     this.authorizationReference = authorizationReference;
     this.ledgerNamespace = ledgerNamespace;
+    this.proofRunIdentityDigest = proofRunIdentityDigest;
+    this.proofRunIdentityArtifactDigest = proofRunIdentityArtifactDigest;
     this.lockHandle = null;
     this.queue = Promise.resolve();
   }
@@ -68,7 +80,10 @@ export class V4ProviderLedger {
       }
       await this.#write(emptyLedger({
         authorizationReference: this.authorizationReference,
-        ledgerNamespace: this.ledgerNamespace
+        ledgerNamespace: this.ledgerNamespace,
+        proofRunIdentityDigest: this.proofRunIdentityDigest,
+        proofRunIdentityArtifactDigest:
+          this.proofRunIdentityArtifactDigest
       }));
     }
     return this.snapshot();
@@ -158,7 +173,10 @@ export class V4ProviderLedger {
       const result = operation(ledger);
       validateV4ProviderLedger(ledger, {
         authorizationReference: this.authorizationReference,
-        ledgerNamespace: this.ledgerNamespace
+        ledgerNamespace: this.ledgerNamespace,
+        proofRunIdentityDigest: this.proofRunIdentityDigest,
+        proofRunIdentityArtifactDigest:
+          this.proofRunIdentityArtifactDigest
       });
       await this.#write(ledger);
       return result;
@@ -177,7 +195,10 @@ export class V4ProviderLedger {
     }
     validateV4ProviderLedger(value, {
       authorizationReference: this.authorizationReference,
-      ledgerNamespace: this.ledgerNamespace
+      ledgerNamespace: this.ledgerNamespace,
+      proofRunIdentityDigest: this.proofRunIdentityDigest,
+      proofRunIdentityArtifactDigest:
+        this.proofRunIdentityArtifactDigest
     });
     return value;
   }
@@ -463,7 +484,9 @@ export function createV4MeteredGraphHopperProvider({
 
 export function validateV4ProviderLedger(value, {
   authorizationReference = V4_AUTHORIZATION_REFERENCE,
-  ledgerNamespace = null
+  ledgerNamespace = null,
+  proofRunIdentityDigest = null,
+  proofRunIdentityArtifactDigest = null
 } = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       value.schemaVersion !== 1 ||
@@ -471,6 +494,13 @@ export function validateV4ProviderLedger(value, {
       (ledgerNamespace === null
         ? value.ledgerNamespace !== undefined
         : value.ledgerNamespace !== ledgerNamespace) ||
+      (proofRunIdentityDigest === null
+        ? value.proofRunIdentityDigest !== undefined
+        : value.proofRunIdentityDigest !== proofRunIdentityDigest) ||
+      (proofRunIdentityArtifactDigest === null
+        ? value.proofRunIdentityArtifactDigest !== undefined
+        : value.proofRunIdentityArtifactDigest !==
+          proofRunIdentityArtifactDigest) ||
       value.hardLimit !== V4_PROVIDER_CALL_LIMIT ||
       !Array.isArray(value.calls) ||
       value.calls.length > V4_PROVIDER_CALL_LIMIT) invalidLedger();
@@ -556,11 +586,20 @@ export function parseRetryAfterMillisecondsV4(value) {
     ? milliseconds : null;
 }
 
-function emptyLedger({ authorizationReference, ledgerNamespace }) {
+function emptyLedger({
+  authorizationReference,
+  ledgerNamespace,
+  proofRunIdentityDigest,
+  proofRunIdentityArtifactDigest
+}) {
   return {
     schemaVersion: 1,
     authorizationReference,
     ...(ledgerNamespace === null ? {} : { ledgerNamespace }),
+    ...(proofRunIdentityDigest === null ? {} : {
+      proofRunIdentityDigest,
+      proofRunIdentityArtifactDigest
+    }),
     hardLimit: V4_PROVIDER_CALL_LIMIT,
     calls: []
   };

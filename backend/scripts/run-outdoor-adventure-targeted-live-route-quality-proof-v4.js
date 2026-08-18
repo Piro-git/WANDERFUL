@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import pg from "pg";
 import {
@@ -9,19 +9,33 @@ import {
 } from "../evaluation/outdoorAdventureServerLiveProof/manifest.js";
 import {
   V4_CASE_BINDINGS,
-  V4_MANIFEST_DIGEST,
+  V4_PROTECTED_RECEIPTS,
+  V4_PROVIDER_CALL_LIMIT,
   assertNoSensitiveDurableValueV4,
   stableSerializeV4,
   validateV4CaseRecords
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/contract.js";
+import {
+  bindV4DurableRunReceiptIdentity,
+  readAndVerifyV4DurableProofRunIdentity,
+  validateV4DurableRunReceiptIdentity,
+  writeCanonicalV4ArtifactExclusive,
+  writeV4DurableProofRunIdentityArtifact
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/durableProofRunIdentity.js";
 import {
   captureV4ProofRunContextAfterImports,
   reconcileV4DatabaseClockEvidence,
   runV4DatabasePlanningClockGate
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/databaseGate.js";
 import {
-  disabledV4FlagSnapshot
+  disableV4ProofProcessEnvironment,
+  disabledV4FlagSnapshot,
+  enableAndCaptureV4ExecutionFlags,
+  runDisabledZeroWorkEndpointProbeV4
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/preflight.js";
+import {
+  attestV4GitCandidate
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/gitCandidateAttestation.js";
 import {
   V4ProviderLedger,
   V4ProviderScheduler,
@@ -33,10 +47,20 @@ import {
   notRunV4CaseRecord
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/quality.js";
 import {
-  admitV4ProviderAfterClockReconciliation,
   bindV4FutureReceiptClock,
-  createV4ProofClockBinding
+  createV4ProofClockBinding,
+  validateV4FutureReceiptClock
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/proofRunContext.js";
+import {
+  V4_GOLDEN_SET_MANIFEST_DIGEST,
+  V4_GOLDEN_SET_POLICY_VERSION,
+  V4_PRODUCT_SHAPING_POLICY_DIGEST,
+  V4_PRODUCT_SHAPING_POLICY_VERSION,
+  V4_REGIONAL_SOURCE_MANIFEST_DIGEST,
+  admitV4ProviderAfterProofIdentityReconciliation,
+  buildV4RunManifestRecord,
+  createV4ProofRunIdentity
+} from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/proofRunIdentity.js";
 import {
   planAndRouteOutdoorAdventureV2
 } from "../src/outdoorAdventure/outdoorAdventureOrchestratorV2.js";
@@ -51,6 +75,9 @@ import {
 } from "../src/routing/graphHopperProvider.js";
 
 const { Pool } = pg;
+const REPOSITORY_ROOT = resolve(
+  new URL("../..", import.meta.url).pathname
+);
 const FORBIDDEN_CLAIM_KEYS = new Set([
   "isguaranteedsafe",
   "legalcampingverified",
@@ -71,9 +98,15 @@ async function main() {
   let cancellationPool;
   try {
     const options = parseArguments(process.argv.slice(2));
+    const gitAttestation = await attestV4GitCandidate({
+      baselineCommit: options.baselineCommit,
+      candidateCommit: options.candidateCommit
+    });
+    await assertProtectedHistoricalReceipts();
     const databaseUrl = process.env.TRAILMIND_V4_RUN_DATABASE_URL;
     validateLoopbackProofDatabaseUrl(databaseUrl);
     const initialFlags = disabledV4FlagSnapshot(process.env);
+    await runDisabledZeroWorkEndpointProbeV4();
 
     pool = new Pool({
       connectionString: databaseUrl,
@@ -101,12 +134,46 @@ async function main() {
       evaluationCase.id,
       serverLiveProofCanonicalIntentV1(evaluationCase.input)
     ]));
+    const manifest = buildV4RunManifestRecord(options.authorizationReference);
     const runContext = await captureV4ProofRunContextAfterImports({
       pool,
       authorizationReference: options.authorizationReference,
       ledgerNamespace: options.ledgerNamespace,
-      caseManifestDigest: V4_MANIFEST_DIGEST
+      caseManifestDigest: manifest.digest
     });
+    const runIdentity = createV4ProofRunIdentity({
+      baselineCommit: options.baselineCommit,
+      candidateCommit: options.candidateCommit,
+      authorizationReference: options.authorizationReference,
+      ledgerNamespace: options.ledgerNamespace,
+      providerCallLimit: V4_PROVIDER_CALL_LIMIT,
+      caseManifest: manifest,
+      proofRunContext: runContext,
+      gitCandidateAttestationDigest: gitAttestation.digest,
+      goldenSetManifestDigest: V4_GOLDEN_SET_MANIFEST_DIGEST,
+      goldenSetPolicyVersion: V4_GOLDEN_SET_POLICY_VERSION,
+      productShapingPolicyVersion: V4_PRODUCT_SHAPING_POLICY_VERSION,
+      productShapingPolicyDigest: V4_PRODUCT_SHAPING_POLICY_DIGEST,
+      regionalSourceManifestDigest: V4_REGIONAL_SOURCE_MANIFEST_DIGEST
+    });
+    const identityArtifactDigest =
+      await writeV4DurableProofRunIdentityArtifact(
+        options.identityPath,
+        runIdentity,
+        runContext
+      );
+    const durableRun = await readAndVerifyV4DurableProofRunIdentity(
+      options.identityPath,
+      {
+        artifactDigest: identityArtifactDigest,
+        baselineCommit: options.baselineCommit,
+        candidateCommit: options.candidateCommit,
+        authorizationReference: options.authorizationReference,
+        ledgerNamespace: options.ledgerNamespace,
+        providerCallLimit: V4_PROVIDER_CALL_LIMIT,
+        gitCandidateAttestationDigest: gitAttestation.digest
+      }
+    );
     await assertDatabaseAdmission(pool);
     const databaseDiagnostic = await runV4DatabasePlanningClockGate({
       runContext,
@@ -123,15 +190,19 @@ async function main() {
 
     // Credential validation is deliberately after every database admission
     // gate and its returned configuration is never retained.
-    await admitV4ProviderAfterClockReconciliation({
-      runContext,
+    const executionFlags = enableAndCaptureV4ExecutionFlags(process.env);
+    await admitV4ProviderAfterProofIdentityReconciliation({
+      runIdentity: durableRun.identity,
+      runContext: durableRun.runContext,
       databaseDiagnostic,
       proofClockBinding
     }, () => providerConfiguration(process.env));
 
     ledger = new V4ProviderLedger(options.ledgerPath, {
       authorizationReference: options.authorizationReference,
-      ledgerNamespace: options.ledgerNamespace
+      ledgerNamespace: options.ledgerNamespace,
+      proofRunIdentityDigest: durableRun.identity.digest,
+      proofRunIdentityArtifactDigest: durableRun.artifactDigest
     });
     const initialLedger = await ledger.initialize();
     if (initialLedger.calls.length !== 0) throw proofError("ledger_not_fresh");
@@ -216,23 +287,22 @@ async function main() {
         scheduler.receipt(),
         {
           authorizationReference: options.authorizationReference,
-          ledgerNamespace: options.ledgerNamespace
+          ledgerNamespace: options.ledgerNamespace,
+          proofRunIdentityDigest: durableRun.identity.digest,
+          proofRunIdentityArtifactDigest: durableRun.artifactDigest
         }
       ),
       authorizationReference: options.authorizationReference,
       ledgerNamespace: options.ledgerNamespace,
+      proofRunIdentityDigest: durableRun.identity.digest,
+      proofRunIdentityArtifactDigest: durableRun.artifactDigest,
       ledgerSha256,
       providerCredentialAdmitted: true,
       providerEgressAdmitted: true
     };
-    const executionFlags = disabledV4FlagSnapshot(process.env);
-    const capture = bindV4FutureReceiptClock({
-      schemaVersion: 1,
+    const captureIdentity = bindV4DurableRunReceiptIdentity({
       receiptVersion:
         "outdoor-adventure-targeted-live-route-quality-proof-v4-run-context-v2-capture",
-      generatedAt: runContext.proofAsOf,
-      authorizationReference: options.authorizationReference,
-      ledgerNamespace: options.ledgerNamespace,
       ledgerSha256,
       status: records.every((record) =>
         record.caseEvaluationOutcome === "pass"
@@ -257,13 +327,21 @@ async function main() {
         appAttestMaterialRetained: false,
         unboundedErrorRetained: false
       }
-    }, runContext, databaseDiagnostic, proofClockBinding);
+    }, durableRun);
+    const capture = bindV4FutureReceiptClock(
+      captureIdentity,
+      durableRun.runContext,
+      databaseDiagnostic,
+      proofClockBinding
+    );
+    validateV4DurableRunReceiptIdentity(capture, durableRun);
+    validateV4FutureReceiptClock(
+      capture,
+      durableRun.runContext,
+      databaseDiagnostic
+    );
     assertNoSensitiveDurableValueV4(capture);
-    await writeFile(options.capturePath, `${stableSerializeV4(capture)}\n`, {
-      encoding: "utf8",
-      mode: 0o600,
-      flag: "wx"
-    });
+    await writeCanonicalV4ArtifactExclusive(options.capturePath, capture);
     process.stdout.write(`${stableSerializeV4({
       status: capture.status,
       attempted: providerAccounting.attempted,
@@ -273,6 +351,9 @@ async function main() {
       cancelled: providerAccounting.cancelled,
       unused: providerAccounting.unused,
       circuitOpened: providerAccounting.circuitOpened,
+      gitCandidateAttestationDigest: gitAttestation.digest,
+      proofRunIdentityDigest: durableRun.identity.digest,
+      proofRunIdentityArtifactDigest: durableRun.artifactDigest,
       caseOutcomes: records.map((record) => ({
         caseId: record.caseId,
         technical: record.technicalPipelineOutcome,
@@ -288,10 +369,25 @@ async function main() {
     })}\n`);
     process.exitCode = 1;
   } finally {
-    await ledger?.close().catch(() => {});
-    await cancellationPool?.end().catch(() => {});
-    await pool?.end().catch(() => {});
+    await cleanupV4ProofProcess({
+      cancellationPool,
+      pool,
+      ledger,
+      env: process.env
+    });
   }
+}
+
+export async function cleanupV4ProofProcess({
+  cancellationPool,
+  pool,
+  ledger,
+  env
+}) {
+  await cancellationPool?.end().catch(() => {});
+  await pool?.end().catch(() => {});
+  disableV4ProofProcessEnvironment(env);
+  await ledger?.close().catch(() => {});
 }
 
 async function assertDatabaseAdmission(pool) {
@@ -325,6 +421,18 @@ async function assertDatabaseAdmission(pool) {
       Number(row?.quarantines) !== 0 || Number(row?.route_indexes) !== 2 ||
       row?.least_privilege !== true) {
     throw proofError("database_admission_failed");
+  }
+}
+
+async function assertProtectedHistoricalReceipts() {
+  for (const receipt of V4_PROTECTED_RECEIPTS) {
+    const digest = createHash("sha256").update(await readFile(resolve(
+      REPOSITORY_ROOT,
+      receipt.repoRelativePath
+    ))).digest("hex");
+    if (digest !== receipt.sha256) {
+      throw proofError("protected_receipt_mismatch");
+    }
   }
 }
 
@@ -374,18 +482,27 @@ function falseClaimCountForRoute({ attempt, result }) {
 }
 
 function parseArguments(values) {
-  if (values.length !== 8 || values[0] !== "--authorization-reference" ||
-      values[2] !== "--ledger-namespace" || values[4] !== "--ledger" ||
-      values[6] !== "--capture" || !runIdentifier(values[1]) ||
-      !runIdentifier(values[3]) || !absoluteTemporaryPath(values[5]) ||
-      !absoluteTemporaryPath(values[7]) || values[5] === values[7]) {
+  if (values.length !== 14 || values[0] !== "--baseline-commit" ||
+      values[2] !== "--candidate-commit" ||
+      values[4] !== "--authorization-reference" ||
+      values[6] !== "--ledger-namespace" || values[8] !== "--ledger" ||
+      values[10] !== "--capture" || values[12] !== "--identity" ||
+      !commitIdentifier(values[1]) ||
+      !commitIdentifier(values[3]) || !runIdentifier(values[5]) ||
+      !runIdentifier(values[7]) || !absoluteTemporaryPath(values[9]) ||
+      !absoluteTemporaryPath(values[11]) ||
+      !absoluteTemporaryPath(values[13]) ||
+      new Set([values[9], values[11], values[13]]).size !== 3) {
     throw proofError("invalid_arguments");
   }
   return {
-    authorizationReference: values[1],
-    ledgerNamespace: values[3],
-    ledgerPath: values[5],
-    capturePath: values[7]
+    baselineCommit: values[1],
+    candidateCommit: values[3],
+    authorizationReference: values[5],
+    ledgerNamespace: values[7],
+    ledgerPath: values[9],
+    capturePath: values[11],
+    identityPath: values[13]
   };
 }
 
@@ -398,6 +515,10 @@ function absoluteTemporaryPath(value) {
 function runIdentifier(value) {
   return typeof value === "string" &&
     /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(value);
+}
+
+function commitIdentifier(value) {
+  return typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 }
 
 function validateLoopbackProofDatabaseUrl(value) {

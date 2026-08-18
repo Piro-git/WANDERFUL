@@ -9,11 +9,35 @@ import {
   V4_PROTECTED_RECEIPTS,
   V4_PROVIDER_CALL_LIMIT,
   V4_SCHEMA_VERSION,
+  assertNoSensitiveDurableValueV4,
+  sha256V4,
+  stableSerializeV4,
+  validateProtectedReceipts,
   validateV4Summary
 } from "./contract.js";
+import {
+  bindV4DurableRunSummaryIdentity,
+  validateV4DurableProofRun,
+  validateV4DurableRunReceiptIdentity,
+  validateV4DurableRunSummary
+} from "./durableProofRunIdentity.js";
+import {
+  validateV4FutureReceiptClock
+} from "./proofRunContext.js";
+import {
+  validateV4ProviderLedger
+} from "./providerControl.js";
+import {
+  v4PublicationCleanupReceiptBinding,
+  validateV4PublicationCleanupEvidence
+} from "./publicationCleanup.js";
 import { notRunV4CaseRecord } from "./quality.js";
 
-export function buildStorageBlockedV4Summary({
+export function buildStorageBlockedV4Summary(input) {
+  return buildHistoricalAttemptOneStorageBlockedV4Summary(input);
+}
+
+export function buildHistoricalAttemptOneStorageBlockedV4Summary({
   generatedAt,
   storage,
   processPreflight,
@@ -129,6 +153,225 @@ export function buildStorageBlockedV4Summary({
   };
   validateV4Summary(summary);
   return summary;
+}
+
+export function buildV4FutureRunSummary({
+  durableRun,
+  capture,
+  ledger,
+  ledgerSerialized,
+  finalFlags,
+  disabledProbe,
+  protectedHistoricalReceipts,
+  cleanupEvidence
+}) {
+  validateV4FuturePublicationEvidence({
+    durableRun,
+    capture,
+    ledger,
+    ledgerSerialized,
+    finalFlags,
+    disabledProbe,
+    protectedHistoricalReceipts
+  });
+  validateV4PublicationCleanupEvidence(cleanupEvidence);
+  const cleanup = v4PublicationCleanupReceiptBinding(cleanupEvidence);
+  const providerExecuted = capture.providerAccounting.attempted > 0;
+  const routeQualityPassed = capture.status === "passed";
+  const summary = bindV4DurableRunSummaryIdentity({
+    receiptVersion:
+      "outdoor-adventure-targeted-live-route-quality-proof-v4-future-summary-v1",
+    status: capture.status,
+    ...(capture.status === "failed" ? {
+      failureReasonCode: "route_quality_or_provider_proof_failed"
+    } : {}),
+    decisions: {
+      databasePreflight: "passed",
+      physicalAppAttest: "not_run",
+      providerProof: providerExecuted ? "passed" : "failed",
+      routeQuality: routeQualityPassed ? "passed" : "failed",
+      cleanupAndContainment: cleanup.cleanupComplete ? "passed" : "failed"
+    },
+    databaseDiagnostic: structuredClone(capture.databaseDiagnostic),
+    proofClockBinding: structuredClone(capture.proofClockBinding),
+    physicalAppAttestReceiptPresent: false,
+    physicalAppAttestClassification:
+      "not_run_no_reviewed_physical_receipt",
+    cases: structuredClone(capture.cases),
+    providerAccounting: structuredClone(capture.providerAccounting),
+    featureFlags: {
+      initial: structuredClone(capture.featureFlags.initial),
+      execution: structuredClone(capture.featureFlags.execution),
+      final: structuredClone(finalFlags)
+    },
+    cleanup,
+    protectedHistoricalReceipts:
+      structuredClone(protectedHistoricalReceipts),
+    privacy: structuredClone(capture.privacy),
+    manualExpertReview: {
+      completed: false,
+      classification: "not_completed"
+    },
+    closedBetaEligible: false,
+    deployed: false,
+    released: false,
+    committed: false,
+    pushed: false
+  }, durableRun);
+  validateV4FutureRunSummaryPublication({
+    summary,
+    durableRun,
+    capture,
+    ledger,
+    ledgerSerialized,
+    finalFlags,
+    disabledProbe,
+    protectedHistoricalReceipts,
+    cleanupEvidence
+  });
+  return summary;
+}
+
+export function validateV4FutureRunSummaryPublication({
+  summary,
+  durableRun,
+  capture,
+  ledger,
+  ledgerSerialized,
+  finalFlags,
+  disabledProbe,
+  protectedHistoricalReceipts,
+  cleanupEvidence
+}) {
+  validateV4FuturePublicationEvidence({
+    durableRun,
+    capture,
+    ledger,
+    ledgerSerialized,
+    finalFlags,
+    disabledProbe,
+    protectedHistoricalReceipts
+  });
+  validateV4PublicationCleanupEvidence(cleanupEvidence);
+  validateV4DurableRunSummary(summary, durableRun);
+  validateV4FutureReceiptClock(
+    summary,
+    durableRun.runContext,
+    summary.databaseDiagnostic
+  );
+  if (summary.status !== capture.status ||
+      summary.proofRunIdentityArtifactDigest !==
+        durableRun.artifactDigest ||
+      !canonicallyEqual(summary.databaseDiagnostic, capture.databaseDiagnostic) ||
+      !canonicallyEqual(summary.proofClockBinding, capture.proofClockBinding) ||
+      !canonicallyEqual(summary.cases, capture.cases) ||
+      !canonicallyEqual(
+        summary.providerAccounting,
+        capture.providerAccounting
+      ) || !canonicallyEqual(summary.featureFlags.final, finalFlags) ||
+      !canonicallyEqual(
+        summary.protectedHistoricalReceipts,
+        protectedHistoricalReceipts
+      ) || !canonicallyEqual(
+        summary.cleanup,
+        v4PublicationCleanupReceiptBinding(cleanupEvidence)
+      ) || summary.decisions.cleanupAndContainment !== "passed") {
+    invalidFutureSummary();
+  }
+  assertNoSensitiveDurableValueV4(summary);
+  return true;
+}
+
+export function validateV4FuturePublicationEvidence({
+  durableRun,
+  capture,
+  ledger,
+  ledgerSerialized,
+  finalFlags,
+  disabledProbe,
+  protectedHistoricalReceipts
+}) {
+  validateV4DurableProofRun(durableRun);
+  validateV4DurableRunReceiptIdentity(capture, durableRun);
+  validateV4FutureReceiptClock(
+    capture,
+    durableRun.runContext,
+    capture.databaseDiagnostic
+  );
+  if (!new Set(["passed", "failed"]).has(capture.status) ||
+      capture.databaseAdmissionPassed !== true ||
+      !plainObject(capture.featureFlags) || !plainObject(finalFlags) ||
+      !plainObject(disabledProbe) || disabledProbe.passed !== true ||
+      disabledProbe.authorizationOperations !== 0 ||
+      disabledProbe.databaseOperations !== 0 ||
+      disabledProbe.providerOperations !== 0 ||
+      disabledProbe.budgetOperations !== 0 ||
+      disabledProbe.leaseOperations !== 0 ||
+      disabledProbe.orchestratorOperations !== 0 ||
+      finalFlags.exactAdmissionVerified !== true ||
+      !plainObject(finalFlags.flags) ||
+      Object.keys(finalFlags.flags).length !== V4_FLAG_NAMES.length ||
+      V4_FLAG_NAMES.some((name) => finalFlags.flags[name] !== false)) {
+    invalidFutureSummary();
+  }
+  validateProtectedReceipts(protectedHistoricalReceipts);
+  validateLedgerBinding({ durableRun, capture, ledger, ledgerSerialized });
+  assertNoSensitiveDurableValueV4(capture);
+}
+
+function validateLedgerBinding({
+  durableRun,
+  capture,
+  ledger,
+  ledgerSerialized
+}) {
+  if (typeof ledgerSerialized !== "string" ||
+      ledgerSerialized.length > 131_072) invalidFutureSummary();
+  validateV4ProviderLedger(ledger, {
+    authorizationReference: durableRun.identity.authorizationReference,
+    ledgerNamespace: durableRun.identity.ledgerNamespace,
+    proofRunIdentityDigest: durableRun.identity.digest,
+    proofRunIdentityArtifactDigest: durableRun.artifactDigest
+  });
+  const ledgerSha256 = sha256V4(ledgerSerialized);
+  const accounting = capture.providerAccounting;
+  const counts = Object.fromEntries([
+    "success", "failed", "timed_out", "cancelled"
+  ].map((outcome) => [outcome, ledger.calls.filter((call) =>
+    call.outcome === outcome
+  ).length]));
+  if (capture.ledgerSha256 !== ledgerSha256 ||
+      accounting.ledgerSha256 !== ledgerSha256 ||
+      accounting.proofRunIdentityDigest !== durableRun.identity.digest ||
+      accounting.proofRunIdentityArtifactDigest !==
+        durableRun.artifactDigest ||
+      accounting.attempted !== ledger.calls.length ||
+      accounting.successful !== counts.success ||
+      accounting.failed !== counts.failed ||
+      accounting.timedOut !== counts.timed_out ||
+      accounting.cancelled !== counts.cancelled ||
+      accounting.controlledPostSuccessFailures !== ledger.calls.filter(
+        (call) => call.controlledPostSuccessFailure
+      ).length || ledger.calls.some((call) => call.outcome === "reserved")) {
+    invalidFutureSummary();
+  }
+}
+
+function canonicallyEqual(left, right) {
+  try {
+    return stableSerializeV4(left) === stableSerializeV4(right);
+  } catch {
+    return false;
+  }
+}
+
+function plainObject(value) {
+  return Boolean(value) && typeof value === "object" &&
+    !Array.isArray(value);
+}
+
+function invalidFutureSummary() {
+  throw new TypeError("invalid_v4_future_summary_publication");
 }
 
 function zeroProviderAccounting() {

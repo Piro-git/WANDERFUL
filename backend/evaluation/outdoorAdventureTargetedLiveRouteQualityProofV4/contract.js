@@ -232,14 +232,22 @@ export function validateV4ManifestRecord(value) {
 }
 
 export function validateV4Summary(summary) {
+  if (!plainObject(summary) ||
+      summary.baselineCommit !== V4_BASELINE_COMMIT ||
+      summary.candidateCommit !== V4_BASELINE_COMMIT ||
+      summary.authorizationReference !== V4_AUTHORIZATION_REFERENCE) {
+    invalidSummary();
+  }
+  validateV4ManifestRecord(summary.manifest);
+  return validateV4SummaryProtocol(summary, summary.manifest);
+}
+
+export function validateV4SummaryProtocol(summary, expectedManifest) {
   if (!plainObject(summary)) invalidSummary();
   if (
     summary.schemaVersion !== V4_SCHEMA_VERSION ||
     summary.proofVersion !== V4_PROOF_VERSION ||
     summary.proofClassification !== V4_PROOF_CLASSIFICATION ||
-    summary.baselineCommit !== V4_BASELINE_COMMIT ||
-    summary.candidateCommit !== V4_BASELINE_COMMIT ||
-    summary.authorizationReference !== V4_AUTHORIZATION_REFERENCE ||
     !["passed", "failed", "blocked"].includes(summary.status) ||
     summary.closedBetaEligible !== false ||
     summary.deployed !== false ||
@@ -247,7 +255,9 @@ export function validateV4Summary(summary) {
     summary.committed !== false ||
     summary.pushed !== false
   ) invalidSummary();
-  validateV4ManifestRecord(summary.manifest);
+  if (!plainObject(expectedManifest) ||
+      stableSerializeV4(summary.manifest) !==
+        stableSerializeV4(expectedManifest)) invalidManifest();
   validateDecisions(summary.decisions, summary);
   validateCases(summary.cases);
   validateProviderAccounting(summary.providerAccounting);

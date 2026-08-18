@@ -88,26 +88,36 @@ raw prompts or coordinates in the durable summary.
 The ledger is task-local, permission-restricted, and contains only sequence,
 case/proposal identifiers, reservation time bucket, typed outcome, duration
 bucket, and controlled-injection boolean. It contains no endpoint, payload,
-coordinate, geometry, header, response, credential, or token. Cleanup removes
-the ephemeral ledger only after a signed aggregate reconciliation is durable.
+coordinate, geometry, header, response, credential, or token. Publication
+retains its validated contents in memory, removes the ephemeral ledger and
+other authorized runtime artifacts, verifies exact absence, and only then
+constructs a final cleanup-success summary.
 
 ## Execution protocol
 
 For every future attempt, first apply
-`V4_PROOF_RUN_CLOCK_CONTRACT.md`. Attempts 1–5 retain their historical
-schema-1 clocks and outcomes. A future attempt may not reuse their fixed
-timestamps.
+`V4_PROOF_RUN_CLOCK_CONTRACT.md` and
+`V4_PROOF_RUN_IDENTITY_CONTRACT.md`. Attempts 1–5 retain their historical
+schema-1 clocks, identities, and outcomes. A future attempt may not reuse their
+fixed timestamps, authorization references, or ledger namespaces.
 
 ### A. Admission and immutable inputs
 
-1. Verify the clean candidate commit and hashes of every protected historical
-   receipt.
-2. Confirm no other proof/import/provider job or feature rollout shares the
+1. Invoke the runner with explicit full baseline and candidate commit IDs. Its
+   first operation attests that candidate equals actual `HEAD`, the index and
+   worktree are clean, the baseline exists, and the baseline is an ancestor.
+   Every Git command is bound to the repository root resolved from the V4
+   attestation module; caller working directory and CLI input cannot select a
+   parent, nested, or unrelated repository.
+   Any Git error stops before database URL handling, identity creation,
+   credential admission, ledger creation, or provider work.
+2. Verify the hashes of every protected historical receipt.
+3. Confirm no other proof/import/provider job or feature rollout shares the
    staging environment.
-3. Validate the four-case manifest digest and authorization reference.
-4. Set all ordinary/provider/insecure flags false and capture the initial state
+4. Validate the four-case manifest digest and authorization reference.
+5. Set all ordinary/provider/insecure flags false and capture the initial state
    digest.
-5. Run a zero-work disabled-endpoint probe. Any authorization, database, or
+6. Run a zero-work disabled-endpoint probe. Any authorization, database, or
    provider count aborts V4.
 
 ### B. Database preflight with provider disabled
@@ -117,17 +127,20 @@ timestamps.
    checksum provenance, 14-day freshness, quarantine state, and isolation.
 3. After both imports/projections complete, capture and seal one canonical
    run-scoped `proofAsOf`; bind both regional timestamp lineages to it.
-4. Validate required GiST indexes as valid/ready.
-5. Execute each canonical case through research and candidate generation only,
+4. Write the run identity artifact atomically/exclusively at an authorized
+   permission-restricted `/private/tmp/TrailMindV4RunRuntime-*` path. Bind its
+   identity and artifact digests into the later ledger header and capture.
+5. Validate required GiST indexes as valid/ready.
+6. Execute each canonical case through research and candidate generation only,
    injecting the sealed clock for every capability and planning operation.
-6. Require route-membership p95 below 1,500 ms, every reviewed measurement
+7. Require route-membership p95 below 1,500 ms, every reviewed measurement
    below 2,000 ms, access resolution below 2,000 ms, bounded row counts, intended
    indexes, and no projection-entity sequential scan.
-7. Require exactly three or the contractually valid bounded number of proposals
+8. Require exactly three or the contractually valid bounded number of proposals
    for each case. Record typed limitations, not raw evidence coordinates.
-8. Reconcile the database diagnostic and active snapshots to the sealed clock
+9. Reconcile the database diagnostic and active snapshots to the sealed clock
    immediately before provider admission.
-9. Any failure sets `databasePreflight=failed`, leaves provider calls zero, and
+10. Any failure sets `databasePreflight=failed`, leaves provider calls zero, and
    jumps to cleanup.
 
 ### C. Physical App Attest checkpoint
@@ -230,13 +243,53 @@ Stop before or during provider work on any of:
    provider flags. Confirm every insecure/local/in-memory flag false.
 3. Release leases, close product/cancellation pools, stop proof processes, and
    remove provider secret access from the proof process.
-4. Validate and sign the aggregate summary, then remove the ephemeral ledger
-   and transient receipts/PBF/database copies owned by the proof. Preserve
-   immutable staging import/projection audit records according to policy.
-5. Re-hash V1/V2/V3/official receipts and require exact equality.
-6. Run the disabled zero-work probe and record `finalFlagsDisabled=true` and
-   `cleanupComplete=true`.
+4. Re-hash V1/V2/V3/official receipts, require exact equality, and run the
+   disabled zero-work probe.
+5. In the credential-free publication process, acquire the ledger/publication
+   lock, validate the durable identity, capture, ledger, and every non-cleanup
+   summary input, and require that the final summary path does not exist.
+6. Retain the verified evidence in memory; remove the authorized identity,
+   capture, and ledger; close and remove the publication lock; then verify the
+   exact absence of all four task-owned runtime artifacts.
+7. Seal cleanup evidence only after those absence checks. Construct and
+   validate the final summary from that evidence, then publish it atomically
+   and exclusively. The retained final summary is explicitly excluded from
+   “task-owned runtime artifacts.” A cleanup failure or a post-cleanup summary
+   write failure publishes no cleanup-success receipt.
 
 Any cleanup or reconciliation failure makes V4 failed regardless of route
 results. V4 success still leaves the product NO-GO until the machine-readable
 closed-beta checklist is fully verified and approved.
+
+## Attempt 8 operational entrypoints
+
+Attempt 8 remains **not executed**. It requires a new authorization reference,
+fresh ledger namespace, reviewed clean commit, isolated loopback proof database,
+and provider credential supplied only to the execution process.
+
+The execution entrypoint is
+`backend/scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v4.js`.
+It accepts, in exact order, `--baseline-commit`, `--candidate-commit`,
+`--authorization-reference`, `--ledger-namespace`, `--ledger`, `--capture`, and
+`--identity`. All three artifact paths must be distinct authorized runtime
+paths. Successful capture output reports only bounded counts plus the Git
+attestation, identity, and identity-artifact digests required by publication.
+
+After that process exits and releases the ledger lock, start a new process with
+all V4 flags exact false and no provider credential. The publication entrypoint
+is
+`backend/scripts/publish-outdoor-adventure-targeted-live-route-quality-proof-v4.js`.
+It accepts the same external run identifiers, the reported Git attestation and
+identity-artifact digests, the identity/ledger/capture paths, and a new summary
+path. It will not derive expected run parameters from the capture or summary.
+It first acquires the publication lock and validates every durable and
+non-cleanup input. It then removes the temporary identity, capture, ledger, and
+lock and verifies exact absence before it can construct a cleanup-success
+summary. The summary is validated against the in-memory durable run and written
+atomically/exclusively last. Any cleanup failure publishes no final summary;
+the successfully published final summary is retained for review and is not a
+task-owned runtime artifact.
+
+Attempt 7 is unavailable as admissible evidence, was not reconstructed, and
+cannot supply identity, route-quality, release, or beta evidence. Its prior
+authorization and ledger namespace must not be reused.
