@@ -75,6 +75,9 @@ import {
 } from "../src/routing/graphHopperProvider.js";
 
 const { Pool } = pg;
+const DATABASE_STATEMENT_TIMEOUT_MS = 2_500;
+const DATABASE_QUERY_TIMEOUT_MS = 3_000;
+const CANCELLATION_QUERY_TIMEOUT_MS = 1_000;
 const REPOSITORY_ROOT = resolve(
   new URL("../..", import.meta.url).pathname
 );
@@ -96,6 +99,8 @@ async function main() {
   let ledger;
   let pool;
   let cancellationPool;
+  let operatorPool;
+  const databaseFailureState = { failed: false };
   try {
     const options = parseArguments(process.argv.slice(2));
     const gitAttestation = await attestV4GitCandidate({
@@ -104,7 +109,12 @@ async function main() {
     });
     await assertProtectedHistoricalReceipts();
     const databaseUrl = process.env.TRAILMIND_V4_RUN_DATABASE_URL;
-    validateLoopbackProofDatabaseUrl(databaseUrl);
+    const operatorDatabaseUrl =
+      process.env.TRAILMIND_V4_OPERATOR_DATABASE_URL;
+    const databaseIdentities = validateLoopbackProofDatabaseUrls(
+      databaseUrl,
+      operatorDatabaseUrl
+    );
     const initialFlags = disabledV4FlagSnapshot(process.env);
     await runDisabledZeroWorkEndpointProbeV4();
 
@@ -112,19 +122,36 @@ async function main() {
       connectionString: databaseUrl,
       max: 3,
       connectionTimeoutMillis: 10_000,
+      query_timeout: DATABASE_QUERY_TIMEOUT_MS,
+      statement_timeout: DATABASE_STATEMENT_TIMEOUT_MS,
       allowExitOnIdle: true,
       application_name: "trailmind_v4_run_scoped_live_proof"
     });
+    monitorV4ProofPool(pool, databaseFailureState);
     cancellationPool = new Pool({
       connectionString: databaseUrl,
       max: 2,
       connectionTimeoutMillis: 10_000,
+      query_timeout: CANCELLATION_QUERY_TIMEOUT_MS,
+      statement_timeout: CANCELLATION_QUERY_TIMEOUT_MS,
       allowExitOnIdle: true,
       application_name: "trailmind_v4_run_scoped_live_cancel"
     });
+    monitorV4ProofPool(cancellationPool, databaseFailureState);
+    operatorPool = new Pool({
+      connectionString: operatorDatabaseUrl,
+      max: 2,
+      connectionTimeoutMillis: 10_000,
+      query_timeout: DATABASE_QUERY_TIMEOUT_MS,
+      statement_timeout: DATABASE_STATEMENT_TIMEOUT_MS,
+      allowExitOnIdle: true,
+      application_name: "trailmind_v4_run_scoped_database_audit"
+    });
+    monitorV4ProofPool(operatorPool, databaseFailureState);
     const repository = new PostgresOutdoorResearchRepository({
       pool,
       cancellationPool,
+      runtimeSchema: "public",
       statementTimeoutMs: 2_500
     });
     const cases = await loadServerLiveProofCasesV1({
@@ -136,11 +163,12 @@ async function main() {
     ]));
     const manifest = buildV4RunManifestRecord(options.authorizationReference);
     const runContext = await captureV4ProofRunContextAfterImports({
-      pool,
+      pool: operatorPool,
       authorizationReference: options.authorizationReference,
       ledgerNamespace: options.ledgerNamespace,
       caseManifestDigest: manifest.digest
     });
+    throwIfV4ProofPoolFailed(databaseFailureState);
     const runIdentity = createV4ProofRunIdentity({
       baselineCommit: options.baselineCommit,
       candidateCommit: options.candidateCommit,
@@ -174,7 +202,12 @@ async function main() {
         gitCandidateAttestationDigest: gitAttestation.digest
       }
     );
-    await assertDatabaseAdmission(pool);
+    await assertDatabaseAdmission({
+      runtimePool: pool,
+      operatorPool,
+      databaseIdentities
+    });
+    throwIfV4ProofPoolFailed(databaseFailureState);
     const databaseDiagnostic = await runV4DatabasePlanningClockGate({
       runContext,
       cases,
@@ -182,7 +215,9 @@ async function main() {
       repository,
       researchAdventure: researchOutdoorAdventureWithTrailAccessV1
     });
-    await reconcileV4DatabaseClockEvidence(pool, runContext);
+    throwIfV4ProofPoolFailed(databaseFailureState);
+    await reconcileV4DatabaseClockEvidence(operatorPool, runContext);
+    throwIfV4ProofPoolFailed(databaseFailureState);
     const proofClockBinding = createV4ProofClockBinding(
       runContext,
       databaseDiagnostic
@@ -267,16 +302,18 @@ async function main() {
             }
           : null,
         regionContainsRoute: (coordinates) => regionContainsRoute(
-          pool,
+          operatorPool,
           serverLiveProofRegionForCaseIdV1(evaluationCase.id),
           coordinates
         ),
         falseClaimCountForRoute
       });
+      throwIfV4ProofPoolFailed(databaseFailureState);
       records.push(record);
     }
 
     validateV4CaseRecords(records);
+    throwIfV4ProofPoolFailed(databaseFailureState);
     const settledLedger = await ledger.snapshot();
     const ledgerSha256 = createHash("sha256").update(
       await readFile(options.ledgerPath)
@@ -371,6 +408,7 @@ async function main() {
   } finally {
     await cleanupV4ProofProcess({
       cancellationPool,
+      operatorPool,
       pool,
       ledger,
       env: process.env
@@ -380,18 +418,24 @@ async function main() {
 
 export async function cleanupV4ProofProcess({
   cancellationPool,
+  operatorPool,
   pool,
   ledger,
   env
 }) {
   await cancellationPool?.end().catch(() => {});
   await pool?.end().catch(() => {});
+  await operatorPool?.end().catch(() => {});
   disableV4ProofProcessEnvironment(env);
   await ledger?.close().catch(() => {});
 }
 
-async function assertDatabaseAdmission(pool) {
-  const result = await pool.query(
+async function assertDatabaseAdmission({
+  runtimePool,
+  operatorPool,
+  databaseIdentities
+}) {
+  const result = await operatorPool.query(
     `SELECT
        (SELECT count(*) FROM trailmind_schema_migrations) AS migrations,
        (SELECT count(*) FROM outdoor_evidence_regions region
@@ -411,16 +455,224 @@ async function assertDatabaseAdmission(pool) {
            'outdoor_research_projection_entities_trail_point_gist_idx',
            'outdoor_research_projection_entities_trail_geography_gist_idx'
          ) AND postgres_index.indisvalid AND postgres_index.indisready)
-         AS route_indexes,
-       (SELECT NOT (rolsuper OR rolcreatedb OR rolcreaterole OR
-                    rolreplication OR rolbypassrls)
-          FROM pg_roles WHERE rolname = current_user) AS least_privilege`
+         AS route_indexes`
   );
   const row = result.rows[0];
-  if (Number(row?.migrations) !== 7 || Number(row?.snapshots) !== 2 ||
-      Number(row?.quarantines) !== 0 || Number(row?.route_indexes) !== 2 ||
-      row?.least_privilege !== true) {
+  if (Number(row?.migrations) !== 8 || Number(row?.snapshots) !== 2 ||
+      Number(row?.quarantines) !== 0 || Number(row?.route_indexes) !== 2) {
     throw proofError("database_admission_failed");
+  }
+  const operator = await operatorPool.query(
+    `SELECT current_user, session_user, current_database() AS database_name,
+            inet_server_addr()::text AS server_address,
+            inet_server_port() AS server_port,
+            NOT (role.rolsuper OR role.rolcreatedb OR role.rolcreaterole OR
+                 role.rolreplication) AND role.rolbypassrls
+              AS bounded_read_auditor,
+            NOT EXISTS (
+              SELECT 1 FROM pg_auth_members membership
+               WHERE membership.member = role.oid
+            ) AS no_role_memberships,
+            NOT has_database_privilege(
+              current_user, current_database(), 'TEMPORARY'
+            ) AS no_database_temporary,
+            NOT EXISTS (
+              SELECT 1 FROM pg_namespace namespace
+               WHERE namespace.nspname NOT LIKE 'pg_temp_%'
+                 AND has_schema_privilege(current_user, namespace.oid, 'CREATE')
+            ) AS no_schema_create,
+            NOT EXISTS (
+              SELECT 1
+                FROM pg_class relation
+                JOIN pg_namespace namespace
+                  ON namespace.oid = relation.relnamespace
+               WHERE namespace.nspname = 'public'
+                 AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+                 AND has_table_privilege(
+                   current_user,
+                   relation.oid,
+                   'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+                 )
+            ) AS no_relation_write,
+            NOT EXISTS (
+              SELECT 1 FROM pg_class relation
+               WHERE relation.relowner = role.oid
+            ) AND NOT EXISTS (
+              SELECT 1 FROM pg_proc procedure
+               WHERE procedure.proowner = role.oid
+            ) AS owns_no_database_objects
+       FROM pg_roles role
+      WHERE role.rolname = current_user`
+  );
+  const runtime = await runtimePool.query(
+    `SELECT current_user, session_user, current_database() AS database_name,
+            inet_server_addr()::text AS server_address,
+            inet_server_port() AS server_port,
+            current_user = session_user AS direct_login,
+            NOT (role.rolsuper OR role.rolcreatedb OR role.rolcreaterole OR
+                 role.rolreplication OR role.rolbypassrls) AS least_privilege,
+            role.rolinherit = false AS no_inherit,
+            NOT EXISTS (
+              SELECT 1 FROM pg_auth_members membership
+               WHERE membership.member = role.oid
+            ) AS no_role_memberships,
+            NOT has_database_privilege(
+              current_user, current_database(), 'TEMPORARY'
+            ) AS no_database_temporary,
+            NOT EXISTS (
+              SELECT 1
+                FROM pg_namespace namespace
+               WHERE namespace.nspname NOT LIKE 'pg_temp_%'
+                 AND has_schema_privilege(
+                   current_user, namespace.oid, 'CREATE'
+                 )
+            ) AS no_schema_create,
+            NOT has_table_privilege(
+              current_user,
+              'outdoor_research_projection_entities',
+              'SELECT'
+            ) AS no_projection_table_read,
+            NOT has_table_privilege(
+              current_user,
+              'outdoor_research_active_projection_runs',
+              'SELECT'
+            ) AS no_active_view_read,
+            NOT EXISTS (
+              SELECT 1
+                FROM pg_class relation
+                JOIN pg_namespace namespace
+                  ON namespace.oid = relation.relnamespace
+               WHERE namespace.nspname = 'public'
+                 AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+                 AND (
+                   relation.relname LIKE 'outdoor\_%' ESCAPE '\' OR
+                   relation.relname LIKE 'app\_attest\_%' ESCAPE '\' OR
+                   relation.relname = 'trailmind_schema_migrations'
+                 )
+                 AND has_table_privilege(
+                   current_user,
+                   relation.oid,
+                   'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+                 )
+            ) AS no_operational_relation_privileges,
+            NOT EXISTS (
+              SELECT 1
+                FROM pg_class relation
+                JOIN pg_namespace namespace
+                  ON namespace.oid = relation.relnamespace
+               WHERE namespace.nspname = 'public'
+                 AND relation.relkind = 'S'
+                 AND has_sequence_privilege(
+                   current_user, relation.oid, 'USAGE,SELECT,UPDATE'
+                 )
+            ) AS no_sequence_privileges,
+            NOT EXISTS (
+              SELECT 1 FROM pg_class relation
+               WHERE relation.relowner = role.oid
+            ) AND NOT EXISTS (
+              SELECT 1 FROM pg_proc procedure
+               WHERE procedure.proowner = role.oid
+            ) AS owns_no_database_objects,
+            has_function_privilege(
+              current_user,
+              'trailmind_runtime_outdoor_research_snapshot_context_v1(text,double precision,double precision)',
+              'EXECUTE'
+            ) AS snapshot_execute,
+            has_function_privilege(
+              current_user,
+              'trailmind_runtime_outdoor_research_highlights_v1(uuid,text,double precision,double precision,text[],double precision,text[],integer,double precision)',
+              'EXECUTE'
+            ) AS highlights_execute,
+            has_function_privilege(
+              current_user,
+              'trailmind_runtime_outdoor_research_route_memberships_v1(uuid,text,double precision,double precision,double precision,integer,integer)',
+              'EXECUTE'
+            ) AS memberships_execute,
+            has_function_privilege(
+              current_user,
+              'trailmind_runtime_outdoor_research_route_assertions_v1(uuid,uuid[],text[],integer)',
+              'EXECUTE'
+            ) AS assertions_execute,
+            has_function_privilege(
+              current_user,
+              'trailmind_runtime_outdoor_research_trail_access_candidates_v1(uuid,text,uuid[],double precision,integer,text[],text[],integer)',
+              'EXECUTE'
+            ) AS access_execute,
+            NOT EXISTS (
+              SELECT 1
+                FROM pg_proc procedure
+                JOIN pg_namespace namespace
+                  ON namespace.oid = procedure.pronamespace
+               WHERE namespace.nspname = 'public'
+                 AND procedure.proname LIKE
+                   'trailmind_runtime_outdoor_research_%_v1'
+                 AND procedure.proname NOT IN (
+                   'trailmind_runtime_outdoor_research_snapshot_context_v1',
+                   'trailmind_runtime_outdoor_research_highlights_v1',
+                   'trailmind_runtime_outdoor_research_route_memberships_v1',
+                   'trailmind_runtime_outdoor_research_route_assertions_v1',
+                   'trailmind_runtime_outdoor_research_trail_access_candidates_v1'
+                 )
+                 AND has_function_privilege(
+                   current_user, procedure.oid, 'EXECUTE'
+                 )
+            ) AS no_unexpected_runtime_execute,
+            (
+              SELECT count(*) = 5 AND
+                     count(DISTINCT owner.oid) = 1 AND
+                     bool_and(
+                       NOT owner.rolcanlogin AND
+                       NOT owner.rolinherit AND
+                       NOT owner.rolsuper AND
+                       NOT owner.rolcreatedb AND
+                       NOT owner.rolcreaterole AND
+                       NOT owner.rolreplication AND
+                       NOT owner.rolbypassrls AND
+                       NOT EXISTS (
+                         SELECT 1 FROM pg_auth_members membership
+                          WHERE membership.member = owner.oid
+                       )
+                     )
+                FROM pg_proc procedure
+                JOIN pg_namespace namespace
+                  ON namespace.oid = procedure.pronamespace
+                JOIN pg_roles owner ON owner.oid = procedure.proowner
+               WHERE namespace.nspname = 'public'
+                 AND procedure.proname LIKE
+                   'trailmind_runtime_outdoor_research_%_v1'
+            ) AS constrained_function_owner
+       FROM pg_roles role
+      WHERE role.rolname = current_user`
+  );
+  const operatorRow = operator.rows[0];
+  const runtimeRow = runtime.rows[0];
+  if (
+    operator.rowCount !== 1 || runtime.rowCount !== 1 ||
+    operatorRow.current_user !== operatorRow.session_user ||
+    runtimeRow.current_user !== runtimeRow.session_user ||
+    operatorRow.current_user !== databaseIdentities.operator.username ||
+    runtimeRow.current_user !== databaseIdentities.runtime.username ||
+    operatorRow.current_user === runtimeRow.current_user ||
+    operatorRow.database_name !== databaseIdentities.operator.database ||
+    runtimeRow.database_name !== databaseIdentities.runtime.database ||
+    operatorRow.database_name !== runtimeRow.database_name ||
+    operatorRow.server_address !== runtimeRow.server_address ||
+    Number(operatorRow.server_port) !== Number(runtimeRow.server_port) ||
+    !loopbackHost(operatorRow.server_address) ||
+    operatorRow.bounded_read_auditor !== true ||
+    operatorRow.no_role_memberships !== true ||
+    operatorRow.no_database_temporary !== true ||
+    operatorRow.no_schema_create !== true ||
+    operatorRow.no_relation_write !== true ||
+    operatorRow.owns_no_database_objects !== true ||
+    Object.entries(runtimeRow).some(([key, value]) =>
+      ![
+        'current_user', 'session_user', 'database_name',
+        'server_address', 'server_port'
+      ].includes(key) && value !== true
+    )
+  ) {
+    throw proofError("database_runtime_role_admission_failed");
   }
 }
 
@@ -521,14 +773,73 @@ function commitIdentifier(value) {
   return typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 }
 
-function validateLoopbackProofDatabaseUrl(value) {
-  let url;
-  try { url = new URL(value); } catch { throw proofError("database_unavailable"); }
-  if (!new Set(["127.0.0.1", "localhost", "::1"]).has(url.hostname) ||
-      !/v4.*proof/i.test(url.pathname) ||
-      !/proof/i.test(decodeURIComponent(url.username))) {
+export function validateLoopbackProofDatabaseUrls(
+  runtimeValue,
+  operatorValue
+) {
+  const runtime = strictProofDatabaseIdentity(runtimeValue);
+  const operator = strictProofDatabaseIdentity(operatorValue);
+  if (
+    runtime.host !== operator.host ||
+    runtime.port !== operator.port ||
+    runtime.database !== operator.database ||
+    runtime.username === operator.username
+  ) {
     throw proofError("database_unavailable");
   }
+  return Object.freeze({ runtime, operator });
+}
+
+function strictProofDatabaseIdentity(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw proofError("database_unavailable");
+  }
+  const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  let username;
+  let database;
+  try {
+    username = decodeURIComponent(url.username);
+    database = decodeURIComponent(url.pathname.slice(1));
+  } catch {
+    throw proofError("database_unavailable");
+  }
+  if (
+    !["postgres:", "postgresql:"].includes(url.protocol) ||
+    url.search !== "" ||
+    url.hash !== "" ||
+    !loopbackHost(host) ||
+    !/v4.*proof/i.test(database) ||
+    !/proof/i.test(username) ||
+    username.length === 0 ||
+    database.length === 0 ||
+    database.includes("/") ||
+    url.pathname.slice(1).includes("/")
+  ) {
+    throw proofError("database_unavailable");
+  }
+  return Object.freeze({
+    host,
+    port: url.port || "5432",
+    database,
+    username
+  });
+}
+
+function loopbackHost(value) {
+  return new Set(["127.0.0.1", "localhost", "::1"]).has(value);
+}
+
+function monitorV4ProofPool(pool, state) {
+  pool.on("error", () => {
+    state.failed = true;
+  });
+}
+
+function throwIfV4ProofPoolFailed(state) {
+  if (state.failed) throw proofError("database_unavailable");
 }
 
 async function safeAttemptedCount(ledger) {

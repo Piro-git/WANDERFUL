@@ -6,6 +6,7 @@ import {
 } from "../src/outdoorResearch/osmProjectionPolicy.js";
 import {
   outdoorResearchRepositoryQueriesForTesting,
+  outdoorResearchRuntimeQueriesForTesting,
   PostgresOutdoorResearchRepository
 } from "../src/outdoorResearch/postgresOutdoorResearchRepository.js";
 import {
@@ -60,7 +61,7 @@ describe("PostGIS outdoor research repository", () => {
     assert.equal(harness.commands.at(-1), "COMMIT");
     assert.equal(harness.released(), true);
     const snapshotCall = harness.queryCalls.find((call) =>
-      call.text.includes("SELECT region.region_id")
+      call.text.includes("trailmind_runtime_outdoor_research_snapshot_context_v1")
     );
     assert.deepEqual(snapshotCall.values, [
       "harz-v1",
@@ -121,6 +122,24 @@ describe("PostGIS outdoor research repository", () => {
     );
     assert.equal(result.availabilityState, "active");
     assert.equal(result.snapshot.freshnessLimitMilliseconds, 14 * 86_400_000);
+  });
+
+  it("normalizes PostgreSQL timestamp offsets at the JSON function boundary", async () => {
+    const harness = repositoryHarness({
+      snapshotRow: activeSnapshotRow({
+        source_data_at: "2026-07-24T02:00:00+02:00",
+        import_retrieved_at: "2026-07-24T02:30:00+02:00",
+        imported_at: "2026-07-24T03:00:00+02:00"
+      })
+    });
+    const result = await harness.repository.withConsistentSnapshot(
+      {},
+      (session) => session.resolveCapabilities(BINDING, ANCHOR, NOW)
+    );
+    assert.equal(result.availabilityState, "active");
+    assert.equal(result.snapshot.sourceDataAt, "2026-07-24T00:00:00.000Z");
+    assert.equal(result.snapshot.retrievedAt, "2026-07-24T00:30:00.000Z");
+    assert.equal(result.snapshot.importedAt, "2026-07-24T01:00:00.000Z");
   });
 
   it("fails missing, future, and maximum-age policy drift closed", async () => {
@@ -196,9 +215,10 @@ describe("PostGIS outdoor research repository", () => {
   it("rejects malformed normalized repository and freshness timestamps", async () => {
     const invalidTimestamps = [
       "2026-02-30T10:00:00Z",
+      "2026-02-30T10:00:00+02:00",
       "2026",
       "2026-07-24T10:00:00",
-      "2026-07-24T12:00:00+02:00",
+      "2026-07-24T10:00:00+15:00",
       "not-a-date",
       new Date(Number.NaN)
     ];
@@ -309,6 +329,32 @@ describe("PostGIS outdoor research repository", () => {
     assert.doesNotMatch(queries.trailAccessCandidates, /ST_PointOnSurface\(trail/);
   });
 
+  it("executes only the bounded runtime function surface", () => {
+    const queries = outdoorResearchRuntimeQueriesForTesting;
+    for (const [name, query] of Object.entries(queries)) {
+      assert.match(query, /^\s*SELECT "public"\.trailmind_runtime_/);
+      assert.doesNotMatch(query, /\b(?:FROM|JOIN) outdoor_/);
+      if (!name.endsWith("Plan")) assert.match(query, /AS runtime_row/);
+    }
+  });
+
+  it("rejects an unsafe runtime schema identifier", () => {
+    for (const runtimeSchema of [
+      "public; SET ROLE elevated",
+      "MixedCase",
+      "pg-temp",
+      ""
+    ]) {
+      assert.throws(
+        () => new PostgresOutdoorResearchRepository({
+          pool: { async connect() {} },
+          runtimeSchema
+        }),
+        hasCode("invalid_dependencies")
+      );
+    }
+  });
+
   it("passes only reviewed bounded parameters to the access-point query", async () => {
     const highlight = {
       entityId: "11111111-1111-4111-8111-111111111111",
@@ -334,7 +380,9 @@ describe("PostGIS outdoor research repository", () => {
       })
     );
     const call = harness.queryCalls.find((item) =>
-      item.text.includes("ST_ClosestPoint")
+      item.text.includes(
+        "trailmind_runtime_outdoor_research_trail_access_candidates_v1"
+      )
     );
     assert.deepEqual(call.values, [
       activeSnapshotRow().projection_run_id,
@@ -383,8 +431,7 @@ describe("PostGIS outdoor research repository", () => {
       });
     });
     const highlightCall = harness.queryCalls.find((call) =>
-      call.text.includes("WITH anchor AS") &&
-      call.text.includes("candidates AS")
+      call.text.includes("trailmind_runtime_outdoor_research_highlights_v1")
     );
     assert.deepEqual(highlightCall.values.slice(1, 8), [
       "harz-v1",
@@ -397,7 +444,7 @@ describe("PostGIS outdoor research repository", () => {
     ]);
     assert.equal(highlightCall.values[8], 75);
     const membershipCall = harness.queryCalls.find((call) =>
-      call.text.includes("membership_segment_ids AS")
+      call.text.includes("trailmind_runtime_outdoor_research_route_memberships_v1")
     );
     assert.deepEqual(membershipCall.values.slice(1), [
       "harz-v1",
@@ -563,20 +610,20 @@ function repositoryHarness(options = {}) {
       }
       queryCalls.push({ text, values });
       if (options.queryError) throw options.queryError;
-      if (text.includes("SELECT region.region_id")) {
-        return { rows: options.snapshotRow ? [options.snapshotRow] : [] };
+      if (text.includes("trailmind_runtime_outdoor_research_snapshot_context_v1")) {
+        return runtimeRows(options.snapshotRow ? [options.snapshotRow] : []);
       }
-      if (text.includes("ST_ClosestPoint")) {
-        return { rows: options.trailAccessRows ?? [] };
+      if (text.includes("trailmind_runtime_outdoor_research_trail_access_candidates_v1")) {
+        return runtimeRows(options.trailAccessRows ?? []);
       }
-      if (text.includes("candidates AS")) {
-        return { rows: options.highlightRows ?? [] };
+      if (text.includes("trailmind_runtime_outdoor_research_highlights_v1")) {
+        return runtimeRows(options.highlightRows ?? []);
       }
-      if (text.includes("membership_segment_ids AS")) {
-        return { rows: options.membershipRows ?? [] };
+      if (text.includes("trailmind_runtime_outdoor_research_route_memberships_v1")) {
+        return runtimeRows(options.membershipRows ?? []);
       }
-      if (text.includes("projection.entity_id = ANY")) {
-        return { rows: options.assertionRows ?? [] };
+      if (text.includes("trailmind_runtime_outdoor_research_route_assertions_v1")) {
+        return runtimeRows(options.assertionRows ?? []);
       }
       throw new Error("unexpected fake query");
     },
@@ -590,6 +637,10 @@ function repositoryHarness(options = {}) {
     queryCalls,
     released: () => didRelease
   };
+}
+
+function runtimeRows(rows) {
+  return { rows: rows.map((runtime_row) => ({ runtime_row })) };
 }
 
 function activeSnapshotRow(overrides = {}) {

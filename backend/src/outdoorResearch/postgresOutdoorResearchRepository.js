@@ -668,6 +668,10 @@ SELECT *
           trail_entity_id
  LIMIT $8`;
 
+const DEFAULT_RUNTIME_SCHEMA = "public";
+const RUNTIME_SCHEMA_PATTERN = /^[a-z_][a-z0-9_]{0,62}$/;
+const DEFAULT_RUNTIME_QUERIES = runtimeQueries(DEFAULT_RUNTIME_SCHEMA);
+
 export class PostgresOutdoorResearchRepository {
   constructor(options = {}) {
     if (!options.pool?.connect) {
@@ -675,6 +679,11 @@ export class PostgresOutdoorResearchRepository {
     }
     const policy = OUTDOOR_RESEARCH_EXECUTOR_POLICY_V1;
     this.pool = options.pool;
+    const runtimeSchema = options.runtimeSchema ?? DEFAULT_RUNTIME_SCHEMA;
+    if (!RUNTIME_SCHEMA_PATTERN.test(runtimeSchema)) {
+      throw outdoorResearchExecutorError("invalid_dependencies");
+    }
+    this.runtimeQueries = runtimeQueries(runtimeSchema);
     if (
       options.cancellationPool !== undefined &&
       (
@@ -745,7 +754,8 @@ export class PostgresOutdoorResearchRepository {
       ]);
       snapshotSession = new PostgresOutdoorResearchSnapshotSession(
         client,
-        context?.signal
+        context?.signal,
+        this.runtimeQueries
       );
       context?.signal?.addEventListener?.("abort", observeAbort, {
         once: true
@@ -797,19 +807,20 @@ function observeTransactionLifecycle(repository, event) {
 }
 
 class PostgresOutdoorResearchSnapshotSession {
-  constructor(client, signal) {
+  constructor(client, signal, queries) {
     this.client = client;
     this.signal = signal;
+    this.queries = queries;
     this.queryActive = false;
     this.queryCancelledAfterAbort = false;
   }
 
   async resolveCapabilities(binding, anchor, now) {
-    const result = await this.query(SNAPSHOT_CONTEXT_QUERY, [
+    const result = runtimeResult(await this.query(this.queries.snapshotContext, [
       binding.operationalRegionId,
       anchor.longitude,
       anchor.latitude
-    ]);
+    ]));
     return deriveCapabilityResult(result.rows[0], binding, now);
   }
 
@@ -819,7 +830,7 @@ class PostgresOutdoorResearchSnapshotSession {
       request.limit,
       policy.maximumHighlightsPerOperation
     );
-    const result = await this.query(HIGHLIGHT_QUERY, [
+    const result = runtimeResult(await this.query(this.queries.highlights, [
       request.projectionRunId,
       request.operationalRegionId,
       request.anchor.longitude,
@@ -829,7 +840,7 @@ class PostgresOutdoorResearchSnapshotSession {
       request.predicates,
       limit,
       policy.maximumHighlightTrailSeparationMeters
-    ]);
+    ]));
     if (result.rows.length > policy.maximumRepositoryRowsPerOperation) {
       throw outdoorResearchExecutorError("result_too_large");
     }
@@ -842,15 +853,18 @@ class PostgresOutdoorResearchSnapshotSession {
       request.limit,
       policy.maximumRoutesPerOperation
     );
-    const memberships = await this.query(ROUTE_MEMBERSHIP_QUERY, [
-      request.projectionRunId,
-      request.operationalRegionId,
-      request.anchor.longitude,
-      request.anchor.latitude,
-      request.searchRadiusMeters,
-      routeLimit,
-      policy.maximumMembershipsPerRoute
-    ]);
+    const memberships = runtimeResult(await this.query(
+      this.queries.routeMemberships,
+      [
+        request.projectionRunId,
+        request.operationalRegionId,
+        request.anchor.longitude,
+        request.anchor.latitude,
+        request.searchRadiusMeters,
+        routeLimit,
+        policy.maximumMembershipsPerRoute
+      ]
+    ));
     if (memberships.rows.length > policy.maximumRepositoryRowsPerOperation) {
       throw outdoorResearchExecutorError("result_too_large");
     }
@@ -866,12 +880,12 @@ class PostgresOutdoorResearchSnapshotSession {
     );
     const assertions = assertionPredicates.length === 0
       ? { rows: [] }
-      : await this.query(ROUTE_ASSERTION_QUERY, [
+      : runtimeResult(await this.query(this.queries.routeAssertions, [
         request.projectionRunId,
         entityIds,
         assertionPredicates,
         policy.maximumRepositoryRowsPerOperation
-      ]);
+      ]));
     if (assertions.rows.length > policy.maximumRepositoryRowsPerOperation) {
       throw outdoorResearchExecutorError("result_too_large");
     }
@@ -927,16 +941,19 @@ class PostgresOutdoorResearchSnapshotSession {
     if (new Set(entityIds).size !== entityIds.length) {
       throw outdoorResearchExecutorError("operation_scope_violation");
     }
-    const result = await this.query(TRAIL_ACCESS_CANDIDATE_QUERY, [
-      request.projectionRunId,
-      request.operationalRegionId,
-      entityIds,
-      request.maximumDistanceMeters,
-      request.maximumCandidatesPerHighlight,
-      request.eligibleHighwayClasses,
-      request.highlightCategories,
-      request.maximumRows
-    ]);
+    const result = runtimeResult(await this.query(
+      this.queries.trailAccessCandidates,
+      [
+        request.projectionRunId,
+        request.operationalRegionId,
+        entityIds,
+        request.maximumDistanceMeters,
+        request.maximumCandidatesPerHighlight,
+        request.eligibleHighwayClasses,
+        request.highlightCategories,
+        request.maximumRows
+      ]
+    ));
     if (result.rows.length > request.maximumRows) {
       throw outdoorResearchExecutorError("result_too_large");
     }
@@ -1167,6 +1184,62 @@ function freeze(value) {
   return value;
 }
 
+function runtimeResult(result) {
+  if (!Array.isArray(result?.rows)) {
+    throw outdoorResearchExecutorError("repository_failed");
+  }
+  const rows = result.rows.map((record) =>
+    normalizeRuntimeJson(record?.runtime_row)
+  );
+  if (rows.some((row) =>
+    !row || typeof row !== "object" || Array.isArray(row)
+  )) {
+    throw outdoorResearchExecutorError("malformed_evidence");
+  }
+  return { rows };
+}
+
+function normalizeRuntimeJson(value) {
+  if (typeof value === "string") {
+    const timestamp = normalizeRuntimeOffsetTimestamp(value);
+    if (timestamp !== undefined) return timestamp;
+  }
+  if (Array.isArray(value)) return value.map(normalizeRuntimeJson);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, child]) => [
+    key,
+    normalizeRuntimeJson(child)
+  ]));
+}
+
+function normalizeRuntimeOffsetTimestamp(value) {
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?([+-])(\d{2}):(\d{2})$/
+  );
+  if (!match) return undefined;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const offsetHour = Number(match[9]);
+  const offsetMinute = Number(match[10]);
+  const calendar = new Date(Date.UTC(year, month - 1, day));
+  if (
+    calendar.getUTCFullYear() !== year ||
+    calendar.getUTCMonth() !== month - 1 ||
+    calendar.getUTCDate() !== day ||
+    hour > 23 || minute > 59 || second > 59 ||
+    offsetHour > 14 || offsetMinute > 59 ||
+    (offsetHour === 14 && offsetMinute !== 0)
+  ) {
+    return value;
+  }
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : value;
+}
+
 export const outdoorResearchRepositoryQueriesForTesting = Object.freeze({
   snapshotContext: SNAPSHOT_CONTEXT_QUERY,
   highlights: HIGHLIGHT_QUERY,
@@ -1174,3 +1247,42 @@ export const outdoorResearchRepositoryQueriesForTesting = Object.freeze({
   routeAssertions: ROUTE_ASSERTION_QUERY,
   trailAccessCandidates: TRAIL_ACCESS_CANDIDATE_QUERY
 });
+
+export const outdoorResearchRuntimeQueriesForTesting = Object.freeze({
+  ...DEFAULT_RUNTIME_QUERIES
+});
+
+export function outdoorResearchRuntimeQueriesForSchemaForTesting(schemaName) {
+  if (!RUNTIME_SCHEMA_PATTERN.test(schemaName)) {
+    throw outdoorResearchExecutorError("invalid_dependencies");
+  }
+  return runtimeQueries(schemaName);
+}
+
+function runtimeQueries(schemaName) {
+  const schema = `"${schemaName}"`;
+  const operation = (name) =>
+    `${schema}.trailmind_runtime_outdoor_research_${name}_v1`;
+  return Object.freeze({
+    snapshotContext: `
+SELECT ${operation("snapshot_context")}(
+  $1, $2, $3
+) AS runtime_row`,
+    highlights: `
+SELECT ${operation("highlights")}(
+  $1, $2, $3, $4, $5, $6, $7, $8, $9
+) AS runtime_row`,
+    routeMemberships: `
+SELECT ${operation("route_memberships")}(
+  $1, $2, $3, $4, $5, $6, $7
+) AS runtime_row`,
+    routeAssertions: `
+SELECT ${operation("route_assertions")}(
+  $1, $2, $3, $4
+) AS runtime_row`,
+    trailAccessCandidates: `
+SELECT ${operation("trail_access_candidates")}(
+  $1, $2, $3, $4, $5, $6, $7, $8
+) AS runtime_row`
+  });
+}

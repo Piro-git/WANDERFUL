@@ -75,7 +75,13 @@ describe("outdoor research executor real PostGIS integration", {
   skip: !connectionString
 }, () => {
   let administrativePool;
+  let administrativeRoleName;
+  let auditorPool;
+  let auditorRoleName;
+  let functionOwnerRoleName;
   let pool;
+  let runtimePool;
+  let runtimeRoleName;
   let schemaName;
   let seeded;
   let sourceId;
@@ -94,11 +100,30 @@ describe("outdoor research executor real PostGIS integration", {
       max: 2,
       allowExitOnIdle: true
     });
+    administrativeRoleName = (await administrativePool.query(
+      "SELECT current_user AS role_name"
+    )).rows[0].role_name;
     await administrativePool.query("CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public");
-    await administrativePool.query(`CREATE SCHEMA "${schemaName}"`);
+    functionOwnerRoleName =
+      `trailmind_function_owner_${randomUUID().replaceAll("-", "_")}`;
+    await administrativePool.query(
+      `CREATE ROLE ${quoteIdentifier(functionOwnerRoleName)}
+         NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
+         NOREPLICATION NOBYPASSRLS`
+    );
+    await administrativePool.query(
+      `GRANT ${quoteIdentifier(functionOwnerRoleName)}
+         TO ${quoteIdentifier(administrativeRoleName)}`
+    );
+    await administrativePool.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
+    await administrativePool.query(
+      `CREATE SCHEMA "${schemaName}"
+         AUTHORIZATION ${quoteIdentifier(functionOwnerRoleName)}`
+    );
     pool = new Pool({
       connectionString,
-      options: `-c search_path=${schemaName},public`,
+      options:
+        `-c role=${functionOwnerRoleName} -c search_path=${schemaName},public`,
       max: 6,
       allowExitOnIdle: true
     });
@@ -108,7 +133,8 @@ describe("outdoor research executor real PostGIS integration", {
       "004_osm_outdoor_research_projection.sql",
       "005_outdoor_research_projection_geometry.sql",
       "006_outdoor_route_membership_point_index.sql",
-      "007_routable_highlight_access_geography_index.sql"
+      "007_routable_highlight_access_geography_index.sql",
+      "008_outdoor_research_runtime_read_contract.sql"
     ]) {
       const migration = await readFile(
         new URL(`../migrations/${migrationName}`, import.meta.url),
@@ -143,12 +169,111 @@ describe("outdoor research executor real PostGIS integration", {
         await seedRegion(pool, region, sourceId, policyId)
       );
     }
+    runtimeRoleName = `trailmind_runtime_${randomUUID().replaceAll("-", "_")}`;
+    const runtimePassword = randomUUID();
+    await administrativePool.query(
+      `CREATE ROLE ${quoteIdentifier(runtimeRoleName)}
+         LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
+         NOREPLICATION NOBYPASSRLS PASSWORD '${runtimePassword}'`
+    );
+    const databaseName = (await administrativePool.query(
+      "SELECT current_database() AS database_name"
+    )).rows[0].database_name;
+    await administrativePool.query(
+      `REVOKE TEMPORARY ON DATABASE ${quoteIdentifier(databaseName)} FROM PUBLIC`
+    );
+    await administrativePool.query(
+      `REVOKE ALL ON SCHEMA ${quoteIdentifier(schemaName)}
+         FROM ${quoteIdentifier(runtimeRoleName)}`
+    );
+    await administrativePool.query(
+      `REVOKE ALL ON ALL TABLES IN SCHEMA ${quoteIdentifier(schemaName)}
+         FROM ${quoteIdentifier(runtimeRoleName)}`
+    );
+    await administrativePool.query(
+      `REVOKE ALL ON ALL SEQUENCES IN SCHEMA ${quoteIdentifier(schemaName)}
+         FROM ${quoteIdentifier(runtimeRoleName)}`
+    );
+    await administrativePool.query(
+      `GRANT USAGE ON SCHEMA ${quoteIdentifier(schemaName)}
+         TO ${quoteIdentifier(runtimeRoleName)}`
+    );
+    for (const signature of runtimeFunctionSignatures(schemaName)) {
+      await administrativePool.query(
+        `GRANT EXECUTE ON FUNCTION ${signature}
+           TO ${quoteIdentifier(runtimeRoleName)}`
+      );
+    }
+    auditorRoleName = `trailmind_auditor_${randomUUID().replaceAll("-", "_")}`;
+    const auditorPassword = randomUUID();
+    await administrativePool.query(
+      `CREATE ROLE ${quoteIdentifier(auditorRoleName)}
+         LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
+         NOREPLICATION BYPASSRLS PASSWORD '${auditorPassword}'`
+    );
+    await administrativePool.query(
+      `REVOKE ALL ON SCHEMA ${quoteIdentifier(schemaName)}
+         FROM ${quoteIdentifier(auditorRoleName)}`
+    );
+    await administrativePool.query(
+      `GRANT USAGE ON SCHEMA ${quoteIdentifier(schemaName)}
+         TO ${quoteIdentifier(auditorRoleName)}`
+    );
+    await administrativePool.query(
+      `GRANT SELECT ON ALL TABLES IN SCHEMA ${quoteIdentifier(schemaName)}
+         TO ${quoteIdentifier(auditorRoleName)}`
+    );
+    const runtimeUrl = new URL(connectionString);
+    runtimeUrl.username = runtimeRoleName;
+    runtimeUrl.password = runtimePassword;
+    runtimePool = new Pool({
+      connectionString: runtimeUrl.toString(),
+      options: `-c search_path=${schemaName},public`,
+      max: 3,
+      allowExitOnIdle: true
+    });
+    const auditorUrl = new URL(connectionString);
+    auditorUrl.username = auditorRoleName;
+    auditorUrl.password = auditorPassword;
+    auditorPool = new Pool({
+      connectionString: auditorUrl.toString(),
+      options: `-c search_path=${schemaName},public`,
+      max: 2,
+      allowExitOnIdle: true
+    });
   });
 
   after(async () => {
+    if (auditorPool) await auditorPool.end();
+    if (runtimePool) await runtimePool.end();
     if (pool) await pool.end();
+    if (administrativePool && runtimeRoleName) {
+      await administrativePool.query(
+        `DROP OWNED BY ${quoteIdentifier(runtimeRoleName)}`
+      );
+      await administrativePool.query(
+        `DROP ROLE ${quoteIdentifier(runtimeRoleName)}`
+      );
+    }
+    if (administrativePool && auditorRoleName) {
+      await administrativePool.query(
+        `DROP OWNED BY ${quoteIdentifier(auditorRoleName)}`
+      );
+      await administrativePool.query(
+        `DROP ROLE ${quoteIdentifier(auditorRoleName)}`
+      );
+    }
     if (administrativePool && schemaName) {
       await administrativePool.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+    }
+    if (administrativePool && functionOwnerRoleName) {
+      await administrativePool.query(
+        `REVOKE ${quoteIdentifier(functionOwnerRoleName)}
+           FROM ${quoteIdentifier(administrativeRoleName)}`
+      );
+      await administrativePool.query(
+        `DROP ROLE ${quoteIdentifier(functionOwnerRoleName)}`
+      );
     }
     if (administrativePool) await administrativePool.end();
   });
@@ -253,6 +378,420 @@ describe("outdoor research executor real PostGIS integration", {
     assert.deepEqual(await state(), before);
   });
 
+  it("leaves migration 008 functions unchanged on the second direct run", async () => {
+    const state = async () => (await pool.query(
+      `SELECT procedure.oid::text AS oid,
+              procedure.proname,
+              procedure.proconfig
+         FROM pg_proc procedure
+         JOIN pg_namespace namespace
+           ON namespace.oid = procedure.pronamespace
+        WHERE namespace.nspname = $1
+          AND procedure.proname LIKE
+            'trailmind_runtime_outdoor_research_%_v1'
+        ORDER BY procedure.proname`,
+      [schemaName]
+    )).rows;
+    const before = await state();
+    const migration = await readFile(
+      new URL(
+        "../migrations/008_outdoor_research_runtime_read_contract.sql",
+        import.meta.url
+      ),
+      "utf8"
+    );
+
+    await pool.query(migration);
+    await pool.query(migration);
+
+    assert.equal(before.length, 5);
+    assert.deepEqual(await state(), before);
+  });
+
+  it("rolls the runtime contract migration back atomically on failure", async () => {
+    const rollbackSchema =
+      `trailmind_rollback_${randomUUID().replaceAll("-", "_")}`;
+    await administrativePool.query(
+      `CREATE SCHEMA ${quoteIdentifier(rollbackSchema)}
+         AUTHORIZATION ${quoteIdentifier(functionOwnerRoleName)}`
+    );
+    const rollbackPool = new Pool({
+      connectionString,
+      options:
+        `-c role=${functionOwnerRoleName} -c search_path=${rollbackSchema},public`,
+      max: 1,
+      allowExitOnIdle: true
+    });
+    try {
+      for (const migrationName of [
+        "002_outdoor_evidence.sql",
+        "003_outdoor_research_graph.sql",
+        "004_osm_outdoor_research_projection.sql",
+        "005_outdoor_research_projection_geometry.sql",
+        "006_outdoor_route_membership_point_index.sql",
+        "007_routable_highlight_access_geography_index.sql"
+      ]) {
+        await rollbackPool.query(await readFile(
+          new URL(`../migrations/${migrationName}`, import.meta.url),
+          "utf8"
+        ));
+      }
+      const migration = await readFile(
+        new URL(
+          "../migrations/008_outdoor_research_runtime_read_contract.sql",
+          import.meta.url
+        ),
+        "utf8"
+      );
+      const client = await rollbackPool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(migration);
+        await assert.rejects(
+          () => client.query("SELECT missing_runtime_migration_symbol"),
+          (error) => error?.code === "42703"
+        );
+        await client.query("ROLLBACK");
+      } finally {
+        client.release();
+      }
+      const functions = await rollbackPool.query(
+        `SELECT count(*)::integer AS count
+           FROM pg_proc procedure
+           JOIN pg_namespace namespace
+             ON namespace.oid = procedure.pronamespace
+          WHERE namespace.nspname = $1
+            AND procedure.proname LIKE
+              'trailmind_runtime_outdoor_research_%_v1'`,
+        [rollbackSchema]
+      );
+      assert.equal(functions.rows[0].count, 0);
+    } finally {
+      await rollbackPool.end();
+      await administrativePool.query(
+        `DROP SCHEMA IF EXISTS ${quoteIdentifier(rollbackSchema)} CASCADE`
+      );
+    }
+  });
+
+  it("uses a real non-elevated login role with execute-only repository access", async () => {
+    const identity = await runtimePool.query(
+      `SELECT current_user, session_user,
+              rolcanlogin, rolinherit, rolsuper, rolcreatedb, rolcreaterole,
+              rolreplication, rolbypassrls,
+              NOT EXISTS (
+                SELECT 1 FROM pg_auth_members membership
+                 WHERE membership.member = role.oid
+              ) AS no_role_memberships
+         FROM pg_roles role
+        WHERE role.rolname = current_user`
+    );
+    assert.deepEqual(identity.rows, [{
+      current_user: runtimeRoleName,
+      session_user: runtimeRoleName,
+      rolcanlogin: true,
+      rolinherit: false,
+      rolsuper: false,
+      rolcreatedb: false,
+      rolcreaterole: false,
+      rolreplication: false,
+      rolbypassrls: false,
+      no_role_memberships: true
+    }]);
+    const privileges = await runtimePool.query(
+      `SELECT has_schema_privilege(current_user, $1, 'USAGE') AS schema_usage,
+              has_schema_privilege(current_user, $1, 'CREATE') AS schema_create,
+              has_database_privilege(
+                current_user, current_database(), 'TEMPORARY'
+              ) AS database_temporary,
+              has_table_privilege(
+                current_user, $2, 'SELECT'
+              ) AS base_select,
+              has_table_privilege(
+                current_user, $3, 'SELECT'
+              ) AS active_view_select,
+              NOT EXISTS (
+                SELECT 1
+                  FROM pg_class relation
+                  JOIN pg_namespace namespace
+                    ON namespace.oid = relation.relnamespace
+                 WHERE namespace.nspname = $1
+                   AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+                   AND relation.relname LIKE 'outdoor\_%' ESCAPE '\'
+                   AND has_table_privilege(
+                     current_user,
+                     relation.oid,
+                     'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+                   )
+              ) AS no_operational_relation_privileges,
+              NOT EXISTS (
+                SELECT 1
+                  FROM pg_class relation
+                  JOIN pg_namespace namespace
+                    ON namespace.oid = relation.relnamespace
+                 WHERE namespace.nspname = $1
+                   AND relation.relkind = 'S'
+                   AND has_sequence_privilege(
+                     current_user, relation.oid, 'USAGE,SELECT,UPDATE'
+                   )
+              ) AS no_sequence_privileges,
+              NOT EXISTS (
+                SELECT 1 FROM pg_class relation
+                 WHERE relation.relowner = (
+                   SELECT oid FROM pg_roles WHERE rolname = current_user
+                 )
+              ) AND NOT EXISTS (
+                SELECT 1 FROM pg_proc procedure
+                 WHERE procedure.proowner = (
+                   SELECT oid FROM pg_roles WHERE rolname = current_user
+                 )
+              ) AS owns_no_objects`,
+      [
+        schemaName,
+        `${schemaName}.outdoor_research_projection_entities`,
+        `${schemaName}.outdoor_research_active_projection_runs`
+      ]
+    );
+    assert.deepEqual(privileges.rows, [{
+      schema_usage: true,
+      schema_create: false,
+      database_temporary: false,
+      base_select: false,
+      active_view_select: false,
+      no_operational_relation_privileges: true,
+      no_sequence_privileges: true,
+      owns_no_objects: true
+    }]);
+    for (const signature of runtimeFunctionSignatures(schemaName)) {
+      const privilege = await runtimePool.query(
+        "SELECT has_function_privilege(current_user, $1, 'EXECUTE') AS allowed",
+        [signature]
+      );
+      assert.equal(privilege.rows[0].allowed, true, signature);
+    }
+    const owners = await administrativePool.query(
+      `SELECT procedure.proname,
+              owner.rolname AS owner_name,
+              owner.rolcanlogin,
+              owner.rolinherit,
+              owner.rolsuper,
+              owner.rolcreatedb,
+              owner.rolcreaterole,
+              owner.rolreplication,
+              owner.rolbypassrls,
+              NOT EXISTS (
+                SELECT 1 FROM pg_auth_members membership
+                 WHERE membership.member = owner.oid
+              ) AS no_role_memberships,
+              NOT EXISTS (
+                SELECT 1
+                  FROM aclexplode(COALESCE(
+                    procedure.proacl,
+                    acldefault('f', procedure.proowner)
+                  )) privilege
+                 WHERE privilege.grantee = 0
+                   AND privilege.privilege_type = 'EXECUTE'
+              ) AS no_public_execute
+         FROM pg_proc procedure
+         JOIN pg_namespace namespace
+           ON namespace.oid = procedure.pronamespace
+         JOIN pg_roles owner ON owner.oid = procedure.proowner
+        WHERE namespace.nspname = $1
+          AND procedure.proname LIKE
+            'trailmind_runtime_outdoor_research_%_v1'`,
+      [schemaName]
+    );
+    assert.equal(owners.rowCount, 5);
+    assert(owners.rows.every((row) =>
+      row.owner_name === functionOwnerRoleName &&
+      row.rolcanlogin === false &&
+      row.rolinherit === false &&
+      row.rolsuper === false &&
+      row.rolcreatedb === false &&
+      row.rolcreaterole === false &&
+      row.rolreplication === false &&
+      row.rolbypassrls === false &&
+      row.no_role_memberships === true &&
+      row.no_public_execute === true
+    ));
+
+    const repository = new PostgresOutdoorResearchRepository({
+      pool: runtimePool,
+      runtimeSchema: schemaName,
+      statementTimeoutMs: 2_000
+    });
+    for (const region of REGIONS) {
+      const result = await researchOutdoorAdventureV1(intent(region), {
+        repository,
+        clock: () => NOW,
+        totalTimeoutMs: 5_000
+      });
+      assert.equal(result.state, "ready");
+      assert(result.dossier.candidateHighlights.length > 0);
+      assert(result.dossier.mappedOrOfficialRouteCandidates.length > 0);
+    }
+  });
+
+  it("captures reviewed indexes through the separate auditor role", async () => {
+    const ids = seeded.get("harz-v1");
+    await seedRepresentativeTrailVolume({
+      pool,
+      sourceId,
+      projectionRunId: ids.runId,
+      importId: ids.importId,
+      operationalRegionId: "harz-v1",
+      osmBase: REGIONS[0].osmBase + 30_000,
+      count: 1_000
+    });
+    await pool.query("ANALYZE outdoor_research_projection_entities");
+    const client = await auditorPool.connect();
+    try {
+      await client.query("BEGIN TRANSACTION READ ONLY");
+      await client.query("SET LOCAL enable_seqscan = off");
+      const routePlan = await client.query(
+        `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+${outdoorResearchRepositoryQueriesForTesting.routeMemberships}`,
+        [ids.runId, "harz-v1", 10.6, 51.8, 10_000, 24, 1]
+      );
+      const routeIndexes = collectPlanValues(
+        routePlan.rows[0]["QUERY PLAN"],
+        "Index Name"
+      );
+      assert(routeIndexes.includes(
+        "outdoor_research_projection_relationships_subject_idx"
+      ), `observed runtime route indexes: ${routeIndexes.join(", ")}`);
+
+      const accessPlan = await client.query(
+        `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+${outdoorResearchRepositoryQueriesForTesting.trailAccessCandidates}`,
+        [
+          ids.runId,
+          "harz-v1",
+          [ids.viewpointId],
+          75,
+          3,
+          RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1.eligibleHighwayClasses,
+          RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1.highlightCategories,
+          64
+        ]
+      );
+      const accessIndexes = collectPlanValues(
+        accessPlan.rows[0]["QUERY PLAN"],
+        "Index Name"
+      );
+      assert(accessIndexes.includes(
+        "outdoor_research_projection_entities_trail_geography_gist_idx"
+      ), `observed runtime access indexes: ${accessIndexes.join(", ")}`);
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("denies direct reads, writes, DDL, role changes and RLS bypass attempts", async () => {
+    const denied = [
+      "SELECT * FROM outdoor_research_projection_entities LIMIT 1",
+      "SELECT * FROM outdoor_research_active_projection_runs LIMIT 1",
+      "INSERT INTO outdoor_research_projection_quarantines (quarantine_id, projection_run_id, reason_code, record_kind, osm_type, osm_id) VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'invalid_value', 'poi', 'node', 1)",
+      "UPDATE outdoor_evidence_regions SET enabled = false WHERE region_id = 'harz-v1'",
+      "DELETE FROM outdoor_research_projection_entities WHERE false",
+      "TRUNCATE outdoor_research_projection_entities",
+      "ALTER TABLE outdoor_research_projection_entities DISABLE ROW LEVEL SECURITY",
+      "CREATE POLICY runtime_escape ON outdoor_research_projection_entities USING (true)",
+      "CREATE TABLE runtime_escape (id integer)",
+      "CREATE TEMP TABLE runtime_escape_temp (id integer)",
+      `CREATE FUNCTION ${quoteIdentifier(schemaName)}.runtime_escape()
+         RETURNS integer LANGUAGE sql AS 'SELECT 1'`,
+      "CREATE ROLE runtime_escape_role",
+      `ALTER ROLE ${quoteIdentifier(administrativeRoleName)} SUPERUSER`,
+      `ALTER ROLE ${quoteIdentifier(functionOwnerRoleName)} LOGIN`,
+      `SET ROLE ${quoteIdentifier(administrativeRoleName)}`,
+      `SET ROLE ${quoteIdentifier(functionOwnerRoleName)}`
+    ];
+    for (const sql of denied) {
+      let observed;
+      try {
+        await runtimePool.query(sql);
+      } catch (error) {
+        observed = error;
+      }
+      assert(
+        ["42501", "42P01", "0LP01"].includes(observed?.code),
+        `${sql}: ${observed?.code ?? "unexpectedly allowed"}`
+      );
+    }
+    await runtimePool.query("SET row_security = off");
+    try {
+      await assert.rejects(
+        () => runtimePool.query(
+          "SELECT * FROM outdoor_research_projection_entities LIMIT 1"
+        ),
+        (error) => ["42501", "42P01"].includes(error?.code)
+      );
+    } finally {
+      await runtimePool.query("RESET row_security");
+    }
+  });
+
+  it("removes superseded imports and revoked source policy state from runtime results", async () => {
+    const ids = seeded.get("harz-v1");
+    const repository = new PostgresOutdoorResearchRepository({
+      pool: runtimePool,
+      runtimeSchema: schemaName,
+      statementTimeoutMs: 2_000
+    });
+    const resolve = () => repository.withConsistentSnapshot({}, (session) =>
+      session.resolveCapabilities(binding(REGIONS[0]), REGIONS[0].anchor, NOW)
+    );
+    assert.equal((await resolve()).availabilityState, "active");
+
+    await pool.query(
+      "UPDATE outdoor_evidence_imports SET status = 'superseded' WHERE import_id = $1",
+      [ids.importId]
+    );
+    try {
+      assert.equal((await resolve()).availabilityState, "source_unavailable");
+      const memberships = await runtimePool.query(
+        `SELECT trailmind_runtime_outdoor_research_route_memberships_v1(
+           $1, $2, $3, $4, $5, $6, $7
+         ) AS runtime_row`,
+        [ids.runId, "harz-v1", 10.6, 51.8, 10_000, 24, 1]
+      );
+      assert.equal(memberships.rowCount, 0);
+    } finally {
+      await pool.query(
+        "UPDATE outdoor_evidence_imports SET status = 'active' WHERE import_id = $1",
+        [ids.importId]
+      );
+    }
+
+    await pool.query(
+      "UPDATE outdoor_research_sources SET lifecycle_state = 'paused' WHERE source_id = $1",
+      [sourceId]
+    );
+    try {
+      assert.equal((await resolve()).availabilityState, "source_unavailable");
+    } finally {
+      await pool.query(
+        "UPDATE outdoor_research_sources SET lifecycle_state = 'active' WHERE source_id = $1",
+        [sourceId]
+      );
+    }
+
+    await pool.query(
+      "UPDATE outdoor_research_source_policies SET lifecycle_state = 'blocked' WHERE source_policy_id = $1",
+      [policyId]
+    );
+    try {
+      assert.equal((await resolve()).availabilityState, "source_unavailable");
+    } finally {
+      await pool.query(
+        "UPDATE outdoor_research_source_policies SET lifecycle_state = 'active' WHERE source_policy_id = $1",
+        [policyId]
+      );
+    }
+  });
+
   it("resolves exact Harz and Innsbruck boundaries without cross-region leakage", async () => {
     for (const region of REGIONS) {
       const result = await execute(region);
@@ -280,6 +819,7 @@ describe("outdoor research executor real PostGIS integration", {
     for (const region of REGIONS) {
       const repository = new PostgresOutdoorResearchRepository({
         pool,
+        runtimeSchema: schemaName,
         statementTimeoutMs: 2_000
       });
       const result = await planAndRouteOutdoorAdventureV1(
@@ -321,6 +861,7 @@ describe("outdoor research executor real PostGIS integration", {
   it("reads active projection assertions and mapped route memberships with provenance", async () => {
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     const rawRoutes = await repository.withConsistentSnapshot({}, async (session) => {
@@ -390,6 +931,7 @@ describe("outdoor research executor real PostGIS integration", {
     });
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     const rows = await repository.withConsistentSnapshot({}, async (session) => {
@@ -442,6 +984,7 @@ describe("outdoor research executor real PostGIS integration", {
     }
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     const rows = await repository.withConsistentSnapshot({}, async (session) => {
@@ -526,6 +1069,7 @@ describe("outdoor research executor real PostGIS integration", {
     }
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     const request = {
@@ -607,6 +1151,7 @@ describe("outdoor research executor real PostGIS integration", {
     });
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     let providerRequest;
@@ -710,6 +1255,7 @@ describe("outdoor research executor real PostGIS integration", {
     });
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     const request = {
@@ -799,6 +1345,7 @@ describe("outdoor research executor real PostGIS integration", {
     }
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     const rows = await repository.withConsistentSnapshot({}, async (session) => {
@@ -847,7 +1394,10 @@ describe("outdoor research executor real PostGIS integration", {
       [overlappingRegionId, ...sourceRegion.envelope]
     );
     try {
-      const repository = new PostgresOutdoorResearchRepository({ pool });
+      const repository = new PostgresOutdoorResearchRepository({
+        pool,
+        runtimeSchema: schemaName
+      });
       const rows = await repository.withConsistentSnapshot({}, (session) =>
         session.discoverHighlights({
           projectionRunId: ids.runId,
@@ -955,6 +1505,7 @@ describe("outdoor research executor real PostGIS integration", {
     const lockClient = await pool.connect();
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 100
     });
     try {
@@ -1002,6 +1553,7 @@ describe("outdoor research executor real PostGIS integration", {
     const repository = new PostgresOutdoorResearchRepository({
       pool,
       cancellationPool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_500,
       transactionLifecycleObserver(event) {
         events.push(event);
@@ -1196,6 +1748,7 @@ describe("outdoor research executor real PostGIS integration", {
   async function execute(region, overrides = {}) {
     const repository = new PostgresOutdoorResearchRepository({
       pool,
+      runtimeSchema: schemaName,
       statementTimeoutMs: 2_000
     });
     return researchOutdoorAdventureV1(intent(region, overrides), {
@@ -1857,9 +2410,9 @@ async function seedRepresentativeTrailVolume({
   const volume = `SELECT series AS ordinal,
          $2::uuid AS source_id,
          $3::text AS operational_region_id,
-         md5($1::text || ':volume-entity:' || series)::uuid AS entity_id,
-         md5($1::text || ':volume-link:' || series)::uuid AS link_id,
-         md5($1::text || ':volume-claim:' || series)::uuid AS assertion_id,
+         md5($1::text || ':' || $4::text || ':volume-entity:' || series)::uuid AS entity_id,
+         md5($1::text || ':' || $4::text || ':volume-link:' || series)::uuid AS link_id,
+         md5($1::text || ':' || $4::text || ':volume-claim:' || series)::uuid AS assertion_id,
          ($4::bigint + series)::bigint AS osm_id,
          10.41 + ((series - 1) % 50) * 0.0025 AS longitude,
          51.66 + (((series - 1) / 50) % 20) * 0.005 AS latitude
@@ -1985,6 +2538,21 @@ function collectPlanValues(value, key) {
     ...own,
     ...Object.values(value).flatMap((child) => collectPlanValues(child, key))
   ];
+}
+
+function runtimeFunctionSignatures(schemaName) {
+  const schema = quoteIdentifier(schemaName);
+  return [
+    `${schema}.trailmind_runtime_outdoor_research_snapshot_context_v1(text, double precision, double precision)`,
+    `${schema}.trailmind_runtime_outdoor_research_highlights_v1(uuid, text, double precision, double precision, text[], double precision, text[], integer, double precision)`,
+    `${schema}.trailmind_runtime_outdoor_research_route_memberships_v1(uuid, text, double precision, double precision, double precision, integer, integer)`,
+    `${schema}.trailmind_runtime_outdoor_research_route_assertions_v1(uuid, uuid[], text[], integer)`,
+    `${schema}.trailmind_runtime_outdoor_research_trail_access_candidates_v1(uuid, text, uuid[], double precision, integer, text[], text[], integer)`
+  ];
+}
+
+function quoteIdentifier(value) {
+  return `"${String(value).replaceAll('"', '""')}"`;
 }
 
 function intent(region, overrides = {}) {

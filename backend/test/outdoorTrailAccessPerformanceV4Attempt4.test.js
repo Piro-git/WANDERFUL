@@ -10,7 +10,8 @@ import {
   deriveResearchSearchRadiusMetersV1
 } from "../src/outdoorResearch/executorPolicy.js";
 import {
-  outdoorResearchRepositoryQueriesForTesting
+  outdoorResearchRepositoryQueriesForTesting,
+  outdoorResearchRuntimeQueriesForTesting
 } from "../src/outdoorResearch/postgresOutdoorResearchRepository.js";
 import {
   bindOutdoorResearchIntentToReviewedRegionV1
@@ -21,6 +22,8 @@ import {
 
 const { Pool } = pg;
 const connectionString = process.env.TRAILMIND_V4_ATTEMPT4_DATABASE_URL;
+const operatorConnectionString =
+  process.env.TRAILMIND_V4_ATTEMPT4_OPERATOR_DATABASE_URL;
 const CASES = Object.freeze([
   Object.freeze({
     caseId: "case-15-partial-provider-failure-survivor",
@@ -51,26 +54,59 @@ const CASES = Object.freeze([
 ]);
 
 describe("V4 Attempt 4 current-volume trail-access performance", {
-  skip: !connectionString
+  skip: !connectionString || !operatorConnectionString
 }, () => {
   let pool;
+  let operatorPool;
   let fixtures;
 
   before(async () => {
     const url = new URL(connectionString);
+    const operatorUrl = new URL(operatorConnectionString);
     if (!new Set(["127.0.0.1", "localhost", "::1"]).has(url.hostname) ||
+        url.search !== "" || url.hash !== "" ||
+        operatorUrl.search !== "" || operatorUrl.hash !== "" ||
         !/v4a4.*membership.*perf/i.test(url.pathname) ||
-        !/proof/i.test(decodeURIComponent(url.username))) {
+        !/proof/i.test(decodeURIComponent(url.username)) ||
+        operatorUrl.hostname !== url.hostname ||
+        operatorUrl.port !== url.port ||
+        operatorUrl.pathname !== url.pathname ||
+        operatorUrl.username === url.username) {
       throw new Error(
-        "TRAILMIND_V4_ATTEMPT4_DATABASE_URL must name the loopback proof database."
+        "The runtime and operator URLs must name separate roles on the same loopback proof database."
       );
     }
     pool = new Pool({
       connectionString,
       max: 2,
       connectionTimeoutMillis: 10_000,
+      query_timeout: 3_000,
+      statement_timeout: 2_500,
       allowExitOnIdle: true
     });
+    operatorPool = new Pool({
+      connectionString: operatorConnectionString,
+      max: 2,
+      connectionTimeoutMillis: 10_000,
+      query_timeout: 3_000,
+      statement_timeout: 2_500,
+      allowExitOnIdle: true
+    });
+    const identity = await pool.query(
+      `SELECT current_user, session_user,
+              rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
+         FROM pg_roles
+        WHERE rolname = current_user`
+    );
+    assert.deepEqual(identity.rows, [{
+      current_user: decodeURIComponent(url.username),
+      session_user: decodeURIComponent(url.username),
+      rolsuper: false,
+      rolcreatedb: false,
+      rolcreaterole: false,
+      rolreplication: false,
+      rolbypassrls: false
+    }]);
     const corpus = JSON.parse(await readFile(new URL(
       "../evaluation/outdoorAdventureStagingProof/fixtures/mandatoryCasesV1.json",
       import.meta.url
@@ -80,6 +116,7 @@ describe("V4 Attempt 4 current-volume trail-access performance", {
 
   after(async () => {
     if (pool) await pool.end();
+    if (operatorPool) await operatorPool.end();
   });
 
   for (const configuration of CASES) {
@@ -92,17 +129,15 @@ describe("V4 Attempt 4 current-volume trail-access performance", {
       const reviewed = bindOutdoorResearchIntentToReviewedRegionV1(intent);
       assert.ok(reviewed);
       const regionId = reviewed.binding.operationalRegionId;
-      const run = await pool.query(
-        `SELECT projection_run_id
-           FROM outdoor_research_active_projection_runs
-          WHERE region_id = $1`,
-        [regionId]
-      );
-      assert.equal(run.rowCount, 1);
-      const runId = run.rows[0].projection_run_id;
       const anchor = reviewed.normalizedIntent.geographicAnchor.coordinate;
+      const snapshot = await pool.query(
+        outdoorResearchRuntimeQueriesForTesting.snapshotContext,
+        [regionId, anchor.longitude, anchor.latitude]
+      );
+      assert.equal(snapshot.rowCount, 1);
+      const runId = snapshot.rows[0].runtime_row.projection_run_id;
       const highlights = await pool.query(
-        outdoorResearchRepositoryQueriesForTesting.highlights,
+        outdoorResearchRuntimeQueriesForTesting.highlights,
         [
           runId,
           regionId,
@@ -117,7 +152,7 @@ describe("V4 Attempt 4 current-volume trail-access performance", {
         ]
       );
       const entityIds = [...new Set(highlights.rows.map((row) =>
-        row.entity_id
+        row.runtime_row.entity_id
       ))].slice(0, configuration.requestedHighlightCount);
       assert(entityIds.length > 0, "expected a current routable highlight");
       if (configuration.requestedHighlightCount === 32) {
@@ -138,6 +173,28 @@ describe("V4 Attempt 4 current-volume trail-access performance", {
       ];
       const measurements = [];
       let expected;
+      {
+        const client = await pool.connect();
+        try {
+          await client.query(
+            "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
+          );
+          await client.query(
+            "SELECT set_config('statement_timeout', '2500ms', true)"
+          );
+          const warmup = await client.query(
+            outdoorResearchRuntimeQueriesForTesting.trailAccessCandidates,
+            values
+          );
+          assert(warmup.rowCount > 0);
+          await client.query("ROLLBACK");
+        } catch (error) {
+          await client.query("ROLLBACK").catch(() => {});
+          throw error;
+        } finally {
+          client.release();
+        }
+      }
       for (let iteration = 0; iteration < 5; iteration += 1) {
         const client = await pool.connect();
         try {
@@ -147,21 +204,22 @@ describe("V4 Attempt 4 current-volume trail-access performance", {
           await client.query("SELECT set_config('statement_timeout', '2500ms', true)");
           const started = performance.now();
           const result = await client.query(
-            outdoorResearchRepositoryQueriesForTesting.trailAccessCandidates,
+            outdoorResearchRuntimeQueriesForTesting.trailAccessCandidates,
             values
           );
           measurements.push(performance.now() - started);
           assert(result.rowCount > 0);
-          assert(result.rowCount <= 64);
-          assert(result.rows.every((row) =>
+          assert(result.rowCount <= values[7]);
+          const rows = result.rows.map((row) => row.runtime_row);
+          assert(rows.every((row) =>
             Number(row.poi_to_access_distance_meters) <=
               RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1
                 .maximumPoiToTrailDistanceMeters &&
             Array.isArray(row.trail_category_evidence_claim_ids) &&
             row.trail_category_evidence_claim_ids.length > 0
           ));
-          if (expected === undefined) expected = result.rows;
-          else assert.deepEqual(result.rows, expected);
+          if (expected === undefined) expected = rows;
+          else assert.deepEqual(rows, expected);
           await client.query("ROLLBACK");
         } catch (error) {
           await client.query("ROLLBACK").catch(() => {});
@@ -172,27 +230,37 @@ describe("V4 Attempt 4 current-volume trail-access performance", {
       }
       assert(measurements.every((duration) => duration < 2_000));
       assert(percentile(measurements, 0.95) < 1_500);
-      const plan = await pool.query(
-        `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-         ${outdoorResearchRepositoryQueriesForTesting.trailAccessCandidates}`,
+      const operatorRows = await operatorPool.query(
+        outdoorResearchRepositoryQueriesForTesting.trailAccessCandidates,
         values
       );
-      const root = plan.rows[0]["QUERY PLAN"][0];
-      const nodes = flattenPlan(root.Plan);
+      assert.deepEqual(normalizeRows(expected), normalizeRows(operatorRows.rows));
+      const plan = await operatorPool.query(
+        `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+${outdoorResearchRepositoryQueriesForTesting.trailAccessCandidates}`,
+        values
+      );
+      assert.equal(plan.rows.length, 1);
+      const planDocument = plan.rows[0]["QUERY PLAN"][0];
+      const nodes = flattenPlan(planDocument.Plan);
+      assert(Number(planDocument["Execution Time"]) < 1_500);
+      assert(nodes.some((node) =>
+        Number.isFinite(Number(node["Shared Hit Blocks"])) ||
+        Number.isFinite(Number(node["Shared Read Blocks"]))
+      ));
       assert(nodes.some((node) => node["Index Name"] ===
         "outdoor_research_projection_entities_trail_geography_gist_idx"));
       assert.equal(nodes.some((node) =>
         node["Node Type"] === "Seq Scan" &&
         node["Relation Name"] === "outdoor_research_projection_entities"
       ), false);
-      assert(root["Execution Time"] < 2_000);
       context.diagnostic(JSON.stringify({
         regionId,
         highlightCount: entityIds.length,
         rowCount: expected.length,
         maximumMs: round(Math.max(...measurements)),
-        p95Ms: round(percentile(measurements, 0.95)),
-        explainExecutionMs: round(root["Execution Time"])
+        p50Ms: round(percentile(measurements, 0.5)),
+        p95Ms: round(percentile(measurements, 0.95))
       }));
     });
   }
@@ -215,4 +283,17 @@ function percentile(values, ratio) {
 
 function round(value) {
   return Math.round(value * 10) / 10;
+}
+
+function normalizeRows(rows) {
+  return rows.map((row) => Object.fromEntries(Object.entries(row).map(
+    ([key, value]) => [
+      key,
+      value instanceof Date
+        ? value.toISOString()
+        : typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)
+          ? new Date(value).toISOString()
+          : value
+    ]
+  )));
 }

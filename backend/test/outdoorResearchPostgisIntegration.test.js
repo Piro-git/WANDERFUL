@@ -23,6 +23,8 @@ const IDS = Object.freeze({
 
 describe("outdoor research graph PostGIS integration", { skip: !connectionString }, () => {
   let administrativePool;
+  let administrativeRoleName;
+  let functionOwnerRoleName;
   let testPool;
   let schemaName;
   let runnerSchemaName;
@@ -35,9 +37,26 @@ describe("outdoor research graph PostGIS integration", { skip: !connectionString
     schemaName = `trailmind_research_test_${randomUUID().replaceAll("-", "_")}`;
     runnerSchemaName = `trailmind_migration_test_${randomUUID().replaceAll("-", "_")}`;
     administrativePool = new Pool({ connectionString, max: 2, allowExitOnIdle: true });
+    administrativeRoleName = (await administrativePool.query(
+      "SELECT current_user AS role_name"
+    )).rows[0].role_name;
     await administrativePool.query("CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public");
+    functionOwnerRoleName =
+      `trailmind_function_owner_${randomUUID().replaceAll("-", "_")}`;
+    await administrativePool.query(
+      `CREATE ROLE "${functionOwnerRoleName}"
+         NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
+         NOREPLICATION NOBYPASSRLS`
+    );
+    await administrativePool.query(
+      `GRANT "${functionOwnerRoleName}" TO "${administrativeRoleName}"`
+    );
+    await administrativePool.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
     await administrativePool.query(`CREATE SCHEMA "${schemaName}"`);
-    await administrativePool.query(`CREATE SCHEMA "${runnerSchemaName}"`);
+    await administrativePool.query(
+      `CREATE SCHEMA "${runnerSchemaName}"
+         AUTHORIZATION "${functionOwnerRoleName}"`
+    );
     testPool = new Pool({
       connectionString,
       options: `-c search_path=${schemaName},public`,
@@ -59,6 +78,12 @@ describe("outdoor research graph PostGIS integration", { skip: !connectionString
     }
     if (administrativePool && runnerSchemaName) {
       await administrativePool.query(`DROP SCHEMA IF EXISTS "${runnerSchemaName}" CASCADE`);
+    }
+    if (administrativePool && functionOwnerRoleName) {
+      await administrativePool.query(
+        `REVOKE "${functionOwnerRoleName}" FROM "${administrativeRoleName}"`
+      );
+      await administrativePool.query(`DROP ROLE "${functionOwnerRoleName}"`);
     }
     if (administrativePool) await administrativePool.end();
   });
@@ -83,7 +108,10 @@ describe("outdoor research graph PostGIS integration", { skip: !connectionString
 
   it("runs the real migration runner once and produces a true no-op on the second run", async () => {
     const runnerURL = new URL(connectionString);
-    runnerURL.searchParams.set("options", `-csearch_path=${runnerSchemaName},public`);
+    runnerURL.searchParams.set(
+      "options",
+      `-crole=${functionOwnerRoleName} -csearch_path=${runnerSchemaName},public`
+    );
     const environment = { ...process.env, DATABASE_URL: runnerURL.toString(), POSTGRES_URL: "" };
     const first = await executeFile(process.execPath, ["scripts/migrate.js"], {
       cwd: new URL("..", import.meta.url),
@@ -105,7 +133,8 @@ describe("outdoor research graph PostGIS integration", { skip: !connectionString
       "004_osm_outdoor_research_projection.sql",
       "005_outdoor_research_projection_geometry.sql",
       "006_outdoor_route_membership_point_index.sql",
-      "007_routable_highlight_access_geography_index.sql"
+      "007_routable_highlight_access_geography_index.sql",
+      "008_outdoor_research_runtime_read_contract.sql"
     ]);
   });
 

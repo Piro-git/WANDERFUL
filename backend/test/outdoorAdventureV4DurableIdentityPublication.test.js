@@ -61,7 +61,8 @@ import {
   captureV4VerifiedPublicationCleanupEvidence
 } from "../evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/publicationCleanup.js";
 import {
-  cleanupV4ProofProcess
+  cleanupV4ProofProcess,
+  validateLoopbackProofDatabaseUrls
 } from "../scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v4.js";
 import {
   publishV4FutureSummary
@@ -453,7 +454,11 @@ describe("V4 durable identity and future summary publication", () => {
   });
 
   it("releases the ledger lock only after pools and provider access are closed", async () => {
-    const state = { cancellationClosed: false, poolClosed: false };
+    const state = {
+      cancellationClosed: false,
+      operatorClosed: false,
+      poolClosed: false
+    };
     const env = {
       ...Object.fromEntries(V4_FLAG_NAMES.map((name) => [name, "true"])),
       GRAPHHOPPER_API_KEY: "synthetic-placeholder"
@@ -465,10 +470,14 @@ describe("V4 durable identity and future summary publication", () => {
       pool: {
         async end() { state.poolClosed = true; }
       },
+      operatorPool: {
+        async end() { state.operatorClosed = true; }
+      },
       ledger: {
         async close() {
           assert.equal(state.cancellationClosed, true);
           assert.equal(state.poolClosed, true);
+          assert.equal(state.operatorClosed, true);
           assert.equal(env.GRAPHHOPPER_API_KEY, undefined);
           assert.equal(V4_FLAG_NAMES.every((name) => env[name] === "false"),
             true);
@@ -476,6 +485,43 @@ describe("V4 durable identity and future summary publication", () => {
       },
       env
     });
+  });
+
+  it("admits only distinct direct loopback proof database identities", () => {
+    const identities = validateLoopbackProofDatabaseUrls(
+      "postgresql://proof_runtime:runtime-password@127.0.0.1:55432/v4_proof",
+      "postgresql://proof_operator:operator-password@127.0.0.1:55432/v4_proof"
+    );
+    assert.equal(identities.runtime.username, "proof_runtime");
+    assert.equal(identities.operator.username, "proof_operator");
+    assert.equal(identities.runtime.database, "v4_proof");
+    assert.equal(identities.operator.database, "v4_proof");
+  });
+
+  it("rejects connection-string overrides, fragments, and decoded aliases", () => {
+    const runtime =
+      "postgresql://proof_runtime:runtime-password@127.0.0.1:55432/v4_proof";
+    const operator =
+      "postgresql://proof_operator:operator-password@127.0.0.1:55432/v4_proof";
+    for (const suffix of [
+      "?host=remote.invalid",
+      "?port=6543",
+      "?user=proof_operator",
+      "?options=-c%20role%3Delevated",
+      "#ignored"
+    ]) {
+      assert.throws(
+        () => validateLoopbackProofDatabaseUrls(`${runtime}${suffix}`, operator),
+        hasCode("database_unavailable")
+      );
+    }
+    assert.throws(
+      () => validateLoopbackProofDatabaseUrls(
+        "postgresql://proof%5Fruntime:runtime-password@127.0.0.1:55432/v4_proof",
+        runtime
+      ),
+      hasCode("database_unavailable")
+    );
   });
 });
 

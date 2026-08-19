@@ -36,7 +36,8 @@ const EXPECTED_MIGRATIONS = Object.freeze([
   "004_osm_outdoor_research_projection.sql",
   "005_outdoor_research_projection_geometry.sql",
   "006_outdoor_route_membership_point_index.sql",
-  "007_routable_highlight_access_geography_index.sql"
+  "007_routable_highlight_access_geography_index.sql",
+  "008_outdoor_research_runtime_read_contract.sql"
 ]);
 const REQUIRED_GIST_INDEXES = Object.freeze([
   "outdoor_evidence_regions_boundary_gist_idx",

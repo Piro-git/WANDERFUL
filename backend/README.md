@@ -1,6 +1,6 @@
 # TrailMind Backend
 
-Outdoor-evidence architecture, import operations, trust semantics, and the versioned corridor contract are documented in [docs/outdoor-evidence.md](docs/outdoor-evidence.md).
+Outdoor-evidence architecture, import operations, trust semantics, and the versioned corridor contract are documented in [docs/outdoor-evidence.md](docs/outdoor-evidence.md). The least-privilege PostGIS application contract is documented in [docs/outdoor-research-runtime-read-boundary.md](docs/outdoor-research-runtime-read-boundary.md).
 
 Minimal backend for TrailMind intent parsing and secure route-engine access.
 

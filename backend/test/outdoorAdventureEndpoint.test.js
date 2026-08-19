@@ -524,8 +524,8 @@ describe("outdoor-adventure planning endpoint v1", () => {
     };
     const endpoint = successfulEndpoint({
       repository: undefined,
-      postgresPool: productPool,
-      postgresCancellationPool: cancellationPool,
+      outdoorResearchPool: productPool,
+      outdoorResearchCancellationPool: cancellationPool,
       orchestrator: async (planningRequest, dependencies) => {
         assert.equal(dependencies.repository.pool, productPool);
         assert.equal(
@@ -537,6 +537,22 @@ describe("outdoor-adventure planning endpoint v1", () => {
     });
     const result = await endpoint(request(unresolvedIntent()));
     assert.equal(result.statusCode, 200);
+  });
+
+  it("fails closed instead of reusing App Attest database pools", async () => {
+    const appSecurityPool = { async connect() {} };
+    const endpoint = successfulEndpoint({
+      repository: undefined,
+      appAttestRepository: {
+        pool: appSecurityPool,
+        cancellationPool: { async connect() {} }
+      },
+      outdoorResearchPool: appSecurityPool,
+      orchestrator: async () => assert.fail("orchestrator called")
+    });
+    const result = await endpoint(request(unresolvedIntent()));
+    assert.equal(result.statusCode, 503);
+    assert.equal(result.payload.error.code, "research_unavailable");
   });
 
   it("logs only allowlisted coarse metadata and fixed classifications", async () => {

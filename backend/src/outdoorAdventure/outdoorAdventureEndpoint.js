@@ -168,10 +168,8 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
 }
 
 function resolveDependencies(options, configuration) {
-  const pool = options.postgresPool ??
-    options.appAttestRepository?.pool;
-  const cancellationPool = options.postgresCancellationPool ??
-    options.appAttestRepository?.cancellationPool;
+  const pool = options.outdoorResearchPool;
+  const cancellationPool = options.outdoorResearchCancellationPool;
   let repository = options.repository;
   if (!repository && pool?.connect) {
     repository = new PostgresOutdoorResearchRepository({
@@ -179,6 +177,18 @@ function resolveDependencies(options, configuration) {
       cancellationPool,
       statementTimeoutMs: configuration.statementTimeoutMs
     });
+  }
+  const appSecurityPools = new Set([
+    options.appAttestRepository?.pool,
+    options.appAttestRepository?.cancellationPool
+  ].filter(Boolean));
+  if (
+    repository &&
+    [repository.pool, repository.cancellationPool].some((candidate) =>
+      candidate && appSecurityPools.has(candidate)
+    )
+  ) {
+    throw outdoorAdventureOrchestrationError("research_unavailable");
   }
   if (!repository) {
     throw outdoorAdventureOrchestrationError("research_unavailable");

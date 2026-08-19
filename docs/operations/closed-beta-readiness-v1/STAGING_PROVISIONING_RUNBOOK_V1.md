@@ -53,7 +53,8 @@ not be combined for convenience.
 | Migration role | Own schema objects; apply reviewed migrations and migration ledger under advisory lock | Provider credentials; app requests | Database release owner |
 | Regional import role | Read approved local PBF; create/drop its unique staging schema; insert immutable import/evidence rows; atomically promote one region | App Attest tables; provider access; broad deletion | Regional-data owner |
 | Projection role | Configure only reviewed source policy and project a selected active import into the Evidence Graph | App Attest data; provider access; arbitrary sources | Research-data owner |
-| Runtime role | App Attest transactional reads/writes; read current research/evidence; acquire/release leases | DDL, role creation, imports, projection policy changes, broad deletion | Backend owner |
+| App-security runtime role | App Attest transactional reads/writes; acquire/release leases | Research/evidence tables, DDL, role creation, imports, projection policy changes | Backend security owner |
+| Outdoor-research runtime role | Execute only the five bounded outdoor-research read operations | Base tables, active views, App Attest data, DDL, writes, role creation, import/projection policy changes | Backend owner |
 | Pruner role | Execute the bounded App Attest expiry job or its minimum DELETE set | Evidence/import deletion, DDL, provider access | Security operations owner |
 | Read-only auditor | Read migration/import/projection status, aggregate counts, index metadata, and sanitized receipts | Raw security material, prompts, geometry exports, credentials | Release approver |
 
@@ -145,14 +146,18 @@ one transaction, and prints filenames only.
 
 Current review boundary:
 
-- migrations 001 through 006 are tracked baseline inputs;
-- migration 007 is an untracked concurrent access-point index migration under
-  independent review;
-- do not apply 007 in staging or V4 until the independent lane is accepted,
-  committed in the reviewed candidate, and its index-only/repeatability review
-  passes;
+- migrations 001 through 007 are tracked baseline inputs;
+- migration 008 adds the operation-scoped outdoor-research runtime read
+  contract and revokes its default `PUBLIC` function privileges;
+- role creation and runtime grants remain an audited platform action and are
+  not performed by migration 008;
 - V4 must stop if the accepted reviewed migration set does not contain the
-  geography GiST index required by the V2 access query.
+  point/geography GiST and relationship indexes required by the runtime query
+  plans.
+
+Use the exact role and grant contract in
+`backend/docs/outdoor-research-runtime-read-boundary.md`. The application
+runtime and operator/auditor connections must use distinct roles.
 
 ### 4. Prove migration repeatability
 
