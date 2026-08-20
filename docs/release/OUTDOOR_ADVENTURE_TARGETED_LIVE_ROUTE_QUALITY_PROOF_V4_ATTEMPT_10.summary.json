@@ -1,0 +1,576 @@
+{
+  "schemaVersion": 1,
+  "proofVersion": "outdoor-adventure-targeted-live-route-quality-proof-v4",
+  "proofClassification": "targeted_server_side_live_route_quality_proof",
+  "receiptVersion": "outdoor-adventure-targeted-live-route-quality-proof-v4-attempt-10-blocked-v1",
+  "semanticReceiptSha256": "c3e24849fe4935b5cd61a0b9299a4dd3cb6201f030bd7efea3601e0f0a7fb257",
+  "attemptNumber": 10,
+  "generatedAt": "2026-08-20T15:43:29.452Z",
+  "proofAsOf": "2026-08-20T15:43:29.452Z",
+  "status": "blocked",
+  "blockedReasonCode": "database_runtime_loopback_address_normalization_mismatch",
+  "baselineCommit": "abf3d6853d8f604f9701434d89c2e4fc892d19f9",
+  "candidateCommit": "abf3d6853d8f604f9701434d89c2e4fc892d19f9",
+  "authorizationReference": "USER_AUTHORIZED_V4_ATTEMPT_10_2026-08-20_15_CALLS",
+  "ledgerNamespace": "outdoor-adventure-v4-attempt-10-2026-08-20-zm0jul",
+  "proofRunContextDigest": "448a895994fd80b2dba1e63764d45b7c48009a75cbeec3041d3c6938fbc4be95",
+  "proofRunIdentityDigest": "d4ba9a6d09c6ca57cce13dc082adc3a5ffe1d6198d5172a6fdf99889680b1ee1",
+  "proofRunIdentityArtifactDigest": "f292df659086c516513f475d393073fdadb3ce5c17be73e1f9c1c74526fd44d3",
+  "gitCandidateAttestationDigest": "54fe463ed7ca09fa1102624f0290c78647a3fe5040c4b59bb97f38848bab38f8",
+  "proofRunIdentity": {
+    "authorizationReference": "USER_AUTHORIZED_V4_ATTEMPT_10_2026-08-20_15_CALLS",
+    "baselineCommit": "abf3d6853d8f604f9701434d89c2e4fc892d19f9",
+    "candidateCommit": "abf3d6853d8f604f9701434d89c2e4fc892d19f9",
+    "canonicalCases": [
+      {
+        "caseId": "case-15-partial-provider-failure-survivor",
+        "fixtureDigest": "c2e1f70233c8163392b8dedfa77ea5454cc12d5e42700fd6c5110e04058232af",
+        "goldenCaseDigest": "21529faec10cd3d8e6a38a83d03688b8fe4a4cee899df843b8bcc60a4c091eb6",
+        "goldenCaseId": "harz-v1-route-coherence-010"
+      },
+      {
+        "caseId": "case-04-harz-brocken-must-have-landmark",
+        "fixtureDigest": "177550bc626118d38d808559834f5f10f9e5aaec067e844f56c19e184c197cbe",
+        "goldenCaseDigest": "c472f3b539b38627221aa7fd4784b0397fbf6c288fc0814b6c529cd4969bc1ca",
+        "goldenCaseId": "harz-v1-peak-focus-005"
+      },
+      {
+        "caseId": "case-07-innsbruck-viewpoint-loop",
+        "fixtureDigest": "3979608b6a17874086d59656faf125e29421c2cd36f65cb48d5655beaab3bdf6",
+        "goldenCaseDigest": "f6ef4fd6144313c82b99b15b1caf2c402f8e5bfc6425e137d5010fc24dc99e5b",
+        "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004"
+      },
+      {
+        "caseId": "case-08-innsbruck-easy-conservative-loop",
+        "fixtureDigest": "bc0989ec9040b8a4ab1d854eb4e3a912059300daac026302c372114d05dc543f",
+        "goldenCaseDigest": "f270400dc78fc4421b30b7a829d2f7fe2baadc5d05f0a89245b8abba65bdbdf9",
+        "goldenCaseId": "innsbruck-alps-v1-easy-loop-001"
+      }
+    ],
+    "caseManifestDigest": "57fa4e1f28b5db0ae037c647cf249b12581119526a9d0c41a9fbafe50de64209",
+    "contractVersion": "outdoor-adventure-targeted-live-route-quality-proof-v4-run-identity-v1",
+    "digest": "d4ba9a6d09c6ca57cce13dc082adc3a5ffe1d6198d5172a6fdf99889680b1ee1",
+    "evidenceSnapshotsDigest": "325b8386d5db5f4d471c5bcc270553eefbaf5444c49cda641d88dea5b92bea7a",
+    "gitCandidateAttestationDigest": "54fe463ed7ca09fa1102624f0290c78647a3fe5040c4b59bb97f38848bab38f8",
+    "goldenSetManifestDigest": "a006a775c2c791134281b322e431973e18fa252d2afa30347cb83419a93af521",
+    "goldenSetPolicyVersion": "golden-set-v1-evaluation-policy-r1",
+    "ledgerNamespace": "outdoor-adventure-v4-attempt-10-2026-08-20-zm0jul",
+    "productShapingPolicyDigest": "70a01b65b7c8a19077288bc09fcf47174a0ab1e0058e31a320a5e8e4a2eaba42",
+    "productShapingPolicyVersion": "research-guided-route-product-shaping-v3",
+    "proofAsOf": "2026-08-20T15:43:29.452Z",
+    "proofClassification": "targeted_server_side_live_route_quality_proof",
+    "proofRunContextDigest": "448a895994fd80b2dba1e63764d45b7c48009a75cbeec3041d3c6938fbc4be95",
+    "proofSchemaVersion": 1,
+    "proofVersion": "outdoor-adventure-targeted-live-route-quality-proof-v4",
+    "providerCallLimit": 15,
+    "regionalSourceManifestDigest": "99940abd1daf388574cab69fe71e69a74fb0d700c0899ed44ba3001756206329",
+    "schemaVersion": 1
+  },
+  "manifest": {
+    "digest": "57fa4e1f28b5db0ae037c647cf249b12581119526a9d0c41a9fbafe50de64209",
+    "bindings": [
+      {
+        "caseId": "case-15-partial-provider-failure-survivor",
+        "goldenCaseId": "harz-v1-route-coherence-010",
+        "fixtureDigest": "c2e1f70233c8163392b8dedfa77ea5454cc12d5e42700fd6c5110e04058232af",
+        "goldenCaseDigest": "21529faec10cd3d8e6a38a83d03688b8fe4a4cee899df843b8bcc60a4c091eb6"
+      },
+      {
+        "caseId": "case-04-harz-brocken-must-have-landmark",
+        "goldenCaseId": "harz-v1-peak-focus-005",
+        "fixtureDigest": "177550bc626118d38d808559834f5f10f9e5aaec067e844f56c19e184c197cbe",
+        "goldenCaseDigest": "c472f3b539b38627221aa7fd4784b0397fbf6c288fc0814b6c529cd4969bc1ca"
+      },
+      {
+        "caseId": "case-07-innsbruck-viewpoint-loop",
+        "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004",
+        "fixtureDigest": "3979608b6a17874086d59656faf125e29421c2cd36f65cb48d5655beaab3bdf6",
+        "goldenCaseDigest": "f6ef4fd6144313c82b99b15b1caf2c402f8e5bfc6425e137d5010fc24dc99e5b"
+      },
+      {
+        "caseId": "case-08-innsbruck-easy-conservative-loop",
+        "goldenCaseId": "innsbruck-alps-v1-easy-loop-001",
+        "fixtureDigest": "bc0989ec9040b8a4ab1d854eb4e3a912059300daac026302c372114d05dc543f",
+        "goldenCaseDigest": "f270400dc78fc4421b30b7a829d2f7fe2baadc5d05f0a89245b8abba65bdbdf9"
+      }
+    ]
+  },
+  "goldenSet": {
+    "schemaVersion": 2,
+    "caseCount": 26,
+    "manifestDigest": "a006a775c2c791134281b322e431973e18fa252d2afa30347cb83419a93af521",
+    "fixturesOrThresholdsChanged": false,
+    "attemptTenValidationState": "passed_in_complete_backend_suite"
+  },
+  "productShapingV3": {
+    "policyVersion": "research-guided-route-product-shaping-v3",
+    "policySemanticSha256": "70a01b65b7c8a19077288bc09fcf47174a0ab1e0058e31a320a5e8e4a2eaba42",
+    "activePipelineVerified": false,
+    "verificationState": "not_run_after_database_admission_stop",
+    "legacyFallbackUsed": false
+  },
+  "decisions": {
+    "storagePreflight": "passed",
+    "databasePreflight": "failed",
+    "productShapingV3Admission": "not_run",
+    "physicalAppAttest": "not_run",
+    "providerCredentialAdmission": "not_run",
+    "providerProof": "not_run",
+    "routeQuality": "not_run",
+    "cleanupAndContainment": "passed"
+  },
+  "preflight": {
+    "headMatchedOriginMain": true,
+    "isolatedDetachedWorktree": true,
+    "initialWorktreeClean": true,
+    "requiredBaselinePresent": true,
+    "equivalentAttemptTenFound": false,
+    "conflictingProcessCount": 0,
+    "proposedLoopbackPortFree": true,
+    "initialSettledStorageSampleCount": 2,
+    "initialSettledFreeGiB": 11.725,
+    "requiredFreeGiB": 10,
+    "storageGatePassed": true,
+    "preProviderSettledFreeKiBSamples": [10715948, 10710424],
+    "credentialEnvelopeFound": false,
+    "credentialContentsRead": false,
+    "localConfigurationInspected": false,
+    "thresholdChanged": false,
+    "sharedMainCleanAndUntouched": true
+  },
+  "databasePreflightEvidence": {
+    "status": "failed",
+    "environmentClassification": "proof_only_disposable_loopback",
+    "loopbackOnly": true,
+    "postgresVersion": "17.10",
+    "postgisVersion": "3.6.4",
+    "productionProjectionTimeoutMilliseconds": 120000,
+    "projectionTimeoutChanged": false,
+    "applicationStatementTimeoutMilliseconds": 2500,
+    "queryThresholdChanged": false,
+    "providerCallsBeforeDatabaseGates": 0,
+    "migrations": {
+      "firstRunAppliedCount": 8,
+      "secondRunAppliedCount": 0,
+      "secondRunTrueNoOp": true
+    },
+    "publisherInputs": [
+      {
+        "regionClass": "niedersachsen",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "0f23bae1f7c91177cfa6f060a1126e25",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-19T20:20:48Z",
+        "bytes": 502601728
+      },
+      {
+        "regionClass": "sachsen_anhalt",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "e34867633960dbb4cdb9871e97e888ff",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-19T20:20:48Z",
+        "bytes": 173565381
+      },
+      {
+        "regionClass": "thueringen",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "794a85eaa4318f0085853a97e82047a3",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-19T20:20:48Z",
+        "bytes": 159135696
+      },
+      {
+        "regionClass": "austria",
+        "publisherChecksumAlgorithm": "md5",
+        "publisherChecksum": "b76d22300ffeba34312a03321e799d85",
+        "publisherChecksumVerified": true,
+        "sourceDataAt": "2026-08-19T20:20:48Z",
+        "bytes": 807793978
+      }
+    ],
+    "publisherChecksumVerificationPassed": true,
+    "sourceFreshnessPassed": true,
+    "retrievedAt": "2026-08-20T15:21:17Z",
+    "boundedInputs": [
+      {
+        "regionId": "harz-v1",
+        "sourceClass": "complete_ways_bounded_merge_of_three_publisher_inputs",
+        "publisherInputCount": 3,
+        "boundedInputSha256": "35c15c6fa9fbee8c4ebcc607a91656f54cd42ffb47a4a8f32422065e773312a8"
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "sourceClass": "complete_ways_bounded_extract_from_austria_publisher_input",
+        "publisherInputCount": 1,
+        "boundedInputSha256": "afbad597e9e0c075d0ec516689995059c7bafabbd7cd48ce1e91a8c6acd4371f"
+      }
+    ],
+    "imports": [
+      {
+        "regionId": "harz-v1",
+        "status": "active",
+        "acquisitionChannel": "operator_supplied_local",
+        "pois": 2950,
+        "trailSegments": 140725,
+        "mappedHikingRelations": 887,
+        "routeMembers": 29535,
+        "provenanceVerified": true,
+        "freshnessClass": "current"
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "status": "active",
+        "acquisitionChannel": "operator_supplied_local",
+        "pois": 1626,
+        "trailSegments": 74921,
+        "mappedHikingRelations": 500,
+        "routeMembers": 7807,
+        "provenanceVerified": true,
+        "freshnessClass": "current"
+      }
+    ],
+    "activeImportCount": 2,
+    "projections": [
+      {
+        "regionId": "harz-v1",
+        "dryRunDurationMilliseconds": 12358,
+        "persistentDurationMilliseconds": 63854,
+        "repeatStatus": "unchanged",
+        "entities": 144562,
+        "assertions": 167522,
+        "relationships": 29319,
+        "stableSourceLinks": 144562,
+        "quarantined": 0
+      },
+      {
+        "regionId": "innsbruck-alps-v1",
+        "dryRunDurationMilliseconds": 20049,
+        "persistentDurationMilliseconds": 49992,
+        "repeatStatus": "unchanged",
+        "entities": 77047,
+        "assertions": 91742,
+        "relationships": 7785,
+        "stableSourceLinks": 77047,
+        "quarantined": 0
+      }
+    ],
+    "activeProjectionCount": 2,
+    "aggregateTotals": {
+      "entities": 221609,
+      "assertions": 259264,
+      "relationships": 37104,
+      "stableSourceLinks": 221609,
+      "quarantined": 0
+    },
+    "sourcePolicy": {
+      "activeSourceCount": 1,
+      "activePolicyCount": 1,
+      "activeAssertionScopeCount": 21,
+      "activeRelationshipScopeCount": 1,
+      "normalizedFactsAllowed": true,
+      "derivedFeaturesAllowed": false
+    },
+    "geometryInvalidCounts": {
+      "regions": 0,
+      "pois": 0,
+      "trails": 0,
+      "projectionEntities": 0
+    },
+    "regionalIsolation": {
+      "passed": true,
+      "regionOverlap": false,
+      "canonicalPlanningCaseCount": 4
+    },
+    "runtimeBoundary": {
+      "loginNoInherit": true,
+      "membershipCount": 0,
+      "rlsBypass": false,
+      "directOperationalRelationPrivilegeCount": 0,
+      "sequencePrivilegeCount": 0,
+      "runtimeFunctionCount": 5,
+      "forbiddenOperationCountTested": 12,
+      "forbiddenOperationCountDenied": 12
+    },
+    "cancellationAndRollback": {
+      "passed": true,
+      "events": [
+        "began",
+        "query_cancelled_after_abort",
+        "rollback_completed_after_cancel"
+      ],
+      "leakedTransactions": 0,
+      "poolWaitingCount": 0,
+      "cancellationPoolWaitingCount": 0
+    },
+    "queryAndPerformance": {
+      "reviewedGistIndexCount": 6,
+      "allReviewedIndexesValidAndReady": true,
+      "corridorPlanPassed": true,
+      "corridorWallClockMilliseconds": 91.2,
+      "corridorExecutionMilliseconds": 77.9,
+      "corridorRequiredIndexesUsed": 3,
+      "forbiddenProjectionEntitySequentialScanObserved": false,
+      "membershipThresholdMilliseconds": 1500,
+      "membershipMeasurementsPerCase": 5,
+      "membershipP95Milliseconds": {
+        "case15": 130.4,
+        "case04": 164.4,
+        "case07": 124.7,
+        "case08": 118.7
+      },
+      "membershipAllExpectedRowsNonzero": true,
+      "accessThresholdMilliseconds": 1500,
+      "accessMeasurementsPerCase": 5,
+      "accessP95Milliseconds": {
+        "case15": 81.3,
+        "case04": 62.1,
+        "case07": 83.5
+      }
+    },
+    "committedRunnerAdmission": {
+      "status": "failed",
+      "reasonCode": "database_runtime_role_admission_failed",
+      "specificCause": "postgres_inet_text_includes_host_mask_but_runner_accepts_only_unmasked_loopback_literals",
+      "rolePrivilegeBooleanFailures": 0,
+      "identityCreated": true,
+      "ledgerCreated": false,
+      "providerCalls": 0
+    },
+    "allDatabaseGatesPassed": false
+  },
+  "providerAccounting": {
+    "authorizationReference": "USER_AUTHORIZED_V4_ATTEMPT_10_2026-08-20_15_CALLS",
+    "ledgerNamespace": "outdoor-adventure-v4-attempt-10-2026-08-20-zm0jul",
+    "ledgerCreated": false,
+    "ledgerSha256": null,
+    "hardLimit": 15,
+    "maximumConcurrencyAllowed": 1,
+    "minimumCallStartSpacingMilliseconds": 2000,
+    "attempted": 0,
+    "successful": 0,
+    "failed": 0,
+    "timedOut": 0,
+    "cancelled": 0,
+    "controlledPostSuccessFailures": 0,
+    "unused": 15,
+    "reconciled": true,
+    "maximumConcurrencyObserved": 0,
+    "minimumObservedStartSpacingMilliseconds": null,
+    "retriesAttempted": 0,
+    "probesAfterCircuitOpen": 0,
+    "attempt16Prevented": true,
+    "circuitOpened": false,
+    "circuitStopHonored": true,
+    "invalidRetryAfterObserved": false,
+    "invalidRetryAfterStoppedCase": false,
+    "providerCredentialAdmitted": false,
+    "providerEgressAdmitted": false,
+    "credentialAdmissionReasonCode": "not_run_after_database_admission_stop",
+    "officialHttpsBaseUrlPinVerified": false
+  },
+  "cases": [
+    {
+      "caseId": "case-15-partial-provider-failure-survivor",
+      "goldenCaseId": "harz-v1-route-coherence-010",
+      "fixtureDigest": "c2e1f70233c8163392b8dedfa77ea5454cc12d5e42700fd6c5110e04058232af",
+      "goldenCaseDigest": "21529faec10cd3d8e6a38a83d03688b8fe4a4cee899df843b8bcc60a4c091eb6",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": {
+        "injectionArmed": false,
+        "genuineProviderSuccessBeforeInjection": false,
+        "independentSurvivorTechnicalPass": false,
+        "independentSurvivorProductPass": false,
+        "successRelabelledAsFailure": false
+      },
+      "resultReasonCode": "database_runtime_role_admission_failed"
+    },
+    {
+      "caseId": "case-04-harz-brocken-must-have-landmark",
+      "goldenCaseId": "harz-v1-peak-focus-005",
+      "fixtureDigest": "177550bc626118d38d808559834f5f10f9e5aaec067e844f56c19e184c197cbe",
+      "goldenCaseDigest": "c472f3b539b38627221aa7fd4784b0397fbf6c288fc0814b6c529cd4969bc1ca",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": null,
+      "resultReasonCode": "database_preflight_stopped_before_case"
+    },
+    {
+      "caseId": "case-07-innsbruck-viewpoint-loop",
+      "goldenCaseId": "innsbruck-alps-v1-viewpoint-focus-004",
+      "fixtureDigest": "3979608b6a17874086d59656faf125e29421c2cd36f65cb48d5655beaab3bdf6",
+      "goldenCaseDigest": "f6ef4fd6144313c82b99b15b1caf2c402f8e5bfc6425e137d5010fc24dc99e5b",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": null,
+      "resultReasonCode": "database_preflight_stopped_before_case"
+    },
+    {
+      "caseId": "case-08-innsbruck-easy-conservative-loop",
+      "goldenCaseId": "innsbruck-alps-v1-easy-loop-001",
+      "fixtureDigest": "bc0989ec9040b8a4ab1d854eb4e3a912059300daac026302c372114d05dc543f",
+      "goldenCaseDigest": "f270400dc78fc4421b30b7a829d2f7fe2baadc5d05f0a89245b8abba65bdbdf9",
+      "executed": false,
+      "providerExecuted": false,
+      "observedPlanningState": "not_run",
+      "technicalPipelineOutcome": "not_run",
+      "productQualityOutcome": "not_applicable",
+      "caseEvaluationOutcome": "fail",
+      "providerAttemptCount": 0,
+      "routes": [],
+      "controlledSurvivor": null,
+      "resultReasonCode": "database_preflight_stopped_before_case"
+    }
+  ],
+  "featureFlags": {
+    "initialAllFalse": true,
+    "executionAllFalse": true,
+    "finalAllFalse": true,
+    "exactAdmissionVerified": true,
+    "flagNames": [
+      "OUTDOOR_EVIDENCE_ENABLED",
+      "RESEARCH_GUIDED_PLANNING_ENABLED",
+      "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "OUTDOOR_EVIDENCE_PROVIDER_ENABLED",
+      "OUTDOOR_RESEARCH_PLANNING_ENABLED",
+      "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "ROUTE_PROVIDER_ENABLED",
+      "INTENT_PROVIDER_ENABLED",
+      "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL",
+      "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING",
+      "INTENT_ALLOW_INSECURE_LOCAL_PARSING",
+      "APP_ATTEST_ALLOW_IN_MEMORY",
+      "INTENT_ALLOW_DETERMINISTIC_MOCK"
+    ]
+  },
+  "verification": {
+    "runScopedDatabaseGateTests": {"passed": 2, "failed": 0},
+    "currentVolumeMembershipTests": {"passed": 2, "failed": 0},
+    "currentVolumeAccessTests": {"passed": 3, "failed": 0},
+    "customDatabaseGate": "passed_before_committed_runner_admission",
+    "committedRunnerAdmission": "failed_database_runtime_role_admission",
+    "completeBackendSuite": {"passed": 773, "failed": 0},
+    "offlineQualityEvaluation": {"passed": 101, "failed": 0, "skipped": 0},
+    "backendBuild": "passed",
+    "historicalReceiptContractTests": {"passed": 3, "failed": 0},
+    "receiptValidation": "passed_identity_bound_publication",
+    "diffCheck": "passed",
+    "whitespaceScan": "passed",
+    "conflictMarkerScan": "passed",
+    "highConfidenceCredentialScan": "passed",
+    "mutableTemporaryPathScan": "passed",
+    "generatedArtifactScan": "passed",
+    "swiftOrXcodeFilesChanged": false,
+    "xcodeRunRequired": false
+  },
+  "cleanup": {
+    "cleanupComplete": true,
+    "finalFlagsDisabled": true,
+    "databaseResourcesCreated": 1,
+    "databaseResourcesRemoved": 1,
+    "providerResourcesCreated": 0,
+    "providerResourcesRemoved": 0,
+    "proofProcessesRemaining": 0,
+    "proofListenersRemaining": 0,
+    "taskOwnedRuntimeKiBRemoved": 2930524,
+    "taskOwnedDataRemoved": true,
+    "taskOwnedDependenciesRemoved": true,
+    "downloadedPbfsRemoved": true,
+    "boundedExtractsRemoved": true,
+    "temporaryLedgerRemoved": false,
+    "temporaryLedgerRemovalState": "not_applicable_not_created",
+    "rawCapturesRemoved": true,
+    "credentialEnvelopeDeleted": false,
+    "credentialEnvelopeDeletionState": "not_applicable_not_found",
+    "identityArtifactRemoved": true,
+    "credentialVariablesPersisted": false,
+    "poolsClosed": true,
+    "leasesReleased": true,
+    "sourceWorktreePreserved": true,
+    "sharedMainUntouched": true,
+    "disabledZeroWorkProbePassed": true,
+    "disabledZeroWorkAuthorizationOperations": 0,
+    "disabledZeroWorkDatabaseOperations": 0,
+    "disabledZeroWorkProviderOperations": 0,
+    "disabledZeroWorkBudgetOperations": 0,
+    "disabledZeroWorkLeaseOperations": 0,
+    "disabledZeroWorkOrchestratorOperations": 0,
+    "finalSettledStorageSampleCount": 3,
+    "finalSettledFreeKiB": 13677644
+  },
+  "protectedHistoricalReceipts": [
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.md","beforeSha256":"04b749fb41c44e77121ff25678a60d68b0d763636c4db054935957f92e03ae1d","afterSha256":"04b749fb41c44e77121ff25678a60d68b0d763636c4db054935957f92e03ae1d","unchanged":true},
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.summary.json","beforeSha256":"6c57f5efc9bbec02ad0f49f7ab70bae43f9f61f4467afc8654f6c827ca7f69f3","afterSha256":"6c57f5efc9bbec02ad0f49f7ab70bae43f9f61f4467afc8654f6c827ca7f69f3","unchanged":true},
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.md","beforeSha256":"0fdbdee5e931bdc307f5203e58b6e653269642da0db8b5f3ea397e8773303c0c","afterSha256":"0fdbdee5e931bdc307f5203e58b6e653269642da0db8b5f3ea397e8773303c0c","unchanged":true},
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.summary.json","beforeSha256":"e7614b1267390879c9037f028b40f9739eb0a61b4925fa58845fa5dd40c84e2f","afterSha256":"e7614b1267390879c9037f028b40f9739eb0a61b4925fa58845fa5dd40c84e2f","unchanged":true},
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.md","beforeSha256":"69c9cd93c7ea6361c625a3b8daf506a39d4e16e7363aa045a06e6516c0b1c94a","afterSha256":"69c9cd93c7ea6361c625a3b8daf506a39d4e16e7363aa045a06e6516c0b1c94a","unchanged":true},
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.summary.json","beforeSha256":"18946e87ea615b53c271179d648eae24b1cb427791cb3145b35fe81dfaf2b5f9","afterSha256":"18946e87ea615b53c271179d648eae24b1cb427791cb3145b35fe81dfaf2b5f9","unchanged":true},
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md","beforeSha256":"597b4d0aa6890cf74a3b63b5dfb10e6d52220cace1d02de315aec122b8b2f522","afterSha256":"597b4d0aa6890cf74a3b63b5dfb10e6d52220cace1d02de315aec122b8b2f522","unchanged":true},
+    {"repoRelativePath":"docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.summary.json","beforeSha256":"6a247c8aeb21f1079cc625eba651ce32b281ab6b1c49690fbfdc183288c211bf","afterSha256":"6a247c8aeb21f1079cc625eba651ce32b281ab6b1c49690fbfdc183288c211bf","unchanged":true}
+  ],
+  "historicalAttemptReceipts": [
+    {"attempt":1,"markdownSha256":"fc1e00c7063b794136c2368bc3c950f5677077934c45905c25391973abfc5a14","summarySha256":"5477240eb9a2569cb0ffbf167f61c1edb87ededa7e8c420e271833e4c7f0063c","postRunIntegrityPassed":true},
+    {"attempt":2,"markdownSha256":"76650b3392885ba4683d6fdcd336aca3273e2b4040e359fb9aab0bd031b1f09b","summarySha256":"7aa8a4b992514ded013ef5ebc6a6218f87b559997220a3c240e7fc39a436d737","postRunIntegrityPassed":true},
+    {"attempt":3,"markdownSha256":"3e11f9bdee5fa0da85a5f6f33d33d1065c10db017d8d078dc79afcfeca681690","summarySha256":"9bd4fb94f67c997961254d70fbe58317dd40b4ef6ec111de90a81e3c3b5e2522","postRunIntegrityPassed":true},
+    {"attempt":4,"markdownSha256":"c36f664d25e8c4641419f0848d0b117d93207249d336030c37d905a7da245b69","summarySha256":"f35c64f6cecf5cfb63ecb412e2ad6ae8b2671e2709c90139a4022938fe871119","postRunIntegrityPassed":true},
+    {"attempt":5,"markdownSha256":"b44709a907eae3227ebd7b84c09a9d48b41e304967bccb241bbfff534ba41372","summarySha256":"61191787a5b14b16196db11a6b25722a141de34b3fa21a76b563790ae839d83b","postRunIntegrityPassed":true}
+  ],
+  "comparison": {
+    "v1V2V3": "not_comparable_without_attempt_ten_route_observations",
+    "priorV4Attempts": "attempt_ten_adds_current_migrations_runtime_boundary_and_latency_evidence_but_no_provider_route_observations",
+    "routeMetricComparisonAvailable": false
+  },
+  "privacy": {
+    "forbiddenFieldCount": 0,
+    "rawProviderMaterialRetained": false,
+    "routeShapeRetained": false,
+    "preciseLocationRetained": false,
+    "providerUrlRetained": false,
+    "credentialRetained": false,
+    "promptRetained": false,
+    "databaseUrlRetained": false,
+    "appAttestMaterialRetained": false,
+    "unboundedErrorRetained": false,
+    "mutableTemporaryPathRetained": false
+  },
+  "physicalAppAttestProved": false,
+  "humanReviewCompleted": false,
+  "closedBetaEligible": false,
+  "staged": false,
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "released": false,
+  "enabled": false,
+  "gitStatusExact": [
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_10.md",
+    "?? docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_10.summary.json"
+  ],
+  "blockers": [
+    "database_runtime_loopback_address_normalization_mismatch",
+    "provider_credential_admission_not_reached",
+    "provider_not_run",
+    "route_quality_not_run",
+    "physical_app_attest_not_proved",
+    "human_review_not_completed"
+  ],
+  "nextAction": "correct_and_test_loopback_address_normalization_in_a_separate_change_then_use_a_fresh_explicit_authorization_identity_and_ledger_namespace"
+}
