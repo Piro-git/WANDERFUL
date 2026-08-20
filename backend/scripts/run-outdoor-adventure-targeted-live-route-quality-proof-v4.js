@@ -78,6 +78,8 @@ const { Pool } = pg;
 const DATABASE_STATEMENT_TIMEOUT_MS = 2_500;
 const DATABASE_QUERY_TIMEOUT_MS = 3_000;
 const CANCELLATION_QUERY_TIMEOUT_MS = 1_000;
+const NORMALIZED_DATABASE_SERVER_ADDRESS_SQL =
+  "host(inet_server_addr())";
 const REPOSITORY_ROOT = resolve(
   new URL("../..", import.meta.url).pathname
 );
@@ -202,12 +204,14 @@ async function main() {
         gitCandidateAttestationDigest: gitAttestation.digest
       }
     );
-    await assertDatabaseAdmission({
+    await runV4DatabaseAdmissionBoundary({
       runtimePool: pool,
       operatorPool,
-      databaseIdentities
+      databaseIdentities,
+      nextGate: async () => {
+        throwIfV4ProofPoolFailed(databaseFailureState);
+      }
     });
-    throwIfV4ProofPoolFailed(databaseFailureState);
     const databaseDiagnostic = await runV4DatabasePlanningClockGate({
       runContext,
       cases,
@@ -430,11 +434,31 @@ export async function cleanupV4ProofProcess({
   await ledger?.close().catch(() => {});
 }
 
-async function assertDatabaseAdmission({
+export async function runV4DatabaseAdmissionBoundary({
+  runtimePool,
+  operatorPool,
+  databaseIdentities,
+  nextGate
+}) {
+  if (typeof nextGate !== "function") {
+    throw proofError("database_runtime_role_admission_failed");
+  }
+  await assertDatabaseAdmission({
+    runtimePool,
+    operatorPool,
+    databaseIdentities
+  });
+  return nextGate();
+}
+
+export async function assertDatabaseAdmission({
   runtimePool,
   operatorPool,
   databaseIdentities
 }) {
+  if (!runtimePool || !operatorPool || runtimePool === operatorPool) {
+    throw proofError("database_runtime_role_admission_failed");
+  }
   const result = await operatorPool.query(
     `SELECT
        (SELECT count(*) FROM trailmind_schema_migrations) AS migrations,
@@ -464,10 +488,10 @@ async function assertDatabaseAdmission({
   }
   const operator = await operatorPool.query(
     `SELECT current_user, session_user, current_database() AS database_name,
-            inet_server_addr()::text AS server_address,
+            ${NORMALIZED_DATABASE_SERVER_ADDRESS_SQL} AS server_address,
             inet_server_port() AS server_port,
             NOT (role.rolsuper OR role.rolcreatedb OR role.rolcreaterole OR
-                 role.rolreplication) AND role.rolbypassrls
+                 role.rolreplication OR role.rolbypassrls)
               AS bounded_read_auditor,
             NOT EXISTS (
               SELECT 1 FROM pg_auth_members membership
@@ -506,7 +530,7 @@ async function assertDatabaseAdmission({
   );
   const runtime = await runtimePool.query(
     `SELECT current_user, session_user, current_database() AS database_name,
-            inet_server_addr()::text AS server_address,
+            ${NORMALIZED_DATABASE_SERVER_ADDRESS_SQL} AS server_address,
             inet_server_port() AS server_port,
             current_user = session_user AS direct_login,
             NOT (role.rolsuper OR role.rolcreatedb OR role.rolcreaterole OR
@@ -644,10 +668,24 @@ async function assertDatabaseAdmission({
        FROM pg_roles role
       WHERE role.rolname = current_user`
   );
-  const operatorRow = operator.rows[0];
-  const runtimeRow = runtime.rows[0];
+  return validateV4DatabaseAdmissionRows({
+    operator,
+    runtime,
+    databaseIdentities
+  });
+}
+
+export function validateV4DatabaseAdmissionRows({
+  operator,
+  runtime,
+  databaseIdentities
+}) {
+  const operatorRow = operator?.rows?.[0];
+  const runtimeRow = runtime?.rows?.[0];
   if (
-    operator.rowCount !== 1 || runtime.rowCount !== 1 ||
+    operator?.rowCount !== 1 || runtime?.rowCount !== 1 ||
+    !operatorRow || !runtimeRow ||
+    !databaseIdentities?.operator || !databaseIdentities?.runtime ||
     operatorRow.current_user !== operatorRow.session_user ||
     runtimeRow.current_user !== runtimeRow.session_user ||
     operatorRow.current_user !== databaseIdentities.operator.username ||
@@ -658,7 +696,9 @@ async function assertDatabaseAdmission({
     operatorRow.database_name !== runtimeRow.database_name ||
     operatorRow.server_address !== runtimeRow.server_address ||
     Number(operatorRow.server_port) !== Number(runtimeRow.server_port) ||
-    !loopbackHost(operatorRow.server_address) ||
+    String(operatorRow.server_port) !== databaseIdentities.operator.port ||
+    String(runtimeRow.server_port) !== databaseIdentities.runtime.port ||
+    !normalizedLoopbackServerAddress(operatorRow.server_address) ||
     operatorRow.bounded_read_auditor !== true ||
     operatorRow.no_role_memberships !== true ||
     operatorRow.no_database_temporary !== true ||
@@ -674,6 +714,7 @@ async function assertDatabaseAdmission({
   ) {
     throw proofError("database_runtime_role_admission_failed");
   }
+  return true;
 }
 
 async function assertProtectedHistoricalReceipts() {
@@ -797,6 +838,7 @@ function strictProofDatabaseIdentity(value) {
   } catch {
     throw proofError("database_unavailable");
   }
+  const rawHost = rawDatabaseUrlHost(value);
   const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
   let username;
   let database;
@@ -810,6 +852,8 @@ function strictProofDatabaseIdentity(value) {
     !["postgres:", "postgresql:"].includes(url.protocol) ||
     url.search !== "" ||
     url.hash !== "" ||
+    rawHost === null ||
+    rawHost.toLowerCase() !== host ||
     !loopbackHost(host) ||
     !/v4.*proof/i.test(database) ||
     !/proof/i.test(username) ||
@@ -828,8 +872,30 @@ function strictProofDatabaseIdentity(value) {
   });
 }
 
+function rawDatabaseUrlHost(value) {
+  if (typeof value !== "string") return null;
+  const schemeEnd = value.indexOf("://");
+  if (schemeEnd < 0) return null;
+  const authorityStart = schemeEnd + 3;
+  const pathStart = value.indexOf("/", authorityStart);
+  if (pathStart < 0) return null;
+  const authority = value.slice(authorityStart, pathStart);
+  const hostAndPort = authority.slice(authority.lastIndexOf("@") + 1);
+  if (hostAndPort.startsWith("[")) {
+    const closingBracket = hostAndPort.indexOf("]");
+    if (closingBracket < 0) return null;
+    return hostAndPort.slice(1, closingBracket);
+  }
+  const colon = hostAndPort.lastIndexOf(":");
+  return colon < 0 ? hostAndPort : hostAndPort.slice(0, colon);
+}
+
 function loopbackHost(value) {
   return new Set(["127.0.0.1", "localhost", "::1"]).has(value);
+}
+
+function normalizedLoopbackServerAddress(value) {
+  return value === "127.0.0.1" || value === "::1";
 }
 
 function monitorV4ProofPool(pool, state) {

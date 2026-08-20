@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
 import {
+  V4_CASE_BINDINGS,
   V4_FLAG_NAMES,
   assertNoSensitiveDurableValueV4,
   sha256V4,
+  validateProtectedReceipts,
+  validateProviderAccounting,
   validatePublishedV4AttemptOneReceipt
 } from "./contract.js";
 import {
@@ -70,11 +73,24 @@ export const V4_COMMITTED_HISTORICAL_RECEIPTS = deepFreeze([
       "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_5.summary.json",
     summarySha256:
       "61191787a5b14b16196db11a6b25722a141de34b3fa21a76b563790ae839d83b"
+  },
+  {
+    attemptNumber: 10,
+    markdownPath:
+      "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_10.md",
+    markdownSha256:
+      "948ec7a903c5b99357d76769f132c60dd7e4e9d269b6af41e8120f4124da4535",
+    summaryPath:
+      "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_10.summary.json",
+    summarySha256:
+      "7ba8346682360a8a095a24ee213fffa93fc88cb0586c7a911fed3e49acd7b275"
   }
 ]);
 
 const ATTEMPT_FIVE_SEMANTIC_DIGEST =
   "7d1a405609f18ed575207b70e45ec228924019857d177f6af4b11470cb4a8822";
+const ATTEMPT_TEN_SEMANTIC_DIGEST =
+  "c3e24849fe4935b5cd61a0b9299a4dd3cb6201f030bd7efea3601e0f0a7fb257";
 
 export class V4HistoricalReceiptError extends Error {
   constructor(code) {
@@ -116,6 +132,7 @@ export function validateV4HistoricalSummaryObject(attemptNumber, receipt) {
     case 3: return validateV4AttemptThreeReceipt(receipt);
     case 4: return validateV4AttemptFourReceipt(receipt);
     case 5: return validateAttemptFive(receipt);
+    case 10: return validateAttemptTen(receipt);
     default: invalid();
   }
 }
@@ -154,6 +171,89 @@ function validateAttemptFive(receipt) {
       receipt.featureFlags?.exactAdmissionVerified !== true ||
       JSON.stringify(receipt.featureFlags?.flagNames) !==
         JSON.stringify(V4_FLAG_NAMES)) invalid();
+  const { semanticReceiptSha256, ...record } = receipt;
+  if (sha256V4(record) !== semanticReceiptSha256) invalid();
+  assertNoSensitiveDurableValueV4(receipt);
+  return true;
+}
+
+function validateAttemptTen(receipt) {
+  if (!plainObject(receipt) || receipt.schemaVersion !== 1 ||
+      receipt.proofVersion !==
+        "outdoor-adventure-targeted-live-route-quality-proof-v4" ||
+      receipt.proofClassification !==
+        "targeted_server_side_live_route_quality_proof" ||
+      receipt.receiptVersion !==
+        "outdoor-adventure-targeted-live-route-quality-proof-v4-attempt-10-blocked-v1" ||
+      receipt.semanticReceiptSha256 !== ATTEMPT_TEN_SEMANTIC_DIGEST ||
+      receipt.attemptNumber !== 10 ||
+      receipt.generatedAt !== receipt.proofAsOf ||
+      receipt.baselineCommit !==
+        "abf3d6853d8f604f9701434d89c2e4fc892d19f9" ||
+      receipt.candidateCommit !== receipt.baselineCommit ||
+      receipt.authorizationReference !==
+        "USER_AUTHORIZED_V4_ATTEMPT_10_2026-08-20_15_CALLS" ||
+      receipt.ledgerNamespace !==
+        "outdoor-adventure-v4-attempt-10-2026-08-20-zm0jul" ||
+      receipt.status !== "blocked" ||
+      receipt.blockedReasonCode !==
+        "database_runtime_loopback_address_normalization_mismatch") invalid();
+  if (receipt.decisions?.databasePreflight !== "failed" ||
+      receipt.decisions?.providerCredentialAdmission !== "not_run" ||
+      receipt.decisions?.providerProof !== "not_run" ||
+      receipt.decisions?.routeQuality !== "not_run" ||
+      receipt.decisions?.cleanupAndContainment !== "passed" ||
+      receipt.databasePreflightEvidence?.committedRunnerAdmission?.status !==
+        "failed" ||
+      receipt.databasePreflightEvidence?.committedRunnerAdmission?.reasonCode !==
+        "database_runtime_role_admission_failed" ||
+      receipt.databasePreflightEvidence?.committedRunnerAdmission
+        ?.specificCause !==
+        "postgres_inet_text_includes_host_mask_but_runner_accepts_only_unmasked_loopback_literals" ||
+      receipt.databasePreflightEvidence?.committedRunnerAdmission
+        ?.ledgerCreated !== false ||
+      receipt.databasePreflightEvidence?.committedRunnerAdmission
+        ?.providerCalls !== 0) invalid();
+  validateProviderAccounting(receipt.providerAccounting);
+  if (receipt.providerAccounting.ledgerCreated !== false ||
+      receipt.providerAccounting.providerCredentialAdmitted !== false ||
+      receipt.providerAccounting.providerEgressAdmitted !== false ||
+      receipt.providerAccounting.attempted !== 0 ||
+      receipt.providerAccounting.unused !== 15 ||
+      !Array.isArray(receipt.cases) ||
+      receipt.cases.length !== V4_CASE_BINDINGS.length ||
+      receipt.cases.some((item, index) =>
+        item.caseId !== V4_CASE_BINDINGS[index].caseId ||
+        item.executed !== false || item.providerExecuted !== false ||
+        item.observedPlanningState !== "not_run" ||
+        item.technicalPipelineOutcome !== "not_run" ||
+        item.productQualityOutcome !== "not_applicable" ||
+        item.caseEvaluationOutcome !== "fail" ||
+        item.providerAttemptCount !== 0 ||
+        !Array.isArray(item.routes) || item.routes.length !== 0
+      )) invalid();
+  if (receipt.featureFlags?.initialAllFalse !== true ||
+      receipt.featureFlags?.executionAllFalse !== true ||
+      receipt.featureFlags?.finalAllFalse !== true ||
+      receipt.featureFlags?.exactAdmissionVerified !== true ||
+      JSON.stringify(receipt.featureFlags?.flagNames) !==
+        JSON.stringify(V4_FLAG_NAMES) ||
+      receipt.cleanup?.cleanupComplete !== true ||
+      receipt.cleanup?.finalFlagsDisabled !== true ||
+      receipt.cleanup?.databaseResourcesCreated !== 1 ||
+      receipt.cleanup?.databaseResourcesRemoved !== 1 ||
+      receipt.cleanup?.providerResourcesCreated !== 0 ||
+      receipt.cleanup?.providerResourcesRemoved !== 0 ||
+      receipt.cleanup?.proofProcessesRemaining !== 0 ||
+      receipt.cleanup?.proofListenersRemaining !== 0 ||
+      receipt.cleanup?.identityArtifactRemoved !== true ||
+      receipt.cleanup?.poolsClosed !== true ||
+      receipt.cleanup?.disabledZeroWorkProbePassed !== true ||
+      receipt.closedBetaEligible !== false || receipt.staged !== false ||
+      receipt.committed !== false || receipt.pushed !== false ||
+      receipt.deployed !== false || receipt.released !== false ||
+      receipt.enabled !== false) invalid();
+  validateProtectedReceipts(receipt.protectedHistoricalReceipts);
   const { semanticReceiptSha256, ...record } = receipt;
   if (sha256V4(record) !== semanticReceiptSha256) invalid();
   assertNoSensitiveDurableValueV4(receipt);

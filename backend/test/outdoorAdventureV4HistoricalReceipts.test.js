@@ -11,7 +11,7 @@ import {
 const REPOSITORY_ROOT = new URL("../../", import.meta.url);
 
 describe("committed V4 historical receipt compatibility", () => {
-  it("validates Attempts 1-5 byte-exactly through explicit adapters", async () => {
+  it("validates Attempts 1-5 and 10 byte-exactly through explicit adapters", async () => {
     for (const expected of V4_COMMITTED_HISTORICAL_RECEIPTS) {
       const markdown = await readFile(new URL(
         expected.markdownPath,
