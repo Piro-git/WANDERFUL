@@ -1,8 +1,8 @@
 import {
-  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
-} from "./researchGuidedRouteProductShapingPolicyV3.js";
+  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
+} from "./researchGuidedRouteProductShapingPolicyV3_1.js";
 
-const POLICY = RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3;
+const POLICY = RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1;
 const HARD_ROLES = new Set([
   "must_have",
   "facility_candidate",
@@ -74,6 +74,7 @@ export function shapeResearchGuidedLoopSourceProposalV3({
       policyVersion: POLICY.policyVersion,
       shapes: [],
       unavailable,
+      excluded: [],
       searchMetrics: emptyMetrics()
     });
   }
@@ -91,10 +92,18 @@ export function shapeResearchGuidedLoopSourceProposalV3({
     const selection = [...hard, ...optionalSubset].sort(compareSelectionEntry);
     if (selection.length === 0) continue;
     const assignments = accessAssignments(selection);
-    const baseline = evaluateAssignment(assignments[0], anchor, targetRange, metrics);
-    if (baseline === null) break;
-    rawShapes.push(baseline);
-    baselineStates.push({ baseline, assignments: assignments.slice(1) });
+    const baselineShapes = evaluateAssignment(
+      assignments[0],
+      anchor,
+      targetRange,
+      metrics
+    );
+    if (baselineShapes.length === 0) break;
+    rawShapes.push(...baselineShapes);
+    baselineStates.push({
+      baseline: baselineShapes[0],
+      assignments: assignments.slice(1)
+    });
   }
 
   baselineStates.sort((left, right) =>
@@ -107,29 +116,31 @@ export function shapeResearchGuidedLoopSourceProposalV3({
         exhausted = true;
         break;
       }
-      const alternative = evaluateAssignment(
+      const alternatives = evaluateAssignment(
         assignment,
         anchor,
         targetRange,
         metrics
       );
-      if (
-        alternative &&
-        materiallyImprovesAccessSelection(alternative, baseline, targetRange)
-      ) {
-        rawShapes.push(alternative);
-        metrics.materialAccessAlternatives += 1;
+      for (const alternative of alternatives) {
+        if (
+          materiallyImprovesAccessSelection(alternative, baseline, targetRange)
+        ) {
+          rawShapes.push(alternative);
+          metrics.materialAccessAlternatives += 1;
+        }
       }
     }
   }
 
-  const shapes = selectMeaningfulShapes(
+  const selected = selectMeaningfulShapes(
     rawShapes,
     accessible,
     anchor,
     targetRange,
     metrics
   );
+  const shapes = selected.shapes;
   metrics.optionalSubsetStates = optionalSubsets.length;
   metrics.searchExhausted = exhausted ||
     metrics.searchStates >= POLICY.limits.maximumSearchStates;
@@ -139,6 +150,7 @@ export function shapeResearchGuidedLoopSourceProposalV3({
     policyVersion: POLICY.policyVersion,
     shapes,
     unavailable,
+    excluded: selected.excluded,
     searchMetrics: metrics
   });
 }
@@ -183,27 +195,36 @@ export function orderResearchGuidedLoopSelectionV3(anchor, selectedInput) {
 export const researchGuidedRouteProductShapingInternalsForTesting =
   Object.freeze({
     analyzePreRoutingShapeV3,
+    distanceHeuristic: analyzeResearchGuidedDistanceHeuristicV3,
     lowerBoundKm,
     materiallyImprovesAccessSelection,
+    corridorKey: deriveResearchGuidedLoopCorridorKeyV3,
     topologyKey: deriveResearchGuidedLoopTopologyKeyV3
   });
 
 function evaluateAssignment(assignment, anchor, targetRange, metrics) {
   const orderings = orderResearchGuidedLoopSelectionV3(anchor, assignment);
-  let preferred = null;
+  const byTopology = new Map();
   for (const ordering of orderings) {
     if (metrics.searchStates >= POLICY.limits.maximumSearchStates) break;
     metrics.searchStates += 1;
     metrics.orderingsEvaluated += 1;
     const selected = ordering.selected;
     const lowerBound = lowerBoundKm(anchor, selected);
+    const distanceHeuristic = analyzeResearchGuidedDistanceHeuristicV3(
+      lowerBound,
+      targetRange
+    );
     const risk = analyzePreRoutingShapeV3(anchor, selected);
     const candidate = {
       selected,
       direction: ordering.direction,
       rawLowerBoundKm: lowerBound,
       lowerBoundKm: roundDistance(lowerBound),
-      targetPenalty: normalizedTargetPenalty(lowerBound, targetRange),
+      heuristicRangeKm: distanceHeuristic.rangeKm,
+      heuristicState: distanceHeuristic.state,
+      targetGapPenalty: distanceHeuristic.targetGapPenalty,
+      targetCenterPenalty: distanceHeuristic.targetCenterPenalty,
       riskScore: risk.score,
       riskState: risk.state,
       riskyEntityIds: risk.riskyEntityIds,
@@ -216,11 +237,14 @@ function evaluateAssignment(assignment, anchor, targetRange, metrics) {
       )),
       topologyKey: deriveResearchGuidedLoopTopologyKeyV3(selected)
     };
-    if (!preferred || compareShape(candidate, preferred, targetRange) < 0) {
-      preferred = candidate;
+    const prior = byTopology.get(candidate.topologyKey);
+    if (!prior || compareShape(candidate, prior, targetRange) < 0) {
+      byTopology.set(candidate.topologyKey, candidate);
     }
   }
-  return preferred;
+  return [...byTopology.values()].sort((left, right) =>
+    compareShape(left, right, targetRange)
+  );
 }
 
 function analyzePreRoutingShapeV3(anchor, selected) {
@@ -318,23 +342,36 @@ function boundedOptionalSubsets(optional) {
 }
 
 function accessAssignments(selection) {
-  const base = selection.map((entry) => entry.materialized[0]);
-  const assignments = [base];
-  for (let index = 0; index < selection.length; index += 1) {
-    for (
-      let accessIndex = 1;
-      accessIndex < selection[index].materialized.length;
-      accessIndex += 1
-    ) {
-      const alternative = [...base];
-      alternative[index] = selection[index].materialized[accessIndex];
-      assignments.push(alternative);
+  const initial = selection.map(() => 0);
+  const frontier = [initial];
+  const queued = new Set([accessAssignmentIndexKey(initial)]);
+  const assignments = [];
+  let generatedStates = 1;
+
+  while (
+    frontier.length > 0 &&
+    assignments.length < POLICY.limits.maximumAccessAssignmentsPerSelection
+  ) {
+    frontier.sort(compareAccessAssignmentIndexes);
+    const indexes = frontier.shift();
+    assignments.push(indexes.map((accessIndex, selectionIndex) =>
+      selection[selectionIndex].materialized[accessIndex]
+    ));
+    for (let index = 0; index < indexes.length; index += 1) {
+      if (indexes[index] + 1 >= selection[index].materialized.length) continue;
+      const next = [...indexes];
+      next[index] += 1;
+      const key = accessAssignmentIndexKey(next);
+      if (queued.has(key)) continue;
       if (
-        assignments.length >=
-          POLICY.limits.maximumAccessAssignmentsPerSelection
+        generatedStates >=
+          POLICY.limits.maximumAccessAssignmentFrontierStates
       ) {
-        return assignments;
+        continue;
       }
+      queued.add(key);
+      frontier.push(next);
+      generatedStates += 1;
     }
   }
   return assignments;
@@ -355,7 +392,15 @@ function materiallyImprovesAccessSelection(alternative, baseline, targetRange) {
       return true;
     }
     if (
-      baseline.targetPenalty - alternative.targetPenalty >=
+      distanceHeuristicStateRank(baseline.heuristicState) >
+        distanceHeuristicStateRank(alternative.heuristicState)
+    ) {
+      return true;
+    }
+    if (
+      baseline.targetGapPenalty - alternative.targetGapPenalty >=
+        POLICY.accessSelection.minimumNormalizedTargetImprovement ||
+      baseline.targetCenterPenalty - alternative.targetCenterPenalty >=
         POLICY.accessSelection.minimumNormalizedTargetImprovement
     ) {
       return true;
@@ -395,14 +440,28 @@ function selectMeaningfulShapes(
       byTopology.set(shape.topologyKey, shape);
     }
   }
-  return [...byTopology.values()]
+  const byCorridor = new Map();
+  for (const shape of byTopology.values()) {
+    const corridorKey = deriveResearchGuidedLoopCorridorKeyV3(shape.selected);
+    const prior = byCorridor.get(corridorKey);
+    if (!prior || compareShape(shape, prior, targetRange) < 0) {
+      byCorridor.set(corridorKey, shape);
+    }
+  }
+  const admissible = [...byCorridor.values()].filter((shape) =>
+    !isExcludableOptionalShape(shape)
+  );
+  const shapes = admissible
     .sort((left, right) => compareShape(left, right, targetRange))
     .slice(0, POLICY.limits.maximumProposals)
     .map((shape) => ({
       selected: shape.selected,
       direction: shape.direction,
       lowerBoundKm: shape.lowerBoundKm,
+      heuristicRangeKm: shape.heuristicRangeKm,
+      heuristicState: shape.heuristicState,
       riskState: shape.riskState,
+      riskScore: shape.riskScore,
       riskyEntityIds: shape.riskyEntityIds,
       requiredRiskEntityIds: shape.requiredRiskEntityIds,
       topologyKey: shape.topologyKey,
@@ -413,6 +472,15 @@ function selectMeaningfulShapes(
         targetRange
       )
     }));
+  const excluded = shapes.length === 0
+    ? accessible
+      .filter((entry) => !isHardRole(entry.via.role))
+      .map((entry) => ({
+        candidate: entry.materialized[0],
+        code: "optional_removed_for_loop_shape"
+      }))
+    : [];
+  return { shapes, excluded };
 }
 
 function dominatesByRemovingOptional(alternative, candidate, targetRange) {
@@ -439,10 +507,24 @@ function dominatesByRemovingOptional(alternative, candidate, targetRange) {
   const clearsMaximum = candidate.rawLowerBoundKm > targetRange.max &&
     alternative.rawLowerBoundKm <= targetRange.max;
   const materiallyImprovesTarget =
-    candidate.targetPenalty - alternative.targetPenalty >=
+    distanceHeuristicStateRank(candidate.heuristicState) >
+      distanceHeuristicStateRank(alternative.heuristicState) ||
+    candidate.targetGapPenalty - alternative.targetGapPenalty >=
+      POLICY.accessSelection.minimumNormalizedTargetImprovement ||
+    candidate.targetCenterPenalty - alternative.targetCenterPenalty >=
       POLICY.accessSelection.minimumNormalizedTargetImprovement;
-  return (clearsMaximum || materiallyImprovesTarget) &&
-    alternative.riskScore <= candidate.riskScore;
+  const materiallyReducesRisk = candidate.riskScore - alternative.riskScore >=
+    POLICY.accessSelection.minimumRiskImprovement;
+  const targetDoesNotMateriallyWorsen =
+    distanceHeuristicStateRank(alternative.heuristicState) <=
+      distanceHeuristicStateRank(candidate.heuristicState) &&
+    alternative.targetGapPenalty <= candidate.targetGapPenalty +
+      POLICY.accessSelection.minimumNormalizedTargetImprovement &&
+    alternative.targetCenterPenalty <= candidate.targetCenterPenalty +
+      POLICY.accessSelection.minimumNormalizedTargetImprovement;
+  return ((clearsMaximum || materiallyImprovesTarget) &&
+      alternative.riskScore <= candidate.riskScore) ||
+    (materiallyReducesRisk && targetDoesNotMateriallyWorsen);
 }
 
 function removedOptionalRecords(shape, accessible, anchor, targetRange) {
@@ -484,8 +566,16 @@ function removedOptionalRecords(shape, accessible, anchor, targetRange) {
       const withCandidateLowerBound = lowerBoundKm(anchor, withCandidate);
       if (
         targetRange !== null &&
-        normalizedTargetPenalty(withCandidateLowerBound, targetRange) >
-          normalizedTargetPenalty(shape.rawLowerBoundKm, targetRange)
+        compareDistanceHeuristics(
+          analyzeResearchGuidedDistanceHeuristicV3(
+            withCandidateLowerBound,
+            targetRange
+          ),
+          analyzeResearchGuidedDistanceHeuristicV3(
+            shape.rawLowerBoundKm,
+            targetRange
+          )
+        ) > 0
       ) {
         return { candidate, code: "optional_removed_for_target_distance" };
       }
@@ -494,27 +584,34 @@ function removedOptionalRecords(shape, accessible, anchor, targetRange) {
 }
 
 function compareShape(left, right, targetRange) {
+  const exactFeasibilityComparison =
+    Number(left.rawLowerBoundKm > (targetRange?.max ?? Number.POSITIVE_INFINITY)) -
+    Number(right.rawLowerBoundKm > (targetRange?.max ?? Number.POSITIVE_INFINITY));
+  if (exactFeasibilityComparison !== 0) return exactFeasibilityComparison;
+  const severeRiskComparison = Number(isSevereShapeRisk(left)) -
+    Number(isSevereShapeRisk(right));
+  if (severeRiskComparison !== 0) return severeRiskComparison;
   if (targetRange !== null) {
-    const targetComparison = left.targetPenalty - right.targetPenalty;
-    if (Math.abs(targetComparison) > 1e-12) return targetComparison;
+    const heuristicStateComparison =
+      distanceHeuristicStateRank(left.heuristicState) -
+      distanceHeuristicStateRank(right.heuristicState);
+    if (heuristicStateComparison !== 0) return heuristicStateComparison;
+    const gapComparison = left.targetGapPenalty - right.targetGapPenalty;
+    if (Math.abs(gapComparison) > 1e-12) return gapComparison;
   }
-  return left.riskScore - right.riskScore ||
+  const riskComparison = left.riskScore - right.riskScore;
+  if (riskComparison !== 0) return riskComparison;
+  if (targetRange !== null) {
+    const centerComparison =
+      left.targetCenterPenalty - right.targetCenterPenalty;
+    if (Math.abs(centerComparison) > 1e-12) return centerComparison;
+  }
+  return (
     right.optionalCount - left.optionalCount ||
     left.totalPoiToAccessDistanceMeters - right.totalPoiToAccessDistanceMeters ||
     left.lowerBoundKm - right.lowerBoundKm ||
-    compareText(selectionOrderKey(left.selected), selectionOrderKey(right.selected));
-}
-
-function normalizedTargetPenalty(lowerBound, targetRange) {
-  if (targetRange === null) return 0;
-  if (lowerBound > targetRange.max) {
-    return 1 + (lowerBound - targetRange.max) /
-      Math.max(targetRange.max, 0.001);
-  }
-  const targetCenter = (targetRange.min + targetRange.max) / 2;
-  const heuristicDistance = lowerBound * POLICY.distance.heuristicRouteMultiplier;
-  return Math.abs(heuristicDistance - targetCenter) /
-    Math.max(targetCenter, 0.001);
+    compareText(selectionOrderKey(left.selected), selectionOrderKey(right.selected))
+  );
 }
 
 export function deriveResearchGuidedLoopTopologyKeyV3(selected) {
@@ -530,6 +627,122 @@ export function deriveResearchGuidedLoopTopologyKeyV3(selected) {
     [...nodes].sort(compareText).join(":"),
     edges.sort(compareText).join(":")
   ].join("|");
+}
+
+export function deriveResearchGuidedLoopCorridorKeyV3(selected) {
+  const nodes = selected.map((item) => [
+    item.role,
+    item.entityId,
+    item.trailAccessCandidate.sourceTrailSegmentEntityId
+  ].join("@"));
+  const edges = [];
+  let prior = "anchor";
+  for (const node of nodes) {
+    edges.push([prior, node].sort(compareText).join("~"));
+    prior = node;
+  }
+  edges.push([prior, "anchor"].sort(compareText).join("~"));
+  return [
+    [...nodes].sort(compareText).join(":"),
+    edges.sort(compareText).join(":")
+  ].join("|");
+}
+
+export function analyzeResearchGuidedDistanceHeuristicV3(
+  lowerBound,
+  targetRange
+) {
+  if (!Number.isFinite(lowerBound) || lowerBound < 0) invalid();
+  assertTargetRange(targetRange);
+  const rawMinimumKm = lowerBound *
+    POLICY.distance.heuristicMinimumMultiplier;
+  const rawMaximumKm = lowerBound *
+    POLICY.distance.heuristicMaximumMultiplier;
+  let state;
+  if (targetRange === null) {
+    state = "target_unspecified";
+  } else if (lowerBound > targetRange.max) {
+    state = "lower_bound_exceeds_target";
+  } else if (rawMaximumKm < targetRange.min) {
+    state = "heuristic_range_below_target";
+  } else if (rawMinimumKm > targetRange.max) {
+    state = "heuristic_range_above_target";
+  } else {
+    state = "heuristic_range_intersects_target";
+  }
+  const targetCenter = targetRange === null
+    ? null
+    : (targetRange.min + targetRange.max) / 2;
+  let targetGapPenalty = 0;
+  if (targetRange !== null) {
+    if (lowerBound > targetRange.max) {
+      targetGapPenalty = 1 + (lowerBound - targetRange.max) /
+        Math.max(targetCenter, 0.001);
+    } else if (rawMaximumKm < targetRange.min) {
+      targetGapPenalty = (targetRange.min - rawMaximumKm) /
+        Math.max(targetCenter, 0.001);
+    } else if (rawMinimumKm > targetRange.max) {
+      targetGapPenalty = (rawMinimumKm - targetRange.max) /
+        Math.max(targetCenter, 0.001);
+    }
+  }
+  const heuristicCenter = (rawMinimumKm + rawMaximumKm) / 2;
+  return {
+    rangeKm: {
+      min: roundDistance(rawMinimumKm),
+      max: roundDistance(rawMaximumKm)
+    },
+    state,
+    targetGapPenalty,
+    targetCenterPenalty: targetCenter === null
+      ? 0
+      : Math.abs(heuristicCenter - targetCenter) /
+        Math.max(targetCenter, 0.001)
+  };
+}
+
+function distanceHeuristicStateRank(state) {
+  return {
+    target_unspecified: 0,
+    heuristic_range_intersects_target: 0,
+    heuristic_range_below_target: 1,
+    heuristic_range_above_target: 1,
+    lower_bound_exceeds_target: 2
+  }[state] ?? 3;
+}
+
+function compareDistanceHeuristics(left, right) {
+  return distanceHeuristicStateRank(left.state) -
+      distanceHeuristicStateRank(right.state) ||
+    left.targetGapPenalty - right.targetGapPenalty ||
+    left.targetCenterPenalty - right.targetCenterPenalty;
+}
+
+function isSevereShapeRisk(shape) {
+  return shape.riskScore >=
+    POLICY.shape.minimumExcludableOptionalRiskScore;
+}
+
+function isExcludableOptionalShape(shape) {
+  return isSevereShapeRisk(shape) &&
+    shape.selected.every((item) => !isHardRole(item.role));
+}
+
+function accessAssignmentIndexKey(indexes) {
+  return indexes.join(":");
+}
+
+function compareAccessAssignmentIndexes(left, right) {
+  const leftRank = left.reduce((sum, value) => sum + value, 0);
+  const rightRank = right.reduce((sum, value) => sum + value, 0);
+  const leftChanges = left.filter((value) => value > 0).length;
+  const rightChanges = right.filter((value) => value > 0).length;
+  if (leftRank !== rightRank) return leftRank - rightRank;
+  if (leftChanges !== rightChanges) return leftChanges - rightChanges;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return left[index] - right[index];
+  }
+  return 0;
 }
 
 function canonicalAccessCandidates(candidates) {

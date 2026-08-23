@@ -9,8 +9,8 @@ import {
   researchGuidedRouteProductShapingInternalsForTesting
 } from "../src/routeResearch/researchGuidedRouteProductShapingV3.js";
 import {
-  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
-} from "../src/routeResearch/researchGuidedRouteProductShapingPolicyV3.js";
+  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
+} from "../src/routeResearch/researchGuidedRouteProductShapingPolicyV3_1.js";
 import {
   RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2,
   RESEARCH_GUIDED_ROUTED_ALTERNATIVES_POLICY_V2,
@@ -99,6 +99,25 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
     );
   });
 
+  it("returns a typed no-proposal result for an optional-only radial loop", () => {
+    const dossier = singleMustHaveDossier({
+      mustHaveExperiences: [],
+      preferredExperiences: ["viewpoint"]
+    });
+    const plan = buildResearchGuidedRouteCandidatePlanV2(
+      dossier,
+      accessResolution(dossier.candidateHighlights)
+    );
+
+    assert.equal(plan.state, "insufficient_evidence");
+    assert.deepEqual(plan.proposals, []);
+    assert.deepEqual(plan.accessShortfalls.map((item) => [
+      item.role,
+      item.code
+    ]), [["preferred", "optional_removed_for_loop_shape"]]);
+    assert(plan.knownLimitations.includes("optional_access_removed"));
+  });
+
   it("preserves must-haves while target shaping remains a lower-bound heuristic", () => {
     const dossier = multiHighlightDossier({
       distanceRangeKm: { min: 2, max: 2 },
@@ -118,6 +137,16 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
     ));
     assert.equal(proposal.distanceAnalysis.kind, "straight_line_lower_bound");
     assert.equal(proposal.distanceAnalysis.limitationCode, "requires_real_routing");
+    assert.equal(
+      proposal.distanceAnalysis.heuristicLimitationCode,
+      "pre_routing_distance_heuristic_only"
+    );
+    assert.equal(
+      proposal.knownLimitations.includes(
+        "pre_routing_distance_heuristic_only"
+      ),
+      true
+    );
   });
 
   it("removes duplicate optional mapped-corridor points and preserves hard ones", () => {
@@ -184,8 +213,12 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
     );
     const targetKm = Number((
       fartherOnly.proposals[0].distanceAnalysis.lowerBoundKm *
-      RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
-        .distance.heuristicRouteMultiplier
+      (
+        RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
+          .distance.heuristicMinimumMultiplier +
+        RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
+          .distance.heuristicMaximumMultiplier
+      ) / 2
     ).toFixed(3));
     const targetedDossier = singleMustHaveDossier({
       distanceRangeKm: { min: targetKm, max: targetKm }
@@ -340,7 +373,7 @@ describe("ResearchGuidedRouteCandidatePlanV2", () => {
     assert.equal(
       RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2
         .loopProductShapingPolicyVersion,
-      RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3.policyVersion
+      RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1.policyVersion
     );
     assert.equal(
       plan.proposals[0].proposalId,
@@ -561,6 +594,38 @@ describe("research-guided routing adapter v2", () => {
       state: "outside_target",
       deviationKm: 0.5
     });
+  });
+
+  it("keeps the recorded Brocken-size overshoot provider-owned despite a pre-routing heuristic", async () => {
+    const dossier = singleMustHaveDossier({
+      distanceRangeKm: { min: 15, max: 15 }
+    });
+    const plan = buildResearchGuidedRouteCandidatePlanV2(
+      dossier,
+      accessResolution(dossier.candidateHighlights)
+    );
+    const analysis = plan.proposals[0].distanceAnalysis;
+    assert.equal(analysis.kind, "straight_line_lower_bound");
+    assert.equal(
+      analysis.heuristicLimitationCode,
+      "pre_routing_distance_heuristic_only"
+    );
+    assert.equal(Object.hasOwn(analysis, "routeDistanceKm"), false);
+
+    const result = await routeResearchGuidedCandidatesV2(plan, {
+      provider: { async route(value) {
+        return providerResponse(value, { distance: 23_799 });
+      } }
+    });
+    assert.deepEqual(
+      result.attempts[0].routeResults[0].distanceVerification,
+      {
+        routeDistanceKm: 23.799,
+        targetRangeKm: { min: 15, max: 15 },
+        state: "outside_target",
+        deviationKm: 8.799
+      }
+    );
   });
 
   it("changes result identity when provider-derived route content changes", async () => {

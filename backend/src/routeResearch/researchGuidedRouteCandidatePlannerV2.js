@@ -12,25 +12,27 @@ import {
   RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2
 } from "./researchGuidedRouteCandidatePolicyV2.js";
 import {
+  analyzeResearchGuidedDistanceHeuristicV3,
+  deriveResearchGuidedLoopCorridorKeyV3,
   deriveResearchGuidedLoopTopologyKeyV3,
   shapeResearchGuidedLoopSourceProposalV3
 } from "./researchGuidedRouteProductShapingV3.js";
 import {
-  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
-} from "./researchGuidedRouteProductShapingPolicyV3.js";
+  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
+} from "./researchGuidedRouteProductShapingPolicyV3_1.js";
 
 const POLICY = RESEARCH_GUIDED_ROUTE_CANDIDATE_POLICY_V2;
 if (
   POLICY.loopProductShapingPolicyVersion !==
-    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3.policyVersion ||
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1.policyVersion ||
   POLICY.detour.materialRequiredTargetExcessRatio !==
-    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
       .distance.materialRequiredTargetExcessRatio ||
   POLICY.limits.maximumSelectedHighlightsPerProposal !==
-    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
       .limits.maximumSelectedHighlightsPerProposal ||
   POLICY.limits.maximumProposals !==
-    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3.limits.maximumProposals
+    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1.limits.maximumProposals
 ) {
   throw new TypeError("inconsistent research-guided route shaping policy");
 }
@@ -190,6 +192,14 @@ function materializePlan(sourcePlanInput, resolutionInput) {
           ["access_candidate_unavailable"]
         ));
       }
+      for (const item of shaped.excluded) {
+        shortfallRecords.push(shortfall(
+          item.candidate,
+          item.code,
+          sourceProposal.proposalId,
+          ["optional_access_removed"]
+        ));
+      }
       for (const shape of shaped.shapes) {
         const proposal = materializedProposal({
           sourcePlan,
@@ -345,6 +355,15 @@ function materializedProposal({
       (item) => item.trailAccessCandidate.knownLimitations
     ),
     "provider_verification_required",
+    "pre_routing_distance_heuristic_only",
+    ...(distanceAnalysis.heuristicState ===
+        "heuristic_range_below_target"
+      ? ["heuristic_distance_range_below_target"]
+      : []),
+    ...(distanceAnalysis.heuristicState ===
+        "heuristic_range_above_target"
+      ? ["heuristic_distance_range_above_target"]
+      : []),
     ...(distanceAnalysis.state === "material_required_detour"
       ? ["material_required_detour"]
       : []),
@@ -408,9 +427,9 @@ function selectMeaningfullyDistinctProposals(
   const selectedProposalIds = new Set();
   const add = (proposal) => {
     if (selected.size >= maximumProposals) return;
-    const key = deriveResearchGuidedLoopTopologyKeyV3(
-      proposal.selectedHighlights
-    );
+    const key = proposal.routeType === "loop"
+      ? deriveResearchGuidedLoopCorridorKeyV3(proposal.selectedHighlights)
+      : deriveResearchGuidedLoopTopologyKeyV3(proposal.selectedHighlights);
     if (selected.has(key)) return;
     selected.set(key, proposal);
     selectedProposalIds.add(proposal.proposalId);
@@ -438,27 +457,43 @@ function compareMaterializedProposals(left, right, targetRange) {
   };
   return distanceStateRank[left.distanceAnalysis.state] -
       distanceStateRank[right.distanceAnalysis.state] ||
-    proposalTargetPenalty(left, targetRange) -
-      proposalTargetPenalty(right, targetRange) ||
     riskStateRank[left.backtrackingRisk.state] -
       riskStateRank[right.backtrackingRisk.state] ||
+    distanceHeuristicStateRank(left.distanceAnalysis.heuristicState) -
+      distanceHeuristicStateRank(right.distanceAnalysis.heuristicState) ||
+    proposalTargetGapPenalty(left, targetRange) -
+      proposalTargetGapPenalty(right, targetRange) ||
+    proposalTargetCenterPenalty(left, targetRange) -
+      proposalTargetCenterPenalty(right, targetRange) ||
     right.selectedHighlights.length - left.selectedHighlights.length ||
     left.distanceAnalysis.lowerBoundKm - right.distanceAnalysis.lowerBoundKm ||
     compareText(left.proposalId, right.proposalId);
 }
 
-function proposalTargetPenalty(proposal, targetRange) {
+function proposalTargetGapPenalty(proposal, targetRange) {
   if (targetRange === null) return 0;
-  const lowerBound = proposal.distanceAnalysis.lowerBoundKm;
-  if (lowerBound > targetRange.max) {
-    return 1 + (lowerBound - targetRange.max) /
-      Math.max(targetRange.max, 0.001);
-  }
-  const center = (targetRange.min + targetRange.max) / 2;
-  const heuristicDistance = lowerBound *
-    RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
-      .distance.heuristicRouteMultiplier;
-  return Math.abs(heuristicDistance - center) / Math.max(center, 0.001);
+  return analyzeResearchGuidedDistanceHeuristicV3(
+    proposal.distanceAnalysis.lowerBoundKm,
+    targetRange
+  ).targetGapPenalty;
+}
+
+function proposalTargetCenterPenalty(proposal, targetRange) {
+  if (targetRange === null) return 0;
+  return analyzeResearchGuidedDistanceHeuristicV3(
+    proposal.distanceAnalysis.lowerBoundKm,
+    targetRange
+  ).targetCenterPenalty;
+}
+
+function distanceHeuristicStateRank(state) {
+  return {
+    target_unspecified: 0,
+    heuristic_range_intersects_target: 0,
+    heuristic_range_below_target: 1,
+    heuristic_range_above_target: 1,
+    lower_bound_exceeds_target: 2
+  }[state] ?? 3;
 }
 
 function assertResolutionMatchesSourcePlan(sourcePlan, resolution) {
@@ -629,6 +664,10 @@ function applyDistanceGuard(
 function distanceAnalysisFor(anchor, selected, targetRange) {
   const rawLowerBoundKm = lowerBoundKm(anchor, selected);
   const value = roundDistance(rawLowerBoundKm);
+  const heuristic = analyzeResearchGuidedDistanceHeuristicV3(
+    rawLowerBoundKm,
+    targetRange
+  );
   const requiredLowerBoundKm = lowerBoundKm(
     anchor,
     selected.filter((item) => isHardRole(item.role))
@@ -649,6 +688,9 @@ function distanceAnalysisFor(anchor, selected, targetRange) {
   return {
     kind: "straight_line_lower_bound",
     lowerBoundKm: value,
+    heuristicRangeKm: heuristic.rangeKm,
+    heuristicState: heuristic.state,
+    heuristicLimitationCode: "pre_routing_distance_heuristic_only",
     targetRangeKm: targetRange,
     state,
     materialRequiredTargetExcessRatio:

@@ -7,10 +7,10 @@ import {
   shapeResearchGuidedLoopSourceProposalV3
 } from "../src/routeResearch/researchGuidedRouteProductShapingV3.js";
 import {
-  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3
-} from "../src/routeResearch/researchGuidedRouteProductShapingPolicyV3.js";
+  RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1
+} from "../src/routeResearch/researchGuidedRouteProductShapingPolicyV3_1.js";
 
-const POLICY = RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3;
+const POLICY = RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_POLICY_V3_1;
 
 describe("research-guided route product shaping v3", () => {
   it("preserves every hard role and never lets preferences displace them", () => {
@@ -107,8 +107,16 @@ describe("research-guided route product shaping v3", () => {
       )
     });
     assert.equal(result.searchMetrics.orderingsEvaluated >= 2, true);
+    assert.equal(result.shapes.length > 1, true);
     assert.equal(
       new Set(result.shapes.map((item) => item.topologyKey)).size,
+      result.shapes.length
+    );
+    assert.equal(
+      new Set(result.shapes.map((item) =>
+        researchGuidedRouteProductShapingInternalsForTesting
+          .corridorKey(item.selected)
+      )).size,
       result.shapes.length
     );
 
@@ -156,10 +164,11 @@ describe("research-guided route product shaping v3", () => {
         longitude: 0.01
       })]
     });
-    assert.equal(
-      optionalRadial.shapes[0].riskState,
-      "pre_routing_backtracking_risk"
-    );
+    assert.deepEqual(optionalRadial.shapes, []);
+    assert.deepEqual(optionalRadial.excluded.map((item) => [
+      item.candidate.entityId,
+      item.code
+    ]), [["optional", "optional_removed_for_loop_shape"]]);
   });
 
   it("retains useful shaping points when no target exists and removes harmful optional detours", async () => {
@@ -265,6 +274,160 @@ describe("research-guided route product shaping v3", () => {
       ),
       ["access-boundary-access-0"]
     );
+  });
+
+  it("uses typed lower and upper heuristic ranges without claiming routed distance", () => {
+    const analyze = researchGuidedRouteProductShapingInternalsForTesting
+      .distanceHeuristic;
+    const intersects = analyze(10, { min: 15, max: 15 });
+    assert.deepEqual(intersects.rangeKm, { min: 11.5, max: 16.5 });
+    assert.equal(intersects.state, "heuristic_range_intersects_target");
+    assert.equal(Object.hasOwn(intersects, "routeDistanceKm"), false);
+    assert.equal(Object.hasOwn(intersects, "verified"), false);
+
+    assert.equal(
+      analyze(5, { min: 15, max: 15 }).state,
+      "heuristic_range_below_target"
+    );
+    assert.equal(
+      analyze(14, { min: 15, max: 15 }).state,
+      "heuristic_range_above_target"
+    );
+    assert.equal(
+      analyze(15, { min: 15, max: 15 }).state,
+      "heuristic_range_above_target"
+    );
+    assert.equal(
+      analyze(15.000001, { min: 15, max: 15 }).state,
+      "lower_bound_exceeds_target"
+    );
+  });
+
+  it("explores bounded multi-point access assignments and keeps exact evidence coordinates", () => {
+    const anchor = { latitude: 47.2868, longitude: 11.3997 };
+    const vias = [
+      via("viewpoint-a", "must_have", {
+        latitude: 47.2875,
+        longitude: 11.4001
+      }),
+      via("viewpoint-b", "must_have", {
+        latitude: 47.2882,
+        longitude: 11.4005
+      }),
+      via("viewpoint-c", "must_have", {
+        latitude: 47.2889,
+        longitude: 11.4009
+      })
+    ];
+    const alternatives = [
+      { latitude: 47.2877, longitude: 11.3997 },
+      { latitude: 47.2880, longitude: 11.4010 },
+      { latitude: 47.2891, longitude: 11.4005 }
+    ];
+    const accessByEntity = new Map(vias.map((item, index) => [
+      item.entityId,
+      [
+        accessForVia(item, 0, item.coordinate, 5, "shared-corridor"),
+        accessForVia(
+          item,
+          1,
+          alternatives[index],
+          45,
+          `distinct-corridor-${index}`
+        )
+      ]
+    ]));
+    const result = shape({
+      anchor,
+      targetRange: { min: 0.4, max: 1.2 },
+      vias,
+      accessByEntity
+    });
+    const multiAlternative = result.shapes.find((item) =>
+      item.selected.filter((selected) =>
+        selected.trailAccessCandidate.candidateId.endsWith("-1")
+      ).length >= 2
+    );
+
+    assert(multiAlternative);
+    assert.equal(multiAlternative.riskScore < 45, true);
+    for (const selected of multiAlternative.selected) {
+      assert.deepEqual(
+        selected.evidenceCoordinate,
+        vias.find((item) => item.entityId === selected.entityId).coordinate
+      );
+      assert.deepEqual(
+        selected.trailAccessCandidate.evidenceCoordinate,
+        selected.evidenceCoordinate
+      );
+    }
+    assert(result.searchMetrics.searchStates <=
+      POLICY.limits.maximumSearchStates);
+  });
+
+  it("regresses the recorded V3 failures without converting history into provider proof", async () => {
+    const receipt = await v3ProofReceipt();
+    const brocken = receipt.cases.find((item) =>
+      item.caseId === "case-04-harz-brocken-must-have-landmark"
+    );
+    assert.equal(brocken.selectedRoute.distanceKm, 23.799);
+    assert.equal(brocken.selectedRoute.targetDeviationRatio, 0.5866);
+    assert.equal(brocken.selectedRoute.maximumSnapMeters, 41.9);
+    assert.equal(brocken.selectedRoute.waypointsReached, 3);
+    assert.equal(brocken.selectedRoute.waypointCount, 3);
+
+    const innsbruck = receipt.cases.find((item) =>
+      item.caseId === "case-07-innsbruck-viewpoint-loop"
+    );
+    assert.deepEqual(
+      innsbruck.observedRoutes.map((item) => [
+        item.distanceKm,
+        item.maximumSnapMeters,
+        item.waypointsReached,
+        item.waypointCount
+      ]),
+      [[21.201, 427.6, 0, 3], [21.29, 441.1, 1, 3]]
+    );
+
+    const survivor = receipt.cases.find((item) =>
+      item.caseId === "case-15-partial-provider-failure-survivor"
+    );
+    assert.deepEqual(
+      survivor.observedRoutes.map((item) => item.backtrackingRatio),
+      [0.7311, 0.6552]
+    );
+    const fixture = await topologyFixture();
+    const blockedRadial = shape({
+      anchor: fixture.anchor,
+      targetRange: { min: 10.8, max: 13.2 },
+      vias: fixture.topologies.radial.map((coordinate, index) =>
+        via(`controlled-${index}`, "preferred", coordinate)
+      )
+    });
+    assert.deepEqual(blockedRadial.shapes, []);
+    assert.equal(blockedRadial.excluded.length, 3);
+
+    const requiredRadial = shape({
+      anchor: fixture.anchor,
+      targetRange: { min: 10.8, max: 13.2 },
+      vias: fixture.topologies.radial.map((coordinate, index) =>
+        via(`required-${index}`, "must_have", coordinate)
+      )
+    });
+    assert(requiredRadial.shapes.length > 0);
+    assert.equal(
+      requiredRadial.shapes[0].riskState,
+      "required_mapped_corridor_risk"
+    );
+
+    const easy = receipt.cases.find((item) =>
+      item.caseId === "case-08-innsbruck-easy-conservative-loop"
+    );
+    assert.equal(easy.routeMetricsObserved, false);
+    assert.deepEqual(easy.failureReasons, [
+      "routing_rate_limited",
+      "provider_batch_stopped"
+    ]);
   });
 
   it("treats the exact lower-bound target edge as admissible and exposes impossible hard detours", () => {
@@ -451,6 +614,20 @@ function access(entityId, index, routingCoordinate, distance = index + 1) {
   };
 }
 
+function accessForVia(
+  item,
+  index,
+  routingCoordinate,
+  distance,
+  sourceTrailSegmentEntityId
+) {
+  return {
+    ...access(item.entityId, index, routingCoordinate, distance),
+    evidenceCoordinate: item.coordinate,
+    sourceTrailSegmentEntityId
+  };
+}
+
 function automaticAccess(vias, count = 1) {
   return new Map(vias.map((item) => [
     item.entityId,
@@ -500,6 +677,13 @@ function isHard(role) {
 async function topologyFixture() {
   return JSON.parse(await readFile(new URL(
     "./fixtures/researchGuidedRouteProductShapingV3.json",
+    import.meta.url
+  ), "utf8"));
+}
+
+async function v3ProofReceipt() {
+  return JSON.parse(await readFile(new URL(
+    "../../docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.summary.json",
     import.meta.url
   ), "utf8"));
 }

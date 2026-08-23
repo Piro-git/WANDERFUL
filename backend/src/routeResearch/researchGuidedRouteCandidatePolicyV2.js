@@ -2,7 +2,7 @@ const policy = {
   schemaVersion: 2,
   policyVersion: "research-guided-route-candidates-v2",
   loopProductShapingPolicyVersion:
-    "research-guided-route-product-shaping-v3",
+    "research-guided-route-product-shaping-v3.1",
   sourceCandidatePlanPolicyVersion: "research-guided-route-candidates-v1",
   trailAccessPolicyVersion: "research-trail-access-candidates-v1",
   limits: {
@@ -29,6 +29,9 @@ const policy = {
     "material_required_detour",
     "required_backtracking_risk",
     "pre_routing_backtracking_risk",
+    "pre_routing_distance_heuristic_only",
+    "heuristic_distance_range_below_target",
+    "heuristic_distance_range_above_target",
     "provider_verification_required"
   ],
   distanceAnalysisStates: [
@@ -36,6 +39,13 @@ const policy = {
     "not_ruled_out",
     "lower_bound_exceeds_target",
     "material_required_detour"
+  ],
+  distanceHeuristicStates: [
+    "target_unspecified",
+    "heuristic_range_intersects_target",
+    "heuristic_range_below_target",
+    "heuristic_range_above_target",
+    "lower_bound_exceeds_target"
   ],
   backtrackingRiskStates: [
     "none",
