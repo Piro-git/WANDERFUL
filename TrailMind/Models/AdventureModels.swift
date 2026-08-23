@@ -1766,6 +1766,31 @@ enum TransportMode: String, Hashable, Sendable {
     }
 }
 
+/// Captured from the raw user request before parser or engine defaults are
+/// applied. This prevents a post-default value (for example `.hiking`) from
+/// being mistaken for something the user explicitly requested.
+enum AdventureIntentPreferenceFieldStateV1: Hashable, Sendable {
+    case omitted
+    case specified
+    case noPreference
+}
+
+struct AdventureIntentPreferenceExplicitnessV1: Hashable, Sendable {
+    var activity: AdventureIntentPreferenceFieldStateV1
+    var comfortableOuting: AdventureIntentPreferenceFieldStateV1
+    var routeShape: AdventureIntentPreferenceFieldStateV1
+    var requestedExperiences: AdventureIntentPreferenceFieldStateV1
+    var softAvoidances: AdventureIntentPreferenceFieldStateV1
+
+    static let allSpecified = Self(
+        activity: .specified,
+        comfortableOuting: .specified,
+        routeShape: .specified,
+        requestedExperiences: .specified,
+        softAvoidances: .specified
+    )
+}
+
 struct AdventureIntent: Hashable, Sendable {
     let rawPrompt: String
     let parserSource: IntentParserSource
@@ -1783,6 +1808,7 @@ struct AdventureIntent: Hashable, Sendable {
     let mustHaveResearchExperiences:
         [MustHaveResearchExperienceConstraint]
     let transportMode: TransportMode?
+    let preferenceExplicitness: AdventureIntentPreferenceExplicitnessV1
 
     init(
         rawPrompt: String,
@@ -1800,7 +1826,8 @@ struct AdventureIntent: Hashable, Sendable {
         avoidFeatures: [AvoidFeature],
         mustHaveResearchExperiences:
             [MustHaveResearchExperienceConstraint] = [],
-        transportMode: TransportMode? = nil
+        transportMode: TransportMode? = nil,
+        preferenceExplicitness: AdventureIntentPreferenceExplicitnessV1 = .allSpecified
     ) {
         self.rawPrompt = rawPrompt
         self.parserSource = parserSource
@@ -1818,9 +1845,15 @@ struct AdventureIntent: Hashable, Sendable {
         self.mustHaveResearchExperiences =
             mustHaveResearchExperiences
         self.transportMode = transportMode ?? TransportMode(activityType: activityType)
+        self.preferenceExplicitness = preferenceExplicitness
     }
 
-    init(rawPrompt: String, parsedPrompt: ParsedRoutePrompt, parserSource: IntentParserSource = .localRuleBased) {
+    init(
+        rawPrompt: String,
+        parsedPrompt: ParsedRoutePrompt,
+        parserSource: IntentParserSource = .localRuleBased,
+        preferenceExplicitness: AdventureIntentPreferenceExplicitnessV1
+    ) {
         self.init(
             rawPrompt: rawPrompt,
             parserSource: parserSource,
@@ -1838,7 +1871,8 @@ struct AdventureIntent: Hashable, Sendable {
                 parsedPrompt.difficulty == .easy && !parsedPrompt.avoidFeatures.contains(.steepClimbs)
                     ? [.steepClimbs]
                     : []
-            )
+            ),
+            preferenceExplicitness: preferenceExplicitness
         )
     }
 
@@ -1868,6 +1902,7 @@ struct ValidatedAdventureIntent: Hashable, Sendable {
     let mustHaveResearchExperiences:
         [MustHaveResearchExperienceConstraint]
     let transportMode: TransportMode?
+    let preferenceExplicitness: AdventureIntentPreferenceExplicitnessV1
 
     init(intent: AdventureIntent) {
         rawPrompt = intent.rawPrompt
@@ -1886,6 +1921,30 @@ struct ValidatedAdventureIntent: Hashable, Sendable {
         mustHaveResearchExperiences =
             intent.mustHaveResearchExperiences
         transportMode = intent.transportMode
+        preferenceExplicitness = intent.preferenceExplicitness
+    }
+
+    func applying(_ request: RoutePlanningRequest) -> ValidatedAdventureIntent {
+        ValidatedAdventureIntent(
+            intent: AdventureIntent(
+                rawPrompt: rawPrompt,
+                parserSource: parserSource,
+                confidence: confidence,
+                activityType: request.activityType,
+                routeType: request.routeType,
+                startLocationQuery: startLocationQuery,
+                endLocationQuery: request.endQuery,
+                regionQuery: regionQuery,
+                targetDistanceKm: request.targetDistanceKm,
+                targetDurationMinutes: request.targetDurationMinutes,
+                difficulty: request.difficulty,
+                desiredFeatures: request.desiredFeatures,
+                avoidFeatures: request.avoidFeatures,
+                mustHaveResearchExperiences: mustHaveResearchExperiences,
+                transportMode: TransportMode(activityType: request.activityType),
+                preferenceExplicitness: preferenceExplicitness
+            )
+        )
     }
 
     var startOrRegionQuery: String? {

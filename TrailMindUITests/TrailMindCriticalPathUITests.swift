@@ -23,38 +23,224 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         let app = launch(.onboarding)
         let continueButton = app.buttons["onboarding.continue"]
 
-        XCTAssertTrue(app.staticTexts["Your next adventure, built around you."].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["Your perfect day, mapped."]
+                .waitForExistence(timeout: 5)
+        )
         XCTAssertTrue(continueButton.exists)
         XCTAssertTrue(
-            tap(continueButton, until: app.staticTexts["How do you like to move?"]),
+            tap(continueButton, until: app.staticTexts["How do you want to move outside?"]),
             "The welcome action should advance to activity personalization."
         )
 
+        XCTAssertTrue(app.buttons["onboarding.activity.unknown"].exists)
         app.buttons["onboarding.activity.hiking"].tap()
         continueButton.tap()
-        XCTAssertTrue(app.staticTexts["What feels like a good day out?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["What feels like a comfortable hiking day?"]
+                .waitForExistence(timeout: 5)
+        )
 
+        XCTAssertTrue(app.buttons["onboarding.distance.unknown"].exists)
         app.buttons["onboarding.distance.15"].tap()
         continueButton.tap()
-        XCTAssertTrue(app.staticTexts["How much challenge do you enjoy?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["How should the route come together?"]
+                .waitForExistence(timeout: 5)
+        )
 
-        app.buttons["onboarding.effort.moderate"].tap()
+        XCTAssertTrue(app.buttons["onboarding.route-shape.unknown"].exists)
+        app.buttons["onboarding.route-shape.loop"].tap()
         continueButton.tap()
-        XCTAssertTrue(app.staticTexts["What should your request prioritize?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["Your hiking day is taking shape."]
+                .waitForExistence(timeout: 5)
+        )
 
+        XCTAssertTrue(app.buttons["onboarding.avoidance.unknown"].exists)
+        app.buttons["onboarding.avoidance.steep-climbs"].tap()
+        continueButton.tap()
+        XCTAssertTrue(
+            app.staticTexts["What makes a day outside feel worth it?"]
+                .waitForExistence(timeout: 5)
+        )
+
+        XCTAssertTrue(app.buttons["onboarding.interest.unknown"].exists)
         app.buttons["onboarding.interest.views"].tap()
         continueButton.tap()
         XCTAssertTrue(
-            app.staticTexts["Real routes. Clear limits."].waitForExistence(timeout: 5),
+            app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5),
             "Continue should advance to the planning-safety step."
         )
 
         continueButton.tap()
-        XCTAssertTrue(app.staticTexts["Your route planner is ready."].waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForLabel("Start planning", on: continueButton))
+        XCTAssertTrue(
+            app.staticTexts["Meet the starting point for your adventures."]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(waitForLabel("Plan my first route", on: continueButton))
         XCTAssertTrue(
             tap(continueButton, until: app.buttons["home.typeInstead"]),
-            "Start planning should finish onboarding at Home."
+            "Plan my first route should finish onboarding at Home."
+        )
+    }
+
+    @MainActor
+    func testOnboardingComfortCopyAdaptsAcrossEverySupportedActivity() {
+        let app = launch(.onboarding)
+        let continueButton = app.buttons["onboarding.continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            tap(continueButton, until: app.buttons["onboarding.activity.hiking"])
+        )
+
+        let activityPaths = [
+            ("hiking", "What feels like a comfortable hiking day?"),
+            ("trail-running", "What feels like a comfortable trail-running day?"),
+            ("biking", "What feels like a comfortable ride?")
+        ]
+
+        for (activityID, expectedTitle) in activityPaths {
+            let activity = app.buttons["onboarding.activity.\(activityID)"]
+            XCTAssertTrue(activity.waitForExistence(timeout: 5))
+            activity.tap()
+            continueButton.tap()
+            XCTAssertTrue(app.staticTexts[expectedTitle].waitForExistence(timeout: 5))
+
+            let backButton = app.buttons["onboarding.back"]
+            XCTAssertTrue(backButton.waitForExistence(timeout: 5))
+            backButton.tap()
+            XCTAssertTrue(
+                app.staticTexts["How do you want to move outside?"]
+                    .waitForExistence(timeout: 5)
+            )
+        }
+
+        app.buttons["onboarding.activity.unknown"].tap()
+        continueButton.tap()
+        XCTAssertTrue(
+            app.staticTexts["What feels like a comfortable day?"]
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testOnboardingUnknownPathKeepsEveryPlanningDefaultOpen() {
+        let app = launch(.onboarding)
+        let continueButton = app.buttons["onboarding.continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            tap(continueButton, until: app.buttons["onboarding.activity.unknown"])
+        )
+
+        let unknownSteps = [
+            "onboarding.activity.unknown",
+            "onboarding.distance.unknown",
+            "onboarding.route-shape.unknown",
+            "onboarding.avoidance.unknown",
+            "onboarding.interest.unknown"
+        ]
+
+        for unknownID in unknownSteps {
+            let unknown = app.buttons[unknownID]
+            XCTAssertTrue(unknown.waitForExistence(timeout: 5), "Missing \(unknownID)")
+            unknown.tap()
+            continueButton.tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        continueButton.tap()
+        XCTAssertTrue(
+            app.staticTexts["Open by default, ready for your request"]
+                .waitForExistence(timeout: 5)
+        )
+        let unsetValueCount = app.staticTexts.allElementsBoundByIndex
+            .filter { $0.label == "Not set" }
+            .count
+        XCTAssertGreaterThanOrEqual(unsetValueCount, 5)
+    }
+
+    @MainActor
+    func testOnboardingExplicitNoneRemainsDistinctFromUnknownInRecap() {
+        let app = launch(.onboarding)
+        let continueButton = app.buttons["onboarding.continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            tap(continueButton, until: app.buttons["onboarding.activity.unknown"])
+        )
+
+        for unknownID in [
+            "onboarding.activity.unknown",
+            "onboarding.distance.unknown",
+            "onboarding.route-shape.unknown"
+        ] {
+            let unknown = app.buttons[unknownID]
+            XCTAssertTrue(unknown.waitForExistence(timeout: 5))
+            unknown.tap()
+            continueButton.tap()
+        }
+
+        let noAvoidances = app.buttons["onboarding.avoidance.none"]
+        XCTAssertTrue(noAvoidances.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(noAvoidances, in: app))
+        noAvoidances.tap()
+        continueButton.tap()
+
+        let noExperiences = app.buttons["onboarding.interest.none"]
+        XCTAssertTrue(noExperiences.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(noExperiences, in: app))
+        noExperiences.tap()
+        continueButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        continueButton.tap()
+        XCTAssertTrue(
+            app.staticTexts["Meet the starting point for your adventures."]
+                .waitForExistence(timeout: 5)
+        )
+        let explicitNoneCount = app.staticTexts.allElementsBoundByIndex
+            .filter { $0.label == "None selected" }
+            .count
+        XCTAssertGreaterThanOrEqual(explicitNoneCount, 2)
+    }
+
+    @MainActor
+    func testOnboardingSupportsAccessibilityDynamicType() {
+        let app = launch(
+            .onboarding,
+            extraArguments: [
+                "-UIPreferredContentSizeCategoryName",
+                "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge"
+            ]
+        )
+        let continueButton = app.buttons["onboarding.continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(continueButton, in: app))
+        XCTAssertTrue(
+            tap(continueButton, until: app.buttons["onboarding.activity.unknown"])
+        )
+
+        for unknownID in [
+            "onboarding.activity.unknown",
+            "onboarding.distance.unknown",
+            "onboarding.route-shape.unknown",
+            "onboarding.avoidance.unknown",
+            "onboarding.interest.unknown"
+        ] {
+            let unknown = app.buttons[unknownID]
+            XCTAssertTrue(unknown.waitForExistence(timeout: 5), "Missing \(unknownID)")
+            XCTAssertTrue(waitUntilHittable(unknown, in: app, maximumSwipes: 12))
+            unknown.tap()
+            XCTAssertTrue(waitUntilHittable(continueButton, in: app, maximumSwipes: 12))
+            continueButton.tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(continueButton, in: app, maximumSwipes: 12))
+        continueButton.tap()
+        XCTAssertTrue(
+            app.staticTexts["Open by default, ready for your request"]
+                .waitForExistence(timeout: 5)
         )
     }
 

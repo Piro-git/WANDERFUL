@@ -97,7 +97,8 @@ struct LocalIntentParsingProvider: IntentParsingProvider, IntentParsingDebugProv
         return AdventureIntent(
             rawPrompt: rawPrompt,
             parsedPrompt: parsedPrompt,
-            parserSource: parserSource
+            parserSource: parserSource,
+            preferenceExplicitness: parser.hikingPreferenceExplicitness(in: rawPrompt)
         )
     }
 
@@ -685,7 +686,9 @@ private struct RemoteAdventureIntentResponse: Decodable {
             difficulty: difficultyValue(),
             desiredFeatures: desiredFeatures.compactMap(Self.desiredFeatureValue),
             avoidFeatures: avoidFeatures.compactMap(Self.avoidFeatureValue),
-            transportMode: transportModeValue()
+            transportMode: transportModeValue(),
+            preferenceExplicitness: RoutePromptParser()
+                .hikingPreferenceExplicitness(in: fallbackRawPrompt)
         )
     }
 
@@ -916,7 +919,8 @@ struct IntentRepairService: Sendable {
             avoidFeatures: intent.avoidFeatures,
             mustHaveResearchExperiences:
                 intent.mustHaveResearchExperiences,
-            transportMode: intent.transportMode
+            transportMode: intent.transportMode,
+            preferenceExplicitness: intent.preferenceExplicitness
         )
     }
 

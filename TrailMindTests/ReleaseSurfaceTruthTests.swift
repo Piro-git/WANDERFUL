@@ -53,8 +53,9 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertEqual(AppTab.allCases, [.plan, .saved, .profile])
     }
 
-    func testOnboardingUsesAFocusedSevenStepFlowWithoutUnsupportedClaims() {
-        XCTAssertEqual(OnboardingView.pages.count, 7)
+    func testOnboardingUsesAFocusedEightStepFlowWithoutUnsupportedClaims() {
+        XCTAssertEqual(OnboardingView.pages.count, 8)
+        XCTAssertEqual(OnboardingView.pages.first?.title, "Your perfect day, mapped.")
         let copy = OnboardingView.pages
             .flatMap { [$0.eyebrow, $0.title, $0.body] }
             .joined(separator: " ")
@@ -65,6 +66,103 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("planning aid"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("not live navigation"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("requested preferences"))
+        XCTAssertTrue(copy.localizedCaseInsensitiveContains("I don’t know yet"))
+        XCTAssertTrue(copy.localizedCaseInsensitiveContains("what you ask for later always wins"))
+        XCTAssertTrue(copy.localizedCaseInsensitiveContains("real route"))
+        XCTAssertTrue(copy.localizedCaseInsensitiveContains("distance, time and elevation"))
+        XCTAssertFalse(copy.localizedCaseInsensitiveContains("a few optional answers"))
+    }
+
+    func testEveryOnboardingStepUsesItsOwnIllustration() {
+        let assets = OnboardingView.Step.allCases.map(\.illustrationAssetName)
+
+        XCTAssertEqual(assets.count, OnboardingView.pages.count)
+        XCTAssertEqual(Set(assets).count, assets.count)
+    }
+
+    func testV1OnboardingDoesNotConfigureOrPresentSuperwallBeforeProductValue() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let appSource = try String(
+            contentsOf: repositoryURL.appendingPathComponent("TrailMind/App/TrailMindApp.swift"),
+            encoding: .utf8
+        )
+        let hostSource = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind/Views/Onboarding/SuperwallOnboardingHost.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(appSource.contains("SuperwallOnboardingClient()"))
+        XCTAssertFalse(hostSource.contains("presentOnboarding("))
+        XCTAssertFalse(hostSource.contains("setPreferencesHandler("))
+        XCTAssertTrue(hostSource.contains("startNativeOnboarding()"))
+    }
+
+    func testTrackedRemoteAndResearchFlagsRemainDisabled() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sharedConfiguration = try String(
+            contentsOf: repositoryURL.appendingPathComponent("Configuration/Shared.xcconfig"),
+            encoding: .utf8
+        )
+
+        for setting in [
+            "SUPABASE_ONBOARDING_SYNC_ENABLED = false",
+            "RESEARCH_GUIDED_PLANNING_ENABLED = false",
+            "OUTDOOR_EVIDENCE_ENABLED = false",
+            "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED = false"
+        ] {
+            XCTAssertTrue(sharedConfiguration.contains(setting), "Missing disabled setting: \(setting)")
+        }
+    }
+
+    func testOnboardingMovesAccessibilityFocusToEveryNewHeading() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind/Views/Onboarding/OnboardingComponents.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertGreaterThanOrEqual(
+            source.components(separatedBy: "@AccessibilityFocusState").count - 1,
+            2
+        )
+        XCTAssertGreaterThanOrEqual(
+            source.components(separatedBy: ".accessibilityFocused($isHeadingFocused)").count - 1,
+            2
+        )
+        XCTAssertGreaterThanOrEqual(
+            source.components(separatedBy: ".task(id: page.step)").count - 1,
+            2
+        )
+    }
+
+    func testOnboardingHonorsReduceMotionWithoutAnimatedPageChanges() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind/Views/Onboarding/OnboardingView.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("@Environment(\\.accessibilityReduceMotion) private var reduceMotion"))
+        XCTAssertTrue(source.contains(".animation(reduceMotion ? nil : .snappy, value: selectedPage)"))
+        XCTAssertTrue(source.contains("guard !reduceMotion else { return .opacity }"))
+        XCTAssertGreaterThanOrEqual(
+            source.components(separatedBy: "withAnimation(reduceMotion ? nil : .snappy)").count - 1,
+            3
+        )
     }
 
     func testOnboardingDistanceChoicesAdaptToActivity() {

@@ -5,8 +5,8 @@ struct TrailMindApp: App {
     @AppStorage("hasCompletedTrailMindOnboarding") private var hasCompletedOnboarding = false
     @State private var theme = TrailTheme()
     @State private var appModel: AppModel
+    @State private var productionPlanner: PlannerViewModel
     @State private var sessionStartup = TrailMindSessionStartupState()
-    private let superwallOnboardingClient: SuperwallOnboardingClient
     #if DEBUG
     private let stagingProofComposition:
         StagingProofLaunchComposition?
@@ -18,7 +18,7 @@ struct TrailMindApp: App {
     private let gpxService = DefaultGPXService()
 
     init() {
-        superwallOnboardingClient = SuperwallOnboardingClient()
+        let resolvedAppModel: AppModel
         #if DEBUG
         let stagingProofComposition =
             StagingProofLaunchComposition.resolve()
@@ -26,29 +26,35 @@ struct TrailMindApp: App {
         #if targetEnvironment(simulator)
         let uiTestComposition = UITestLaunchComposition.resolve()
         self.uiTestComposition = uiTestComposition
-        _appModel = State(
-            initialValue:
-                stagingProofComposition?.appModel ??
-                uiTestComposition?.appModel ??
-                Self.makeProductionAppModel()
-        )
+        resolvedAppModel =
+            stagingProofComposition?.appModel ??
+            uiTestComposition?.appModel ??
+            Self.makeProductionAppModel()
         #else
-        _appModel = State(
-            initialValue:
-                stagingProofComposition?.appModel ??
-                Self.makeProductionAppModel()
-        )
+        resolvedAppModel =
+            stagingProofComposition?.appModel ??
+            Self.makeProductionAppModel()
         #endif
         #else
-        _appModel = State(initialValue: Self.makeProductionAppModel())
+        resolvedAppModel = Self.makeProductionAppModel()
         #endif
+        _appModel = State(initialValue: resolvedAppModel)
+        _productionPlanner = State(
+            initialValue: PlannerViewModel(
+                hikingProfileProvider: { [weak resolvedAppModel] in
+                    resolvedAppModel?.hikingProfile
+                }
+            )
+        )
     }
 
     private static func makeProductionAppModel() -> AppModel {
         let preferencesStore = UserPreferencesStore()
         return AppModel(
             preferences: preferencesStore.load(),
-            preferencesStore: preferencesStore
+            preferencesStore: preferencesStore,
+            hikingProfileStore: LocalHikingPreferenceProfileStoreV1(),
+            hikingProfileSyncClient: HikingPreferenceProfileSyncFactoryV1.make()
         )
     }
 
@@ -62,12 +68,14 @@ struct TrailMindApp: App {
             .tint(theme.forestBright)
             .preferredColorScheme(.light)
             .task {
+                async let hikingProfileLoad: Void = appModel.loadHikingProfileStateIfNeeded()
                 if sessionStartup.claimGPXRecovery() {
                     async let savedRoutesLoad: Void = appModel.savedRoutes.loadIfNeeded()
                     async let abandonedExportRecovery: Bool = gpxService.recoverAbandonedExports()
-                    _ = await (savedRoutesLoad, abandonedExportRecovery)
+                    _ = await (savedRoutesLoad, abandonedExportRecovery, hikingProfileLoad)
                 } else {
-                    await appModel.savedRoutes.loadIfNeeded()
+                    async let savedRoutesLoad: Void = appModel.savedRoutes.loadIfNeeded()
+                    _ = await (savedRoutesLoad, hikingProfileLoad)
                 }
             }
         }
@@ -112,13 +120,33 @@ struct TrailMindApp: App {
 
     @ViewBuilder
     private var productionRootView: some View {
-        if hasCompletedOnboarding {
-            AppShellView()
+        if !appModel.isHikingProfileStateLoaded {
+            HikingProfileLaunchLoadingView()
+        } else if hasCompletedOnboarding {
+            AppShellView(planner: productionPlanner)
         } else {
             SuperwallOnboardingHost(
-                isComplete: $hasCompletedOnboarding,
-                client: superwallOnboardingClient
+                isComplete: $hasCompletedOnboarding
             )
+        }
+    }
+}
+
+private struct HikingProfileLaunchLoadingView: View {
+    @Environment(TrailTheme.self) private var theme
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [theme.forest, Color(red: 0.04, green: 0.30, blue: 0.21)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            ProgressView()
+                .tint(theme.mossSoft)
+                .accessibilityLabel("Loading your Trail Profile")
         }
     }
 }
@@ -157,7 +185,7 @@ struct AppShellView: View {
                 SavedRoutesView()
             }
 
-            Tab("About", systemImage: "info.circle.fill", value: .profile) {
+            Tab("Profile", systemImage: "person.crop.circle.fill", value: .profile) {
                 ProfilePreferencesView()
             }
         }

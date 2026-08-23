@@ -252,6 +252,8 @@ final class PlannerViewModelTests: XCTestCase {
         geocodingService: any GeocodingService,
         routingCoordinator: any RoutingCoordinating,
         intentParsingProvider: any IntentParsingProvider = LocalIntentParsingProvider(),
+        hikingProfileProvider:
+            @escaping @MainActor @Sendable () -> HikingPreferenceProfileV1? = { nil },
         operationTimeouts: PlannerViewModel.OperationTimeouts = .production,
         attemptIDProvider: @escaping @MainActor () -> UUID = { UUID() }
     ) -> PlannerViewModel {
@@ -259,6 +261,7 @@ final class PlannerViewModelTests: XCTestCase {
             intentParsingProvider: intentParsingProvider,
             geocodingService: geocodingService,
             routingCoordinator: routingCoordinator,
+            hikingProfileProvider: hikingProfileProvider,
             operationTimeouts: operationTimeouts,
             attemptIDProvider: attemptIDProvider
         )
@@ -276,7 +279,8 @@ final class PlannerViewModelTests: XCTestCase {
         duration: Int? = nil,
         difficulty: RouteDifficulty? = nil,
         desired: [DesiredFeature] = [],
-        avoid: [AvoidFeature] = []
+        avoid: [AvoidFeature] = [],
+        preferenceExplicitness: AdventureIntentPreferenceExplicitnessV1 = .allSpecified
     ) -> AdventureIntent {
         AdventureIntent(
             rawPrompt: rawPrompt,
@@ -291,7 +295,8 @@ final class PlannerViewModelTests: XCTestCase {
             targetDurationMinutes: duration,
             difficulty: difficulty,
             desiredFeatures: desired,
-            avoidFeatures: avoid
+            avoidFeatures: avoid,
+            preferenceExplicitness: preferenceExplicitness
         )
     }
 
@@ -390,6 +395,86 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(router.intents.first?.parsedIntent?.rawPrompt, "Ilsenburg nach Schierke")
         XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent.rawPrompt, "Ilsenburg nach Schierke")
         XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.localFallbackUsed, true)
+    }
+
+    func testProfileFillsOnlyRawPromptFieldsThatWereOmitted() async throws {
+        let profile = HikingPreferenceProfileV1(
+            defaultActivity: .biking,
+            comfortableOuting: .distanceKilometers(minimum: 40, maximum: 50),
+            preferredRouteShape: .pointToPoint,
+            requestedExperiences: [.forest],
+            softAvoidances: [.majorRoads]
+        )
+        let router = StubRoutingCoordinator(
+            route: verifiedRoute(activity: .biking, routeType: .loop)
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start]),
+            routingCoordinator: router,
+            hikingProfileProvider: { profile }
+        )
+
+        viewModel.startPlanning(prompt: "Loop around Ilsenburg")
+        await viewModel.generate()
+
+        let request = try XCTUnwrap(router.intents.first?.request)
+        XCTAssertEqual(request.activityType, .biking)
+        XCTAssertEqual(request.graphHopperProfile, "bike")
+        XCTAssertEqual(request.routeType, .loop, "The current prompt explicitly requested a loop.")
+        XCTAssertEqual(request.targetDistanceKm, 45)
+        XCTAssertEqual(request.desiredFeatures, [.forest])
+        XCTAssertEqual(request.avoidFeatures, [.majorRoads])
+        XCTAssertEqual(router.intents.first?.parsedIntent?.activityType, .biking)
+        XCTAssertEqual(router.intents.first?.parsedIntent?.transportMode, .cycling)
+    }
+
+    func testExplicitPromptWinsOverEveryConflictingProfileDefault() async throws {
+        let profile = HikingPreferenceProfileV1(
+            defaultActivity: .biking,
+            comfortableOuting: .distanceKilometers(minimum: 40, maximum: 50),
+            preferredRouteShape: .pointToPoint,
+            requestedExperiences: [.forest],
+            softAvoidances: [.majorRoads]
+        )
+        let router = StubRoutingCoordinator(
+            route: verifiedRoute(activity: .hiking, routeType: .loop)
+        )
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start]),
+            routingCoordinator: router,
+            hikingProfileProvider: { profile }
+        )
+
+        viewModel.startPlanning(
+            prompt: "15 km hiking loop around Ilsenburg with views, not too steep"
+        )
+        await viewModel.generate()
+
+        let request = try XCTUnwrap(router.intents.first?.request)
+        XCTAssertEqual(request.activityType, .hiking)
+        XCTAssertEqual(request.routeType, .loop)
+        XCTAssertEqual(request.targetDistanceKm, 15)
+        XCTAssertEqual(request.desiredFeatures, [.viewpoint])
+        XCTAssertEqual(request.avoidFeatures, [.steepClimbs])
+    }
+
+    func testNoProfileRetainsShippingParserAndEngineDefaults() async throws {
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .loop))
+        let viewModel = makeViewModel(
+            geocodingService: StubGeocodingService(coordinates: ["Ilsenburg": start]),
+            routingCoordinator: router
+        )
+
+        viewModel.startPlanning(prompt: "Loop around Ilsenburg")
+        await viewModel.generate()
+
+        let request = try XCTUnwrap(router.intents.first?.request)
+        XCTAssertEqual(request.activityType, .hiking)
+        XCTAssertEqual(request.graphHopperProfile, "foot")
+        XCTAssertEqual(request.routeType, .loop)
+        XCTAssertEqual(request.targetDistanceKm, 10)
+        XCTAssertTrue(request.desiredFeatures.isEmpty)
+        XCTAssertTrue(request.avoidFeatures.isEmpty)
     }
 
     func testOrdinaryPlanningPerformsNoOutdoorEvidenceRequestByDefault() async {

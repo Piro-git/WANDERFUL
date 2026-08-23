@@ -3,6 +3,39 @@ import XCTest
 
 final class RoutePromptParserTests: XCTestCase {
     @MainActor
+    func testRawPromptExplicitnessIsCapturedBeforeParserDefaults() throws {
+        let parser = RoutePromptParser()
+        let implicitActivity = parser.hikingPreferenceExplicitness(
+            in: "10 km loop around Ilsenburg with views"
+        )
+        XCTAssertEqual(implicitActivity.activity, .omitted)
+        XCTAssertEqual(implicitActivity.comfortableOuting, .specified)
+        XCTAssertEqual(implicitActivity.routeShape, .specified)
+        XCTAssertEqual(implicitActivity.requestedExperiences, .specified)
+        XCTAssertEqual(implicitActivity.softAvoidances, .omitted)
+
+        let explicitNone = parser.hikingPreferenceExplicitness(
+            in: "Loop around Ilsenburg, any activity, any distance, no special preferences"
+        )
+        XCTAssertEqual(explicitNone.activity, .noPreference)
+        XCTAssertEqual(explicitNone.comfortableOuting, .noPreference)
+        XCTAssertEqual(explicitNone.routeShape, .specified)
+        XCTAssertEqual(explicitNone.requestedExperiences, .noPreference)
+        XCTAssertEqual(explicitNone.softAvoidances, .noPreference)
+
+        for prompt in [
+            "Schierke zum Brocken",
+            "Schierke zur Brockenstraße",
+            "Lüneburg bis Bardowick"
+        ] {
+            XCTAssertEqual(
+                parser.hikingPreferenceExplicitness(in: prompt).routeShape,
+                .specified
+            )
+        }
+    }
+
+    @MainActor
     func testRequiredGermanPrompts() throws {
         let parser = RoutePromptParser()
         let cases = [

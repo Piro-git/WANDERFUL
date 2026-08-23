@@ -181,35 +181,74 @@ struct HomeView: View {
     }
 
     private var displayedRouteExamples: [HomeRouteExample] {
-        [personalizedRouteExample] + Self.routeExamples
+        if let personalizedRouteExample {
+            return [personalizedRouteExample] + Self.routeExamples
+        }
+        return Self.routeExamples
     }
 
-    private var personalizedRouteExample: HomeRouteExample {
-        let preferences = appModel.preferences
-        let distance = Int(preferences.preferredDistanceKilometers.rounded())
-        let requestedFeatures = preferences.interests
-            .sorted()
+    private var personalizedRouteExample: HomeRouteExample? {
+        guard let profile = appModel.hikingProfile,
+              let activity = profile.defaultActivity,
+              profile.preferredRouteShape == .loop,
+              let comfort = profile.comfortableOuting
+        else {
+            return nil
+        }
+
+        let requestedFeatures = (profile.requestedExperiences ?? [])
+            .map(Self.promptName)
             .prefix(2)
-            .map { $0.lowercased() }
             .joined(separator: " and ")
         let featureSuffix = requestedFeatures.isEmpty ? "" : " with \(requestedFeatures)"
+        let activityPhrase: String
+        let location: String
+        switch activity {
+        case .hiking:
+            activityPhrase = "hiking"
+            location = "Ilsenburg"
+        case .trailRunning:
+            activityPhrase = "trail run"
+            location = "Ilsenburg"
+        case .biking:
+            activityPhrase = "bike"
+            location = "Lüneburg"
+        }
 
         let prompt: String
-        switch preferences.preferredActivity {
-        case .hiking:
-            prompt = "Plan a \(distance) km hiking loop from Ilsenburg\(featureSuffix)"
-        case .trailRunning:
-            prompt = "Plan a \(distance) km trail run loop from Ilsenburg\(featureSuffix)"
-        case .biking:
-            prompt = "Plan a \(distance) km bike loop from Lüneburg\(featureSuffix)"
+        let title: String
+        switch comfort {
+        case let .distanceKilometers(minimum, maximum):
+            let distance = Int(((minimum + maximum) / 2).rounded())
+            prompt = "Plan a \(distance) km \(activityPhrase) loop from \(location)\(featureSuffix)"
+            title = "Your \(distance) km \(activityPhrase)"
+        case let .durationMinutes(minimum, maximum):
+            let minutes = Int((Double(minimum + maximum) / 2).rounded())
+            prompt = "Plan a \(minutes)-minute \(activityPhrase) loop from \(location)\(featureSuffix)"
+            title = minutes.isMultiple(of: 60)
+                ? "Your \(minutes / 60)-hour \(activityPhrase)"
+                : "Your \(minutes)-minute \(activityPhrase)"
         }
 
         return HomeRouteExample(
             id: "personalized",
-            title: "Your \(distance) km \(preferences.preferredActivity.rawValue.lowercased())",
+            title: title,
             prompt: prompt,
-            symbol: preferences.preferredActivity.symbol
+            symbol: activity.activityType.symbol
         )
+    }
+
+    private static func promptName(_ experience: HikingRequestedExperienceV1) -> String {
+        switch experience {
+        case .viewpoints: "viewpoints"
+        case .forest: "forest"
+        case .quietNature: "quiet paths"
+        case .waterfalls: "waterfalls"
+        case .lakes: "lakes"
+        case .peaks: "peaks"
+        case .huts: "huts"
+        case .landmarks: "landmarks"
+        }
     }
 
     private var hero: some View {

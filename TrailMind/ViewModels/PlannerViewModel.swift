@@ -439,6 +439,9 @@ final class PlannerViewModel {
         any OutdoorAdventurePlanningCoordinatingV1
     private let outdoorEvidenceProvider: any OutdoorRouteEvidenceProviding
     private let operationTimeouts: OperationTimeouts
+    private let hikingProfilePlanningAdapter: HikingProfileRoutePlanningAdapterV1
+    @ObservationIgnored private let hikingProfileProvider:
+        @MainActor @Sendable () -> HikingPreferenceProfileV1?
     @ObservationIgnored private let researchFeatureAvailable:
         @MainActor @Sendable () -> Bool
     @ObservationIgnored private let researchOperationDidFinish:
@@ -601,6 +604,10 @@ final class PlannerViewModel {
         researchOperationDidFinish:
             @escaping @MainActor @Sendable (UUID) -> Void = { _ in },
         outdoorEvidenceProvider: any OutdoorRouteEvidenceProviding = OutdoorRouteEvidenceProviderFactory.makeDefault(),
+        hikingProfilePlanningAdapter: HikingProfileRoutePlanningAdapterV1 =
+            HikingProfileRoutePlanningAdapterV1(),
+        hikingProfileProvider:
+            @escaping @MainActor @Sendable () -> HikingPreferenceProfileV1? = { nil },
         operationTimeouts: OperationTimeouts = .production,
         attemptIDProvider: @escaping @MainActor () -> UUID = { UUID() }
     ) {
@@ -624,6 +631,8 @@ final class PlannerViewModel {
         self.researchOperationDidFinish =
             researchOperationDidFinish
         self.outdoorEvidenceProvider = outdoorEvidenceProvider
+        self.hikingProfilePlanningAdapter = hikingProfilePlanningAdapter
+        self.hikingProfileProvider = hikingProfileProvider
         self.operationTimeouts = operationTimeouts
         self.attemptIDProvider = attemptIDProvider
     }
@@ -920,6 +929,7 @@ private extension PlannerViewModel {
         var startLocationQuery = intent.startLocationQuery
         var endLocationQuery = intent.endLocationQuery
         var regionQuery = intent.regionQuery
+        var preferenceExplicitness = intent.preferenceExplicitness
 
         switch (kind, answer) {
         case let (.location(field), .text(value)):
@@ -937,6 +947,7 @@ private extension PlannerViewModel {
             }
         case let (.routeType, .routeType(value)):
             routeType = value
+            preferenceExplicitness.routeShape = .specified
         case (.location, .locationCandidate):
             throw PlannerIssue.unsupportedClarification
         default:
@@ -959,7 +970,8 @@ private extension PlannerViewModel {
             avoidFeatures: intent.avoidFeatures,
             mustHaveResearchExperiences:
                 intent.mustHaveResearchExperiences,
-            transportMode: intent.transportMode
+            transportMode: intent.transportMode,
+            preferenceExplicitness: preferenceExplicitness
         )
     }
 
@@ -1150,6 +1162,7 @@ private extension PlannerViewModel {
         requestID: UUID,
         preparedAttempt: PreparedAttempt,
         planningRequest: RoutePlanningRequest,
+        validatedIntent: ValidatedAdventureIntent,
         startCandidate: LocationCandidate
     ) async throws -> ResearchPathDecision {
         guard researchGuidedPlanningIsAvailable() else {
@@ -1158,7 +1171,7 @@ private extension PlannerViewModel {
 
         let adapterResult = researchIntentAdapter.adapt(
             AdventureResearchIntentAdapterInputV1(
-                validatedIntent: preparedAttempt.validatedIntent,
+                validatedIntent: validatedIntent,
                 resolvedStart: startCandidate
             )
         )
@@ -1806,7 +1819,16 @@ private extension PlannerViewModel {
             state = .resolvingLocations(preparedAttempt)
             stage = .locations
 
-            let planningRequest = RoutePlanningRequest(validatedIntent: preparedAttempt.validatedIntent)
+            let basePlanningRequest = RoutePlanningRequest(
+                validatedIntent: preparedAttempt.validatedIntent
+            )
+            let profileAdaptation = try? hikingProfilePlanningAdapter.adapt(
+                baseRequest: basePlanningRequest,
+                validatedIntent: preparedAttempt.validatedIntent,
+                profile: hikingProfileProvider()
+            )
+            let planningRequest = profileAdaptation?.request ?? basePlanningRequest
+            let planningIntent = preparedAttempt.validatedIntent.applying(planningRequest)
             var workingPrepared = preparedAttempt
             let startCandidate: LocationCandidate
             if let selectedStart = workingPrepared.selectedLocations[.startLocationQuery] {
@@ -1884,6 +1906,7 @@ private extension PlannerViewModel {
                 requestID: requestID,
                 preparedAttempt: workingPrepared,
                 planningRequest: planningRequest,
+                validatedIntent: planningIntent,
                 startCandidate: startCandidate
             )
             let legacyResearchContext: ResearchPlanningContext?
@@ -1920,7 +1943,7 @@ private extension PlannerViewModel {
                             request: planningRequest,
                             start: start,
                             end: end,
-                            parsedIntent: preparedAttempt.validatedIntent
+                            parsedIntent: planningIntent
                         )
                     )
                 )

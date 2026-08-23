@@ -144,6 +144,104 @@ struct RoutePromptParser: Sendable {
         return try parseSingle(prompt)
     }
 
+    /// Evaluates the raw prompt itself. Callers must retain this alongside the
+    /// parsed result instead of reconstructing explicitness from parser
+    /// defaults such as the default hiking activity.
+    func hikingPreferenceExplicitness(
+        in prompt: String
+    ) -> AdventureIntentPreferenceExplicitnessV1 {
+        let value = normalized(prompt)
+        let noGeneralPreferences = containsAny(
+            value,
+            [
+                "no special preferences", "anything is fine",
+                "keine besonderen wunsche", "keine besondere praferenz", "egal was"
+            ]
+        )
+
+        let activity: AdventureIntentPreferenceFieldStateV1
+        if containsAny(
+            value,
+            ["any activity", "no activity preference", "egal welche aktivitat"]
+        ) {
+            activity = .noPreference
+        } else if containsAny(
+            value,
+            [
+                "fahrrad", "radfahrt", "radtour", "radroute", "bike", "biking", "cycling",
+                "trailrun", "trail run", "running", "joggen", "lauf",
+                "wandern", "wanderung", "hike", "hiking", "walk"
+            ]
+        ) {
+            activity = .specified
+        } else {
+            activity = .omitted
+        }
+
+        let comfort: AdventureIntentPreferenceFieldStateV1
+        if containsAny(
+            value,
+            [
+                "any distance", "any duration", "no distance preference",
+                "no duration preference", "egal wie weit", "egal wie lange"
+            ]
+        ) {
+            comfort = .noPreference
+        } else if preferredDistanceKilometers(in: prompt) != nil ||
+                    preferredDurationHours(in: prompt) != nil {
+            comfort = .specified
+        } else {
+            comfort = .omitted
+        }
+
+        let routeShape: AdventureIntentPreferenceFieldStateV1
+        if containsAny(
+            value,
+            [
+                "any route shape", "no route shape preference",
+                "loop or point to point", "egal welche streckenform"
+            ]
+        ) {
+            routeShape = .noPreference
+        } else if containsRouteShapeCue(value) {
+            routeShape = .specified
+        } else {
+            routeShape = .omitted
+        }
+
+        let requestedExperiences: AdventureIntentPreferenceFieldStateV1
+        if noGeneralPreferences || containsAny(
+            value,
+            ["no scenery preference", "keine landschaftspraferenz"]
+        ) {
+            requestedExperiences = .noPreference
+        } else if !desiredFeatures(in: prompt).isEmpty {
+            requestedExperiences = .specified
+        } else {
+            requestedExperiences = .omitted
+        }
+
+        let softAvoidances: AdventureIntentPreferenceFieldStateV1
+        if noGeneralPreferences || containsAny(
+            value,
+            ["no avoidances", "nothing to avoid", "nichts vermeiden", "keine vermeidungen"]
+        ) {
+            softAvoidances = .noPreference
+        } else if !avoidFeatures(in: prompt).isEmpty {
+            softAvoidances = .specified
+        } else {
+            softAvoidances = .omitted
+        }
+
+        return AdventureIntentPreferenceExplicitnessV1(
+            activity: activity,
+            comfortableOuting: comfort,
+            routeShape: routeShape,
+            requestedExperiences: requestedExperiences,
+            softAvoidances: softAvoidances
+        )
+    }
+
     private func parseSingle(_ prompt: String) throws -> ParsedRoutePrompt {
         let fullRange = NSRange(prompt.startIndex..<prompt.endIndex, in: prompt)
 
@@ -391,6 +489,22 @@ struct RoutePromptParser: Sendable {
         prompt.folding(
             options: [.caseInsensitive, .diacriticInsensitive],
             locale: Locale(identifier: "de_DE")
+        )
+    }
+
+    private func containsAny(_ value: String, _ needles: [String]) -> Bool {
+        needles.contains(where: value.contains)
+    }
+
+    private func containsRouteShapeCue(_ value: String) -> Bool {
+        containsAny(
+            value,
+            [
+                "rundwanderung", "rundtour", "runde", "loop", "round trip",
+                " von ", " nach ", " zum ", " zur ", " bis ",
+                " from ", " to ", "→", "->",
+                "start:", "ziel:"
+            ]
         )
     }
 }

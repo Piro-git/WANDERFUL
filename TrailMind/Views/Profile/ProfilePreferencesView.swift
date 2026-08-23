@@ -2,6 +2,10 @@ import SwiftUI
 
 struct ProfilePreferencesView: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(AppModel.self) private var appModel
+    @State private var isEditingTrailProfile = false
+    @State private var isConfirmingReset = false
+    @State private var isConfirmingDelete = false
 
     var body: some View {
         NavigationStack {
@@ -10,6 +14,64 @@ struct ProfilePreferencesView: View {
                     profileHeader
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
+                }
+
+                Section {
+                    if let profile = appModel.hikingProfile {
+                        HikingProfileSummaryView(profile: profile)
+
+                        Button("Edit Trail Profile", systemImage: "slider.horizontal.3") {
+                            isEditingTrailProfile = true
+                        }
+                        .accessibilityIdentifier("profile.trailProfile.edit")
+
+                        Button("Reset answers", systemImage: "arrow.counterclockwise") {
+                            isConfirmingReset = true
+                        }
+                        .accessibilityIdentifier("profile.trailProfile.reset")
+
+                        Button("Delete Trail Profile", systemImage: "trash", role: .destructive) {
+                            isConfirmingDelete = true
+                        }
+                        .accessibilityIdentifier("profile.trailProfile.delete")
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("No Trail Profile saved")
+                                .font(.headline)
+                                .foregroundStyle(theme.graphite)
+                            Text("Add only the defaults that make planning easier. You can leave every answer unknown.")
+                                .font(.subheadline)
+                                .foregroundStyle(theme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 4)
+
+                        Button("Create Trail Profile", systemImage: "plus.circle.fill") {
+                            isEditingTrailProfile = true
+                        }
+                        .accessibilityIdentifier("profile.trailProfile.create")
+                    }
+
+                    if let message = appModel.hikingProfileStatusMessage {
+                        Label(message, systemImage: "info.circle")
+                            .font(.footnote)
+                            .foregroundStyle(theme.secondaryText)
+                            .accessibilityIdentifier("profile.trailProfile.status")
+                    }
+
+                    if appModel.hikingProfileRecoveryRequired {
+                        Button("Discard unreadable local record", systemImage: "trash") {
+                            Task { await appModel.discardUnreadableHikingProfileData() }
+                        }
+                        .accessibilityIdentifier("profile.trailProfile.recover")
+                    }
+                } header: {
+                    sectionHeader(
+                        "Planning defaults",
+                        accessibilityIdentifier: "profile.trailProfile.section"
+                    )
+                } footer: {
+                    Text("Saved only on this iPhone. Remote sync is not active in V1.")
                 }
 
                 Section {
@@ -63,8 +125,31 @@ struct ProfilePreferencesView: View {
             .scrollContentBackground(.hidden)
             .background(TrailBackground())
             .tint(theme.forestBright)
-            .navigationTitle("About")
+            .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $isEditingTrailProfile) {
+                HikingProfileEditorView(
+                    profile: appModel.hikingProfile ?? HikingPreferenceProfileV1()
+                ) { profile in
+                    await appModel.saveHikingProfileEdit(profile)
+                }
+            }
+            .alert("Reset your answers?", isPresented: $isConfirmingReset) {
+                Button("Cancel", role: .cancel) {}
+                Button("Reset", role: .destructive) {
+                    Task { await appModel.resetHikingProfile() }
+                }
+            } message: {
+                Text("Your Trail Profile will stay available, but every planning preference will return to “Not set yet.”")
+            }
+            .alert("Delete your Trail Profile?", isPresented: $isConfirmingDelete) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    Task { await appModel.deleteHikingProfile() }
+                }
+            } message: {
+                Text("This removes the local profile and its resumable draft from this iPhone. Remote sync is not active in V1. Your saved routes are not affected.")
+            }
         }
     }
 
