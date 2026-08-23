@@ -13,6 +13,13 @@ const COUNT_KEYS = [
 export async function runAppAttestPrune(options = {}) {
   const env = options.env ?? process.env;
   const write = options.write ?? process.stdout.write.bind(process.stdout);
+  if (
+    env.NODE_ENV === "production" &&
+    (typeof env.APP_ATTEST_DATABASE_URL !== "string" ||
+      env.APP_ATTEST_DATABASE_URL.length === 0)
+  ) {
+    throw appAttestError("authorization_unavailable");
+  }
   const repository = options.repository ?? postgresAppAttestRepositoryFromEnvironment(
     env,
     options.pool ? { pool: options.pool } : {}
@@ -24,8 +31,8 @@ export async function runAppAttestPrune(options = {}) {
   try {
     counts = validatedCounts(await repository.pruneExpired());
   } finally {
-    if (ownsRepository && typeof repository.pool?.end === "function") {
-      await repository.pool.end();
+    if (ownsRepository) {
+      await closeRepositoryPools(repository);
     }
   }
   write(
@@ -34,6 +41,16 @@ export async function runAppAttestPrune(options = {}) {
     `providerLeases=${counts.providerLeases}\n`
   );
   return counts;
+}
+
+async function closeRepositoryPools(repository) {
+  const pools = [...new Set([
+    repository.pool,
+    repository.cancellationPool
+  ].filter((pool) => typeof pool?.end === "function"))];
+  const results = await Promise.allSettled(pools.map((pool) => pool.end()));
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
 }
 
 function validatedCounts(counts) {

@@ -57,7 +57,7 @@ describe("App Attest pruning command", () => {
       }
     };
     await runAppAttestPrune({
-      env: { DATABASE_URL: "postgresql://example.invalid/trailmind" },
+      env: { APP_ATTEST_DATABASE_URL: "postgresql://example.invalid/trailmind" },
       pool,
       write() {}
     });
@@ -73,6 +73,19 @@ describe("App Attest pruning command", () => {
     assert.equal(output, "");
   });
 
+  it("requires the dedicated App Attest role URL in production", async () => {
+    await assert.rejects(
+      runAppAttestPrune({
+        env: {
+          NODE_ENV: "production",
+          DATABASE_URL: "postgresql://generic.invalid/trailmind"
+        },
+        write() {}
+      }),
+      (error) => error.code === "authorization_unavailable"
+    );
+  });
+
   it("does not report success when command-owned pool shutdown fails", async () => {
     let output = "";
     const client = {
@@ -84,7 +97,7 @@ describe("App Attest pruning command", () => {
     const failure = new Error("synthetic pool shutdown failure");
     await assert.rejects(
       runAppAttestPrune({
-        env: { DATABASE_URL: "postgresql://example.invalid/trailmind" },
+        env: { APP_ATTEST_DATABASE_URL: "postgresql://example.invalid/trailmind" },
         pool: {
           async connect() {
             return client;

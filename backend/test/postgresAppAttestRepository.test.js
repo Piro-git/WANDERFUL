@@ -8,7 +8,7 @@ import {
 } from "../src/appAttest/postgresAppAttestRepository.js";
 
 describe("PostgreSQL App Attest repository", () => {
-  it("selects an explicit PostgreSQL URL and supports Vercel's managed fallback", () => {
+  it("prefers the App Attest role URL and supports legacy managed fallbacks", () => {
     assert.equal(postgresAppAttestRepositoryFromEnvironment({}, { pool: fakePool() }), undefined);
     assert.throws(
       () => postgresAppAttestRepositoryFromEnvironment(
@@ -26,6 +26,15 @@ describe("PostgreSQL App Attest repository", () => {
     assert.equal(repository.isDurable, true);
     assert.equal(repository.pool, productPool);
     assert.equal(repository.cancellationPool, cancellationPool);
+
+    const appSecurityRepository = postgresAppAttestRepositoryFromEnvironment(
+      {
+        APP_ATTEST_DATABASE_URL: "postgresql://app_security.invalid/trailmind",
+        DATABASE_URL: "https://wrong-role.invalid"
+      },
+      { pool: fakePool() }
+    );
+    assert.equal(appSecurityRepository.isDurable, true);
 
     const managedRepository = postgresAppAttestRepositoryFromEnvironment(
       { POSTGRES_URL: "postgresql://example.invalid/trailmind" },

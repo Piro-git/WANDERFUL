@@ -24,8 +24,6 @@ import { postgresOutdoorEvidenceRepositoryFromRuntime } from "./outdoorEvidence/
 import { createRouteEndpoint } from "./routing/routeEndpoint.js";
 import { RouteError, routeError, routeErrorResult } from "./routing/routeErrors.js";
 
-const PORT = Number(process.env.PORT || 3000);
-
 export function createIntentServer(options = {}) {
   return createServer(createIntentRequestHandler(options));
 }
@@ -68,7 +66,29 @@ export function createIntentRequestHandler(options = {}) {
           : undefined)
     });
   return async function intentRequestHandler(request, response) {
+    const health = operationalHealthResult(
+      request.method,
+      request.url,
+      options.operationalState
+    );
+    if (health) {
+      return sendJson(response, health.statusCode, health.payload);
+    }
+    if (
+      options.operationalState &&
+      options.operationalState.isAccepting?.() !== true
+    ) {
+      const result = serviceUnavailableResult();
+      return sendJson(response, result.statusCode, result.payload);
+    }
     const cancellation = new AbortController();
+    if (
+      options.operationalState &&
+      options.operationalState.register?.(cancellation) !== true
+    ) {
+      const result = serviceUnavailableResult();
+      return sendJson(response, result.statusCode, result.payload);
+    }
     const abortFromRequest = () => cancellation.abort();
     const abortFromResponse = () => {
       if (!response.writableEnded) cancellation.abort();
@@ -159,6 +179,7 @@ export function createIntentRequestHandler(options = {}) {
     } finally {
       request.removeListener("aborted", abortFromRequest);
       response.removeListener("close", abortFromResponse);
+      options.operationalState?.unregister?.(cancellation);
     }
   };
 }
@@ -167,6 +188,22 @@ export async function handleIntentHttpRequest(request, options = {}) {
   try {
     if (request.method === "GET" && request.url === "/health") {
       return { statusCode: 200, payload: { ok: true } };
+    }
+    if (request.method === "GET" && request.url === "/health/live") {
+      return { statusCode: 200, payload: { status: "live" } };
+    }
+    if (request.method === "GET" && request.url === "/health/ready") {
+      const ready = options.operationalState?.isReady?.() === true;
+      return {
+        statusCode: ready ? 200 : 503,
+        payload: { status: ready ? "ready" : "not_ready" }
+      };
+    }
+    if (
+      options.operationalState &&
+      options.operationalState.isAccepting?.() !== true
+    ) {
+      return serviceUnavailableResult();
     }
 
     if (request.method === "POST" && request.url === "/api/route") {
@@ -287,13 +324,51 @@ function readJsonBody(request, maxBytes, contract) {
 
 function sendJson(response, statusCode, payload, additionalHeaders = {}) {
   if (response.destroyed || response.writableEnded) return;
+  const serialized = JSON.stringify(payload);
   response.writeHead(statusCode, {
     "Cache-Control": "no-store",
     "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(serialized, "utf8"),
     "X-Content-Type-Options": "nosniff",
-    ...additionalHeaders
+    ...safeAdditionalHeaders(additionalHeaders)
   });
-  response.end(JSON.stringify(payload));
+  response.end(serialized);
+}
+
+function operationalHealthResult(method, url, operationalState) {
+  if (method === "GET" && url === "/health") {
+    return { statusCode: 200, payload: { ok: true } };
+  }
+  if (method === "GET" && url === "/health/live") {
+    return { statusCode: 200, payload: { status: "live" } };
+  }
+  if (method === "GET" && url === "/health/ready") {
+    const ready = operationalState?.isReady?.() === true;
+    return {
+      statusCode: ready ? 200 : 503,
+      payload: { status: ready ? "ready" : "not_ready" }
+    };
+  }
+  return undefined;
+}
+
+function serviceUnavailableResult() {
+  return {
+    statusCode: 503,
+    payload: {
+      error: {
+        code: "service_unavailable",
+        message: "The service is temporarily unavailable."
+      }
+    }
+  };
+}
+
+function safeAdditionalHeaders(headers) {
+  const retryAfter = headers?.["Retry-After"] ?? headers?.["retry-after"];
+  return typeof retryAfter === "string" && /^\d{1,4}$/.test(retryAfter)
+    ? { "Retry-After": retryAfter }
+    : {};
 }
 
 function isKnownPostPath(url) {
@@ -385,9 +460,3 @@ function boundedEnvironmentInteger(rawValue, fallback, minimum, maximum) {
 }
 
 export default createIntentRequestHandler();
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  createIntentServer().listen(PORT, () => {
-    console.log(`TrailMind backend listening on http://localhost:${PORT}`);
-  });
-}

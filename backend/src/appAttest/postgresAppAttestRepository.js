@@ -354,11 +354,27 @@ export function postgresAppAttestRepositoryFromEnvironment(env = process.env, op
     1_000,
     300_000
   );
+  const statementTimeoutMillis = integer(
+    env.APP_ATTEST_DATABASE_STATEMENT_TIMEOUT_MS,
+    5_000,
+    500,
+    30_000
+  );
+  const idleTransactionTimeoutMillis = integer(
+    env.APP_ATTEST_DATABASE_IDLE_TRANSACTION_TIMEOUT_MS,
+    10_000,
+    1_000,
+    60_000
+  );
+  if (idleTransactionTimeoutMillis < statementTimeoutMillis) unavailable();
   const pool = options.pool ?? new Pool({
     connectionString,
     max: integer(env.DATABASE_POOL_MAX, 4, 1, 20),
     connectionTimeoutMillis,
     idleTimeoutMillis,
+    query_timeout: statementTimeoutMillis,
+    statement_timeout: statementTimeoutMillis,
+    idle_in_transaction_session_timeout: idleTransactionTimeoutMillis,
     allowExitOnIdle: true
   });
   const cancellationPool = options.cancellationPool ??
@@ -369,6 +385,7 @@ export function postgresAppAttestRepositoryFromEnvironment(env = process.env, op
       idleTimeoutMillis,
       query_timeout: 1_000,
       statement_timeout: 1_000,
+      idle_in_transaction_session_timeout: idleTransactionTimeoutMillis,
       allowExitOnIdle: true
     }));
   return new PostgresAppAttestRepository({
@@ -378,6 +395,12 @@ export function postgresAppAttestRepositoryFromEnvironment(env = process.env, op
 }
 
 function configuredPostgresURL(env) {
+  if (
+    env.APP_ATTEST_DATABASE_URL !== undefined &&
+    env.APP_ATTEST_DATABASE_URL !== ""
+  ) {
+    return env.APP_ATTEST_DATABASE_URL;
+  }
   if (env.DATABASE_URL !== undefined && env.DATABASE_URL !== "") return env.DATABASE_URL;
   return env.POSTGRES_URL;
 }

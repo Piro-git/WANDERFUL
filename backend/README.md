@@ -10,6 +10,8 @@ The backend exposes:
 - `POST /api/app-attest/challenge`, `/register`, and `/route-session` for installation verification.
 - `POST /api/route` for a strictly validated GraphHopper routing request.
 - `GET /health` for a fast, provider-independent liveness response.
+- `GET /health/live` for the zero-dependency production liveness contract.
+- `GET /health/ready` for a coarse cached readiness state. It never returns dependency names or errors.
 
 The route endpoint proxies real GraphHopper results; it does not invent geometry, distance, duration, elevation, safety, scenic quality, water availability, trail status, camping legality, weather, POIs, navigation, accounts, or persistence. See [Route API contract](docs/route-api.md).
 
@@ -67,21 +69,36 @@ To use deterministic intent fixtures without an AI provider during local develop
 
 If `backend/.env` does not exist yet, copy `config.example.env` to `.env` and add the local `GRAPHHOPPER_API_KEY`. Never commit `.env`.
 
-For a production-capable repository, provision a dedicated PostgreSQL database, set `DATABASE_URL` in the deployment environment, and apply migrations before starting or deploying. When Supabase is connected through Vercel Marketplace, the backend also accepts the integration-managed `POSTGRES_URL` automatically; an explicit non-empty `DATABASE_URL` takes precedence.
+## Production admission and lifecycle
+
+`npm start` is the standalone production entry point. It fails before listening unless the presence-only production preflight passes. The preflight requires `NODE_ENV=production`, an explicit release stage, exact `true`/`false` values for every controlled flag, production-safe local/in-memory flags, durable App Attest configuration, coherent request/authorization/database bounds, and the dependencies of every enabled capability. It prints only check identifiers, coarse capability states, and a ready/blocked decision; it never prints configuration values.
 
 ```sh
-DATABASE_URL="postgresql://..." npm run db:migrate
+npm run ops:preflight
+npm start
+```
+
+The standalone runtime requires `APP_ATTEST_DATABASE_URL`. When research or evidence is enabled, it additionally requires explicit, non-aliased runtime connection strings for each pool named in `config.example.env`. These URLs must be injected by the deployment platform; never place a value in a command or receipt. Source validation can reject missing or textually aliased URLs, but only staging grant/denial tests can prove database role separation.
+
+Migrations are an operator-only responsibility and are never run by the application process. After the migration role has received its environment through the approved secret-injection mechanism, run:
+
+```sh
+npm run db:migrate
 ```
 
 Migration output contains filenames only; connection strings and database records are never printed. Use `TRAILMIND_TEST_DATABASE_URL` only with a disposable dedicated database to run the real PostgreSQL integration suite.
 
-The server listens on `http://localhost:3000` by default. Override with:
+The production server defaults to loopback on port 3000. Set `HOST` and `PORT` explicitly to match an approved ingress design. Node header, request, keep-alive, shutdown, header-count, readiness-probe, connection, statement, idle-transaction, and pool bounds are configurable only within the ranges enforced by preflight. On `SIGTERM` or `SIGINT`, the process marks readiness false, rejects late work before parsing or authorization, drains existing work, aborts it at the single shutdown deadline, closes sockets and owned pools, and reports only a coarse outcome.
+
+`api/index.js` remains a bare serverless request-handler adapter. It does not execute the standalone preflight, pool composition, cached dependency readiness, or signal-driven drain contract. It is therefore not an admitted closed-beta production entry point until an independently verified platform-specific lifecycle provides equivalent guarantees.
+
+Expired App Attest challenges, sessions, rate windows, and provider leases can be pruned by an operator or scheduler after durable configuration is injected:
 
 ```sh
-PORT=3001 npm start
+npm run ops:prune-app-attest
 ```
 
-`api/index.js` and `vercel.json` adapt the same request handler for Vercel deployments. A deployment without a migrated PostgreSQL `DATABASE_URL` or `POSTGRES_URL` and the required App Attest/provider configuration exposes only the provider-independent health check; protected intent and routing operations remain fail-closed.
+The command reports fixed aggregate counts only. Registered keys and attestation receipts are not deleted by this command; their retention requires an explicit owner/legal decision and a separately reviewed operation.
 
 ## Example Request
 
