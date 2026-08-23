@@ -141,6 +141,40 @@ describe("fail-closed provider feature flags", () => {
     assert.equal(JSON.stringify(result).includes(malformedValue), false);
   });
 
+  it("performs zero fetch, circuit-clock, or circuit-event work when routing is disabled", async () => {
+    const { repository, token } = await sessionRepository();
+    let fetchCalls = 0;
+    let circuitClockReads = 0;
+    const events = [];
+    const endpoint = createRouteEndpoint({
+      env: {
+        NODE_ENV: "test",
+        ROUTE_PROVIDER_ENABLED: "false",
+        GRAPHHOPPER_API_KEY: "unused-provider-secret"
+      },
+      appAttestRepository: repository,
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        return Response.json(graphHopperResponse());
+      },
+      providerCircuitNow() {
+        circuitClockReads += 1;
+        return 0;
+      },
+      logger: { info(event) { events.push(event); } }
+    });
+
+    const result = await endpoint(loopRequest(), { headers: sessionHeaders(token) });
+    assert.equal(result.payload.error.code, "authorization_unavailable");
+    assert.equal(fetchCalls, 0);
+    assert.equal(circuitClockReads, 0);
+    assert.equal(
+      events.some((event) => event.event === "provider_circuit_state_changed"),
+      false
+    );
+    assert.equal(sessionRecord(repository, token).remainingCost, 12);
+  });
+
   it("returns a safe intent error without provider work or budget consumption when disabled", async () => {
     const malformedValue = "enabled-sensitive-sentinel";
     const { repository, token } = await sessionRepository();
@@ -175,6 +209,10 @@ describe("fail-closed provider feature flags", () => {
     const configuration = await readFile(new URL("../config.example.env", import.meta.url), "utf8");
     assert.match(configuration, /^ROUTE_PROVIDER_ENABLED=false$/m);
     assert.match(configuration, /^INTENT_PROVIDER_ENABLED=false$/m);
+    assert.match(configuration, /^ROUTE_PROVIDER_MAX_RESPONSE_BYTES=2097152$/m);
+    assert.match(configuration, /^ROUTE_PROVIDER_MAX_ERROR_RESPONSE_BYTES=32768$/m);
+    assert.match(configuration, /^ROUTE_PROVIDER_CIRCUIT_FAILURE_THRESHOLD=3$/m);
+    assert.match(configuration, /^ROUTE_PROVIDER_CIRCUIT_OPEN_MS=30000$/m);
     assert.doesNotMatch(configuration, /^ROUTE_PROVIDER_ENABLED=true$/m);
     assert.doesNotMatch(configuration, /^INTENT_PROVIDER_ENABLED=true$/m);
   });

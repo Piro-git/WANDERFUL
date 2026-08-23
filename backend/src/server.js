@@ -23,12 +23,14 @@ import {
 import { postgresOutdoorEvidenceRepositoryFromRuntime } from "./outdoorEvidence/postgresOutdoorEvidenceRepository.js";
 import { createRouteEndpoint } from "./routing/routeEndpoint.js";
 import { RouteError, routeError, routeErrorResult } from "./routing/routeErrors.js";
+import { createGraphHopperProvider } from "./routing/graphHopperProvider.js";
 
 export function createIntentServer(options = {}) {
   return createServer(createIntentRequestHandler(options));
 }
 
 export function createIntentRequestHandler(options = {}) {
+  const routeProvider = options.provider ?? lazyGraphHopperProvider(options);
   const appAttestRuntime = options.appAttestRuntime ?? createAppAttestRuntime(options);
   const appAttestEndpoint = options.appAttestEndpoint ?? appAttestRuntime.endpoint;
   const intentEndpoint = options.intentEndpoint ?? createIntentSessionEndpoint({
@@ -38,6 +40,7 @@ export function createIntentRequestHandler(options = {}) {
   });
   const routeEndpoint = options.routeEndpoint ?? createRouteEndpoint({
     ...options,
+    provider: routeProvider,
     appAttestRepository: appAttestRuntime.repository,
     authorizer: options.authorizer ?? (appAttestRuntime.repository ? appAttestRuntime.routeAuthorizer : undefined)
   });
@@ -59,6 +62,7 @@ export function createIntentRequestHandler(options = {}) {
     options.outdoorAdventurePlanningEndpoint ??
     createOutdoorAdventurePlanningEndpoint({
       ...options,
+      provider: routeProvider,
       appAttestRepository: appAttestRuntime.repository,
       authorizer: options.authorizer ??
         (appAttestRuntime.repository
@@ -182,6 +186,16 @@ export function createIntentRequestHandler(options = {}) {
       options.operationalState?.unregister?.(cancellation);
     }
   };
+}
+
+function lazyGraphHopperProvider(options) {
+  let provider;
+  return Object.freeze({
+    route(request, context) {
+      provider ??= createGraphHopperProvider(options);
+      return provider.route(request, context);
+    }
+  });
 }
 
 export async function handleIntentHttpRequest(request, options = {}) {

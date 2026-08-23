@@ -539,6 +539,32 @@ describe("outdoor-adventure planning endpoint v1", () => {
     assert.equal(result.statusCode, 200);
   });
 
+  it("reuses one default provider runtime across ordinary endpoint requests", async () => {
+    const providers = [];
+    const endpoint = createOutdoorAdventurePlanningEndpoint({
+      env: enabledEnv({ GRAPHHOPPER_API_KEY: "unused-provider-key" }),
+      authorizer: {
+        async authorize() {
+          return {
+            authorized: true,
+            rateLimitKey: "installation",
+            limitsConsumed: true
+          };
+        }
+      },
+      repository: {},
+      orchestrator: async (planningRequest, dependencies) => {
+        providers.push(dependencies.provider);
+        return clarificationResponse(planningRequest.intent);
+      }
+    });
+
+    assert.equal((await endpoint(request(unresolvedIntent()))).statusCode, 200);
+    assert.equal((await endpoint(request(unresolvedIntent()))).statusCode, 200);
+    assert.equal(providers.length, 2);
+    assert.equal(providers[0], providers[1]);
+  });
+
   it("fails closed instead of reusing App Attest database pools", async () => {
     const appSecurityPool = { async connect() {} };
     const endpoint = successfulEndpoint({

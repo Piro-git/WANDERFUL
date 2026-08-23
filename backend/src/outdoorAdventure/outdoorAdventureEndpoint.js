@@ -45,6 +45,7 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
   const env = options.env ?? process.env;
   const logger = options.logger ?? { info() {} };
   const now = options.now ?? Date.now;
+  const provider = options.provider ?? createGraphHopperProvider({ ...options, env });
 
   return async function outdoorAdventurePlanningEndpoint(
     body,
@@ -96,7 +97,8 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
 
       const dependencies = resolveDependencies(
         options,
-        configuration
+        configuration,
+        provider
       );
       const orchestrator = useTrailAccessV2
         ? options.orchestratorV2 ?? options.orchestrator ??
@@ -167,7 +169,7 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
   };
 }
 
-function resolveDependencies(options, configuration) {
+function resolveDependencies(options, configuration, provider) {
   const pool = options.outdoorResearchPool;
   const cancellationPool = options.outdoorResearchCancellationPool;
   let repository = options.repository;
@@ -193,10 +195,6 @@ function resolveDependencies(options, configuration) {
   if (!repository) {
     throw outdoorAdventureOrchestrationError("research_unavailable");
   }
-  const provider = options.provider ?? createGraphHopperProvider({
-    ...options,
-    env: options.env ?? process.env
-  });
   return {
     repository,
     provider,

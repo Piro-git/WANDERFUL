@@ -16,7 +16,8 @@ const EVENT_SCHEMAS = Object.freeze({
   service_start_failed: Object.freeze(["errorCode"]),
   service_draining: Object.freeze(["reason"]),
   service_stopped: Object.freeze(["outcome"]),
-  readiness_changed: Object.freeze(["state"])
+  readiness_changed: Object.freeze(["state"]),
+  provider_circuit_state_changed: Object.freeze(["state", "reason"])
 });
 
 export function createOperationalLogger(options = {}) {
@@ -60,6 +61,23 @@ export function operationalEvent(input, options = {}) {
 
 function safeField(name, value) {
   if (value === undefined || value === null) return undefined;
+  if (name === "state") {
+    return ["ready", "not_ready", "closed", "open", "half_open"].includes(value)
+      ? value
+      : undefined;
+  }
+  if (name === "reason") {
+    return [
+      "sigterm", "sigint", "operator", "test", "failure_threshold",
+      "cooldown_elapsed", "probe_succeeded", "probe_failed", "probe_abandoned"
+    ].includes(value) ? value : undefined;
+  }
+  if (name === "outcome") {
+    return ["graceful", "deadline_exceeded"].includes(value) ? value : undefined;
+  }
+  if (name === "releaseStage") {
+    return ["staging", "closed_beta", "public"].includes(value) ? value : undefined;
+  }
   if (name.endsWith("Ms")) return durationBucket(value);
   if (["proposalCount", "attemptCount", "routeResultCount", "pointCount"].includes(name)) {
     return countBucket(value);

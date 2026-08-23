@@ -3,6 +3,18 @@ import { RouteError, routeError } from "./routeErrors.js";
 const DEFAULT_BASE_URL = "https://graphhopper.com/api/1";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 60_000;
+const DEFAULT_MAX_RESPONSE_BYTES = 2_097_152;
+const MIN_MAX_RESPONSE_BYTES = 65_536;
+const MAX_MAX_RESPONSE_BYTES = 8_388_608;
+const DEFAULT_MAX_ERROR_RESPONSE_BYTES = 32_768;
+const MIN_MAX_ERROR_RESPONSE_BYTES = 1_024;
+const MAX_MAX_ERROR_RESPONSE_BYTES = 65_536;
+const DEFAULT_CIRCUIT_FAILURE_THRESHOLD = 3;
+const MIN_CIRCUIT_FAILURE_THRESHOLD = 2;
+const MAX_CIRCUIT_FAILURE_THRESHOLD = 20;
+const DEFAULT_CIRCUIT_OPEN_MS = 30_000;
+const MIN_CIRCUIT_OPEN_MS = 1_000;
+const MAX_CIRCUIT_OPEN_MS = 300_000;
 const SAFE_INSTRUCTION_FIELDS = Object.freeze([
   "text", "street_name", "distance", "time", "interval", "sign"
 ]);
@@ -13,41 +25,75 @@ export function createGraphHopperProvider(options = {}) {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const setTimeoutImpl = options.setTimeoutImpl ?? setTimeout;
   const clearTimeoutImpl = options.clearTimeoutImpl ?? clearTimeout;
+  const circuit = createProviderCircuit({
+    logger: options.logger,
+    operationalState: options.operationalState,
+    now: options.providerCircuitNow ?? options.now ?? Date.now
+  });
 
   if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required.");
 
   return {
     async route(request, context = {}) {
-      const configuration = providerConfiguration(env);
+      let configuration;
+      try {
+        configuration = providerConfiguration(env);
+      } catch (error) {
+        if (error instanceof RouteError && error.code === "configuration_missing") {
+          circuit.configurationUnavailable();
+        }
+        throw error;
+      }
       const upstreamRequest = buildGraphHopperRequest(request, configuration);
-      const controller = new AbortController();
-      let timedOut = false;
-      const abortFromClient = () => controller.abort();
 
       if (context.signal?.aborted) throw routeError("request_cancelled");
+      const circuitToken = circuit.acquire(configuration.circuit);
+      if (!circuitToken) throw routeError("routing_unavailable");
+
+      const controller = new AbortController();
+      let timedOut = false;
+      let timeout;
+      const abortFromClient = () => controller.abort();
+
       context.signal?.addEventListener("abort", abortFromClient, { once: true });
       if (context.signal?.aborted) {
         context.signal.removeEventListener("abort", abortFromClient);
+        circuit.settle(circuitToken, "neutral");
         throw routeError("request_cancelled");
       }
-      const timeout = setTimeoutImpl(() => {
-        timedOut = true;
-        controller.abort();
-      }, configuration.timeoutMs);
 
       try {
+        try {
+          timeout = setTimeoutImpl(() => {
+            timedOut = true;
+            controller.abort();
+          }, configuration.timeoutMs);
+        } catch (error) {
+          circuit.settle(circuitToken, "neutral");
+          throw routeError("routing_unavailable", { cause: error });
+        }
         const response = await fetchImpl(upstreamRequest.url, {
           ...upstreamRequest.init,
           signal: controller.signal
         });
-        return await normalizeGraphHopperResponse(response);
+        assertProviderRequestActive({ timedOut, clientSignal: context.signal });
+        const result = await normalizeGraphHopperResponse(response, {
+          signal: controller.signal,
+          maximumResponseBytes: configuration.maximumResponseBytes,
+          maximumErrorResponseBytes: configuration.maximumErrorResponseBytes
+        });
+        assertProviderRequestActive({ timedOut, clientSignal: context.signal });
+        circuit.settle(circuitToken, "success");
+        return result;
       } catch (error) {
-        if (timedOut) throw routeError("route_timed_out", { cause: error });
-        if (context.signal?.aborted) throw routeError("request_cancelled", { cause: error });
-        if (error instanceof RouteError) throw error;
-        throw routeError("routing_unavailable", { cause: error });
+        const normalized = normalizeProviderError(error, {
+          timedOut,
+          clientSignal: context.signal
+        });
+        circuit.settle(circuitToken, providerCircuitOutcome(normalized));
+        throw normalized;
       } finally {
-        clearTimeoutImpl(timeout);
+        if (timeout !== undefined) clearTimeoutImpl(timeout);
         context.signal?.removeEventListener("abort", abortFromClient);
       }
     }
@@ -113,7 +159,43 @@ export function providerConfiguration(env) {
   }
 
   const timeoutMs = boundedInteger(env.ROUTE_REQUEST_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, 1_000, MAX_TIMEOUT_MS);
-  return { apiKey, baseUrl: parsedUrl.toString().replace(/\/$/, ""), timeoutMs };
+  const maximumResponseBytes = boundedInteger(
+    env.ROUTE_PROVIDER_MAX_RESPONSE_BYTES,
+    DEFAULT_MAX_RESPONSE_BYTES,
+    MIN_MAX_RESPONSE_BYTES,
+    MAX_MAX_RESPONSE_BYTES
+  );
+  const maximumErrorResponseBytes = boundedInteger(
+    env.ROUTE_PROVIDER_MAX_ERROR_RESPONSE_BYTES,
+    DEFAULT_MAX_ERROR_RESPONSE_BYTES,
+    MIN_MAX_ERROR_RESPONSE_BYTES,
+    MAX_MAX_ERROR_RESPONSE_BYTES
+  );
+  if (maximumErrorResponseBytes >= maximumResponseBytes) {
+    throw routeError("configuration_missing");
+  }
+  const circuit = Object.freeze({
+    failureThreshold: boundedInteger(
+      env.ROUTE_PROVIDER_CIRCUIT_FAILURE_THRESHOLD,
+      DEFAULT_CIRCUIT_FAILURE_THRESHOLD,
+      MIN_CIRCUIT_FAILURE_THRESHOLD,
+      MAX_CIRCUIT_FAILURE_THRESHOLD
+    ),
+    openMs: boundedInteger(
+      env.ROUTE_PROVIDER_CIRCUIT_OPEN_MS,
+      DEFAULT_CIRCUIT_OPEN_MS,
+      MIN_CIRCUIT_OPEN_MS,
+      MAX_CIRCUIT_OPEN_MS
+    )
+  });
+  return Object.freeze({
+    apiKey,
+    baseUrl: parsedUrl.toString().replace(/\/$/, ""),
+    timeoutMs,
+    maximumResponseBytes,
+    maximumErrorResponseBytes,
+    circuit
+  });
 }
 
 function buildCustomModel(preferences, algorithm) {
@@ -150,10 +232,10 @@ function statement(condition, multiplier) {
   return { if: condition, multiply_by: multiplier };
 }
 
-async function normalizeGraphHopperResponse(response) {
+async function normalizeGraphHopperResponse(response, options) {
   if (!response || typeof response.status !== "number") throw routeError("routing_unavailable");
   if (!response.ok) {
-    const providerPayload = await readProviderError(response);
+    const providerPayload = await readProviderError(response, options);
     if (response.status === 429) throw routeError("routing_rate_limited");
     if (response.status === 401 || response.status === 403) {
       throw routeError("configuration_missing");
@@ -173,7 +255,12 @@ async function normalizeGraphHopperResponse(response) {
 
   let payload;
   try {
-    payload = await response.json();
+    const body = await readBoundedProviderBody(
+      response,
+      options.maximumResponseBytes,
+      options.signal
+    );
+    payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
   } catch (error) {
     throw routeError("routing_unavailable", { cause: error });
   }
@@ -269,13 +356,199 @@ function isValidDetails(details) {
   );
 }
 
-async function readProviderError(response) {
+async function readProviderError(response, options) {
   try {
-    const text = await response.text();
+    const body = await readBoundedProviderBody(
+      response,
+      options.maximumErrorResponseBytes,
+      options.signal
+    );
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(body);
     return text ? JSON.parse(text) : null;
   } catch {
     return null;
   }
+}
+
+async function readBoundedProviderBody(response, maximumBytes, signal) {
+  const declaredLength = contentLength(response);
+  if (declaredLength !== undefined && declaredLength > maximumBytes) {
+    cancelResponseBody(response);
+    throw new RangeError("provider_response_too_large");
+  }
+  if (!response.body || typeof response.body.getReader !== "function") {
+    throw new TypeError("provider_response_body_unavailable");
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await readProviderChunk(reader, signal);
+      if (done) break;
+      if (!(value instanceof Uint8Array)) {
+        throw new TypeError("provider_response_chunk_invalid");
+      }
+      totalBytes += value.byteLength;
+      if (totalBytes > maximumBytes) {
+        cancelReader(reader);
+        throw new RangeError("provider_response_too_large");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    if (signal?.aborted) cancelReader(reader);
+    try { reader.releaseLock(); } catch {}
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
+
+function readProviderChunk(reader, signal) {
+  if (!signal) return reader.read();
+  if (signal.aborted) return Promise.reject(abortError());
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener("abort", onAbort);
+      callback(value);
+    };
+    const onAbort = () => finish(reject, abortError());
+    signal.addEventListener("abort", onAbort, { once: true });
+    Promise.resolve(reader.read()).then(
+      (value) => finish(resolve, value),
+      (error) => finish(reject, error)
+    );
+  });
+}
+
+function contentLength(response) {
+  let rawValue;
+  try {
+    rawValue = response.headers?.get?.("content-length");
+  } catch {
+    return undefined;
+  }
+  if (typeof rawValue !== "string" || !/^(0|[1-9]\d*)$/.test(rawValue.trim())) {
+    return undefined;
+  }
+  const value = Number(rawValue.trim());
+  return Number.isSafeInteger(value) ? value : undefined;
+}
+
+function cancelResponseBody(response) {
+  try {
+    const cancellation = response.body?.cancel?.();
+    Promise.resolve(cancellation).catch(() => {});
+  } catch {}
+}
+
+function cancelReader(reader) {
+  try {
+    const cancellation = reader.cancel();
+    Promise.resolve(cancellation).catch(() => {});
+  } catch {}
+}
+
+function abortError() {
+  return Object.assign(new Error("provider_request_aborted"), { name: "AbortError" });
+}
+
+function assertProviderRequestActive({ timedOut, clientSignal }) {
+  if (clientSignal?.aborted) throw routeError("request_cancelled");
+  if (timedOut) throw routeError("route_timed_out");
+}
+
+function normalizeProviderError(error, { timedOut, clientSignal }) {
+  if (clientSignal?.aborted) return routeError("request_cancelled", { cause: error });
+  if (timedOut) return routeError("route_timed_out", { cause: error });
+  if (error instanceof RouteError) return error;
+  return routeError("routing_unavailable", { cause: error });
+}
+
+function providerCircuitOutcome(error) {
+  if (error.code === "configuration_missing") return "configuration_failure";
+  return ["routing_unavailable", "route_timed_out"].includes(error.code)
+    ? "failure"
+    : "neutral";
+}
+
+function createProviderCircuit(options) {
+  const now = options.now;
+  let state = "closed";
+  let consecutiveFailures = 0;
+  let openUntil = 0;
+  let generation = 0;
+
+  const setProviderReady = (value) => {
+    try {
+      options.operationalState?.setProviderReady?.(value);
+    } catch {}
+  };
+
+  const transition = (nextState, reason) => {
+    state = nextState;
+    generation += 1;
+    setProviderReady(nextState === "closed");
+    try {
+      options.logger?.info?.({
+        event: "provider_circuit_state_changed",
+        state: nextState,
+        reason
+      });
+    } catch {}
+  };
+
+  return Object.freeze({
+    configurationUnavailable() {
+      setProviderReady(false);
+    },
+    acquire(policy) {
+      if (state === "closed") {
+        return { mode: "closed", generation, policy, settled: false };
+      }
+      if (state === "open" && now() >= openUntil) {
+        transition("half_open", "cooldown_elapsed");
+        return { mode: "half_open", generation, policy, settled: false };
+      }
+      return undefined;
+    },
+    settle(token, outcome) {
+      if (!token || token.settled) return;
+      token.settled = true;
+      if (token.generation !== generation) return;
+
+      if (token.mode === "half_open") {
+        if (outcome === "success") {
+          consecutiveFailures = 0;
+          transition("closed", "probe_succeeded");
+          return;
+        }
+        if (outcome === "configuration_failure") setProviderReady(false);
+        openUntil = now() + token.policy.openMs;
+        transition("open", outcome === "failure" ? "probe_failed" : "probe_abandoned");
+        return;
+      }
+      if (state !== "closed") return;
+      if (outcome === "success") {
+        consecutiveFailures = 0;
+        setProviderReady(true);
+        return;
+      }
+      if (outcome === "configuration_failure") {
+        setProviderReady(false);
+        return;
+      }
+      if (outcome !== "failure") return;
+      consecutiveFailures += 1;
+      if (consecutiveFailures >= token.policy.failureThreshold) {
+        openUntil = now() + token.policy.openMs;
+        transition("open", "failure_threshold");
+      }
+    }
+  });
 }
 
 function isNoRoutePayload(payload) {

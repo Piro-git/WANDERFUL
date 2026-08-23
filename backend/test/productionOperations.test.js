@@ -47,6 +47,11 @@ describe("production operations", () => {
       { ROUTE_PROVIDER_ENABLED: "enabled" },
       { APP_ATTEST_ALLOW_IN_MEMORY: "true" },
       { ROUTE_MAX_BODY_BYTES: "unbounded" },
+      { ROUTE_PROVIDER_MAX_RESPONSE_BYTES: "unbounded" },
+      { ROUTE_PROVIDER_MAX_ERROR_RESPONSE_BYTES: "65536", ROUTE_PROVIDER_MAX_RESPONSE_BYTES: "65536" },
+      { ROUTE_PROVIDER_MAX_RESPONSE_BYTES: "8388608", ROUTE_GLOBAL_MAX_CONCURRENCY: "20" },
+      { ROUTE_PROVIDER_CIRCUIT_FAILURE_THRESHOLD: "1" },
+      { ROUTE_PROVIDER_CIRCUIT_OPEN_MS: "forever" },
       { NODE_ENV: "development" }
     ];
     for (const overrides of cases) {
@@ -63,6 +68,7 @@ describe("production operations", () => {
     const enabled = productionEnv({
       ROUTE_PROVIDER_ENABLED: "true",
       OUTDOOR_RESEARCH_PLANNING_ENABLED: "true",
+      ROUTE_GLOBAL_MAX_CONCURRENCY: "16",
       GRAPHHOPPER_API_KEY: "graphhopper-secret-sentinel",
       OUTDOOR_RESEARCH_DATABASE_URL:
         "postgresql://research_user:research-secret@example.invalid/trailmind",
@@ -135,6 +141,26 @@ describe("production operations", () => {
     assert.equal(event.providerLatencyMs, "250ms_to_1s");
     assert.equal("requestId" in event, false);
     assert.equal(operationalEvent({ event: "unknown", prompt: sentinel }), undefined);
+    const circuitEvent = operationalEvent({
+      event: "provider_circuit_state_changed",
+      state: "open",
+      reason: "failure_threshold",
+      providerUrl: `https://${sentinel}.invalid`,
+      response: sentinel,
+      coordinates: [1, 2]
+    }, { now: () => Date.parse("2026-08-23T10:00:00.000Z") });
+    assert.deepEqual(
+      Object.keys(circuitEvent).sort(),
+      ["eventName", "level", "reason", "schemaVersion", "state", "timestamp"]
+    );
+    assert.equal(JSON.stringify(circuitEvent).includes(sentinel), false);
+    const invalidCircuitEvent = operationalEvent({
+      event: "provider_circuit_state_changed",
+      state: sentinel,
+      reason: sentinel
+    });
+    assert.equal("state" in invalidCircuitEvent, false);
+    assert.equal("reason" in invalidCircuitEvent, false);
   });
 
   it("serves zero-detail liveness and fail-closed cached readiness", async () => {
@@ -161,6 +187,14 @@ describe("production operations", () => {
     const ready = await fetch(`${server.url}/health/ready`);
     assert.equal(ready.status, 200);
     assert.deepEqual(await ready.json(), { status: "ready" });
+    state.setProviderReady(false);
+    assert.equal(state.isAccepting(), true);
+    const providerNotReady = await fetch(`${server.url}/health/ready`);
+    assert.equal(providerNotReady.status, 503);
+    assert.deepEqual(await providerNotReady.json(), { status: "not_ready" });
+    state.setProviderReady(true);
+    const providerReady = await fetch(`${server.url}/health/ready`);
+    assert.equal(providerReady.status, 200);
     assert.equal(endpointCalls, 0);
   });
 
@@ -290,6 +324,7 @@ describe("production operations", () => {
         env: productionEnv({
           ROUTE_PROVIDER_ENABLED: "true",
           OUTDOOR_RESEARCH_PLANNING_ENABLED: "true",
+          ROUTE_GLOBAL_MAX_CONCURRENCY: "16",
           GRAPHHOPPER_API_KEY: "provider-secret-sentinel",
           OUTDOOR_RESEARCH_DATABASE_URL:
             "postgresql://research_user:secret@example.invalid/trailmind",

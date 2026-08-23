@@ -11,6 +11,7 @@ import { providerConfiguration } from "../routing/graphHopperProvider.js";
 
 const CONTRACT_VERSION = "backend-production-configuration-v1";
 const RELEASE_STAGES = new Set(["staging", "closed_beta", "public"]);
+const MAXIMUM_ROUTE_PROVIDER_INFLIGHT_RESPONSE_BYTES = 67_108_864;
 const CONTROLLED_FLAGS = Object.freeze([
   "ROUTE_PROVIDER_ENABLED",
   "INTENT_PROVIDER_ENABLED",
@@ -274,6 +275,31 @@ function validateIntentProvider(env) {
 function requestResponseBounds(env) {
   integer(env.ROUTE_MAX_BODY_BYTES, 32_768, 1_024, 262_144);
   integer(env.ROUTE_MAX_DISTANCE_METERS, 200_000, 1_000, 200_000);
+  const routeProviderResponseBytes = integer(
+    env.ROUTE_PROVIDER_MAX_RESPONSE_BYTES,
+    2_097_152,
+    65_536,
+    8_388_608
+  );
+  const routeProviderErrorResponseBytes = integer(
+    env.ROUTE_PROVIDER_MAX_ERROR_RESPONSE_BYTES,
+    32_768,
+    1_024,
+    65_536
+  );
+  if (routeProviderErrorResponseBytes >= routeProviderResponseBytes) invalid();
+  integer(env.ROUTE_PROVIDER_CIRCUIT_FAILURE_THRESHOLD, 3, 2, 20);
+  integer(env.ROUTE_PROVIDER_CIRCUIT_OPEN_MS, 30_000, 1_000, 300_000);
+  const routeGlobalConcurrency = integer(env.ROUTE_GLOBAL_MAX_CONCURRENCY, 20, 1, 1_000);
+  const providerConcurrencyPerRequest = flagEnabled(env.OUTDOOR_RESEARCH_PLANNING_ENABLED)
+    ? outdoorAdventureOrchestrationConfigurationV1(env).maximumConcurrency
+    : 1;
+  if (
+    routeProviderResponseBytes * routeGlobalConcurrency * providerConcurrencyPerRequest >
+    MAXIMUM_ROUTE_PROVIDER_INFLIGHT_RESPONSE_BYTES
+  ) {
+    invalid();
+  }
   integer(env.OUTDOOR_EVIDENCE_MAX_BODY_BYTES, 131_072, 4_096, 262_144);
   integer(env.OUTDOOR_EVIDENCE_MAX_RESPONSE_BYTES, 524_288, 8_192, 2_097_152);
   integer(env.OUTDOOR_EVIDENCE_MAX_POIS, 40, 1, 100);

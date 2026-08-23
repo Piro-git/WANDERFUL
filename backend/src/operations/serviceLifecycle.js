@@ -19,12 +19,14 @@ export function createOperationalState(options = {}) {
   const controllers = new Set();
   let accepting = false;
   let dependencyReady = false;
+  let providerReady = true;
   let draining = false;
   let lastReadiness;
   const isAccepting = () => accepting && dependencyReady && !draining;
+  const isReady = () => isAccepting() && providerReady;
 
   const publishReadiness = () => {
-    const readiness = accepting && dependencyReady && !draining;
+    const readiness = isReady();
     if (readiness === lastReadiness) return;
     lastReadiness = readiness;
     try {
@@ -40,7 +42,7 @@ export function createOperationalState(options = {}) {
       return isAccepting();
     },
     isReady() {
-      return isAccepting();
+      return isReady();
     },
     markStarted() {
       if (draining) return;
@@ -49,6 +51,10 @@ export function createOperationalState(options = {}) {
     },
     setDependencyReady(value) {
       dependencyReady = value === true;
+      publishReadiness();
+    },
+    setProviderReady(value) {
+      providerReady = value === true;
       publishReadiness();
     },
     beginDrain() {
