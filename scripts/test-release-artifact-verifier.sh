@@ -273,6 +273,8 @@ make_app_fixture() {
   mkdir -p -- "$app_path/_CodeSignature"
   make_info_plist "$app_path/Info.plist" "$mode"
   make_privacy_manifest "$app_path/PrivacyInfo.xcprivacy"
+  mkdir -p -- "$app_path/EmbeddedSDK.bundle"
+  make_privacy_manifest "$app_path/EmbeddedSDK.bundle/PrivacyInfo.xcprivacy"
   print -r -- 'SYNTHETIC TRAILMIND RELEASE EXECUTABLE' > "$app_path/TrailMind"
   chmod +x "$app_path/TrailMind"
   print -r -- 'ASSET CATALOG' > "$app_path/Assets.car"

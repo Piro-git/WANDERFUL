@@ -296,7 +296,7 @@ validate_privacy_manifest() {
 
   manifest_name="$(jq -r '.privacy_manifest.filename' "$RELEASE_VERIFIER_CONTRACT")"
   manifest_path="${app_path}/${manifest_name}"
-  manifest_count="$(find "$app_path" -type f -name "$manifest_name" -print 2>/dev/null | wc -l | tr -d '[:space:]')"
+  manifest_count="$(find "$app_path" -maxdepth 1 -type f -name "$manifest_name" -print 2>/dev/null | wc -l | tr -d '[:space:]')"
   if [[ "$manifest_count" == "1" && -f "$manifest_path" && ! -L "$manifest_path" ]]; then
     record_pass "privacy_manifest_presence"
   else

@@ -3,7 +3,7 @@
   "product": {
     "bundle_identifier": "com.trailmind.app",
     "bundle_name": "TrailMind",
-    "display_name": "TrailMind",
+    "display_name": "Wanderful",
     "package_type": "APPL",
     "marketing_version": "1.0",
     "build_number": "1",
@@ -19,8 +19,8 @@
     "backend_info_key": "INTENT_BACKEND_BASE_URL",
     "backend_url": "https://backend-zeta-amber-69.vercel.app",
     "usage_descriptions": {
-      "NSMicrophoneUsageDescription": "TrailMind uses the microphone to turn your spoken route request into text.",
-      "NSSpeechRecognitionUsageDescription": "Apple Speech can send captured audio to Apple's servers for processing. TrailMind does not retain raw audio or send it to its own backend."
+      "NSMicrophoneUsageDescription": "Wanderful uses the microphone to turn your spoken route request into text.",
+      "NSSpeechRecognitionUsageDescription": "Apple Speech can send captured audio to Apple's servers for processing. Wanderful does not retain raw audio or send it to its own backend."
     }
   },
   "platforms": {
