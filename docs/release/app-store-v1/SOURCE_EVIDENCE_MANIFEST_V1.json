@@ -2,13 +2,14 @@
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
   "generated_at": "2026-08-23",
-  "source_baseline": "1d298a9c4a9a2d5edc0035729e370031d3b09884",
+  "source_baseline": "894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
   "algorithm": "SHA-256",
   "scope": "tracked source blobs at source_baseline; ignored credentials and environment files excluded",
   "stage_b_rehash_required": false,
   "built_artifact_evidence_required": true,
   "local_stage_b_evidence": {
-    "selected_commit": "1d298a9c4a9a2d5edc0035729e370031d3b09884",
+    "selected_commit": "894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
+    "refreshed_origin_main": "223683977dae5f408f0013d9aa4ed3b4e79e6b0a",
     "simulator": {
       "name": "iPhone 17 Pro",
       "os": "iOS 26.5",
@@ -17,13 +18,15 @@
       "erased_or_deleted": false
     },
     "storage_kib": {
-      "preflight_readings": [13358044, 13356200],
+      "resume_preflight_readings": [14237720, 14245296],
       "hard_floor": 10485760,
       "restart_threshold": 12582912,
-      "post_test_low": 8008952,
-      "last_settled_after_task_owned_cleanup": 12147512
+      "post_unit_low": 8801544,
+      "pre_ui_recovery_readings": [13127516, 13120660],
+      "post_ui_timeout_low": 6532376,
+      "final_after_task_owned_cleanup": 11052360
     },
-    "focused_test_run": {
+    "prior_focused_test_run": {
       "discovered": 395,
       "passed": 395,
       "failed": 0,
@@ -32,19 +35,52 @@
       "compiler_warnings": 9,
       "warning_scope": "pre-existing Swift concurrency warnings in protected TrailMindStagingProofUITests.swift"
     },
+    "complete_non_live_unit_run": {
+      "discovered": 672,
+      "passed": 672,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 177.6,
+      "compiler_warnings": 9,
+      "warning_scope": "pre-existing Swift concurrency warnings in protected TrailMindStagingProofUITests.swift"
+    },
     "authorized_live_test_exclusions_for_complete_suite": [
       "TrailMindTests/IntentEvaluationTests/testLiveRemoteAIIntentEvalWhenEnabled",
       "TrailMindTests/RouteQualityEvaluationTests/testLiveRouteQualityEvalWhenEnabled"
     ],
-    "not_run_after_storage_stop": [
-      "practical complete non-live test suite",
-      "Debug Simulator build",
-      "Release Simulator build",
-      "deterministic Simulator runtime QA",
-      "built app and embedded SDK artifact inspection",
+    "critical_path_ui_run": {
+      "intended_tests": 18,
+      "confirmed_passed_before_timeout": 6,
+      "failed_before_timeout": 0,
+      "interrupted_test": "TrailMindCriticalPathUITests/testOnboardingCompletesIntoDeterministicHome",
+      "tool_timeout_seconds": 300,
+      "result": "incomplete; corrupt result bundle was not promoted",
+      "attempt_13_staging_proof_tests_run": false
+    },
+    "debug_for_testing_artifact": {
+      "identity": "Wanderful; com.trailmind.app; 1.0 (1); iPhone family 1; minimum iOS 26.0",
+      "tracked_flags": "OUTDOOR_EVIDENCE_ENABLED, RESEARCH_GUIDED_PLANNING_ENABLED, ROUTABLE_HIGHLIGHT_ACCESS_ENABLED and SUPABASE_ONBOARDING_SYNC_ENABLED were false",
+      "entitlements": "simulator code entitlements were empty; production App Attest cannot be inferred",
+      "privacy_manifests": "valid first-party, Superwall and swift-crypto manifests were present",
+      "icon": "Assets.car reported a 1024x1024 phone AppIcon rendition with Opaque=true",
+      "signature": "deep strict code-signature verification passed",
+      "secret_and_configuration_scan": "no local configuration, forbidden API-key Info key or credential-pattern match",
+      "scope_limit": "test-for-testing product; not standalone Debug or Release evidence"
+    },
+    "release_verifier_correction": {
+      "commit": "894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
+      "proved_defects": ["TrailMind display/permission expectations rejected the built Wanderful product", "recursive manifest count rejected valid embedded SDK manifests"],
+      "verification": "22 isolated command cases plus stale-report recovery passed; corrected identity, permission and privacy-presence checks cleared on the same Debug product"
+    },
+    "not_run_after_final_storage_stop": [
+      "remaining twelve critical-path UI tests",
+      "standalone Debug Simulator build",
+      "standalone Release Simulator build",
+      "manual deterministic Simulator runtime and accessibility QA",
+      "standalone Release app and embedded SDK artifact inspection",
       "archive inspection"
     ],
-    "cleanup": "Three returned task test artifacts and the single task-owned DerivedData directory were removed only after exact no-handle checks; no pre-existing cache, worktree, Simulator or user artifact was removed."
+    "cleanup": "All removed logs, result bundles, prepared products and the single task-owned DerivedData directory were closed and task-owned; no pre-existing cache, worktree, Simulator or user artifact was removed."
   },
   "files": [
     {
@@ -125,7 +161,7 @@
     {
       "path": "TrailMindTests/RouteThumbnailServiceTests.swift",
       "sha256": "a6b7218f405891d428f5319b4916d0babebb0bf90ba250d9484c2f751e9ea761",
-      "claims": ["thumbnail geometry/cache/card tests were included in the focused 395-test Stage B run"]
+      "claims": ["thumbnail geometry/cache/card tests passed within the complete 672-test non-live unit run"]
     },
     {
       "path": "TrailMind/Services/IntentParsingFoundation.swift",
@@ -190,31 +226,36 @@
     {
       "path": "TrailMindTests/PrivacyReleaseContentTests.swift",
       "sha256": "7d1c76e1a3c2b1f6845f3bfbc69ab7c619fd675f33d3f006771fef4ea1f57ed2",
-      "claims": ["first-party privacy/release-content tests were included in the focused 395-test Stage B run"]
+      "claims": ["first-party privacy/release-content tests passed within the complete 672-test non-live unit run"]
     },
     {
       "path": "TrailMindTests/ReleaseSurfaceTruthTests.swift",
       "sha256": "812cae7795db8d8b3151bfeccc4d4caf331a1b5f48b046b82c09a9f8653f07ea",
-      "claims": ["release-surface truth tests were included in the focused 395-test Stage B run"]
+      "claims": ["release-surface truth tests passed within the complete 672-test non-live unit run"]
     },
     {
       "path": "TrailMindTests/HikingPreferenceProfileSyncTests.swift",
       "sha256": "0f19208b052743f614b792c4320af4a68f05d2068291069d2d4fd4804ad63504",
-      "claims": ["no-op V1 sync and configuration-boundary tests were included in the focused 395-test Stage B run"]
+      "claims": ["no-op V1 sync and configuration-boundary tests passed within the complete 672-test non-live unit run"]
     },
     {
       "path": "scripts/release-contract.json",
-      "sha256": "c1be0e9bc6c20805f821ce341ee4ec7c8cf3993fdbc2c1b17b9780510321035d",
-      "claims": ["release verifier identity candidate"]
+      "sha256": "d330b3e09e22bdae430b03b0003c17f28a3a749adc36e6c5ec3549cd361d327c",
+      "claims": ["Wanderful display and permission contract", "TrailMind executable/bundle name preserved"]
     },
     {
       "path": "scripts/verify-release-artifact.sh",
-      "sha256": "94b246eef70f280a05dc79d8f4df9b7a25ba78347f30e88680f22c77c4c62cd4",
-      "claims": ["built release-artifact verification logic"]
+      "sha256": "488167733421b960baf1c83a2b3b0ef74fd108d2b9dba59252154dc93813ba16",
+      "claims": ["built release-artifact verification logic", "root first-party privacy manifest validation permits embedded SDK manifests"]
+    },
+    {
+      "path": "scripts/test-release-artifact-verifier.sh",
+      "sha256": "e8465c9da7ba2a352da210b19589a790311ea843aea9bdc285e71a19bbef81df",
+      "claims": ["22 isolated verifier cases plus stale-report recovery", "embedded SDK privacy-manifest regression fixture"]
     },
     {
       "path": "backend/config.example.env",
-      "sha256": "b280b11106e06c12f7c5993382868bc7df0a573e39a8f7b6c5081faccadcf945",
+      "sha256": "20b43c3e4304271f3ce5bc17a25ccd8d62887b66ab0f691999569dbd44d7aef0",
       "claims": ["non-secret example backend feature defaults only; deployed state unproved"]
     }
   ],
@@ -249,7 +290,7 @@
   "notes": [
     "A hash proves only the exact tracked source blob at source_baseline.",
     "Built, signed, runtime, deployed, physical-device and account claims require separate evidence.",
-    "All listed files were rehashed at selected source commit 1d298a9c4a9a2d5edc0035729e370031d3b09884.",
-    "The focused Stage B test result is local execution evidence but is not built-product, runtime, archive or distribution evidence."
+    "All listed files were rehashed at selected source commit 894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa.",
+    "The complete unit result, partial UI log and Debug-for-testing product are local evidence but do not prove standalone Release, manual runtime, archive or distribution gates."
   ]
 }

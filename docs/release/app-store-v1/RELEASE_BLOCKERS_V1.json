@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
   "assessed_at": "2026-08-23",
-  "source_baseline": "1d298a9c4a9a2d5edc0035729e370031d3b09884",
+  "source_baseline": "894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
   "public_release_decision": "NO-GO",
   "status_vocabulary": [
     "open",
@@ -135,10 +135,10 @@
     {
       "id": "ASV1-012",
       "severity": "P1",
-      "title": "Stage B complete suite, builds, runtime QA and artifact inspection are storage-blocked",
+      "title": "Stage B UI completion, standalone builds and manual runtime QA are storage-blocked",
       "owner": "iOS release owner",
       "dependency": "safe storage above the 10,485,760 KiB floor for the complete bounded run and exclusive Xcode ownership",
-      "evidence": ["two Stage B preflight readings passed at 13,358,044 and 13,356,200 KiB", "focused Stage B suite passed 395 tests with zero failures/skips in 173.3 seconds", "free space fell to 8,008,952 KiB and the run stopped; closed task test artifacts and the one DerivedData directory were removed after handle checks", "last settled reading was 12,147,512 KiB, below the 12 GiB restart threshold", "complete suite, Debug/Release builds, runtime QA and built-artifact inspection were not run"],
+      "evidence": ["resume preflight passed at 14,237,720 and 14,245,296 KiB with no conflicting process", "complete non-live unit target passed 672 tests with zero failures/skips in 177.6 seconds; only the two authorized live-provider methods were excluded", "unit run fell to 8,801,544 KiB; closed log/result and the one task DerivedData directory were removed, while prepared products were temporarily retained", "APFS settled at 13,127,516 and 13,120,660 KiB before UI test-without-building", "six critical-path UI tests passed; the seventh was in progress when the tool timed out at 300 seconds and free space fell to 6,532,376 KiB", "the confirmed task-owned runner/xcodebuild were stopped; incomplete artifacts and prepared products were removed after handle checks", "final cleanup reading was 11,052,360 KiB, below the 12,582,912 KiB restart threshold", "standalone Debug/Release builds and manual runtime QA were not run"],
       "acceptance_criterion": "Focused and practical complete non-live tests, Debug/Release builds and the critical/error paths pass on the authorized iPhone 17 Pro Simulator with bounded DerivedData.",
       "status": "open",
       "blocking_public_release": true
@@ -149,7 +149,7 @@
       "title": "Embedded SDK privacy manifests and signatures are uninspected",
       "owner": "iOS privacy and release owners",
       "dependency": "built Release app after ASV1-012 storage recovery",
-      "evidence": ["first-party source manifest exists", "Package.resolved includes Superwall 4.16.1 and Supabase 2.55.1", "no release-lane built combined privacy report exists"],
+      "evidence": ["Debug-for-testing app contains valid first-party, Superwall and swift-crypto privacy manifests", "Superwall declares unlinked Purchase History for App Functionality plus File Timestamp reason C617.1; swift-crypto declares no collection/access and tracking false", "deep Debug signature verification passed", "standalone Release app and combined Xcode privacy report remain uninspected"],
       "acceptance_criterion": "Selected build's app/framework manifests, required-reason APIs, signatures and combined privacy report are inspected and reconciled.",
       "status": "open",
       "blocking_public_release": true
@@ -157,10 +157,10 @@
     {
       "id": "ASV1-014",
       "severity": "P2",
-      "title": "Built app icon opacity and variants are unproved",
+      "title": "Standalone Release app icon opacity and variants are unproved",
       "owner": "iOS release and brand owners",
       "dependency": "built Release asset catalog and rights evidence",
-      "evidence": ["one universal 1024x1024 source PNG exists", "read-only source inspection reports hasAlpha: yes; built processing remains uninspected"],
+      "evidence": ["one universal 1024x1024 source PNG exists and reports source alpha", "Debug-for-testing Assets.car reports a 1024x1024 phone AppIcon rendition with Opaque=true", "standalone Release asset processing and validation were not run"],
       "acceptance_criterion": "Built icons have accepted variants, no alpha/transparency or validation error, correct appearance and documented rights.",
       "status": "candidate",
       "blocking_public_release": true
@@ -182,7 +182,7 @@
       "title": "Accessibility common-task evidence is pending",
       "owner": "iOS accessibility and release owners",
       "dependency": "integrated runtime and representative devices/settings",
-      "evidence": ["focused Stage B accessibility identifier/focus/Reduce Motion tests passed", "no Stage B VoiceOver, Voice Control, Larger Text, contrast or runtime common-task result exists"],
+      "evidence": ["focused Stage B accessibility identifier/focus/Reduce Motion tests passed", "the interrupted UI run did not reach its accessibility XXXL cases", "no Stage B VoiceOver, Voice Control, Larger Text, contrast or manual runtime common-task result exists"],
       "acceptance_criterion": "All common tasks pass the applicable accessibility criteria; any App Store accessibility claim is limited to proved support.",
       "status": "open",
       "blocking_public_release": true
@@ -193,7 +193,7 @@
       "title": "Fake voice-planning code may be present in Release",
       "owner": "iOS release owner",
       "dependency": "built binary and deterministic runtime inspection",
-      "evidence": ["FakeVoicePlanningService is not source-wrapped by DEBUG", "source usages are tests and the HomeView voice-composer preview", "no Release binary/runtime proof was produced before the storage stop"],
+      "evidence": ["FakeVoicePlanningService is not source-wrapped by DEBUG", "source usages are tests and the HomeView voice-composer preview", "symbols are present in TrailMind.debug.dylib", "standalone Release binary/runtime proof was not produced before the storage stop"],
       "acceptance_criterion": "Artifact/runtime proof shows no shipping reachability or binary policy issue, or the smallest non-overlapping tested correction is made.",
       "status": "candidate",
       "blocking_public_release": true
@@ -201,13 +201,13 @@
     {
       "id": "ASV1-018",
       "severity": "P2",
-      "title": "Release verifier may expect TrailMind instead of Wanderful",
+      "title": "Release verifier matches Wanderful and accepts embedded SDK manifests",
       "owner": "iOS release tooling owner",
-      "dependency": "run verifier against integrated built product",
-      "evidence": ["shipping Info.plist display name is Wanderful", "current release contract contains TrailMind bundle/display name and TrailMind permission text", "verifier was not run against a built product before the storage stop"],
+      "dependency": "none; corrected at 894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
+      "evidence": ["Debug product reproduced bundle_identity, permission_contract and recursive privacy_manifest_presence failures", "contract now preserves CFBundleName TrailMind while expecting Wanderful display/permission text", "root-manifest validation now permits embedded SDK manifests", "22 isolated verifier cases plus stale-report recovery pass", "corrected checks clear on the same Debug product"],
       "acceptance_criterion": "Artifact verifier accepts the truthful Wanderful identity without weakening other checks; any mismatch is corrected with a focused tooling test.",
-      "status": "candidate",
-      "blocking_public_release": true
+      "status": "resolved",
+      "blocking_public_release": false
     },
     {
       "id": "ASV1-019",
@@ -215,7 +215,7 @@
       "title": "Provider copy may overstate mapped evidence",
       "owner": "iOS product truth owner",
       "dependency": "Release runtime path and GraphHopper response/path-detail evidence",
-      "evidence": ["GraphHopperClient source contains Live trail geometry and trail-network data wording"],
+      "evidence": ["GraphHopperClient source contains Live trail geometry and trail-network data wording", "both strings are present in TrailMind.debug.dylib", "standalone Release reachability and response/path-detail support remain unproved"],
       "acceptance_criterion": "Copy is proved by exact response evidence for every reachable case or replaced with narrower truthful wording in a scoped tested change.",
       "status": "candidate",
       "blocking_public_release": true
@@ -281,7 +281,7 @@
       "title": "Built identity, flags, permissions, entitlements and secret absence are unproved",
       "owner": "iOS release and security owners",
       "dependency": "ASV1-012 and built Debug/Release products",
-      "evidence": ["current release-lane evidence is source-only", "secret-bearing local files were explicitly excluded", "integrated tracked flags are disabled/empty"],
+      "evidence": ["Debug-for-testing Info.plist proves Wanderful, com.trailmind.app, 1.0/1, iPhone family 1, iOS 26.0, truthful purpose strings and four disabled flags", "Debug bundle contains no local configuration or forbidden API-key Info keys and passed the verifier credential-pattern scan", "simulator code entitlements are empty, so production App Attest cannot be inferred", "standalone Release product remains unbuilt/uninspected", "secret-bearing local files were explicitly excluded"],
       "acceptance_criterion": "Built products show exact identity/version/platform, expected purpose strings/entitlements/flags and no key, token, local configuration or forbidden endpoint material.",
       "status": "open",
       "blocking_public_release": true

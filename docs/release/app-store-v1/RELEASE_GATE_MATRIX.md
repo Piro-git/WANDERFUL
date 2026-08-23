@@ -1,6 +1,6 @@
 # Release Gate Matrix V1
 
-Baseline: `1d298a9c4a9a2d5edc0035729e370031d3b09884`
+Baseline: `894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa`
 Assessment date: 2026-08-23
 Public-release decision: **NO-GO**
 
@@ -16,17 +16,17 @@ Public-release decision: **NO-GO**
 
 ## Completion
 
-Exactly 14 of 50 applicable gates are proved: **28.0%**. A grouped row counts as one gate. No row is counted complete merely because a draft document or another lane's build report exists.
+Exactly 15 of 50 applicable gates are proved: **30.0%**. A grouped row counts as one gate. Partial Debug/UI evidence does not complete a Release gate.
 
 | Gate | Requirement | Classification | Current evidence or acceptance criterion | Blocker |
 | --- | --- | --- | --- | --- |
-| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Isolated worktree and local `origin/main` selected `1d298a9…`; GitHub branch API independently reported the same SHA; shared checkout preserved | — |
+| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Worktree fast-forwarded through `22368397…`; scoped source correction is `894ff2e4…`; shared checkout preserved | — |
 | G-002 | Shipping display name | proved | `Configuration/TrailMind-Info.plist`: `CFBundleDisplayName = Wanderful` | — |
 | G-003 | Bundle ID and version/build source settings | proved | `project.pbxproj`: `com.trailmind.app`, `1.0`, `1` | — |
 | G-004 | Platform source settings | proved | iPhone family `1`, minimum iOS `26.0`, portrait, Catalyst disabled | — |
 | G-005 | Launch appearance is complete and release-polished | locally actionable | Inspect first rendered Release frame and built launch metadata in Stage B | ASV1-012 |
 | G-006 | App icon source asset exists | proved | One universal 1024×1024 PNG declared in AppIcon asset catalog | — |
-| G-007 | Compiled icon variants are opaque and accepted | locally actionable | Source PNG reports `hasAlpha: yes`; inspect built Assets.car/icon output before confirming a defect or correction | ASV1-014 |
+| G-007 | Compiled icon variants are opaque and accepted | locally actionable | Debug-for-testing Assets.car reports one 1024×1024 phone AppIcon rendition with `Opaque=true`; inspect standalone Release variants/validation | ASV1-014 |
 | G-008 | Active Apple Developer Program team/legal entity | Apple-account | Owner supplies verified team/legal entity and current agreements | ASV1-006 |
 | G-009 | Explicit App ID and App Attest capability | Apple-account | Developer portal identifier must exactly match `com.trailmind.app` with App Attest enabled | ASV1-006 |
 | G-010 | Distribution certificate and App Store profile | Apple-account | Current Apple Distribution identity and App Store profile match team, ID and entitlement | ASV1-006 |
@@ -36,12 +36,12 @@ Exactly 14 of 50 applicable gates are proved: **28.0%**. A grouped row counts as
 | G-014 | Tracked iOS feature defaults | proved | Outdoor evidence, research-guided planning, routable-highlight access and Supabase onboarding sync are `false`; Superwall key and Supabase URL/key are empty | — |
 | G-015 | Deployed backend/provider feature defaults | blocked | Deployment owner proves route availability and all research/evidence/provider defaults for the release environment | ASV1-011 |
 | G-016 | First-party privacy manifest source | proved | Tracking false; linked Device ID for app functionality; approved reasons `C617.1` and `CA92.1` | — |
-| G-017 | Embedded third-party privacy manifests/signatures | locally actionable | Inspect built app/frameworks and Xcode privacy report after onboarding/Package integration | ASV1-013 |
+| G-017 | Embedded third-party privacy manifests/signatures | locally actionable | Debug-for-testing app contains valid first-party, Superwall and swift-crypto manifests and passes deep signature verification; standalone Release/combined report remains | ASV1-013 |
 | G-018 | Final App Privacy questionnaire | blocked | iOS onboarding delta is reconciled; backend/App Attest retention, embedded SDK manifests and live policy remain unproved | ASV1-002 |
 | G-019 | Public privacy policy and in-app link | public-URL/legal | Real HTTPS URL plus easily accessible in-app link; content meets Apple 5.1.1 | ASV1-004 |
 | G-020 | Public support URL and contact | public-URL/legal | Real HTTPS page with working support contact and applicable legal address/contact details | ASV1-005 |
 | G-021 | Marketing/accessibility URLs | public-URL/legal | Optional; if supplied, must be real, reachable and app-specific | ASV1-024 |
-| G-022 | Microphone and Speech purpose strings in source | proved | Wanderful-specific microphone text and Apple server-processing disclosure in Info.plist/About copy | — |
+| G-022 | Microphone and Speech purpose strings in source | proved | Wanderful-specific text is in source and the inspected Debug-for-testing Info.plist | — |
 | G-023 | Location-permission boundary in source | proved | No location usage key; About states no device-location access and manual place entry | — |
 | G-024 | Encryption/export-compliance answer | public-URL/legal | Owner/legal classifies encryption and records App Store Connect answer before adding any plist declaration | ASV1-009 |
 | G-025 | Account creation/deletion applicability | proved | Production composition uses local profile storage and an unconditional no-op sync factory; no account/Auth/session is created in V1; profile delete is local | — |
@@ -57,19 +57,19 @@ Exactly 14 of 50 applicable gates are proved: **28.0%**. A grouped row counts as
 | G-035 | Accessibility common-task proof and labels | locally actionable | Focused identifier/focus/Reduce Motion source tests passed; VoiceOver, Voice Control, Larger Text, contrast and runtime common tasks remain | ASV1-016 |
 | G-036 | Crash-free deterministic critical path | blocked | First launch → onboarding → plan → compare → detail → save/export passes in Stage B | ASV1-012 |
 | G-037 | Network/offline/error/retry behavior | blocked | Deterministic non-live failure, timeout, cancellation, no-route and offline states pass | ASV1-012 |
-| G-038 | No mock/developer/fake voice behavior in Release | locally actionable | Scan built binary and runtime; source `FakeVoicePlanningService` remains a candidate, not a finding | ASV1-017 |
-| G-039 | No overclaimed provider copy | locally actionable | Verify “Live trail geometry” and “trail-network data” against path-detail evidence and Release UI | ASV1-019 |
-| G-040 | Release verifier matches shipping identity | locally actionable | Artifact-confirm current “TrailMind” versus “Wanderful” mismatch before any correction | ASV1-018 |
-| G-041 | Built identity, flags, permissions and secret absence | blocked | Inspect compiled Info.plist, entitlements and binary in Stage B | ASV1-025 |
-| G-042 | Focused and practical complete non-live test suites | blocked | Focused Stage B suite passed 395/395; the complete suite was not started after storage fell below the floor | ASV1-012 |
-| G-043 | Debug and Release Simulator builds | blocked | No Stage B Debug or Release product was built after the storage stop; upstream reports are not selected-product inspection | ASV1-012 |
+| G-038 | No mock/developer/fake voice behavior in Release | locally actionable | Fake voice symbols exist in the Debug dylib and source usages are preview/tests; standalone Release binary/runtime remains unproved | ASV1-017 |
+| G-039 | No overclaimed provider copy | locally actionable | “Live trail geometry” and “trail-network data” exist in source and the Debug dylib; Release reachability and exact path-detail evidence remain unproved | ASV1-019 |
+| G-040 | Release verifier matches shipping identity | proved | Built Debug mismatch reproduced; contract corrected to Wanderful text, embedded manifests accepted, 22 isolated verifier cases pass, and corrected checks clear on the product | — |
+| G-041 | Built identity, flags, permissions and secret absence | blocked | Debug-for-testing product passed the bounded inspection; standalone Release identity/entitlements/binary remain required | ASV1-025 |
+| G-042 | Focused and practical complete non-live test suites | blocked | Complete unit target passed 672/672 with two live methods excluded; UI suite has six logged passes but timed out before completion | ASV1-012 |
+| G-043 | Debug and Release Simulator builds | blocked | Test-for-testing produced an inspectable Debug app; standalone Debug and Release builds were not run | ASV1-012 |
 | G-044 | Optional unsigned/local archive inspection | blocked | Only if safe/necessary after builds; never treat as distribution validation | ASV1-012 |
 | G-045 | Signed distribution archive validation | Apple-account | Archive with App Store profile, inspect signing/privacy report and validate in Organizer | ASV1-020 |
 | G-046 | TestFlight processing and tester proof | Apple-account | Upload/process build, export compliance, internal QA, then external beta review if used | ASV1-020 |
 | G-047 | App Review submission and resolution | Apple-account | Complete required metadata/privacy/build/review declarations and submit with authority | ASV1-020 |
 | G-048 | App Store Connect record, SKU and name availability | Apple-account | Owner creates/verifies record; no ID or name availability is inferred | ASV1-007 |
 | G-049 | Geographic availability/coverage decision | public-URL/legal | Owner selects launch storefronts and confirms whether Navigation-category coverage-file rules apply | ASV1-008 |
-| G-050 | Final evidence manifest on integrated source | proved | All listed tracked source blobs were rehashed at `1d298a9…`; focused-test and storage evidence is explicitly separated from unrun built/runtime gates | — |
+| G-050 | Final evidence manifest on integrated source | proved | All listed tracked source blobs were rehashed at `894ff2e4…`; partial Debug/UI evidence is explicitly separated from unrun Release/runtime gates | — |
 
 ## Primary evidence paths
 
@@ -94,5 +94,6 @@ Exactly 14 of 50 applicable gates are proved: **28.0%**. A grouped row counts as
 - `TrailMind/Views/Profile/ProfilePreferencesView.swift`
 - `TrailMind/Views/Profile/TrailMindAboutContent.swift`
 - `scripts/release-contract.json`
+- `scripts/test-release-artifact-verifier.sh`
 
 Exact SHA-256 values are in `SOURCE_EVIDENCE_MANIFEST_V1.json`.

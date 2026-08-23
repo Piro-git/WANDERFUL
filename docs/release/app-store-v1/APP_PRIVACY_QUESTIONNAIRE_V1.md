@@ -1,7 +1,7 @@
 # App Privacy Questionnaire V1
 
-Status: **iOS onboarding delta finalized; backend and built-SDK answers remain provisional; do not publish in App Store Connect**
-Source baseline: `1d298a9c4a9a2d5edc0035729e370031d3b09884`
+Status: **iOS onboarding and Debug SDK-manifest delta recorded; Release/backend answers remain provisional; do not publish in App Store Connect**
+Source baseline: `894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa`
 Assessment date: 2026-08-23
 
 Apple requires answers to cover the app and third-party partners, remain accurate for the current version, and be backed by a public privacy-policy URL. Source: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/). This draft deliberately does not convert unknown backend/App Attest retention or uninspected embedded-SDK behavior into a “Data Not Collected” answer.
@@ -21,7 +21,7 @@ Apple requires answers to cover the app and third-party partners, remain accurat
 | Research/evidence | Tracked Release flags are false | No research-guided/evidence data claim while disabled; built flags must confirm |
 | Trail Profile/onboarding | Optional activity, distance or duration range, route shape, requested experiences and soft avoidances are stored locally in versioned protected app storage | Local-only data is not App Privacy collection; no account, Auth session or remote sync is composed in V1 |
 | Supabase | SDK and dormant remote client are compiled, but `HikingPreferenceProfileSyncFactoryV1` unconditionally returns a no-op client and tracked sync/URL/key values are disabled/empty | No Supabase data transfer or anonymous account is Release-reachable in V1; built dependency/manifests still require inspection |
-| Purchases/Superwall | SDK exists, tracked key is empty, production native onboarding neither constructs nor presents `SuperwallOnboardingClient` | No V1 purchase or Superwall data flow is source-reachable; owner exclusion and built-SDK inspection remain required |
+| Purchases/Superwall | SDK exists, tracked key is empty, production native onboarding neither constructs nor presents `SuperwallOnboardingClient`; its Debug embedded manifest declares unlinked Purchase History for App Functionality | No V1 purchase path is source-reachable, but the embedded declaration must be reconciled with the selected Release and owner exclusion before answering Purchases |
 
 ## Draft App Store Connect answers
 
@@ -29,7 +29,8 @@ Apple requires answers to cover the app and third-party partners, remain accurat
 
 - **Does the app or its third-party partners use data for tracking?** Draft: **No**.
 - Evidence: first-party manifest says tracking is false and contains no tracking domains.
-- Stop gate: this answer cannot be published until embedded SDK manifests, configured Superwall behavior, backend behavior and any cross-company data linkage are reviewed. Blockers `ASV1-002`, `ASV1-003`, `ASV1-013`.
+- Debug evidence: first-party, Superwall and swift-crypto manifests all declare tracking false; no tracking domain was declared. Standalone Release and configured behavior remain unproved.
+- Stop gate: this answer cannot be published until selected-Release SDK manifests, configured Superwall behavior, backend behavior and any cross-company data linkage are reviewed. Blockers `ASV1-002`, `ASV1-003`, `ASV1-013`.
 
 ### Data linked to the user
 
@@ -40,7 +41,7 @@ Apple requires answers to cover the app and third-party partners, remain accurat
 | Other User Content | Provisional | App Functionality | Structured route constraints may leave the device; exact payload/retention UNKNOWN |
 | User ID | No for V1 iOS onboarding | — | Production composition creates no account/Auth/session; reassess if the dormant Supabase client is ever activated |
 | Name, Email Address, Other Contact Info | No for V1 iOS onboarding | — | Onboarding collects no contact field and creates no account |
-| Purchases | No for V1 source | — | Native onboarding has no purchase/paywall path; owner must approve exclusion and built Release must confirm |
+| Purchases | Provisional | App Functionality if applicable | Native onboarding has no purchase/paywall path, but the embedded Superwall Debug manifest declares unlinked Purchase History; owner exclusion and selected Release must reconcile this |
 | Product Interaction | No first-party onboarding collection | — | Typed onboarding event vocabulary has no recorder composed; embedded SDK and backend behavior still require inspection |
 | Crash Data, Performance Data, Other Diagnostic Data | Provisional | App Functionality/Analytics | No first-party analytics found; embedded SDK and backend logging UNKNOWN |
 
@@ -83,4 +84,4 @@ The public policy and questionnaire must agree on:
 
 ## Finalization stop gate
 
-Do not enter or publish these answers until built third-party manifests are inspected, backend/App Attest retention and linkage are owner-proved, V1 Superwall exclusion is approved, and the public policy is live. Any activation of Supabase, Superwall, analytics, accounts or AI requires a new reconciliation before release.
+Do not enter or publish these answers until the standalone Release third-party manifests are inspected, backend/App Attest retention and linkage are owner-proved, the Superwall Purchase History declaration and V1 exclusion are reconciled, and the public policy is live. Any activation of Supabase, Superwall, analytics, accounts or AI requires a new reconciliation before release.
