@@ -1,8 +1,11 @@
 # TrailMind Backend Closed-Beta Readiness V1
 
-Status: **NO-GO**  
-Current-source audit: **2026-08-23**  
-Reviewed backend source: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`  
+Status: **NO-GO**
+
+Current-source audit: **2026-08-23**
+
+Reviewed backend source: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`
+
 Parent main at source checkpoint: `3b437fc31a12f32b6e7348a58e0e852db6340eab`
 
 ## Executive verdict
