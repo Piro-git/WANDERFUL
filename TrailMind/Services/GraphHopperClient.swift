@@ -1459,7 +1459,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
                 distanceKilometers: distanceKilometers
             ),
             highlights: [
-                Highlight(title: "Live trail geometry", subtitle: "\(coordinates.count.formatted()) mapped route points", symbol: "point.bottomleft.forward.to.point.topright.scurvepath"),
+                Highlight(title: "Mapped route geometry", subtitle: "\(coordinates.count.formatted()) mapped route points", symbol: "point.bottomleft.forward.to.point.topright.scurvepath"),
                 Highlight(title: "Elevation-aware", subtitle: "+\(elevationGain.formatted()) m ascent · −\(elevationLoss.formatted()) m descent", symbol: "mountain.2.fill"),
                 Highlight(title: "Route directions", subtitle: "\(routeInstructions.count.formatted()) route instructions", symbol: "signpost.right.fill")
             ],
@@ -1782,7 +1782,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         planningRequest: RoutePlanningRequest,
         distanceKilometers: Double
     ) -> String {
-        var parts = ["Live route geometry, elevation and route instructions returned by GraphHopper."]
+        var parts = ["Mapped route geometry, elevation and route instructions returned by GraphHopper."]
         if let requestedFeatureSummary = planningRequest.metadata.requestedFeatureSummary {
             parts.append(requestedFeatureSummary)
         }
@@ -1798,9 +1798,9 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
         endName: String
     ) -> String {
         if planningRequest.routeType == .loop {
-            return "A live GraphHopper \(planningRequest.activityType.rawValue.lowercased()) loop around \(startName), calculated from trail-network data."
+            return "A GraphHopper \(planningRequest.activityType.rawValue.lowercased()) loop around \(startName), calculated from mapped routing data."
         }
-        return "A live GraphHopper \(planningRequest.activityType.rawValue.lowercased()) route from \(startName) to \(endName), calculated from trail-network data."
+        return "A GraphHopper \(planningRequest.activityType.rawValue.lowercased()) route from \(startName) to \(endName), calculated from mapped routing data."
     }
 }
 

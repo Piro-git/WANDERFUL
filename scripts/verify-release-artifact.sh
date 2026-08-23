@@ -129,7 +129,7 @@ print_release_summary() {
 required_commands_available() {
   local command_name
   for command_name in \
-    jq plutil file strings grep find lipo otool codesign dwarfdump shasum base64 \
+    jq plutil file strings grep find lipo otool codesign dwarfdump shasum base64 assetutil \
     mktemp date security awk sort sed wc tr mkdir mv rm; do
     command -v "$command_name" >/dev/null 2>&1 || return 1
   done
@@ -320,7 +320,7 @@ validate_privacy_manifest() {
 validate_bundle_contents() {
   local app_path="$1"
   local executable_name="$2"
-  local icon_count
+  local icon_count asset_info
 
   icon_count="$(find "$app_path" -maxdepth 1 -type f -name 'AppIcon*.png' -size +0c -print 2>/dev/null | wc -l | tr -d '[:space:]')"
   if [[ -s "$app_path/Info.plist" && -s "$app_path/Assets.car" &&
@@ -331,10 +331,23 @@ validate_bundle_contents() {
     record_failure "required_bundle_content"
   fi
 
+  asset_info="$(assetutil --info "$app_path/Assets.car" 2>/dev/null)" || asset_info=""
+  if [[ -n "$asset_info" ]] && print -r -- "$asset_info" | jq -e '
+      [.[] | select(.AssetType == "Icon Image" and .Name == "AppIcon")] as $icons |
+      ($icons | length) >= 1 and all($icons[]; .Opaque == true)
+    ' >/dev/null 2>&1; then
+    record_pass "icon_opacity_contract"
+  else
+    record_failure "icon_opacity_contract"
+  fi
+
   if find "$app_path" -mindepth 1 \
       \( -name '*.xctest' -o -name 'XCTest.framework' -o -name 'XCUIAutomation.framework' \
          -o -name '*.swift' -o -name '*.xcconfig' -o -name '.env' -o -name '.env.*' \
-         -o -name '*.p12' -o -name '*.pem' -o -name '*.key' -o -name '*.cer' \
+         -o -name '*.p12' -o -name '*.pem' -o -name '*.key' \
+         -o \( -name '*.cer' \
+           ! -path "${app_path}/SuperwallKit_SuperwallKit.bundle/SuperwallKit_AppleIncRootCertificate.cer" \
+           ! -path "${app_path}/SuperwallKit_SuperwallKit.bundle/SuperwallKit_StoreKitTestCertificate.cer" \) \
          -o -name 'Local.xcconfig' -o -name 'node_modules' -o -name '.git' \
          -o -path '*/Fixtures/*' -o -name '*Tests.xctest' \) \
       -print -quit 2>/dev/null | grep -q .; then

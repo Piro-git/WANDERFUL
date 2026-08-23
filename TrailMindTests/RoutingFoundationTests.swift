@@ -1079,7 +1079,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(explanations.map(\.title), [
             "Close to your target distance",
             "Loop route",
-            "Calculated from live trail-network data"
+            "Calculated from routed geometry"
         ])
         XCTAssertTrue(explanations.first?.detail?.hasPrefix("Actual 15") == true)
         XCTAssertTrue(explanations.first?.detail?.hasSuffix("vs requested 15 km.") == true)
@@ -1145,7 +1145,7 @@ final class RoutingFoundationTests: XCTestCase {
         )
 
         XCTAssertTrue(explanations.map(\.title).contains("Low repeated path"))
-        XCTAssertTrue(explanations.map(\.title).contains("Calculated from live trail-network data"))
+        XCTAssertTrue(explanations.map(\.title).contains("Calculated from routed geometry"))
     }
 
     func testCoordinatesAndInstructionsCannotPromoteDemoRouteToVerified() {
@@ -1168,7 +1168,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertFalse(
             RouteQualityExplanationGenerator.explanations(for: route)
                 .map(\.title)
-                .contains("Calculated from live trail-network data")
+                .contains("Calculated from routed geometry")
         )
     }
 

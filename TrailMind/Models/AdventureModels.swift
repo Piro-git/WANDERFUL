@@ -954,7 +954,7 @@ enum RouteQualityExplanationGenerator {
         if route.isVerifiedRoutedResult {
             explanations.append(
                 RouteQualityExplanation(
-                    title: "Calculated from live trail-network data",
+                    title: "Calculated from routed geometry",
                     detail: "Distance, duration and elevation come from routed geometry.",
                     symbol: "map.fill"
                 )

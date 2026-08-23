@@ -17,12 +17,14 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
             "TrailMind/Views/Route/RouteDetailView.swift",
             "TrailMind/Views/AIEdit/RouteEditAIView.swift",
             "TrailMind/Services/TrailServices.swift",
+            "TrailMind/Services/VoicePlanningService.swift",
             "TrailMind/Data/MockRoutes.swift"
         ]
         let forbiddenReleaseTerms = [
             "MockRoutes",
             "MockAIPlannerService",
             "MockRoutingService",
+            "FakeVoicePlanningService",
             "RouteEditAIView",
             "LIVE ROUTING DEMO",
             "generateHarzDemoRoute",

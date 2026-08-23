@@ -255,6 +255,7 @@ final class AppleSpeechVoicePlanningService: VoicePlanningService {
     }
 }
 
+#if DEBUG
 @MainActor
 final class FakeVoicePlanningService: VoicePlanningService {
     var permissionResult: VoicePermissionResult = .granted
@@ -297,3 +298,4 @@ final class FakeVoicePlanningService: VoicePlanningService {
         continuation?.finish()
     }
 }
+#endif

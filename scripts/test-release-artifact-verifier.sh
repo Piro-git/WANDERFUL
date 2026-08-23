@@ -110,6 +110,14 @@ stub_security() {
   /bin/cat "${TRAILMIND_RELEASE_STUB_PROFILE:?}"
 }
 
+stub_assetutil() {
+  if [[ "${TRAILMIND_RELEASE_STUB_SCENARIO:-pass}" == "alpha_icon" ]]; then
+    print -r -- '[{"AssetType":"Icon Image","Name":"AppIcon","Opaque":false}]'
+  else
+    print -r -- '[{"AssetType":"Icon Image","Name":"AppIcon","Opaque":true}]'
+  fi
+}
+
 case "${0:t}" in
   file)
     stub_file "$@"
@@ -135,6 +143,10 @@ case "${0:t}" in
     stub_security "$@"
     exit $?
     ;;
+  assetutil)
+    stub_assetutil "$@"
+    exit $?
+    ;;
 esac
 
 cd "${0:A:h}/.."
@@ -148,7 +160,7 @@ trap 'rm -rf -- "$work_directory"' EXIT INT TERM
 
 stub_bin="${work_directory}/stub-bin"
 mkdir -p -- "$stub_bin"
-for stub_name in file lipo otool codesign dwarfdump security; do
+for stub_name in file lipo otool codesign dwarfdump security assetutil; do
   ln -s "${PWD}/scripts/test-release-artifact-verifier.sh" "${stub_bin}/${stub_name}"
 done
 
@@ -278,7 +290,8 @@ make_app_fixture() {
   print -r -- 'SYNTHETIC TRAILMIND RELEASE EXECUTABLE' > "$app_path/TrailMind"
   chmod +x "$app_path/TrailMind"
   print -r -- 'ASSET CATALOG' > "$app_path/Assets.car"
-  print -r -- 'ICON' > "$app_path/AppIcon60x60@2x.png"
+  print -rn -- 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC' |
+    base64 -D > "$app_path/AppIcon60x60@2x.png"
   print -r -- 'APPL????' > "$app_path/PkgInfo"
   print -r -- 'SEALED RESOURCES' > "$app_path/_CodeSignature/CodeResources"
   mkdir -p -- "$dsym_path/Contents/Resources/DWARF"
@@ -426,6 +439,27 @@ missing_privacy_app="$(clone_simulator_fixture missing-privacy)"
 rm -f -- "$missing_privacy_app/PrivacyInfo.xcprivacy"
 expect_status 1 "$VERIFIER" simulator-app "$missing_privacy_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("privacy_manifest_presence") != null)'
+
+alpha_icon_app="$(clone_simulator_fixture alpha-icon)"
+print -rn -- 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDWQAAAABJRU5ErkJggg==' |
+  base64 -D > "$alpha_icon_app/AppIcon60x60@2x.png"
+expect_status 1 env TRAILMIND_RELEASE_STUB_SCENARIO=alpha_icon \
+  "$VERIFIER" simulator-app "$alpha_icon_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("icon_opacity_contract") != null)'
+
+superwall_certificates_app="$(clone_simulator_fixture superwall-certificates)"
+mkdir -p -- "$superwall_certificates_app/SuperwallKit_SuperwallKit.bundle"
+print -r -- 'PUBLIC ROOT CERTIFICATE FIXTURE' > \
+  "$superwall_certificates_app/SuperwallKit_SuperwallKit.bundle/SuperwallKit_AppleIncRootCertificate.cer"
+print -r -- 'PUBLIC STOREKIT CERTIFICATE FIXTURE' > \
+  "$superwall_certificates_app/SuperwallKit_SuperwallKit.bundle/SuperwallKit_StoreKitTestCertificate.cer"
+expect_status 0 "$VERIFIER" simulator-app "$superwall_certificates_app"
+assert_report '.final_status == "passed" and .failed_check_count == 0'
+
+unexpected_certificate_app="$(clone_simulator_fixture unexpected-certificate)"
+print -r -- 'UNEXPECTED CERTIFICATE FIXTURE' > "$unexpected_certificate_app/Unexpected.cer"
+expect_status 1 "$VERIFIER" simulator-app "$unexpected_certificate_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("forbidden_bundle_content") != null)'
 
 debug_marker_app="$(clone_simulator_fixture debug-marker)"
 print -r -- '--trailmind-ui-testing' >> "$debug_marker_app/TrailMind"

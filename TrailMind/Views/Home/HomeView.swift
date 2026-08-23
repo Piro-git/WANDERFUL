@@ -650,6 +650,7 @@ struct PromptComposerView: View {
     }
 }
 
+#if DEBUG
 #Preview("Voice composer") {
     PromptComposerView(
         startsListening: false,
@@ -660,3 +661,4 @@ struct PromptComposerView: View {
     )
     .environment(TrailTheme())
 }
+#endif
