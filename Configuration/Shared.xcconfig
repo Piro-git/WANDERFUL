@@ -9,4 +9,9 @@ RESEARCH_GUIDED_PLANNING_ENABLED = false
 ROUTABLE_HIGHLIGHT_ACCESS_ENABLED = false
 // Superwall uses a public SDK key, but keep environment-specific values local.
 SUPERWALL_API_KEY =
+// Hiking-profile sync is local-only and non-activatable in V1.
+SUPABASE_ONBOARDING_SYNC_ENABLED = false
+// Reserved public-client fields remain blank in tracked configuration.
+SUPABASE_PROJECT_URL =
+SUPABASE_PUBLISHABLE_KEY =
 #include? "Local.xcconfig"

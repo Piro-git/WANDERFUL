@@ -12,3 +12,10 @@
 // Add the public iOS SDK key from Superwall Settings > Keys.
 // Do not commit the real value; Local.xcconfig is intentionally gitignored.
 // SUPERWALL_API_KEY = pk_your_public_key
+// Hiking-profile sync is deliberately non-activatable in V1. These placeholders
+// document the future public-client shape and intentionally fail validation.
+// SUPABASE_ONBOARDING_SYNC_ENABLED = false
+// SUPABASE_PROJECT_URL = https:/$()/your-project-ref.supabase.co
+// Use a public publishable/anon client key only in a separately reviewed future release.
+// Never use a service-role key here.
+// SUPABASE_PUBLISHABLE_KEY = sb_publishable_your_public_key

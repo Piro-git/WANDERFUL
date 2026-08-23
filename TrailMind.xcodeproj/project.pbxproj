@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B20000000000000000000001 /* SuperwallKit in Frameworks */ = {isa = PBXBuildFile; productRef = B20000000000000000000002 /* SuperwallKit */; };
+		C30000000000000000000001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = C30000000000000000000002 /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +61,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B20000000000000000000001 /* SuperwallKit in Frameworks */,
+				C30000000000000000000001 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,6 +134,7 @@
 			name = TrailMind;
 			packageProductDependencies = (
 				B20000000000000000000002 /* SuperwallKit */,
+				C30000000000000000000002 /* Supabase */,
 			);
 			productName = TrailMind;
 			productReference = A10000000000000000000001 /* TrailMind.app */;
@@ -217,6 +220,7 @@
 			productRefGroup = A10000000000000000000005 /* Products */;
 			packageReferences = (
 				B20000000000000000000003 /* XCRemoteSwiftPackageReference "Superwall-iOS" */,
+				C30000000000000000000003 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			projectDirPath = "";
 			projectRoot = "";
@@ -581,6 +585,14 @@
 				minimumVersion = 4.16.1;
 			};
 		};
+		C30000000000000000000003 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.55.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -588,6 +600,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B20000000000000000000003 /* XCRemoteSwiftPackageReference "Superwall-iOS" */;
 			productName = SuperwallKit;
+		};
+		C30000000000000000000002 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C30000000000000000000003 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
