@@ -2,11 +2,50 @@
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
   "generated_at": "2026-08-23",
-  "source_baseline": "d61011098afa5f53ec4cc8ab1b3503ac1111e04a",
+  "source_baseline": "1d298a9c4a9a2d5edc0035729e370031d3b09884",
   "algorithm": "SHA-256",
   "scope": "tracked source blobs at source_baseline; ignored credentials and environment files excluded",
   "stage_b_rehash_required": false,
   "built_artifact_evidence_required": true,
+  "local_stage_b_evidence": {
+    "selected_commit": "1d298a9c4a9a2d5edc0035729e370031d3b09884",
+    "simulator": {
+      "name": "iPhone 17 Pro",
+      "os": "iOS 26.5",
+      "udid": "A9194E37-28A7-450E-9F30-95D0145D0486",
+      "final_state": "Shutdown",
+      "erased_or_deleted": false
+    },
+    "storage_kib": {
+      "preflight_readings": [13358044, 13356200],
+      "hard_floor": 10485760,
+      "restart_threshold": 12582912,
+      "post_test_low": 8008952,
+      "last_settled_after_task_owned_cleanup": 12147512
+    },
+    "focused_test_run": {
+      "discovered": 395,
+      "passed": 395,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 173.3,
+      "compiler_warnings": 9,
+      "warning_scope": "pre-existing Swift concurrency warnings in protected TrailMindStagingProofUITests.swift"
+    },
+    "authorized_live_test_exclusions_for_complete_suite": [
+      "TrailMindTests/IntentEvaluationTests/testLiveRemoteAIIntentEvalWhenEnabled",
+      "TrailMindTests/RouteQualityEvaluationTests/testLiveRouteQualityEvalWhenEnabled"
+    ],
+    "not_run_after_storage_stop": [
+      "practical complete non-live test suite",
+      "Debug Simulator build",
+      "Release Simulator build",
+      "deterministic Simulator runtime QA",
+      "built app and embedded SDK artifact inspection",
+      "archive inspection"
+    ],
+    "cleanup": "Three returned task test artifacts and the single task-owned DerivedData directory were removed only after exact no-handle checks; no pre-existing cache, worktree, Simulator or user artifact was removed."
+  },
   "files": [
     {
       "path": "Configuration/Shared.xcconfig",
@@ -74,6 +113,21 @@
       "claims": ["explicit request precedence", "profile defaults remain preferences rather than verified facts"]
     },
     {
+      "path": "TrailMind/Services/RouteThumbnailService.swift",
+      "sha256": "7a3332249a1be94a45471e52075899903dad7b47aa97d6a6549a78c9c74fff44",
+      "claims": ["thumbnail geometry normalization and simplification", "512 thumbnail and 4096 map point caps", "bounded FIFO cache with default capacity 48"]
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteComponents.swift",
+      "sha256": "afa5a82e5275d146eccf151db4a1de5e6bd7353a10e9d32816376551c318faaa",
+      "claims": ["route suggestion thumbnails use SwiftUI Path rather than interactive Map", "thumbnail request cancellation and cache integration"]
+    },
+    {
+      "path": "TrailMindTests/RouteThumbnailServiceTests.swift",
+      "sha256": "a6b7218f405891d428f5319b4916d0babebb0bf90ba250d9484c2f751e9ea761",
+      "claims": ["thumbnail geometry/cache/card tests were included in the focused 395-test Stage B run"]
+    },
+    {
       "path": "TrailMind/Services/IntentParsingFoundation.swift",
       "sha256": "6a09464d777abfa282b0bdf7e0496d5b5f051a080622f0706a1ee43269eb5c2e",
       "claims": ["local Release intent parsing boundary"]
@@ -136,17 +190,17 @@
     {
       "path": "TrailMindTests/PrivacyReleaseContentTests.swift",
       "sha256": "7d1c76e1a3c2b1f6845f3bfbc69ab7c619fd675f33d3f006771fef4ea1f57ed2",
-      "claims": ["first-party privacy/release-content tests exist; execution pending"]
+      "claims": ["first-party privacy/release-content tests were included in the focused 395-test Stage B run"]
     },
     {
       "path": "TrailMindTests/ReleaseSurfaceTruthTests.swift",
       "sha256": "812cae7795db8d8b3151bfeccc4d4caf331a1b5f48b046b82c09a9f8653f07ea",
-      "claims": ["release-surface truth tests exist; execution pending"]
+      "claims": ["release-surface truth tests were included in the focused 395-test Stage B run"]
     },
     {
       "path": "TrailMindTests/HikingPreferenceProfileSyncTests.swift",
       "sha256": "0f19208b052743f614b792c4320af4a68f05d2068291069d2d4fd4804ad63504",
-      "claims": ["no-op V1 sync and configuration-boundary tests exist; release-lane execution pending"]
+      "claims": ["no-op V1 sync and configuration-boundary tests were included in the focused 395-test Stage B run"]
     },
     {
       "path": "scripts/release-contract.json",
@@ -160,7 +214,7 @@
     },
     {
       "path": "backend/config.example.env",
-      "sha256": "01f6a500d25d683b72f2165a47aaa4baca5d825f46bdc6903e74a15a10b8d143",
+      "sha256": "b280b11106e06c12f7c5993382868bc7df0a573e39a8f7b6c5081faccadcf945",
       "claims": ["non-secret example backend feature defaults only; deployed state unproved"]
     }
   ],
@@ -195,7 +249,7 @@
   "notes": [
     "A hash proves only the exact tracked source blob at source_baseline.",
     "Built, signed, runtime, deployed, physical-device and account claims require separate evidence.",
-    "All listed files were rehashed after onboarding integration at d61011098afa5f53ec4cc8ab1b3503ac1111e04a.",
-    "Upstream onboarding test/build results are attributed in README.md but are not built-artifact evidence for this manifest."
+    "All listed files were rehashed at selected source commit 1d298a9c4a9a2d5edc0035729e370031d3b09884.",
+    "The focused Stage B test result is local execution evidence but is not built-product, runtime, archive or distribution evidence."
   ]
 }

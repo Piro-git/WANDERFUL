@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
   "assessed_at": "2026-08-23",
-  "source_baseline": "d61011098afa5f53ec4cc8ab1b3503ac1111e04a",
+  "source_baseline": "1d298a9c4a9a2d5edc0035729e370031d3b09884",
   "public_release_decision": "NO-GO",
   "status_vocabulary": [
     "open",
@@ -135,10 +135,10 @@
     {
       "id": "ASV1-012",
       "severity": "P1",
-      "title": "Stage B builds, tests and deterministic runtime QA are storage-blocked",
+      "title": "Stage B complete suite, builds, runtime QA and artifact inspection are storage-blocked",
       "owner": "iOS release owner",
       "dependency": "safe storage above the 10,485,760 KiB floor for the complete bounded run and exclusive Xcode ownership",
-      "evidence": ["onboarding task is terminal with no concurrent Xcode operation", "df initially reported 10,782,900 KiB available but final validation reported 10,476,192 KiB: 9,568 KiB below the mandatory floor", "upstream onboarding report at d610110 recorded 669/671 unit tests passing with two intentional skips, 18/18 UI tests, and Debug/Release builds; this lane did not rerun or inspect those products"],
+      "evidence": ["two Stage B preflight readings passed at 13,358,044 and 13,356,200 KiB", "focused Stage B suite passed 395 tests with zero failures/skips in 173.3 seconds", "free space fell to 8,008,952 KiB and the run stopped; closed task test artifacts and the one DerivedData directory were removed after handle checks", "last settled reading was 12,147,512 KiB, below the 12 GiB restart threshold", "complete suite, Debug/Release builds, runtime QA and built-artifact inspection were not run"],
       "acceptance_criterion": "Focused and practical complete non-live tests, Debug/Release builds and the critical/error paths pass on the authorized iPhone 17 Pro Simulator with bounded DerivedData.",
       "status": "open",
       "blocking_public_release": true
@@ -182,7 +182,7 @@
       "title": "Accessibility common-task evidence is pending",
       "owner": "iOS accessibility and release owners",
       "dependency": "integrated runtime and representative devices/settings",
-      "evidence": ["no Stage B VoiceOver, Voice Control, Larger Text, contrast or Reduce Motion result exists"],
+      "evidence": ["focused Stage B accessibility identifier/focus/Reduce Motion tests passed", "no Stage B VoiceOver, Voice Control, Larger Text, contrast or runtime common-task result exists"],
       "acceptance_criterion": "All common tasks pass the applicable accessibility criteria; any App Store accessibility claim is limited to proved support.",
       "status": "open",
       "blocking_public_release": true
@@ -193,7 +193,7 @@
       "title": "Fake voice-planning code may be present in Release",
       "owner": "iOS release owner",
       "dependency": "built binary and deterministic runtime inspection",
-      "evidence": ["FakeVoicePlanningService is not source-wrapped by DEBUG", "known usage includes preview/tests"],
+      "evidence": ["FakeVoicePlanningService is not source-wrapped by DEBUG", "source usages are tests and the HomeView voice-composer preview", "no Release binary/runtime proof was produced before the storage stop"],
       "acceptance_criterion": "Artifact/runtime proof shows no shipping reachability or binary policy issue, or the smallest non-overlapping tested correction is made.",
       "status": "candidate",
       "blocking_public_release": true
@@ -204,7 +204,7 @@
       "title": "Release verifier may expect TrailMind instead of Wanderful",
       "owner": "iOS release tooling owner",
       "dependency": "run verifier against integrated built product",
-      "evidence": ["shipping Info.plist display name is Wanderful", "release contract historically contains TrailMind identity text"],
+      "evidence": ["shipping Info.plist display name is Wanderful", "current release contract contains TrailMind bundle/display name and TrailMind permission text", "verifier was not run against a built product before the storage stop"],
       "acceptance_criterion": "Artifact verifier accepts the truthful Wanderful identity without weakening other checks; any mismatch is corrected with a focused tooling test.",
       "status": "candidate",
       "blocking_public_release": true

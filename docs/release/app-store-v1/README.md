@@ -1,22 +1,22 @@
 # Wanderful App Store Release Package V1
 
 Status: **NO-GO for public App Store release**
-Stage: **Stage A complete; Stage B source integration complete; Xcode/runtime verification blocked by storage**
-Source baseline: `d61011098afa5f53ec4cc8ab1b3503ac1111e04a`
+Stage: **Stage B focused tests passed; complete suite/build/runtime/artifact verification storage-blocked**
+Source baseline: `1d298a9c4a9a2d5edc0035729e370031d3b09884`
 Audit date: 2026-08-23
 Shipping name: **Wanderful**
 Bundle identifier: `com.trailmind.app`
 
 ## Executive decision
 
-Wanderful is not ready for TestFlight or public submission. The integrated source has a coherent iPhone-only route-planning product, native local onboarding and Trail Profile storage, explicit safety boundaries, a first-party privacy manifest, production App Attest entitlements, local prompt parsing in Release, and disabled tracked research, Supabase-sync and Superwall configuration. Those are source-level facts, not substitutes for this lane's built-product/runtime proof, a signed build, physical-device App Attest proof, a production-backend rehearsal, public legal/support assets, or App Store Connect configuration.
+Wanderful is not ready for TestFlight or public submission. The selected source has a coherent iPhone-only route-planning product, native local onboarding and Trail Profile storage, bounded non-interactive route thumbnails, explicit safety boundaries, a first-party privacy manifest, production App Attest entitlements, local prompt parsing in Release, and disabled tracked research, Supabase-sync and Superwall configuration. A focused 395-test Stage B suite passed, but it is not a substitute for the complete non-live suite, Debug/Release products, runtime QA, physical-device App Attest proof, production-backend rehearsal, public legal/support assets or App Store Connect configuration.
 
 The integrated matrix proves **14 of 50 applicable release gates (28.0%)**. This percentage measures independently evidenced gates, not files created. It deliberately does not count upstream build reports as this release lane's built-product proof.
 
 ## Dependency order
 
-1. **Restore safe local build headroom:** APFS initially reported 10,782,900 KiB available, only 297,140 KiB above the mandatory 10,485,760 KiB floor; the final validation check fell to 10,476,192 KiB, 9,568 KiB below the floor. Do not start Xcode until a complete bounded run can stay above the floor.
-2. **Stage B local verification:** with exclusive Xcode/Simulator ownership, run the Build iOS Apps workflow, focused and complete non-live tests, Debug/Release builds, deterministic runtime QA, built-product inspection, and candidate-defect confirmation.
+1. **Restore safe local build headroom:** two preflight readings passed at 13,358,044 and 13,356,200 KiB. The focused suite then reduced free space to 8,008,952 KiB. After closed task-artifact and DerivedData cleanup, space recovered but the last settled reading was 12,147,512 KiB, below the 12 GiB restart threshold. Do not restart Xcode until two new settled readings pass and the whole remaining run can stay above the 10 GiB floor.
+2. **Complete Stage B local verification:** the focused suite is proved; the practical complete non-live suite, Debug/Release builds, deterministic runtime QA, built-product inspection and candidate-defect confirmation remain required.
 3. **Owner/legal decisions:** decide Apple legal entity/team, V1 Superwall exclusion, launch geography, categories, content rights, age-rating answers, encryption/export answers, and public contacts.
 4. **Public assets:** publish reachable HTTPS privacy and support pages; add an easily accessible in-app privacy-policy link through a separately owned source change.
 5. **Physical-device proof:** verify production App Attest with a real iPhone and a TestFlight/App Store-distributed build. Simulator evidence is invalid for this gate.
@@ -32,7 +32,7 @@ Release-reachable claims may describe:
 - comparison before opening route detail;
 - local saving of verified routed results;
 - GPX export through the system share sheet;
-- optional voice transcription only after runtime permission and physical-device verification.
+- optional voice transcription only after runtime permission and physical-device verification;
 - a local Trail Profile with optional planning defaults that can be edited, reset or deleted on the device.
 
 Do not claim live navigation, offline maps, live weather, guaranteed access, water, safety or trail conditions, verified scenic quality without mapped evidence, AI chat/editing, nationwide/global evidence coverage, a purchase/subscription offering, or superiority over a competitor.
@@ -62,14 +62,15 @@ Research-guided planning, outdoor evidence, routable-highlight access and Supaba
 - Unknown values remain `UNKNOWN`; no sample URL, email, Apple identifier, team, product, screenshot or approval state is valid production evidence.
 - All official web sources in this package were retrieved on 2026-08-23.
 
-## Execution record
+## Stage B execution record
 
-- The original `origin/main` baseline matched `44953ed0…`; onboarding later integrated and pushed `d610110…`.
-- Shared `main` was clean.
-- No equivalent `docs/release/app-store-v1` package or release-package history was found.
-- An isolated worktree was created from `origin/main`.
-- The worktree was fast-forwarded to integrated `origin/main` at `d610110…`; only this directory was written by this release lane.
-- The onboarding owner reported 669/671 unit tests passing with two intentional skips, 18/18 deterministic UI tests, and passing Debug/Release Simulator builds at the same commit. These are attributed upstream results, not rerun or promoted to built proof here.
-- This release lane independently revalidated the integrated source, plist syntax, local/no-account composition, disabled flags, dependency pins, hashes and package consistency.
-- No Xcode, Simulator, SwiftPM resolution, test, build or archive was started by this lane because storage had inadequate headroom and later fell below the mandatory floor.
+- Live GitHub `main`, local `origin/main` and the isolated worktree selected `1d298a9c4a9a2d5edc0035729e370031d3b09884`; the shared checkout remained untouched at `44953ed0…`.
+- Intervening onboarding, release-package, backend-operations and route-shaping commits were reviewed. This lane changed no backend/provider/operations file.
+- Build iOS Apps defaults were verified for the exact iPhone 17 Pro (`A9194E37-28A7-450E-9F30-95D0145D0486`) and one task-owned DerivedData directory. The Simulator ended Shutdown and was never erased or deleted.
+- The focused release/privacy/security/accessibility/planning/onboarding/thumbnail/research/save/export suite passed **395 tests, 0 failures, 0 skips** in 173.3 seconds. Compilation emitted nine pre-existing Swift concurrency warnings in protected `TrailMindStagingProofUITests.swift`.
+- The practical complete non-live suite was not run. Its only authorized live-test exclusions would be `IntentEvaluationTests/testLiveRemoteAIIntentEvalWhenEnabled` and `RouteQualityEvaluationTests/testLiveRouteQualityEvalWhenEnabled`.
+- Debug/Release builds, runtime QA, built privacy/SDK/icon/binary inspection and archive inspection were not run after the storage stop.
+- The three returned test artifacts and the single DerivedData directory were removed only after exact handle checks showed them closed. No pre-existing cache, worktree, Simulator or user artifact was removed.
+- Source audit confirms route cards use SwiftUI `Path`, not interactive `Map`; geometry is capped at 512 thumbnail/4,096 map points and the FIFO cache defaults to 48 entries. Built/runtime performance remains unproved.
+- Source candidates remain open: icon source has alpha; fake voice exists in preview/tests; release contract says TrailMind while shipping Info says Wanderful; GraphHopper source contains “Live trail geometry”/“trail-network data”; no in-app privacy-policy link exists.
 - No provider, backend, Supabase, Superwall, App Store Connect, TestFlight, upload or submission traffic or mutation occurred.

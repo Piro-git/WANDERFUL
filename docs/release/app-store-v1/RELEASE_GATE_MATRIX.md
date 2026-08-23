@@ -1,6 +1,6 @@
 # Release Gate Matrix V1
 
-Baseline: `d61011098afa5f53ec4cc8ab1b3503ac1111e04a`
+Baseline: `1d298a9c4a9a2d5edc0035729e370031d3b09884`
 Assessment date: 2026-08-23
 Public-release decision: **NO-GO**
 
@@ -20,7 +20,7 @@ Exactly 14 of 50 applicable gates are proved: **28.0%**. A grouped row counts as
 
 | Gate | Requirement | Classification | Current evidence or acceptance criterion | Blocker |
 | --- | --- | --- | --- | --- |
-| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Isolated worktree and local `origin/main` are `d610110…`; GitHub branch API independently reported the same SHA; no earlier V1 package/history | — |
+| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Isolated worktree and local `origin/main` selected `1d298a9…`; GitHub branch API independently reported the same SHA; shared checkout preserved | — |
 | G-002 | Shipping display name | proved | `Configuration/TrailMind-Info.plist`: `CFBundleDisplayName = Wanderful` | — |
 | G-003 | Bundle ID and version/build source settings | proved | `project.pbxproj`: `com.trailmind.app`, `1.0`, `1` | — |
 | G-004 | Platform source settings | proved | iPhone family `1`, minimum iOS `26.0`, portrait, Catalyst disabled | — |
@@ -54,22 +54,22 @@ Exactly 14 of 50 applicable gates are proved: **28.0%**. A grouped row counts as
 | G-032 | Metadata final approval | locally actionable | Stage A draft passes limits; Stage B/owner validates Release-reachable wording | ASV1-026 |
 | G-033 | Required screenshots | locally actionable | Capture real deterministic Release-representative scenes in accepted sizes; 1–10, no alpha | ASV1-015 |
 | G-034 | Final App Review notes and reviewer path | blocked | Native local/no-account path is source-final; deterministic build/runtime path and backend conditions remain unproved | ASV1-022 |
-| G-035 | Accessibility common-task proof and labels | locally actionable | VoiceOver, Voice Control, Larger Text, Reduce Motion and contrast checks across common tasks | ASV1-016 |
+| G-035 | Accessibility common-task proof and labels | locally actionable | Focused identifier/focus/Reduce Motion source tests passed; VoiceOver, Voice Control, Larger Text, contrast and runtime common tasks remain | ASV1-016 |
 | G-036 | Crash-free deterministic critical path | blocked | First launch → onboarding → plan → compare → detail → save/export passes in Stage B | ASV1-012 |
 | G-037 | Network/offline/error/retry behavior | blocked | Deterministic non-live failure, timeout, cancellation, no-route and offline states pass | ASV1-012 |
 | G-038 | No mock/developer/fake voice behavior in Release | locally actionable | Scan built binary and runtime; source `FakeVoicePlanningService` remains a candidate, not a finding | ASV1-017 |
 | G-039 | No overclaimed provider copy | locally actionable | Verify “Live trail geometry” and “trail-network data” against path-detail evidence and Release UI | ASV1-019 |
 | G-040 | Release verifier matches shipping identity | locally actionable | Artifact-confirm current “TrailMind” versus “Wanderful” mismatch before any correction | ASV1-018 |
 | G-041 | Built identity, flags, permissions and secret absence | blocked | Inspect compiled Info.plist, entitlements and binary in Stage B | ASV1-025 |
-| G-042 | Focused and practical complete non-live test suites | blocked | Upstream onboarding report exists, but this lane could not rerun: final available storage was 10,476,192 KiB, 9,568 KiB below the mandated floor | ASV1-012 |
-| G-043 | Debug and Release Simulator builds | blocked | Upstream integration builds passed, but this lane lacks independently inspected products because the storage stop gate closed | ASV1-012 |
+| G-042 | Focused and practical complete non-live test suites | blocked | Focused Stage B suite passed 395/395; the complete suite was not started after storage fell below the floor | ASV1-012 |
+| G-043 | Debug and Release Simulator builds | blocked | No Stage B Debug or Release product was built after the storage stop; upstream reports are not selected-product inspection | ASV1-012 |
 | G-044 | Optional unsigned/local archive inspection | blocked | Only if safe/necessary after builds; never treat as distribution validation | ASV1-012 |
 | G-045 | Signed distribution archive validation | Apple-account | Archive with App Store profile, inspect signing/privacy report and validate in Organizer | ASV1-020 |
 | G-046 | TestFlight processing and tester proof | Apple-account | Upload/process build, export compliance, internal QA, then external beta review if used | ASV1-020 |
 | G-047 | App Review submission and resolution | Apple-account | Complete required metadata/privacy/build/review declarations and submit with authority | ASV1-020 |
 | G-048 | App Store Connect record, SKU and name availability | Apple-account | Owner creates/verifies record; no ID or name availability is inferred | ASV1-007 |
 | G-049 | Geographic availability/coverage decision | public-URL/legal | Owner selects launch storefronts and confirms whether Navigation-category coverage-file rules apply | ASV1-008 |
-| G-050 | Final evidence manifest on integrated source | proved | All listed tracked source blobs were rehashed at `d610110…`; built/runtime evidence remains explicitly separate | — |
+| G-050 | Final evidence manifest on integrated source | proved | All listed tracked source blobs were rehashed at `1d298a9…`; focused-test and storage evidence is explicitly separated from unrun built/runtime gates | — |
 
 ## Primary evidence paths
 
@@ -87,6 +87,9 @@ Exactly 14 of 50 applicable gates are proved: **28.0%**. A grouped row counts as
 - `TrailMind/Services/HikingPreferenceProfileStore.swift`
 - `TrailMind/Services/HikingPreferenceProfileSync.swift`
 - `TrailMind/Services/HikingPreferenceProfileResolver.swift`
+- `TrailMind/Services/RouteThumbnailService.swift`
+- `TrailMind/Views/Route/RouteComponents.swift`
+- `TrailMindTests/RouteThumbnailServiceTests.swift`
 - `TrailMind/Views/Onboarding/SuperwallOnboardingHost.swift`
 - `TrailMind/Views/Profile/ProfilePreferencesView.swift`
 - `TrailMind/Views/Profile/TrailMindAboutContent.swift`
