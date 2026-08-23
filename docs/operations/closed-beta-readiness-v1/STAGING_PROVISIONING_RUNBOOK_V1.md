@@ -2,7 +2,7 @@
 
 Status: **PLAN ONLY — NO STAGING, POSTGIS, BACKUP, OR DEPLOYMENT ACTION EXECUTED**
 
-Current source boundary: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`.
+Current source boundary: `76f6552a1cd525a38a3840a0204cd81aede94406`.
 Local tests prove the standalone admission/lifecycle seams only. Every command
 below requires separate operator authorization and an isolated non-production
 target.
@@ -87,9 +87,19 @@ default owner or Data API roles satisfy this separation.
    values. Then start the reviewed standalone artifact with every ordinary,
    provider, insecure/local, in-memory, and deterministic-mock flag exact
    `false`; `NODE_ENV` is exact `production` and the release stage is explicit.
+   Review `ROUTE_PROVIDER_MAX_RESPONSE_BYTES`,
+   `ROUTE_PROVIDER_MAX_ERROR_RESPONSE_BYTES`,
+   `ROUTE_PROVIDER_CIRCUIT_FAILURE_THRESHOLD`, and
+   `ROUTE_PROVIDER_CIRCUIT_OPEN_MS` as non-secret bounded values. The error
+   ceiling must be smaller than the success ceiling, and preflight must reject
+   a configured provider-response concurrency budget above its fixed 64 MiB
+   admission cap. Do not infer provider approval from preflight success.
 6. Confirm `GET /health/live` stays dependency-free and `GET /health/ready`
-   exposes only `ready`/`not_ready`. Do not expose preflight or pruning as an
-   HTTP endpoint.
+   exposes only `ready`/`not_ready`. Exercise a controlled provider outage only
+   after separate authorization: circuit-open readiness is `not_ready`, open
+   requests perform no egress, one half-open probe is admitted, and recovery
+   returns readiness to `ready`. Do not expose preflight, circuit detail, or
+   pruning as an HTTP endpoint.
 7. Verify that missing App Attest/database/provider configuration fails closed.
 8. Apply database and regional-data steps below with provider traffic disabled.
 9. Configure App Attest verifier values, bounded authorization values, and

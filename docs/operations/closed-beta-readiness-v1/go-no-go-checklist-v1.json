@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "checklistVersion": "wanderful-closed-beta-go-no-go-v1",
-  "sourceCommit": "0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95",
+  "sourceCommit": "76f6552a1cd525a38a3840a0204cd81aede94406",
   "evaluatedOn": "2026-08-23",
   "currentDecision": "NO_GO",
   "currentProductClassification": "research_guided_closed_beta_not_ready",
@@ -528,8 +528,8 @@
           "ownerRole": "backend_security_owner",
           "evidenceRequired": ["transport regression tests", "provider response byte ceiling", "staging slow-client and disconnect receipt"],
           "currentState": "partial",
-          "evidenceReferences": ["backend/src/server.js", "backend/src/parseIntent.js", "backend/src/routing/graphHopperProvider.js", "backend/test/routeServer.test.js", "backend/test/outdoorAdventureServer.test.js", "backend/test/intentReliability.test.js"],
-          "blocker": "Request, intent-provider response, server timeout, and cancellation contracts have current tests, but the ordinary GraphHopper route response has no explicit byte ceiling and staging transport behavior is unproved.",
+          "evidenceReferences": ["backend/src/server.js", "backend/src/parseIntent.js", "backend/src/routing/graphHopperProvider.js", "backend/test/graphHopperProviderRuntime.test.js", "backend/test/routeServer.test.js", "backend/test/outdoorAdventureServer.test.js", "backend/test/intentReliability.test.js"],
+          "blocker": "Request, intent-provider response, ordinary GraphHopper streamed success/error ceilings, server/provider timeouts, late settlement, and cancellation contracts have current tests, but admitted ingress and dependency transport behavior remain unproved in staging.",
           "liveActionExecuted": false
         },
         {
@@ -538,9 +538,9 @@
           "mandatory": true,
           "ownerRole": "provider_operations_owner",
           "evidenceRequired": ["owner-approved budget", "ordinary runtime circuit/response ceiling", "authorized staging outage and rate-limit receipt"],
-          "currentState": "absent",
-          "evidenceReferences": ["backend/src/routing/graphHopperProvider.js", "backend/src/appAttest/routeSessionAuthorizer.js", "backend/test/providerFeatureFlags.test.js"],
-          "blocker": "Authorization budgets, concurrency leases, a timeout, cancellation, and no automatic retries exist, but the ordinary route provider has no circuit breaker or explicit response byte ceiling and no provider authorization/budget/staging evidence exists.",
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/routing/graphHopperProvider.js", "backend/src/appAttest/routeSessionAuthorizer.js", "backend/src/operations/serviceLifecycle.js", "backend/test/graphHopperProviderRuntime.test.js", "backend/test/providerFeatureFlags.test.js", "backend/test/productionOperations.test.js"],
+          "blocker": "Local tests prove authorization/concurrency limits, streamed success/error byte ceilings, timeout/cancellation, no automatic retry, and a deterministic process-local closed/open/half-open circuit. Provider authorization, owner-approved cost/rate/circuit limits, and actual staging outage/rate-limit/multi-instance evidence do not exist.",
           "liveActionExecuted": false
         },
         {

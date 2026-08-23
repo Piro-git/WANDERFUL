@@ -3,7 +3,7 @@
 Status: **NOT EXECUTED**
 
 Current backend source boundary:
-`0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`. Current automated verifier,
+`76f6552a1cd525a38a3840a0204cd81aede94406`. Current automated verifier,
 repository, endpoint, session-authorization, replay, pruning, flag, and
 transport tests are prerequisites only; they are not physical-device or
 TestFlight evidence.

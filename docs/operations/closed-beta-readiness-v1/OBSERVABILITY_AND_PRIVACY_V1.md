@@ -2,7 +2,7 @@
 
 Status: **POLICY PROPOSED; DEPLOYED CONTROLS NOT VERIFIED**
 
-Current source boundary: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`.
+Current source boundary: `76f6552a1cd525a38a3840a0204cd81aede94406`.
 
 ## Implemented and locally proved
 
@@ -14,6 +14,14 @@ logger to route, outdoor-evidence, outdoor-adventure, lifecycle, and intent
 lease-release events. `backend/test/productionOperations.test.js` proves a
 synthetic sensitive sentinel is absent from output and an unknown event is not
 emitted.
+
+The ordinary GraphHopper circuit emits only the allowlisted
+`provider_circuit_state_changed` event with coarse state and reason enums.
+`backend/test/graphHopperProviderRuntime.test.js` proves the event contains no
+provider URL, prompt, coordinate, geometry, credential, or raw response, and
+`backend/test/productionOperations.test.js` proves unknown event fields are
+dropped. Circuit state is also reflected only as coarse cached readiness; it
+is not exposed as a public component inventory.
 
 That is local application behavior only. No external sink, metric exporter,
 trace system, dashboard, alert destination, access policy, sampling policy, or
@@ -86,7 +94,7 @@ they are not logged with the offending value.
 | `route_session_outcomes_total` | typed_outcome, cost_class | Expiry, replay, exhaustion, authorization health |
 | `postgis_outcomes_total` | region, operation_class, result, duration_bucket | Research availability and latency |
 | `evidence_freshness` | region, freshness_class, contract_version | Current/stale/unavailable gate |
-| `provider_outcomes_total` | region, provider_status_class, duration_bucket | Provider health and circuit input |
+| `provider_outcomes_total` | region, provider_status_class, duration_bucket | Proposed aggregate provider health; the application currently emits only coarse circuit state changes |
 | `quality_states_total` | region, case/cohort class, quality_state | Aggregate eligibility/regression |
 | `cancellation_total` | stage, result | Cancellation propagation and lease health |
 | `invalid_contract_total` | side, schema_version, typed_code | Strict contract drift |
@@ -107,6 +115,7 @@ rollback entry.
 | Disabled-gate downstream work | Any authorization, DB, or provider count while a required upstream gate is off | Critical | Disable backend research/access/provider; incident response | Root cause fixed and zero-work probe passes twice |
 | Provider ceiling violation | Any proof attempt above its authorized ceiling or unreconciled ledger | Critical | Stop proof/provider traffic; revoke access if needed | New authorized run only |
 | V4 circuit breaker | Two consecutive same-class immediate failures under 1 s | Critical for proof | Open circuit, make no probe, disable proof flags | New authorization after provider review |
+| Ordinary provider circuit open | Any locally emitted open transition | High | Disable provider-capable gates; investigate typed cause and reconcile authorized calls | Successful separately authorized half-open canary plus healthy observation window |
 | Beta provider failures | At least 5 attempts in 10 min and failure/timeout ratio at least 40%, or 3 consecutive rate limits | High | Disable access/research provider path; preserve standard safe fallback only if separately approved | 30 min healthy canary under new approval |
 | Rate-limit anomaly | At least 3 rate-limit outcomes in 5 min for the small cohort, or any global-capacity limit at planned idle load | High | Freeze cohort expansion; inspect budgets without identifiers | Two windows below threshold |
 | App Attest verification failure | At least 5 attempts in 10 min and rejection ratio at least 30% for one channel/build, excluding deliberate proof negatives | High | Stop rollout for affected build; keep insecure fallback off | Signed-device diagnostic passes and ratio normal for 30 min |

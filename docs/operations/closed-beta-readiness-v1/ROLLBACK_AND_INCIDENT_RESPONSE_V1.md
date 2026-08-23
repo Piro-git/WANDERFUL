@@ -2,10 +2,12 @@
 
 Status: **RUNBOOK ONLY — NO ROLLBACK OR DRILL EXECUTED**
 
-Current source boundary: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`.
+Current source boundary: `76f6552a1cd525a38a3840a0204cd81aede94406`.
 Local tests prove exact false provider admission, disabled research zero-work,
 readiness transitions, late-work rejection, bounded drain, forced signal exit,
-and partial-startup cleanup. They do not prove configuration propagation,
+partial-startup cleanup, bounded provider bodies, and deterministic
+closed/open/half-open provider-circuit transitions. They do not prove
+configuration propagation,
 provider stoppage, credential rotation, deployment rollback, database restore,
 or an orchestrator restart.
 
@@ -57,7 +59,7 @@ proved, revoke provider access and roll back the backend deployment.
 | Turn off iOS feature gate | Access/research UX or client-contract defect | Set the three client build flags false in a new reviewed candidate; stop distributing the affected build where platform controls permit | Built Info plist/flag tests and signed archive receipt | New reviewed build only after backend gates and all affected checks pass |
 | Turn off backend access gate | V2 lineage/snap/approach/presentation defect | Exact false for backend access flag | Schema V2 request returns typed unavailable with zero authorization/DB/provider work | Enable backend only after corrected V2 proof, then client |
 | Turn off research planning | Research, PostGIS, quality, or region-wide defect | Exact false for backend research flag | Disabled endpoint short-circuits before body/auth/DB/provider | New database/quality proof and owner approval |
-| Stop provider traffic | Provider incident, budget breach, sensitive egress, circuit open | Exact false for route and intent provider flags; close proof ledger | Provider ledger and egress counters stop; health remains provider-independent | Fresh provider approval and bounded canary |
+| Stop provider traffic | Provider incident, budget breach, sensitive egress, circuit open | Exact false for route and intent provider flags; close proof ledger | Provider ledger and egress counters stop; liveness stays provider-independent and readiness is coarse `not_ready` while the route provider is unavailable | Fresh provider approval and bounded canary |
 | Rotate/revoke provider credential | Suspected exposure, staff/host change, provider instruction | Revoke at provider, replace only in backend secret store, restart/redeploy safely | Old key version unusable; new version identifier works in authorized canary | Keep client unchanged; never copy/hash credential into receipt |
 | Roll back regional import | Stale/corrupt/wrong-region import or quality regression bound to import | Flags off; atomic same-region pointer/status transaction to reviewed prior import; re-project and revalidate | Provenance, freshness, isolation, indexes, latency, smoke tests | Prefer new immutable import if prior is stale |
 | Roll back application deployment | Runtime/security/contract regression | Flags off; redeploy last reviewed artifact digest using platform rollback | Health, disabled zero-work, App Attest negative, DB connectivity without provider | Correct forward artifact after incident review |

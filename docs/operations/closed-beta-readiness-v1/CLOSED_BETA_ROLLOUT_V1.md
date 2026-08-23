@@ -3,7 +3,7 @@
 Status: **NO-GO — NO COHORT CREATED**
 
 Current backend source boundary:
-`0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`. The stage sizes and observation
+`76f6552a1cd525a38a3840a0204cd81aede94406`. The stage sizes and observation
 windows below are conservative proposals only; no cohort, duration, territory,
 budget, SLA, or expansion target is owner-approved.
 
@@ -48,6 +48,12 @@ drain/restart, dependency outages, and rollback before enabling backend gates
 in dependency order. A client build
 with research/access true is distributed only after the corresponding backend
 gate is healthy. Closing a stage returns gates false while results are reviewed.
+
+Current source-level provider bounds and circuit tests do not satisfy this
+admission rule. Before any provider-capable stage, authorized staging must
+prove streamed response bounds, open-state zero egress, one half-open probe,
+coarse readiness/events, and recovery across the selected deployment's actual
+instance topology.
 
 ## Stage 0 — Internal physical-device proof
 

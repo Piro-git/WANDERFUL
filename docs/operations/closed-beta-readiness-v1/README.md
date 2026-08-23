@@ -4,9 +4,9 @@ Status: **NO-GO**
 
 Current-source audit: **2026-08-23**
 
-Reviewed backend source: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`
+Reviewed backend source: `76f6552a1cd525a38a3840a0204cd81aede94406`
 
-Parent main at source checkpoint: `3b437fc31a12f32b6e7348a58e0e852db6340eab`
+Parent main at source checkpoint: `5647bbea6d25eca9b03e9fa1a47e5dfca7ffb658`
 
 ## Executive verdict
 
@@ -21,9 +21,10 @@ deployment, durable PostgreSQL/PostGIS environment, least-privilege grant
 proof, backup/restore rehearsal, physical-iPhone App Attest proof, signed
 TestFlight proof, provider authorization/budget, deployed monitoring/alerts,
 secret-rotation drill, or rollback rehearsal exists. The ordinary GraphHopper
-route adapter also lacks an explicit upstream response-byte ceiling and an
-ordinary-runtime circuit breaker. Every mandatory unresolved item is listed by
-ID in `go-no-go-checklist-v1.json`; missing evidence cannot become a pass.
+route adapter now has locally verified success/error byte ceilings and a
+process-local closed/open/half-open circuit, but no authorized staging/provider
+outage receipt exists. Every mandatory unresolved item is listed by ID in
+`go-no-go-checklist-v1.json`; missing evidence cannot become a pass.
 
 This refresh performed no deployment, feature enablement, provider call,
 database provisioning, import, signing, device, cloud, DNS, or production
@@ -56,22 +57,30 @@ that a deployed system currently implements them.
 | Disabled zero-work behavior | `backend/src/server.js`, `backend/test/outdoorAdventureServer.test.js`, `backend/test/providerFeatureFlags.test.js` | Disabled research/provider paths consume no authorization, database, provider, lease, or rate-window work in local fakes. |
 | Liveness/readiness | `backend/src/server.js`, `backend/src/operations/serviceLifecycle.js`, `backend/test/productionOperations.test.js` | Liveness performs no dependency work; readiness returns only `ready`/`not_ready` from cached probes. Ingress behavior is unproved. |
 | Drain and shutdown | `backend/src/operations/serviceLifecycle.js`, `backend/test/productionOperations.test.js` | One deadline, late-work rejection, abort, pool/socket close, partial-start cleanup, and forced nonzero signal exit are locally tested. Orchestrator behavior is unproved. |
-| Request/content/cancellation bounds | `backend/src/server.js`, `backend/src/parseIntent.js`, `backend/test/routeServer.test.js`, `backend/test/outdoorAdventureServer.test.js`, `backend/test/intentReliability.test.js` | Content type, body size, intent response size, timeout, disconnect, and cancellation regressions pass. Ordinary GraphHopper response bytes remain unbounded. |
+| Request/content/cancellation bounds | `backend/src/server.js`, `backend/src/parseIntent.js`, `backend/src/routing/graphHopperProvider.js`, `backend/test/graphHopperProviderRuntime.test.js`, `backend/test/routeServer.test.js`, `backend/test/outdoorAdventureServer.test.js`, `backend/test/intentReliability.test.js` | Content type, request/intent/provider response size, timeout, late settlement, disconnect, and cancellation regressions pass. Ingress and dependency behavior still require staging proof. |
+| Ordinary provider circuit | `backend/src/routing/graphHopperProvider.js`, `backend/src/server.js`, `backend/src/operations/serviceLifecycle.js`, `backend/test/graphHopperProviderRuntime.test.js`, `backend/test/providerFeatureFlags.test.js`, `backend/test/productionOperations.test.js` | The shared process-local provider has deterministic closed/open/half-open behavior, one half-open probe, neutral caller cancellation/local rejection/rate-limit outcomes, safe events, and coarse readiness. Multi-instance/provider-outage behavior requires authorized staging proof. |
 | App Attest replay/budget/pruning | `backend/src/appAttest/postgresAppAttestRepository.js`, `backend/src/appAttest/pruneExpired.js`, `backend/test/postgresAppAttestRepository.test.js`, `backend/test/appAttestPrune.test.js` | Transactions, counter compare-and-set, request replay, weighted windows, leases, timeouts, App-security role URL precedence, aggregate pruning output, and pool cleanup are tested with fakes. Physical and deployed proof is absent. |
 | Privacy-safe operational events | `backend/src/operations/operationalEvents.js`, `backend/test/productionOperations.test.js` | Unknown/high-cardinality fields and synthetic sensitive sentinels are dropped locally. No deployed sink, metric exporter, dashboard, or alert route exists. |
 | Release package validation | `backend/src/operations/releasePackage.js`, `backend/test/releasePackage.test.js` | Source binding, package inventory, gate coverage/status, blocker reconciliation, unsafe feature states, evidence paths, and false-green decisions are validated. |
 
-The complete deterministic backend suite passed **801/801** with **0 skips**,
+The complete deterministic backend suite passed **824/824** with **0 skips**,
 `npm run build` passed, and the offline outdoor-adventure quality evaluation
 passed **101/101** with zero live traffic. These totals are current verification
 results, not staging receipts.
 
-## Current source findings that remain blockers
+## Current source findings and external boundaries
 
-- `backend/src/routing/graphHopperProvider.js` has timeout, cancellation,
-  manual redirect, HTTPS validation, and no automatic retry, but reads a
-  successful ordinary route response through `response.json()` without an
-  explicit byte ceiling and has no ordinary-runtime circuit breaker.
+- `backend/src/routing/graphHopperProvider.js` enforces actual streamed-byte
+  ceilings for successful and smaller error bodies. `Content-Length` is only
+  an early rejection hint; missing, malformed, chunked, or misleading headers
+  cannot bypass the streamed limit. Fatal UTF-8 and JSON parsing occur only
+  after the bounded read. There is no automatic retry.
+- The ordinary provider circuit counts network errors, timeouts, 5xx results,
+  and malformed/oversized/invalid successful responses as provider-health
+  failures. Caller cancellation, local validation/configuration rejection,
+  disabled endpoints, rate limits, and other 4xx results are neutral. Open
+  state performs no fetch; exactly one half-open probe is admitted. This is
+  process-local behavior, not proof of multi-instance or provider health.
 - `backend/api/index.js` exports the bare request handler. It does not execute
   standalone preflight, explicit pool composition, cached dependency
   readiness, or signal-driven drain. It is not an admitted closed-beta entry
