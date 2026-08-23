@@ -1,6 +1,6 @@
 # App Review Notes V1
 
-Status: **source-final for integrated onboarding; selected-build/backend facts remain provisional**
+Status: **selected local build/runtime path verified; production-backend and external facts remain provisional**
 Reviewer credentials: **not applicable; the integrated V1 source creates no account or sign-in**
 
 ## Draft notes for App Review
@@ -55,7 +55,7 @@ The V1 build does not offer:
 - The user may leave planning defaults unknown. Completion persists a local versioned Trail Profile and removes the resumable draft.
 - Profile provides edit, reset and delete actions. Deletion covers the local Trail Profile/draft; no remote account or profile exists in V1.
 - Supabase remote sync/Auth code is dormant and cannot be composed by V1 bundle configuration.
-- No Superwall presentation, paywall, purchase, subscription or review credential is source-reachable in V1. Built-product inspection and the owner's explicit V1 monetization decision remain stop gates (`ASV1-003`, `ASV1-013`).
+- No Superwall presentation, paywall, purchase, subscription or review credential is source-reachable in V1, and the selected Release has an empty Superwall key. The SDK resources/privacy manifest remain embedded. The owner's explicit V1 monetization exclusion remains a stop gate (`ASV1-003`).
 
 ## Final review-note attachments/checks
 

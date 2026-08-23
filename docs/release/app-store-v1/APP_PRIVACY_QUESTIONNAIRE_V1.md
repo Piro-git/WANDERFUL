@@ -1,10 +1,10 @@
 # App Privacy Questionnaire V1
 
-Status: **iOS onboarding and Debug SDK-manifest delta recorded; Release/backend answers remain provisional; do not publish in App Store Connect**
-Source baseline: `894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa`
+Status: **iOS onboarding and Release SDK-manifest delta reconciled; backend/legal answers remain provisional; do not publish in App Store Connect**
+Source baseline: `8fce37f2c4db552a3a2ba8acad636fd0b80327ec`
 Assessment date: 2026-08-23
 
-Apple requires answers to cover the app and third-party partners, remain accurate for the current version, and be backed by a public privacy-policy URL. Source: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/). This draft deliberately does not convert unknown backend/App Attest retention or uninspected embedded-SDK behavior into a “Data Not Collected” answer.
+Apple requires answers to cover the app and third-party partners, remain accurate for the current version, and be backed by a public privacy-policy URL. Source: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/). This draft deliberately does not convert unknown backend/App Attest retention or owner-unapproved SDK use into a “Data Not Collected” answer.
 
 ## Current source-backed data flow
 
@@ -29,14 +29,14 @@ Apple requires answers to cover the app and third-party partners, remain accurat
 
 - **Does the app or its third-party partners use data for tracking?** Draft: **No**.
 - Evidence: first-party manifest says tracking is false and contains no tracking domains.
-- Debug evidence: first-party, Superwall and swift-crypto manifests all declare tracking false; no tracking domain was declared. Standalone Release and configured behavior remain unproved.
-- Stop gate: this answer cannot be published until selected-Release SDK manifests, configured Superwall behavior, backend behavior and any cross-company data linkage are reviewed. Blockers `ASV1-002`, `ASV1-003`, `ASV1-013`.
+- Built evidence: final Debug and Release first-party, Superwall and swift-crypto manifests all declare tracking false; no tracking domain was declared. Configured remote behavior and owner V1 monetization scope remain unproved.
+- Stop gate: selected-Release SDK manifests are inspected, but this answer cannot be published until the owner's Superwall V1 exclusion, backend behavior and any cross-company data linkage are approved. Blockers `ASV1-002`, `ASV1-003`, `ASV1-011`.
 
 ### Data linked to the user
 
 | Apple data type | Draft selection | Purpose | Status/evidence needed |
 | --- | --- | --- | --- |
-| Identifiers → Device ID | Yes | App Functionality | Source-backed by `TrailMind/PrivacyInfo.xcprivacy`; confirm built manifest and App Attest server storage/retention |
+| Identifiers → Device ID | Yes | App Functionality | Source and built manifest agree; App Attest server storage/retention remains owner/backend-dependent |
 | Precise Location | Provisional | App Functionality | Typed/geocoded route coordinates leave the device; linkage and retention UNKNOWN |
 | Other User Content | Provisional | App Functionality | Structured route constraints may leave the device; exact payload/retention UNKNOWN |
 | User ID | No for V1 iOS onboarding | — | Production composition creates no account/Auth/session; reassess if the dormant Supabase client is ever activated |
@@ -84,4 +84,4 @@ The public policy and questionnaire must agree on:
 
 ## Finalization stop gate
 
-Do not enter or publish these answers until the standalone Release third-party manifests are inspected, backend/App Attest retention and linkage are owner-proved, the Superwall Purchase History declaration and V1 exclusion are reconciled, and the public policy is live. Any activation of Supabase, Superwall, analytics, accounts or AI requires a new reconciliation before release.
+Do not enter or publish these answers until backend/App Attest retention and linkage are owner-proved, the built Superwall Purchase History declaration and V1 exclusion are reconciled, and the public policy is live. The standalone Release manifests are locally reconciled; any dependency change or activation of Supabase, Superwall, analytics, accounts or AI requires a new review before release.

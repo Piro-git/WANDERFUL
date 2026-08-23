@@ -23,14 +23,14 @@ Assessment date: 2026-08-23
 | Export compliance | UNKNOWN | Legal/security | Encryption classification and App Store answers/docs | ASV1-009 |
 | Primary/secondary category | Navigation / Health & Fitness draft only | Product | Owner-approved App Store categories | ASV1-008 |
 | Geographic availability | UNKNOWN | Product/legal/operations | Approved storefronts and truthful coverage boundary | ASV1-008 |
-| App icon rights | Asset exists; ownership UNKNOWN | Brand/legal | Rights provenance plus built opacity/validation | ASV1-014, ASV1-023 |
+| App icon rights | Source and built opacity are locally proved; ownership UNKNOWN | Brand/legal | Rights provenance/content-rights declaration | ASV1-023 |
 | App Store screenshots | Not created | Marketing/release/accessibility | Real selected-build captures at accepted sizes | ASV1-015 |
 | Production backend | Tracked URL exists; availability/owner proof UNKNOWN | Backend/operations | Health, contract, retention, flags and App Attest enforcement | ASV1-011 |
 | GraphHopper account/terms | Client/backend integration exists; account state not inspected | Backend/legal | Authorized plan, terms/attribution and operational limits | ASV1-011, ASV1-023 |
 | OpenStreetMap/Geofabrik data | OSM attribution exists; exact deployed extracts/Geofabrik use UNKNOWN | Backend/legal | Deployed-source attribution/ODbL compliance record | ASV1-011, ASV1-023 |
 | Mapterhorn elevation | Attribution exists; deployed use/terms evidence UNKNOWN | Backend/legal | Exact deployed role and attribution/terms record | ASV1-011, ASV1-023 |
 | Supabase project/region | Read-only integration report identifies project `bejvhhjbgtvctpsnlwid`, `eu-central-1`; V1 source sync is disabled/non-activatable | Onboarding/privacy/backend | Future activation requires schema-drift resolution, disposable dynamic RLS proof, retention/deletion and processor review | ASV1-002 |
-| Superwall account/API key/placements/products | SDK 4.16.1 linked; tracked key empty; native V1 composition does not construct/present client; remote account state not inspected | Onboarding/product/privacy | Owner-approved V1 exclusion plus built manifest/binary proof | ASV1-003, ASV1-013 |
+| Superwall account/API key/placements/products | SDK 4.16.1 linked; tracked/built key empty; native V1 composition does not construct/present client; Release manifest/resources inspected; remote account state not inspected | Onboarding/product/privacy | Owner-approved V1 exclusion | ASV1-003 |
 | Review/demo account | Not applicable: integrated V1 creates no account or sign-in | App Review owner | Re-open only if selected build changes authentication | — |
 
 ## Attribution sources

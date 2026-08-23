@@ -48,11 +48,11 @@ Wanderful is a planning aid, not live navigation. Outdoor conditions and access 
 
 | Claim | Release evidence | State |
 | --- | --- | --- |
-| Hiking, trail running and biking | About capability copy, activity models and planner source | Source-backed; Stage B runtime pending |
-| Point-to-point and loop routes | Parser/planner/routing source | Source-backed; Stage B runtime pending |
+| Hiking, trail running and biking | About capability copy, activity models, planner source and deterministic Stage B runtime | Locally proved; production-backend availability remains external |
+| Point-to-point and loop routes | Parser/planner/routing source and deterministic Stage B runtime | Locally proved; production-backend availability remains external |
 | Mapped distance/duration/elevation | GraphHopper conversion and About copy | Source-backed; production backend proof pending |
-| Local saved routes | protected local file store | Source-backed; Stage B runtime pending |
-| GPX export | protected temporary exporter and share flow | Source-backed; Stage B runtime pending |
+| Local saved routes | protected local file store plus save/reopen Stage B runtime | Locally proved |
+| GPX export | protected temporary exporter plus system share-sheet Stage B runtime | Locally proved; no external share destination was selected |
 | Optional voice transcription | Speech/AVAudio service and permission copy | Omitted from primary metadata until physical/runtime proof |
 
 ## Forbidden marketing claims

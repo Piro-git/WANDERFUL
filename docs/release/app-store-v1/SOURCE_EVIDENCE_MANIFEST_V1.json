@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
   "generated_at": "2026-08-23",
-  "source_baseline": "894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
+  "source_baseline": "8fce37f2c4db552a3a2ba8acad636fd0b80327ec",
   "algorithm": "SHA-256",
   "scope": "tracked source blobs at source_baseline; ignored credentials and environment files excluded",
   "stage_b_rehash_required": false,
   "built_artifact_evidence_required": true,
   "local_stage_b_evidence": {
-    "selected_commit": "894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
-    "refreshed_origin_main": "223683977dae5f408f0013d9aa4ed3b4e79e6b0a",
+    "selected_commit": "8fce37f2c4db552a3a2ba8acad636fd0b80327ec",
+    "refreshed_origin_main": "79c70f9bcd3128aa89a384570395f1390231eff7",
     "simulator": {
       "name": "iPhone 17 Pro",
       "os": "iOS 26.5",
@@ -18,13 +18,12 @@
       "erased_or_deleted": false
     },
     "storage_kib": {
-      "resume_preflight_readings": [14237720, 14245296],
+      "prerequisite_task_readings": [31681268, 31681288, 31684456],
+      "independent_preflight_readings": [31666160, 31666188, 31666116],
       "hard_floor": 10485760,
       "restart_threshold": 12582912,
-      "post_unit_low": 8801544,
-      "pre_ui_recovery_readings": [13127516, 13120660],
-      "post_ui_timeout_low": 6532376,
-      "final_after_task_owned_cleanup": 11052360
+      "latest_before_cleanup": [24583332, 24582500],
+      "final_after_task_owned_cleanup": [28233920, 28232880, 28232824]
     },
     "prior_focused_test_run": {
       "discovered": 395,
@@ -49,38 +48,44 @@
       "TrailMindTests/RouteQualityEvaluationTests/testLiveRouteQualityEvalWhenEnabled"
     ],
     "critical_path_ui_run": {
-      "intended_tests": 18,
-      "confirmed_passed_before_timeout": 6,
-      "failed_before_timeout": 0,
-      "interrupted_test": "TrailMindCriticalPathUITests/testOnboardingCompletesIntoDeterministicHome",
-      "tool_timeout_seconds": 300,
-      "result": "incomplete; corrupt result bundle was not promoted",
+      "discovered": 18,
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "execution": "six prior passes plus twelve methods in six sub-300-second groups",
       "attempt_13_staging_proof_tests_run": false
     },
-    "debug_for_testing_artifact": {
+    "standalone_builds": {
+      "debug_simulator": "passed before and after correction",
+      "release_simulator": "passed before and after correction",
+      "signed_distribution_archive": "not run"
+    },
+    "final_debug_and_release_artifacts": {
       "identity": "Wanderful; com.trailmind.app; 1.0 (1); iPhone family 1; minimum iOS 26.0",
       "tracked_flags": "OUTDOOR_EVIDENCE_ENABLED, RESEARCH_GUIDED_PLANNING_ENABLED, ROUTABLE_HIGHLIGHT_ACCESS_ENABLED and SUPABASE_ONBOARDING_SYNC_ENABLED were false",
-      "entitlements": "simulator code entitlements were empty; production App Attest cannot be inferred",
+      "parser_and_sdk_configuration": "Release parser is local; tracked Supabase URL/key and Superwall key are empty",
+      "entitlements": "source maps Debug to development and Release to production App Attest; Simulator code entitlements were empty, so physical production App Attest remains unproved",
       "privacy_manifests": "valid first-party, Superwall and swift-crypto manifests were present",
-      "icon": "Assets.car reported a 1024x1024 phone AppIcon rendition with Opaque=true",
-      "signature": "deep strict code-signature verification passed",
+      "icon": "1024x1024 RGB source has no alpha; compiled AppIcon renditions report Opaque=true and uniform alpha 255",
+      "signature": "deep strict code-signature verification passed for Debug and Release",
       "secret_and_configuration_scan": "no local configuration, forbidden API-key Info key or credential-pattern match",
-      "scope_limit": "test-for-testing product; not standalone Debug or Release evidence"
+      "release_verifier": "37 of 37 checks passed",
+      "scope_limit": "local Simulator products; not signed distribution or physical-device evidence"
     },
-    "release_verifier_correction": {
-      "commit": "894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa",
-      "proved_defects": ["TrailMind display/permission expectations rejected the built Wanderful product", "recursive manifest count rejected valid embedded SDK manifests"],
-      "verification": "22 isolated command cases plus stale-report recovery passed; corrected identity, permission and privacy-presence checks cleared on the same Debug product"
+    "release_corrections": {
+      "commit": "8fce37f2c4db552a3a2ba8acad636fd0b80327ec",
+      "proved_defects": ["opaque RGBA source icon violated the no-alpha source contract", "FakeVoicePlanningService was present in Release", "reachable provider copy overstated live/trail-network evidence", "artifact verifier did not enforce compiled icon opacity and rejected exact public Superwall certificate resources"],
+      "verification": "post-fix focused 4 of 4 passed; Debug and Release rebuilt; old fake/copy strings absent from Release; Release verifier 37 of 37; 25 isolated verifier cases plus stale-report recovery passed"
     },
-    "not_run_after_final_storage_stop": [
-      "remaining twelve critical-path UI tests",
-      "standalone Debug Simulator build",
-      "standalone Release Simulator build",
-      "manual deterministic Simulator runtime and accessibility QA",
-      "standalone Release app and embedded SDK artifact inspection",
-      "archive inspection"
-    ],
-    "cleanup": "All removed logs, result bundles, prepared products and the single task-owned DerivedData directory were closed and task-owned; no pre-existing cache, worktree, Simulator or user artifact was removed."
+    "manual_runtime": {
+      "passed": ["native onboarding to Home", "profile create, edit and reset", "local clarification", "safe fail-once retry", "no-routes state", "three deterministic route choices", "route detail", "save and reopen", "GPX system share handoff without selecting a destination", "Reduce Motion stability", "rapid suggestion-list reuse"],
+      "verified_defects": ["forced light appearance under system Dark Mode", "route-card clipping, overlap and severe hyphenation at accessibility XXXL"],
+      "unknown": ["actual runtime VoiceOver focus handoff", "Voice Control common tasks"],
+      "accessibility_state": "meaningful headings, button labels, values and route-preview descriptions were exposed"
+    },
+    "performance_sanity": "Route cards use SwiftUI Path, not interactive Map; geometry is capped at 512 thumbnail and 4096 map points; cache capacity is 48; rapid reuse showed no obvious task or responsiveness explosion.",
+    "not_run": ["signed distribution archive", "TestFlight", "physical-device App Attest", "live provider evaluations"],
+    "cleanup": "The exact task-owned DerivedData path had no open handle and was removed; the Simulator was shut down but not erased/deleted; no pre-existing cache, worktree, archive, receipt or user artifact was removed."
   },
   "files": [
     {
@@ -122,6 +127,11 @@
       "path": "TrailMind/App/TrailMindApp.swift",
       "sha256": "5dfcc66b44a56bd4cdcfffd01b07411ecfeae4dcbfa671d2663cf43970fdb0d8",
       "claims": ["Release composition", "first-launch native onboarding host", "local profile store and sync-factory composition", "top-level Plan/Saved/Profile surfaces"]
+    },
+    {
+      "path": "TrailMind/Views/Home/HomeView.swift",
+      "sha256": "15c4ba180ec2759238b12fb1b8d52314dfdffbcddfe2ccc9b302f198e7a8df6c",
+      "claims": ["voice-composer fake preview is DEBUG-only", "shipping Home route-planning surface"]
     },
     {
       "path": "TrailMind/ViewModels/AppModels.swift",
@@ -190,13 +200,18 @@
     },
     {
       "path": "TrailMind/Services/VoicePlanningService.swift",
-      "sha256": "c86f0b587cd07208cb34da422c9957239944110a21dad1532db45cf48a87940f",
-      "claims": ["voice permission/service boundary", "fake voice candidate requires built proof"]
+      "sha256": "c3ce1b2f6c813ca42b317b4bcadf3b38a767f0241b00cb76cd432031f176e07d",
+      "claims": ["voice permission/service boundary", "fake voice service is DEBUG-only"]
     },
     {
       "path": "TrailMind/Services/GraphHopperClient.swift",
-      "sha256": "e25e418aee644a1bed5936419daeeab3c6e05d615a0ade5dc7927b28e162143f",
-      "claims": ["routing conversion", "provider-copy candidate requires response/runtime proof"]
+      "sha256": "8eff7f25863721d6442c2f936fee5f7e32198c889c047a37345faaf2f7819eaa",
+      "claims": ["routing conversion", "mapped/routed provider wording does not claim live trail-network evidence"]
+    },
+    {
+      "path": "TrailMind/Models/AdventureModels.swift",
+      "sha256": "ac4c2e96261025c89dde864aaf22fccf0941f9b51f4844cae99a556ba2548b66",
+      "claims": ["route-quality explanation uses routed-geometry wording"]
     },
     {
       "path": "TrailMind/Views/Profile/TrailMindAboutContent.swift",
@@ -220,8 +235,8 @@
     },
     {
       "path": "TrailMind/Assets.xcassets/AppIcon.appiconset/TrailMindAppIcon.png",
-      "sha256": "810485777151ac9db3fbe8693b939b80aadf0fa5df8bef7307de9d921dffa94a",
-      "claims": ["app-icon source blob; built opacity/variant proof pending"]
+      "sha256": "fe547e9fb23950bc95525e356c4a2d4447fd385020beddf3965f2c7a07decd13",
+      "claims": ["1024x1024 RGB app-icon source has no alpha; built catalog opacity is separately proved"]
     },
     {
       "path": "TrailMindTests/PrivacyReleaseContentTests.swift",
@@ -230,8 +245,13 @@
     },
     {
       "path": "TrailMindTests/ReleaseSurfaceTruthTests.swift",
-      "sha256": "812cae7795db8d8b3151bfeccc4d4caf331a1b5f48b046b82c09a9f8653f07ea",
-      "claims": ["release-surface truth tests passed within the complete 672-test non-live unit run"]
+      "sha256": "e18465858c261c0c290c2f572f4df972d9ded4c7c339f3f993fa4f56e8e04027",
+      "claims": ["release-surface truth forbids fake voice service in Release source", "complete and focused regression tests passed"]
+    },
+    {
+      "path": "TrailMindTests/RoutingFoundationTests.swift",
+      "sha256": "f6b6278abda010e4a91944eea8675c6b20bfe420febd9a35a084f866eb050d86",
+      "claims": ["three mapped/routed wording regressions passed"]
     },
     {
       "path": "TrailMindTests/HikingPreferenceProfileSyncTests.swift",
@@ -245,13 +265,13 @@
     },
     {
       "path": "scripts/verify-release-artifact.sh",
-      "sha256": "488167733421b960baf1c83a2b3b0ef74fd108d2b9dba59252154dc93813ba16",
-      "claims": ["built release-artifact verification logic", "root first-party privacy manifest validation permits embedded SDK manifests"]
+      "sha256": "9e3675fdd1a5e1978a6fdfeb6e5fac169701eaf5258134c727f945fbeba81c19",
+      "claims": ["built release-artifact verification logic", "root first-party privacy manifest validation permits embedded SDK manifests", "compiled AppIcon must report Opaque=true", "only exact public Superwall certificate resources are permitted"]
     },
     {
       "path": "scripts/test-release-artifact-verifier.sh",
-      "sha256": "e8465c9da7ba2a352da210b19589a790311ea843aea9bdc285e71a19bbef81df",
-      "claims": ["22 isolated verifier cases plus stale-report recovery", "embedded SDK privacy-manifest regression fixture"]
+      "sha256": "7794cdfbd85e6cf4830a522c877a273f6f27afea3e9f70af25017ee7771e155a",
+      "claims": ["25 isolated verifier cases plus stale-report recovery", "icon opacity and exact public-certificate regression fixtures"]
     },
     {
       "path": "backend/config.example.env",
@@ -290,7 +310,7 @@
   "notes": [
     "A hash proves only the exact tracked source blob at source_baseline.",
     "Built, signed, runtime, deployed, physical-device and account claims require separate evidence.",
-    "All listed files were rehashed at selected source commit 894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa.",
-    "The complete unit result, partial UI log and Debug-for-testing product are local evidence but do not prove standalone Release, manual runtime, archive or distribution gates."
+    "All listed files were rehashed at selected source commit 8fce37f2c4db552a3a2ba8acad636fd0b80327ec.",
+    "Complete local unit/UI, standalone Simulator builds, manual runtime and built-product inspection do not prove signed distribution, physical-device App Attest, live backend/provider state or App Store approval."
   ]
 }
