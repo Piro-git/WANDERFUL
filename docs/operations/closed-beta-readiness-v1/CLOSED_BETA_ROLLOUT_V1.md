@@ -2,6 +2,11 @@
 
 Status: **NO-GO — NO COHORT CREATED**
 
+Current backend source boundary:
+`0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`. The stage sizes and observation
+windows below are conservative proposals only; no cohort, duration, territory,
+budget, SLA, or expansion target is owner-approved.
+
 ## Truthful initial surface
 
 The first closed beta is limited to:
@@ -22,8 +27,9 @@ public/legal access, legal overnight stays, verified scenic quality, or route
 safety. Contracts may represent broader inputs, but the beta is intentionally
 narrower than what code can parse.
 
-The app does not currently use device location and does not hard-geofence a
-participant. Geographic containment therefore relies on backend region binding,
+The current iOS location/permission surface is outside this backend audit and
+must be verified independently. The backend does not itself prove participant
+location. Geographic containment therefore relies on backend region binding,
 supported-case admission, invite instructions, and monitoring. A request
 outside the two pilot regions must remain unsupported/partial or use only a
 separately documented legacy flow; it must not be silently treated as pilot
@@ -37,7 +43,9 @@ named product/security/operations approvers sign a new stage receipt. Missing
 or insufficient data is NO-GO, not a waiver.
 
 Each stage begins with backend gates and provider false. The operator verifies
-infrastructure, then enables backend gates in dependency order. A client build
+`npm run ops:preflight`, liveness/readiness, infrastructure, backup/restore,
+drain/restart, dependency outages, and rollback before enabling backend gates
+in dependency order. A client build
 with research/access true is distributed only after the corresponding backend
 gate is healthy. Closing a stage returns gates false while results are reviewed.
 
@@ -133,7 +141,7 @@ Conditions for each increase:
 - the exact build/deployment/import/contract combination is unchanged or a new
   admission proof covers the change.
 
-The V1 plan ends at 50 invitees. Any broader cohort, additional region,
+The proposed V1 plan ends at 50 invitees. Any broader cohort, additional region,
 activity, route type, or navigation surface requires a new rollout version.
 
 ## Expansion criteria
@@ -211,3 +219,13 @@ must not advertise planned features.
 - whether the build-time client kill-switch limitation is acceptable for a
   closed beta given the immediate backend kill path;
 - conditions for ending, extending, or retiring the beta.
+
+## Public-release promotion boundary
+
+Closed-beta evidence does not automatically authorize public release. Public
+promotion requires a new exact-candidate review covering public capacity and
+abuse controls, provider/commercial authorization, privacy/legal/support
+commitments, public incident/on-call coverage, restore and rollback at expected
+load, all distributed build classes, configuration drift, and any expanded
+region/activity/product claim. Until that separate decision is recorded, the
+public state remains NO-GO even if a closed-beta stage passes.

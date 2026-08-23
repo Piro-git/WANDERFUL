@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "contractVersion": "closed-beta-feature-flags-v1",
+  "sourceCommit": "0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95",
   "currentClassification": "production_off",
   "currentDecision": "NO_GO",
   "defaultPolicy": {
@@ -26,18 +27,33 @@
   "releaseBlockers": [
     {
       "id": "flag-blocker-route-provider-review-and-deployment",
-      "description": "The route-session authorizer now has a locally verified strict opt-in parser, but the correction has not completed independent review or deployed flag-state verification.",
-      "requiredResolution": "Independently review the parser and prove exact-value deployment admission plus disabled-state behavior before GO."
+      "status": "open",
+      "description": "The route-session authorizer and exact production preflight passed current local tests and offline adversarial review, but no deployed flag-state or zero-work receipt exists.",
+      "requiredResolution": "Prove exact-value deployment admission and disabled-state zero-work behavior in the admitted staging entry point before GO."
     },
     {
       "id": "flag-blocker-intent-provider-review-and-deployment",
-      "description": "The intent-session authorizer now has a locally verified strict opt-in parser, but the correction has not completed independent review or deployed flag-state verification.",
-      "requiredResolution": "Keep the remote intent provider false for this beta, independently review the parser, and prove exact-value deployment admission before GO."
+      "status": "open",
+      "description": "The intent-session authorizer and exact production preflight passed current local tests and offline adversarial review, but no deployed flag-state receipt exists.",
+      "requiredResolution": "Keep the remote intent provider false for this beta and prove exact-value deployment admission before GO."
     },
     {
       "id": "flag-blocker-ios-build-time-kill-switch",
+      "status": "open",
       "description": "The iOS flags are embedded build settings and cannot immediately disable an installed beta build.",
       "requiredResolution": "Prove immediate backend kill behavior and obtain explicit owner acceptance or implement a separately reviewed remote client gate."
+    },
+    {
+      "id": "flag-blocker-production-entrypoint",
+      "status": "open",
+      "description": "The standalone production entry point has local preflight, readiness, pool, and drain contracts; no platform deployment is proved and the bare serverless adapter lacks equivalent lifecycle admission.",
+      "requiredResolution": "Select and prove an entry point with the standalone contracts or independently prove equivalent platform-specific preflight, durable composition, readiness, drain, and rollback behavior."
+    },
+    {
+      "id": "flag-blocker-provider-runtime-controls",
+      "status": "open",
+      "description": "The ordinary route provider has timeout, cancellation, authorization/rate/concurrency controls and no automatic retry, but no explicit response byte ceiling or ordinary-runtime circuit breaker.",
+      "requiredResolution": "Implement and locally verify the missing bounded response/circuit controls without changing routing semantics, then obtain provider authorization and staging outage/rate-limit evidence."
     }
   ],
   "flags": [
@@ -369,6 +385,10 @@
     {
       "id": "flag-invariant-intent-provider-off",
       "rule": "The remote intent provider remains false because the declared Release parser is local and remote intent is outside this beta."
+    },
+    {
+      "id": "flag-invariant-production-preflight",
+      "rule": "Production admission requires every controlled backend flag to be present as exact true or false; insecure/local/in-memory/mock flags are exact false, and malformed values block startup."
     }
   ]
 }

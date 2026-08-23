@@ -1,6 +1,11 @@
 # Staging Provisioning and Regional Data Runbook V1
 
-Status: **PLAN ONLY — NO ACTION EXECUTED**
+Status: **PLAN ONLY — NO STAGING, POSTGIS, BACKUP, OR DEPLOYMENT ACTION EXECUTED**
+
+Current source boundary: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`.
+Local tests prove the standalone admission/lifecycle seams only. Every command
+below requires separate operator authorization and an isolated non-production
+target.
 
 ## Minimal topology
 
@@ -16,11 +21,16 @@ authorized development build or TestFlight
   -> bounded GraphHopper egress owned by the backend
 ```
 
-The repository can run as a long-lived Node process, containers, or a
-serverless adapter. Hosting remains a product-owner decision. The selected
-platform must support HTTPS, private secret injection, bounded outbound egress,
+The currently admitted source design is the long-lived standalone entry point
+`backend/src/operations/start.js`. Hosting remains a product-owner decision.
+The bare `backend/api/index.js` serverless adapter does not execute production
+preflight, explicit pool composition, cached dependency readiness, or the
+signal-driven drain contract and is not admitted for closed beta until an
+equivalent platform lifecycle is independently proved. The selected platform
+must support HTTPS, private secret injection, bounded outbound egress,
 deployment digests, atomic environment updates, fast rollback, health checks,
-and a PostgreSQL connection model compatible with transactions and cancellation.
+and a PostgreSQL connection model compatible with transactions and
+cancellation.
 
 ## Trust and environment boundaries
 
@@ -72,10 +82,14 @@ default owner or Data API roles satisfy this separation.
 4. Create the roles above and store their connection values in the platform
    secret manager. Never put them in documents, command history, source, or
    proof receipts.
-5. Deploy the reviewed backend artifact with every ordinary, provider,
-   insecure/local, and in-memory flag false. `NODE_ENV` must be production-like.
-6. Confirm the provider-independent health check without enabling protected
-   traffic.
+5. Inject the reviewed presence-only configuration and run `npm run
+   ops:preflight`. Require decision `ready` without retaining environment
+   values. Then start the reviewed standalone artifact with every ordinary,
+   provider, insecure/local, in-memory, and deterministic-mock flag exact
+   `false`; `NODE_ENV` is exact `production` and the release stage is explicit.
+6. Confirm `GET /health/live` stays dependency-free and `GET /health/ready`
+   exposes only `ready`/`not_ready`. Do not expose preflight or pruning as an
+   HTTP endpoint.
 7. Verify that missing App Attest/database/provider configuration fails closed.
 8. Apply database and regional-data steps below with provider traffic disabled.
 9. Configure App Attest verifier values, bounded authorization values, and
@@ -132,7 +146,12 @@ gates false.
 - Test that public/anonymous/Data API roles cannot read any backend-owned table.
 - Record grant-policy digests and denied-access booleans, never role passwords.
 
-### 3. Apply migrations 001 through the latest reviewed migration
+Inject distinct runtime URLs for App security, outdoor research, research
+cancellation, and outdoor evidence only when the corresponding capability is
+approved. Production preflight rejects missing or textually aliased active
+pool URLs; that source check does not replace database grant/denial proof.
+
+### 3. Apply migrations 001 through 008
 
 From `backend/`, with the migration role injected:
 
@@ -146,7 +165,7 @@ one transaction, and prints filenames only.
 
 Current review boundary:
 
-- migrations 001 through 007 are tracked baseline inputs;
+- migrations 001 through 008 are tracked current-source inputs;
 - migration 008 adds the operation-scoped outdoor-research runtime read
   contract and revokes its default `PUBLIC` function privileges;
 - role creation and runtime grants remain an audited platform action and are
@@ -172,6 +191,20 @@ Require no new ledger rows and no schema drift. Compare:
 Then repeat on empty staging using the same artifact. Failure rolls back the
 migration transaction and blocks imports; rollback is restore/recreate from the
 pre-migration snapshot, never editing the ledger to claim success.
+
+### Backup and restore gate
+
+Before any beta promotion, the database owner must record a vendor-neutral,
+non-secret policy for backup scope, encryption/access, frequency, retention,
+restore target, and recovery objectives. Those values are owner/cloud
+decisions and are not supplied by this repository.
+
+Perform a restore into a separately identified isolated target. Re-run
+migrations, ledger/schema/index/RLS checks, App Attest counter/replay tests,
+regional pointer/projection consistency, pruning, and application readiness
+with all provider flags false. Record artifact/snapshot version identifiers
+and typed outcomes only. A configured backup without a successful restore test
+does not satisfy the gate.
 
 ### 5. Import bounded current Harz data
 
@@ -294,8 +327,9 @@ Provider traffic stays false. Against representative current regional volume:
   reviewed production change replaces it.
 
 Relevant repository checks include the PostGIS integration suite,
-`outdoorRouteMembershipPerformance.test.js`, and the access-query plan gate in
-`outdoorResearchExecutorPostgisIntegration.test.js`. Run them only in an
+`backend/test/outdoorRouteMembershipPerformance.test.js`, and the access-query
+plan gate in
+`backend/test/outdoorResearchExecutorPostgisIntegration.test.js`. Run them only in an
 explicitly authorized disposable/performance environment, then reproduce the
 read-only `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` gate against staging volume
 without retaining query parameters or coordinates.

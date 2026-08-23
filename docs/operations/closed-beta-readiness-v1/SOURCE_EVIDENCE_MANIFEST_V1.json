@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "trailmind-backend-closed-beta-source-evidence-v1",
+  "generatedOn": "2026-08-23",
+  "sourceCommit": "0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95",
+  "currentDecision": "NO_GO",
+  "currentEvidenceNote": "Source and deterministic local tests are current at sourceCommit. Historical receipts and missing external evidence do not prove deployment or closed-beta readiness.",
+  "packageFiles": [
+    "CLOSED_BETA_ROLLOUT_V1.md",
+    "OBSERVABILITY_AND_PRIVACY_V1.md",
+    "PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md",
+    "README.md",
+    "ROLLBACK_AND_INCIDENT_RESPONSE_V1.md",
+    "SOURCE_EVIDENCE_MANIFEST_V1.json",
+    "STAGING_PROVISIONING_RUNBOOK_V1.md",
+    "V4_OPERATIONAL_PROTOCOL.md",
+    "V4_PROOF_RUN_CLOCK_CONTRACT.md",
+    "V4_PROOF_RUN_IDENTITY_CONTRACT.md",
+    "feature-flag-state-matrix-v1.json",
+    "go-no-go-checklist-v1.json"
+  ],
+  "featureFlagBlockerIds": [
+    "flag-blocker-intent-provider-review-and-deployment",
+    "flag-blocker-ios-build-time-kill-switch",
+    "flag-blocker-production-entrypoint",
+    "flag-blocker-provider-runtime-controls",
+    "flag-blocker-route-provider-review-and-deployment"
+  ],
+  "gates": [
+    {
+      "id": "security-apple-team-app-id",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["TrailMind/TrailMindRelease.entitlements"]
+    },
+    {
+      "id": "security-signed-entitlement-profile",
+      "status": "partial",
+      "classifications": ["verified_from_current_source", "requires_physical_iphone_app_attest"],
+      "sourceEvidence": ["TrailMind/TrailMindRelease.entitlements"]
+    },
+    {
+      "id": "security-physical-positive-flow",
+      "status": "blocked",
+      "classifications": ["proved_by_current_automated_test", "requires_physical_iphone_app_attest"],
+      "sourceEvidence": ["backend/src/appAttest/appAttestVerifier.js", "backend/test/appAttestVerifier.test.js"]
+    },
+    {
+      "id": "security-physical-negative-cases",
+      "status": "blocked",
+      "classifications": ["proved_by_current_automated_test", "requires_physical_iphone_app_attest"],
+      "sourceEvidence": ["backend/test/appAttestVerifier.test.js", "backend/test/postgresAppAttestRepository.test.js"]
+    },
+    {
+      "id": "security-testflight-production-attest",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_physical_iphone_app_attest"],
+      "sourceEvidence": ["TrailMind/TrailMindRelease.entitlements", "backend/src/appAttest/appAttestVerifier.js"]
+    },
+    {
+      "id": "database-staging-postgis",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/package.json", "backend/migrations/001_app_attest.sql"]
+    },
+    {
+      "id": "database-least-privilege-roles",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/migrations/008_outdoor_research_runtime_read_contract.sql", "backend/src/operations/productionConfiguration.js"]
+    },
+    {
+      "id": "database-migrations-repeatable",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_disposable_postgis"],
+      "sourceEvidence": ["backend/migrations/007_routable_highlight_access_geography_index.sql", "backend/migrations/008_outdoor_research_runtime_read_contract.sql", "backend/test/routableHighlightAccessMigration.test.js", "backend/test/outdoorResearchRuntimeReadMigration.test.js"]
+    },
+    {
+      "id": "database-readonly-cancellation",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/outdoorResearch/postgresOutdoorResearchRepository.js", "backend/test/outdoorResearchExecutorPostgisIntegration.test.js"]
+    },
+    {
+      "id": "database-app-attest-durable",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/appAttest/postgresAppAttestRepository.js", "backend/src/appAttest/pruneExpired.js", "backend/test/postgresAppAttestRepository.test.js", "backend/test/appAttestPrune.test.js"]
+    },
+    {
+      "id": "regional-harz-current-import",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/config/outdoor-regions/harz-v1.json"]
+    },
+    {
+      "id": "regional-innsbruck-current-import",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/config/outdoor-regions/innsbruck-alps-v1.json"]
+    },
+    {
+      "id": "regional-projection-isolation",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/outdoorResearch/postgresOutdoorResearchRepository.js"]
+    },
+    {
+      "id": "regional-index-latency-gates",
+      "status": "partial",
+      "classifications": ["verified_from_current_source", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/migrations/007_routable_highlight_access_geography_index.sql", "backend/test/outdoorResearchExecutorPostgisIntegration.test.js"]
+    },
+    {
+      "id": "provider-credential-containment",
+      "status": "partial",
+      "classifications": ["verified_from_current_source", "requires_provider_authorization", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/config.example.env", "backend/src/operations/productionConfiguration.js"]
+    },
+    {
+      "id": "provider-exact-fail-closed-flags",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/appAttest/routeSessionAuthorizer.js", "backend/src/operations/productionConfiguration.js", "backend/test/providerFeatureFlags.test.js", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "provider-v4-bounded-controls",
+      "status": "blocked",
+      "classifications": ["historical_evidence_only", "requires_provider_authorization"],
+      "sourceEvidence": ["backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4.test.js"]
+    },
+    {
+      "id": "provider-beta-budget-ownership",
+      "status": "blocked",
+      "classifications": ["requires_provider_authorization", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/appAttest/routeSessionAuthorizer.js"]
+    },
+    {
+      "id": "quality-access-v2-review",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_disposable_postgis", "requires_physical_iphone_app_attest"],
+      "sourceEvidence": ["backend/test/outdoorAdventureContractCorpusV2.test.js", "backend/test/routableHighlightAccessMigration.test.js"]
+    },
+    {
+      "id": "quality-v4-four-cases",
+      "status": "blocked",
+      "classifications": ["historical_evidence_only", "requires_provider_authorization"],
+      "sourceEvidence": ["backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4.test.js"]
+    },
+    {
+      "id": "quality-golden-set-accepted",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["docs/route-quality/golden-set-v1/golden-cases-v1.json", "backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4.test.js"]
+    },
+    {
+      "id": "quality-truth-boundaries",
+      "status": "partial",
+      "classifications": ["verified_from_current_source", "requires_physical_iphone_app_attest", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["TrailMind/Views/Research/ResearchRoutePresentation.swift", "backend/src/outdoorResearch/evidenceClaimTransformation.js"]
+    },
+    {
+      "id": "ios-strict-v2-client",
+      "status": "partial",
+      "classifications": ["verified_from_current_source", "requires_physical_iphone_app_attest"],
+      "sourceEvidence": ["TrailMind/Services/OutdoorAdventurePlanningClient.swift", "TrailMindTests/OutdoorAdventurePlanningClientTests.swift"]
+    },
+    {
+      "id": "ios-backend-before-client",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_staging_or_deployment", "requires_physical_iphone_app_attest"],
+      "sourceEvidence": ["backend/src/operations/productionConfiguration.js"]
+    },
+    {
+      "id": "ios-emergency-client-disposition",
+      "status": "blocked",
+      "classifications": ["requires_physical_iphone_app_attest", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/appAttest/routeSessionAuthorizer.js"]
+    },
+    {
+      "id": "ios-beta-surface-qa",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_physical_iphone_app_attest", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["TrailMind/Services/OutdoorAdventurePlanningClient.swift"]
+    },
+    {
+      "id": "privacy-allowlisted-observability",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/operations/operationalEvents.js", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "privacy-retention-deletion",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/appAttest/pruneExpired.js", "backend/test/appAttestPrune.test.js"]
+    },
+    {
+      "id": "privacy-public-support-policy",
+      "status": "blocked",
+      "classifications": ["requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/README.md"]
+    },
+    {
+      "id": "privacy-osm-attribution-legal",
+      "status": "partial",
+      "classifications": ["verified_from_current_source", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/config/outdoor-regions/harz-v1.json"]
+    },
+    {
+      "id": "rollback-backend-provider-drill",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment", "requires_provider_authorization"],
+      "sourceEvidence": ["backend/src/operations/serviceLifecycle.js", "backend/test/providerFeatureFlags.test.js", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "rollback-regional-import-drills",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/config/outdoor-regions/harz-v1.json", "backend/config/outdoor-regions/innsbruck-alps-v1.json"]
+    },
+    {
+      "id": "rollback-deployment-drill",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/operations/serviceLifecycle.js", "backend/api/index.js"]
+    },
+    {
+      "id": "rollback-immutable-evidence",
+      "status": "partial",
+      "classifications": ["historical_evidence_only", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/operations/releasePackage.js", "backend/test/releasePackage.test.js"]
+    },
+    {
+      "id": "runtime-production-preflight",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/operations/productionConfiguration.js", "backend/src/operations/preflight.js", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "runtime-health-readiness",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/server.js", "backend/src/operations/serviceLifecycle.js", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "runtime-graceful-shutdown",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/operations/serviceLifecycle.js", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "runtime-transport-bounds-cancellation",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "locally_actionable", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/server.js", "backend/src/parseIntent.js", "backend/src/routing/graphHopperProvider.js", "backend/test/routeServer.test.js", "backend/test/outdoorAdventureServer.test.js", "backend/test/intentReliability.test.js"]
+    },
+    {
+      "id": "runtime-provider-resilience-budget",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "locally_actionable", "requires_provider_authorization", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/routing/graphHopperProvider.js", "backend/src/appAttest/routeSessionAuthorizer.js"]
+    },
+    {
+      "id": "runtime-database-lifecycle",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/operations/serviceLifecycle.js", "backend/src/appAttest/postgresAppAttestRepository.js", "backend/src/outdoorResearch/postgresOutdoorResearchRepository.js", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "runtime-deployment-containment",
+      "status": "blocked",
+      "classifications": ["verified_from_current_source", "requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/operations/start.js", "backend/src/operations/serviceLifecycle.js", "backend/api/index.js"]
+    },
+    {
+      "id": "runtime-backup-restore-zero-downtime",
+      "status": "blocked",
+      "classifications": ["requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/operations/serviceLifecycle.js"]
+    },
+    {
+      "id": "runtime-secret-drift-rotation",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/operations/productionConfiguration.js", "backend/src/operations/preflight.js", "backend/config.example.env", "backend/test/productionOperations.test.js"]
+    },
+    {
+      "id": "runtime-dependency-outage",
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/src/operations/serviceLifecycle.js", "backend/src/server.js", "backend/test/productionOperations.test.js", "backend/test/providerFeatureFlags.test.js"]
+    },
+    {
+      "id": "operations-named-owners-oncall",
+      "status": "blocked",
+      "classifications": ["requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/README.md"]
+    },
+    {
+      "id": "operations-alerts-daily-review",
+      "status": "blocked",
+      "classifications": ["requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/operations/operationalEvents.js"]
+    },
+    {
+      "id": "operations-cohort-budget-approval",
+      "status": "blocked",
+      "classifications": ["requires_provider_authorization", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/appAttest/routeSessionAuthorizer.js"]
+    },
+    {
+      "id": "operations-final-go-signatures",
+      "status": "blocked",
+      "classifications": ["blocked_or_not_applicable", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/src/operations/releasePackage.js", "backend/test/releasePackage.test.js"]
+    }
+  ]
+}

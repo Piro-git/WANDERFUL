@@ -1,7 +1,8 @@
 {
   "schemaVersion": 1,
   "checklistVersion": "wanderful-closed-beta-go-no-go-v1",
-  "evaluatedOn": "2026-08-04",
+  "sourceCommit": "0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95",
+  "evaluatedOn": "2026-08-23",
   "currentDecision": "NO_GO",
   "currentProductClassification": "research_guided_closed_beta_not_ready",
   "decisionPolicy": {
@@ -11,15 +12,54 @@
     "receiptRule": "Historical receipts are immutable. Corrections append a new receipt and never rewrite prior evidence."
   },
   "currentDecisionReasons": [
-    "physical_iphone_app_attest_proof_absent",
-    "signed_testflight_production_environment_proof_absent",
-    "https_staging_and_durable_postgis_not_proved",
-    "current_harz_and_innsbruck_imports_absent",
-    "access_v2_and_migration_007_review_incomplete",
-    "v4_provider_and_quality_proof_not_run",
-    "provider_flag_correction_requires_independent_review_and_deployed_receipt",
-    "rollback_and_monitoring_not_rehearsed",
-    "operational_privacy_and_product_ownership_unassigned"
+    "database-app-attest-durable",
+    "database-least-privilege-roles",
+    "database-migrations-repeatable",
+    "database-readonly-cancellation",
+    "database-staging-postgis",
+    "ios-backend-before-client",
+    "ios-beta-surface-qa",
+    "ios-emergency-client-disposition",
+    "ios-strict-v2-client",
+    "operations-alerts-daily-review",
+    "operations-cohort-budget-approval",
+    "operations-final-go-signatures",
+    "operations-named-owners-oncall",
+    "privacy-allowlisted-observability",
+    "privacy-osm-attribution-legal",
+    "privacy-public-support-policy",
+    "privacy-retention-deletion",
+    "provider-beta-budget-ownership",
+    "provider-credential-containment",
+    "provider-exact-fail-closed-flags",
+    "provider-v4-bounded-controls",
+    "quality-access-v2-review",
+    "quality-golden-set-accepted",
+    "quality-truth-boundaries",
+    "quality-v4-four-cases",
+    "regional-harz-current-import",
+    "regional-index-latency-gates",
+    "regional-innsbruck-current-import",
+    "regional-projection-isolation",
+    "rollback-backend-provider-drill",
+    "rollback-deployment-drill",
+    "rollback-immutable-evidence",
+    "rollback-regional-import-drills",
+    "runtime-backup-restore-zero-downtime",
+    "runtime-database-lifecycle",
+    "runtime-dependency-outage",
+    "runtime-deployment-containment",
+    "runtime-graceful-shutdown",
+    "runtime-health-readiness",
+    "runtime-production-preflight",
+    "runtime-provider-resilience-budget",
+    "runtime-secret-drift-rotation",
+    "runtime-transport-bounds-cancellation",
+    "security-apple-team-app-id",
+    "security-physical-negative-cases",
+    "security-physical-positive-flow",
+    "security-signed-entitlement-profile",
+    "security-testflight-production-attest"
   ],
   "domains": [
     {
@@ -116,8 +156,8 @@
           "ownerRole": "database_release_owner",
           "evidenceRequired": ["clean candidate migration digests", "first/second migration ledger receipts", "schema/index/RLS verification"],
           "currentState": "partial",
-          "evidenceReferences": ["backend/scripts/migrate.js", "backend/migrations/001_app_attest.sql", "backend/migrations/006_outdoor_route_membership_point_index.sql"],
-          "blocker": "Migration 007 is concurrent, untracked, and not yet independently accepted.",
+          "evidenceReferences": ["backend/scripts/migrate.js", "backend/migrations/001_app_attest.sql", "backend/migrations/007_routable_highlight_access_geography_index.sql", "backend/migrations/008_outdoor_research_runtime_read_contract.sql", "backend/test/routableHighlightAccessMigration.test.js", "backend/test/outdoorResearchRuntimeReadMigration.test.js"],
+          "blocker": "Migrations 001-008 are tracked and covered by current static tests, but clean disposable PostGIS repeatability, ledger, grants, RLS, index, and rollback evidence is absent.",
           "liveActionExecuted": false
         },
         {
@@ -138,8 +178,8 @@
           "ownerRole": "backend_security_owner",
           "evidenceRequired": ["durable repository integration receipt", "pruner schedule/alert", "weighted budget/concurrency/replay evidence"],
           "currentState": "partial",
-          "evidenceReferences": ["backend/src/appAttest/postgresAppAttestRepository.js", "backend/docs/app-attest-durable-storage.md"],
-          "blocker": "Repository implementation exists; deployed staging proof is absent.",
+          "evidenceReferences": ["backend/src/appAttest/postgresAppAttestRepository.js", "backend/src/appAttest/pruneExpired.js", "backend/src/operations/productionConfiguration.js", "backend/test/postgresAppAttestRepository.test.js", "backend/test/appAttestPrune.test.js", "backend/docs/app-attest-durable-storage.md"],
+          "blocker": "Durable fail-closed composition, timeouts, pruning, replay, budget, and lease contracts have current local tests; deployed schedule, integration, retention, and staging outage proof are absent.",
           "liveActionExecuted": false
         }
       ]
@@ -189,7 +229,7 @@
           "evidenceRequired": ["valid/ready index receipt", "current-volume explain-plan receipt", "route-membership p95 below 1500 ms", "all access operations below 2000 ms"],
           "currentState": "partial",
           "evidenceReferences": ["backend/test/outdoorRouteMembershipPerformance.test.js", "backend/test/outdoorResearchExecutorPostgisIntegration.test.js"],
-          "blocker": "Repository gates exist; current staging-volume evidence and accepted migration 007 are absent.",
+          "blocker": "Repository gates and migrations 007-008 exist; disposable/current staging-volume query plans, latency evidence, and independent database acceptance are absent.",
           "liveActionExecuted": false
         }
       ]
@@ -217,7 +257,7 @@
           "evidenceRequired": ["reviewed parser or deployment-admission correction", "negative configuration tests", "deployed flag-state receipt"],
           "currentState": "partial",
           "evidenceReferences": ["backend/src/appAttest/routeSessionAuthorizer.js", "backend/test/providerFeatureFlags.test.js", "backend/config.example.env", "docs/operations/closed-beta-readiness-v1/feature-flag-state-matrix-v1.json"],
-          "blocker": "Strict parsing and deterministic negative tests are implemented locally; independent review, deployment admission, and a deployed flag-state receipt are absent.",
+          "blocker": "Strict runtime parsing, exact production preflight admission, and deterministic negative tests passed current offline adversarial review; staging/deployed flag-state and zero-work receipts are absent.",
           "liveActionExecuted": false
         },
         {
@@ -228,7 +268,7 @@
           "evidenceRequired": ["authorization reference", "15-call ceiling receipt", "scheduler/circuit receipt", "complete reconciliation and cleanup"],
           "currentState": "absent",
           "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/V4_OPERATIONAL_PROTOCOL.md"],
-          "blocker": "V4 has not run.",
+          "blocker": "Attempts 10-12 are historical blocked receipts with zero provider proof; Attempt 13 is not authorized and no V4 acceptance evidence exists.",
           "liveActionExecuted": false
         },
         {
@@ -254,9 +294,9 @@
           "mandatory": true,
           "ownerRole": "route_contract_review_owner",
           "evidenceRequired": ["reviewed clean commit", "strict V2 backend/Swift corpus", "migration review", "no overlap with concurrent changes"],
-          "currentState": "absent",
-          "evidenceReferences": ["docs/ROUTABLE_HIGHLIGHT_ACCESS_POINTS_V1.md"],
-          "blocker": "Concurrent lane remains dirty and independently unaccepted.",
+          "currentState": "partial",
+          "evidenceReferences": ["docs/ROUTABLE_HIGHLIGHT_ACCESS_POINTS_V1.md", "backend/migrations/007_routable_highlight_access_geography_index.sql", "backend/test/outdoorAdventureContractCorpusV2.test.js", "backend/test/routableHighlightAccessMigration.test.js"],
+          "blocker": "Access V2 and migration 007 are in current source with local tests; disposable PostGIS, live provider, signed-client, and independent product-quality acceptance remain absent.",
           "liveActionExecuted": false
         },
         {
@@ -267,7 +307,7 @@
           "evidenceRequired": ["four canonical case receipts", "access snap and highlight approach metrics", "target deviation and repeat/backtracking metrics", "typed failures/not-run states"],
           "currentState": "absent",
           "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/V4_OPERATIONAL_PROTOCOL.md", "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md"],
-          "blocker": "V4 after access-point integration has not run.",
+          "blocker": "No canonical case executed in Attempts 10-12; those historical receipts add no database, provider, route, or physical-device evidence. Attempt 13 is not authorized.",
           "liveActionExecuted": false
         },
         {
@@ -276,9 +316,9 @@
           "mandatory": true,
           "ownerRole": "independent_quality_review_owner",
           "evidenceRequired": ["versioned golden set", "reviewed expected outcomes", "candidate evaluation receipt", "regression disposition"],
-          "currentState": "absent",
-          "evidenceReferences": [],
-          "blocker": "The golden-set lane is concurrent and has not supplied accepted evidence to this task.",
+          "currentState": "partial",
+          "evidenceReferences": ["docs/route-quality/golden-set-v1/golden-cases-v1.json", "backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4.test.js"],
+          "blocker": "The versioned Golden Set validates offline, but no independent expert has accepted a closed-beta candidate and no live candidate route-quality receipt exists.",
           "liveActionExecuted": false
         },
         {
@@ -289,7 +329,7 @@
           "evidenceRequired": ["contract/presentation review", "partial/unverified state review", "false-claim regression tests", "participant copy review"],
           "currentState": "partial",
           "evidenceReferences": ["TrailMind/Views/Research/ResearchRoutePresentation.swift", "docs/OUTDOOR_RESEARCH_PRESENTATION_UX_V1.md"],
-          "blocker": "Current concurrent V2 presentation is not independently accepted on a signed beta build.",
+          "blocker": "Truth-boundary source and local regression evidence exist, but this backend audit did not perform the active iOS lane's independent signed-build, participant-copy, or physical-device review.",
           "liveActionExecuted": false
         }
       ]
@@ -306,7 +346,7 @@
           "evidenceRequired": ["signed-build contract corpus", "gate dependency receipt", "malformed/lineage rejection", "no sensitive safe-error output"],
           "currentState": "partial",
           "evidenceReferences": ["TrailMind/Services/OutdoorAdventurePlanningClient.swift", "TrailMindTests/OutdoorAdventurePlanningClientTests.swift"],
-          "blocker": "Concurrent V2 client changes and signed-device behavior are unreviewed/unproved.",
+          "blocker": "Strict V2 client source/tests exist at the reviewed source commit, but this backend audit did not execute iOS tests or prove the exact signed-device build and gate behavior.",
           "liveActionExecuted": false
         },
         {
@@ -354,9 +394,9 @@
           "mandatory": true,
           "ownerRole": "privacy_engineering_owner",
           "evidenceRequired": ["event schema version", "synthetic sentinel test", "sink rejection test", "dashboard field review"],
-          "currentState": "absent",
-          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/OBSERVABILITY_AND_PRIVACY_V1.md"],
-          "blocker": "Policy exists; deployed pipeline is unproved.",
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/operations/operationalEvents.js", "backend/test/productionOperations.test.js", "docs/operations/closed-beta-readiness-v1/OBSERVABILITY_AND_PRIVACY_V1.md"],
+          "blocker": "A local allowlisted structured-event sink and synthetic sentinel test now exist; no deployed sink, metrics pipeline, dashboard, alert route, or access review is proved.",
           "liveActionExecuted": false
         },
         {
@@ -404,9 +444,9 @@
           "mandatory": true,
           "ownerRole": "incident_commander",
           "evidenceRequired": ["kill-sequence receipt", "zero-work proof", "provider stop/rotation canary", "lease reconciliation"],
-          "currentState": "absent",
-          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md"],
-          "blocker": "No deployed rollback drill exists.",
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/server.js", "backend/src/operations/serviceLifecycle.js", "backend/test/productionOperations.test.js", "backend/test/providerFeatureFlags.test.js", "docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md"],
+          "blocker": "Local drain, late-work rejection, fail-closed flags, and zero-work tests pass; no deployed kill sequence, provider stop/rotation canary, or lease reconciliation drill exists.",
           "liveActionExecuted": false
         },
         {
@@ -440,6 +480,122 @@
           "currentState": "partial",
           "evidenceReferences": ["docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md"],
           "blocker": "Historical inputs exist, but staging receipt-store controls are not deployed.",
+          "liveActionExecuted": false
+        }
+      ]
+    },
+    {
+      "id": "domain-backend-runtime",
+      "name": "Backend runtime and deployment readiness",
+      "requirements": [
+        {
+          "id": "runtime-production-preflight",
+          "title": "Production configuration admission fails closed without printing values",
+          "mandatory": true,
+          "ownerRole": "backend_release_owner",
+          "evidenceRequired": ["current preflight tests", "presence-only candidate receipt", "deployment admission enforcement"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/operations/productionConfiguration.js", "backend/src/operations/preflight.js", "backend/test/productionOperations.test.js"],
+          "blocker": "Deterministic local admission and secret-exclusion tests pass; no staging environment, candidate preflight receipt, or deployment admission enforcement is proved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-health-readiness",
+          "title": "Liveness is dependency-free and readiness is coarse, cached, and fail-closed",
+          "mandatory": true,
+          "ownerRole": "backend_operations_owner",
+          "evidenceRequired": ["current endpoint tests", "ingress exposure decision", "staging dependency-outage probes"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/server.js", "backend/src/operations/serviceLifecycle.js", "backend/test/productionOperations.test.js"],
+          "blocker": "Local endpoint and state-transition tests pass; no ingress policy, deployed probe behavior, or staging outage receipt exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-graceful-shutdown",
+          "title": "One bounded drain deadline rejects late work, aborts in-flight work, closes sockets and pools, and exits on timeout",
+          "mandatory": true,
+          "ownerRole": "backend_operations_owner",
+          "evidenceRequired": ["current shutdown race tests", "orchestrator termination settings", "staging rolling-restart and forced-deadline receipt"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/operations/serviceLifecycle.js", "backend/test/productionOperations.test.js"],
+          "blocker": "Local graceful, forced-deadline, signal-exit, and partial-startup cleanup tests pass; no orchestrator or zero-downtime restart proof exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-transport-bounds-cancellation",
+          "title": "HTTP bodies, headers, responses, timeouts, cancellation, and disconnect propagation are bounded",
+          "mandatory": true,
+          "ownerRole": "backend_security_owner",
+          "evidenceRequired": ["transport regression tests", "provider response byte ceiling", "staging slow-client and disconnect receipt"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/server.js", "backend/src/parseIntent.js", "backend/src/routing/graphHopperProvider.js", "backend/test/routeServer.test.js", "backend/test/outdoorAdventureServer.test.js", "backend/test/intentReliability.test.js"],
+          "blocker": "Request, intent-provider response, server timeout, and cancellation contracts have current tests, but the ordinary GraphHopper route response has no explicit byte ceiling and staging transport behavior is unproved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-provider-resilience-budget",
+          "title": "Provider concurrency, rate, retry, response bounds, circuit, cost, and outage controls are beta-approved",
+          "mandatory": true,
+          "ownerRole": "provider_operations_owner",
+          "evidenceRequired": ["owner-approved budget", "ordinary runtime circuit/response ceiling", "authorized staging outage and rate-limit receipt"],
+          "currentState": "absent",
+          "evidenceReferences": ["backend/src/routing/graphHopperProvider.js", "backend/src/appAttest/routeSessionAuthorizer.js", "backend/test/providerFeatureFlags.test.js"],
+          "blocker": "Authorization budgets, concurrency leases, a timeout, cancellation, and no automatic retries exist, but the ordinary route provider has no circuit breaker or explicit response byte ceiling and no provider authorization/budget/staging evidence exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-database-lifecycle",
+          "title": "Runtime pools use bounded connection/query/statement/transaction lifecycles and least-privilege separation",
+          "mandatory": true,
+          "ownerRole": "backend_database_owner",
+          "evidenceRequired": ["current composition tests", "separate role grant/denial proof", "staging pool saturation and recovery receipt"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/operations/serviceLifecycle.js", "backend/src/appAttest/postgresAppAttestRepository.js", "backend/src/outdoorResearch/postgresOutdoorResearchRepository.js", "backend/test/productionOperations.test.js", "backend/test/postgresAppAttestRepository.test.js"],
+          "blocker": "Source enforces explicit non-aliased pool URLs and bounded local pool/query contracts; actual roles, grants, pooler behavior, saturation, cancellation, and recovery require disposable PostGIS and staging.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-deployment-containment",
+          "title": "The admitted deployment entry point has least privilege, private dependencies, bounded egress, and equivalent lifecycle controls",
+          "mandatory": true,
+          "ownerRole": "platform_security_owner",
+          "evidenceRequired": ["platform decision", "artifact and process identity", "network/egress/secret/role policy", "runtime lifecycle equivalence"],
+          "currentState": "absent",
+          "evidenceReferences": ["backend/src/operations/start.js", "backend/src/operations/serviceLifecycle.js", "backend/api/index.js", "backend/README.md"],
+          "blocker": "The standalone entry point has local admission/lifecycle contracts; no platform is selected or deployed, and the bare serverless adapter is explicitly not admitted for closed beta.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-backup-restore-zero-downtime",
+          "title": "Backup, restore, rollback compatibility, restart, and zero-downtime behavior are rehearsed",
+          "mandatory": true,
+          "ownerRole": "release_operations_owner",
+          "evidenceRequired": ["backup policy and successful restore", "migration compatibility decision", "rolling restart", "artifact/config rollback"],
+          "currentState": "absent",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md", "docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md"],
+          "blocker": "No database, backup, restore, deployment, rolling restart, or rollback rehearsal exists.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-secret-drift-rotation",
+          "title": "Presence-only configuration drift checks and secret injection/rotation containment are operated",
+          "mandatory": true,
+          "ownerRole": "security_operations_owner",
+          "evidenceRequired": ["current preflight test", "secret owner/access/rotation procedure", "candidate configuration digest and rotation drill"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/operations/productionConfiguration.js", "backend/src/operations/preflight.js", "backend/config.example.env", "backend/test/productionOperations.test.js", "docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md"],
+          "blocker": "Local preflight emits no values and detects missing/malformed/drifted settings; no secret manager, owners, access review, deployed digest, or rotation/revocation drill is proved.",
+          "liveActionExecuted": false
+        },
+        {
+          "id": "runtime-dependency-outage",
+          "title": "Required dependency outages make readiness false and protected work fail closed without leaking detail",
+          "mandatory": true,
+          "ownerRole": "backend_operations_owner",
+          "evidenceRequired": ["current fail-closed tests", "staging database/provider/partial-start outage matrix", "alert and recovery receipt"],
+          "currentState": "partial",
+          "evidenceReferences": ["backend/src/operations/serviceLifecycle.js", "backend/src/server.js", "backend/test/productionOperations.test.js", "backend/test/providerFeatureFlags.test.js"],
+          "blocker": "Local readiness, provider-disabled, late-work, and partial-start tests fail closed; no deployed outage, alert, recovery, or dependency isolation proof exists.",
           "liveActionExecuted": false
         }
       ]

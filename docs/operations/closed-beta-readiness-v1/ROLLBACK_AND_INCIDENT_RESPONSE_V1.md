@@ -2,6 +2,13 @@
 
 Status: **RUNBOOK ONLY — NO ROLLBACK OR DRILL EXECUTED**
 
+Current source boundary: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`.
+Local tests prove exact false provider admission, disabled research zero-work,
+readiness transitions, late-work rejection, bounded drain, forced signal exit,
+and partial-startup cleanup. They do not prove configuration propagation,
+provider stoppage, credential rotation, deployment rollback, database restore,
+or an orchestrator restart.
+
 ## Principles
 
 - Stop provider traffic first when safety, privacy, authorization, or quality is
@@ -21,16 +28,20 @@ Status: **RUNBOOK ONLY — NO ROLLBACK OR DRILL EXECUTED**
 
 Execute serially unless the incident commander orders a narrower containment:
 
-1. Set backend `OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED=false`.
-2. Set backend `OUTDOOR_RESEARCH_PLANNING_ENABLED=false`.
-3. Set backend `OUTDOOR_EVIDENCE_PROVIDER_ENABLED=false`.
-4. Set `ROUTE_PROVIDER_ENABLED=false` and `INTENT_PROVIDER_ENABLED=false`.
+1. Set `ROUTE_PROVIDER_ENABLED=false` and `INTENT_PROVIDER_ENABLED=false`.
+2. Set backend `OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED=false`.
+3. Set backend `OUTDOOR_RESEARCH_PLANNING_ENABLED=false`.
+4. Set backend `OUTDOOR_EVIDENCE_PROVIDER_ENABLED=false`.
 5. Confirm all insecure/local/in-memory/mock flags false.
-6. Deploy/apply the configuration atomically and run provider-independent
-   health plus disabled zero-work probes.
-7. Stop cohort expansion and notify the on-call/product/privacy owners with a
+6. Run the presence-only `npm run ops:preflight` against the proposed contained
+   state, apply it atomically through the approved platform path, and wait for
+   old instances to drain.
+7. Require `GET /health/live` to remain live, `GET /health/ready` to become
+   ready only on the contained configuration, and disabled zero-work probes to
+   show no new authorization/database/provider/lease/rate-window work.
+8. Stop cohort expansion and notify the on-call/product/privacy owners with a
    typed incident class.
-8. Prepare a client build with `ROUTABLE_HIGHLIGHT_ACCESS_ENABLED`,
+9. Prepare a client build with `ROUTABLE_HIGHLIGHT_ACCESS_ENABLED`,
    `RESEARCH_GUIDED_PLANNING_ENABLED`, and `OUTDOOR_EVIDENCE_ENABLED` false.
    Distribute only after normal signed-build review; do not claim it as the
    immediate containment step.
@@ -182,6 +193,15 @@ Before beta, the platform must demonstrate:
 
 Record artifact digests and typed results only. Vendor-specific commands belong
 in the private platform procedure, not in this public-safe runbook.
+
+The current standalone process begins drain on `SIGTERM`/`SIGINT`, marks
+readiness false, rejects late work before body parsing/authorization, aborts
+in-flight work at one configured deadline, closes sockets and owned pools, and
+forces a nonzero process exit if that deadline is exceeded. Evidence:
+`backend/src/operations/serviceLifecycle.js` and
+`backend/test/productionOperations.test.js`. A platform grace period must be
+longer than the configured application deadline and must be proved in staging;
+no value is prescribed here.
 
 ## Audit evidence and closure
 

@@ -1,6 +1,10 @@
 # V4 Operational Protocol
 
-Status: **PREPARED, NOT EXECUTED**
+Status: **HISTORICAL/FUTURE PROTOCOL — ATTEMPTS 10-12 BLOCKED; ATTEMPT 13 NOT AUTHORIZED**
+
+Current package source boundary:
+`0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`. This refresh performs no V4
+execution, database provisioning, provider admission, or feature enablement.
 
 ## Objective
 
@@ -25,10 +29,10 @@ states pass; a pass in one lane never fills another lane.
 
 ## Hard prerequisites
 
-1. The access-point V2 implementation, Swift contract/presentation changes, and
-   migration 007 have completed independent review and are in one clean,
-   identified candidate commit. The current dirty concurrent lane is not valid
-   proof input.
+1. The access-point V2 implementation and migration 007 are in current source,
+   but a future run still requires one clean exact candidate plus independent
+   backend, database, signed-client, and product-quality acceptance. A dirty or
+   concurrently changing lane is never valid proof input.
 2. V1/V2/V3 markdown and JSON summaries, the official 18-case summary, and all
    release receipts are read-only inputs with recorded pre/post hashes.
 3. Staging migrations apply repeatably through the latest accepted migration.
@@ -97,9 +101,11 @@ constructs a final cleanup-success summary.
 
 For every future attempt, first apply
 `V4_PROOF_RUN_CLOCK_CONTRACT.md` and
-`V4_PROOF_RUN_IDENTITY_CONTRACT.md`. Attempts 1–5 retain their historical
-schema-1 clocks, identities, and outcomes. A future attempt may not reuse their
-fixed timestamps, authorization references, or ledger namespaces.
+`V4_PROOF_RUN_IDENTITY_CONTRACT.md`. Attempts 1–5 and 10–12 retain their
+historical bytes, clocks/identities when created, outcomes, and cleanup states.
+Attempts 6–9 are not reconstructed as admissible evidence. A future authorized
+attempt may not reuse any prior timestamp, authorization reference, identity,
+or ledger namespace.
 
 ### A. Admission and immutable inputs
 
@@ -261,11 +267,20 @@ Any cleanup or reconciliation failure makes V4 failed regardless of route
 results. V4 success still leaves the product NO-GO until the machine-readable
 closed-beta checklist is fully verified and approved.
 
-## Attempt 8 operational entrypoints
+## Historical Attempts 10-12 and future entrypoints
 
-Attempt 8 remains **not executed**. It requires a new authorization reference,
-fresh ledger namespace, reviewed clean commit, isolated loopback proof database,
-and provider credential supplied only to the execution process.
+The immutable receipts in `docs/release/` are authoritative for Attempts
+10–12. Attempt 10 was blocked at committed runtime-database admission. Attempt
+11 was blocked by storage safety before database provisioning. Attempt 12
+stopped on credential-containment failure before database provisioning and
+later also recorded storage below its committed threshold. They
+produced no accepted database/provider/route/physical-device evidence and
+cannot be resumed or reused. Attempt 13 is explicitly not authorized and must
+not be started by this package refresh.
+
+Only after a new explicit authorization may a future attempt use the following
+entrypoints with a fresh identity, ledger namespace, isolated approved proof
+database, and credential supplied only to the execution process.
 
 The execution entrypoint is
 `backend/scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v4.js`.
@@ -290,6 +305,6 @@ atomically/exclusively last. Any cleanup failure publishes no final summary;
 the successfully published final summary is retained for review and is not a
 task-owned runtime artifact.
 
-Attempt 7 is unavailable as admissible evidence, was not reconstructed, and
-cannot supply identity, route-quality, release, or beta evidence. Its prior
-authorization and ledger namespace must not be reused.
+Attempts 6–9 remain unavailable as admissible current evidence and cannot
+supply identity, route-quality, release, or beta claims. No prior authorization
+or ledger namespace may be reused.

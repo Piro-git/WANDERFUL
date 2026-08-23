@@ -2,6 +2,12 @@
 
 Status: **NOT EXECUTED**
 
+Current backend source boundary:
+`0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`. Current automated verifier,
+repository, endpoint, session-authorization, replay, pruning, flag, and
+transport tests are prerequisites only; they are not physical-device or
+TestFlight evidence.
+
 ## Purpose and proof boundary
 
 This protocol proves one explicitly authorized physical iPhone can register an
@@ -40,12 +46,14 @@ All items must be recorded as verified before the proof window opens:
    categories and bundle versions, and reviewed locked Node dependencies for
    CBOR, ASN.1, X.509, PostgreSQL, and platform crypto.
 8. A durable staging PostgreSQL repository with reviewed migrations applied,
-   separate product and cancellation pools, pruning scheduled, backups defined,
-   and no in-memory App Attest fallback.
+   an explicit App-security runtime pool, separate research and cancellation
+   roles/pools when research is used, pruning scheduled, backups defined, and
+   no in-memory App Attest fallback.
 9. Current, active, isolated regional evidence and projection only if the one
    planning case will execute research. All ordinary client/backend research
    flags begin false.
-10. A backend admission check proving exact-value flags, bounded costs,
+10. A passing `npm run ops:preflight` presence-only receipt for the exact
+    candidate plus deployed checks proving exact-value flags, bounded costs,
     concurrency, timeouts, and a one-call provider ceiling for this proof.
 11. Explicit, time-bounded provider authorization for case 5 only. The provider
     credential is owned by backend operations, injected through the staging

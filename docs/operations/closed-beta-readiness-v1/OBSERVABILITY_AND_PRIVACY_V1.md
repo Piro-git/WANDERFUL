@@ -2,6 +2,24 @@
 
 Status: **POLICY PROPOSED; DEPLOYED CONTROLS NOT VERIFIED**
 
+Current source boundary: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`.
+
+## Implemented and locally proved
+
+`backend/src/operations/operationalEvents.js` implements a vendor-neutral JSON
+event sink for a finite event vocabulary. It drops unknown fields, request IDs,
+prompts, coordinates, URLs, payloads, and non-allowlisted/high-cardinality
+values; durations and counts are bucketed. The standalone service passes this
+logger to route, outdoor-evidence, outdoor-adventure, lifecycle, and intent
+lease-release events. `backend/test/productionOperations.test.js` proves a
+synthetic sensitive sentinel is absent from output and an unknown event is not
+emitted.
+
+That is local application behavior only. No external sink, metric exporter,
+trace system, dashboard, alert destination, access policy, sampling policy, or
+retention enforcement is configured or proved. App Attest endpoints do not yet
+emit the full proposed aggregate outcome families below.
+
 ## Objective
 
 Operate a small beta without recording a person's route request, precise
@@ -14,8 +32,8 @@ typed states, and contract versions.
 Every event has an allowlisted schema and rejects unknown fields:
 
 - `eventName` from a reviewed finite set;
-- UTC timestamp bucket, environment label, deployment digest prefix, and
-  feature-contract version;
+- UTC timestamp, with any environment/deployment/contract labels added only
+  from a separately reviewed finite allowlist;
 - coarse `regionId` (`harz-v1`, `innsbruck-alps-v1`, `unsupported`, or
   `unknown`), activity, and route type;
 - result state and typed error code;
@@ -56,7 +74,7 @@ Errors must be mapped to a small allowlist before observation. Provider or
 database error bodies are discarded. Sanitizer failures fail the receipt/proof;
 they are not logged with the offending value.
 
-## Metric families
+## Proposed metric families — not implemented proof
 
 | Metric | Labels | Purpose |
 | --- | --- | --- |
@@ -78,10 +96,11 @@ they are not logged with the offending value.
 Exact meter values may exist transiently for validation and V4's sanitized
 case receipt, but normal beta monitoring uses reviewed buckets only.
 
-## Alert thresholds and automatic action
+## Proposed alert targets and automatic action — not deployed proof
 
-Thresholds are intentionally conservative for a small beta. A threshold change
-requires review, versioning, and a rollback entry.
+These are recommended initial targets for owner review, not a current SLA, SLO,
+alert, or monitoring fact. A target change requires review, versioning, and a
+rollback entry.
 
 | Alert | Threshold | Severity | Immediate action | Clear condition |
 | --- | --- | --- | --- | --- |
@@ -104,7 +123,26 @@ and cannot justify expansion.
 
 ## Retention and access
 
-Proposed privacy-minimizing defaults, pending owner/legal approval:
+The only current callable retention seam is the bounded App Attest expiry
+pruner:
+
+```sh
+cd backend
+npm run ops:prune-app-attest
+```
+
+After configuration is injected outside the command line, it deletes expired
+challenges, route sessions, rate windows, and provider leases and emits fixed
+aggregate counts only. Current evidence:
+`backend/src/appAttest/pruneExpired.js`,
+`backend/src/appAttest/postgresAppAttestRepository.js`,
+`backend/test/appAttestPrune.test.js`, and
+`backend/test/postgresAppAttestRepository.test.js`. No scheduler or deployed
+execution receipt exists. Registered keys and Apple attestation receipts are
+out of scope for this pruner and require a separately approved retention and
+deletion operation.
+
+Illustrative privacy-minimizing targets, pending explicit owner/legal approval:
 
 - staging structured application logs: 7 days;
 - closed-beta structured application logs: 14 days;
@@ -121,10 +159,11 @@ Proposed privacy-minimizing defaults, pending owner/legal approval:
   evidence according to the staging runbook; immutable import provenance stays
   under its approved audit retention.
 
-Only the backend/on-call role can view structured logs; only privacy/security
-auditors can access receipts; provider and database administrators cannot use
-these stores for product analytics. Access is reviewed quarterly and after role
-changes. Export is disabled by default.
+Recommended access policy: restrict structured logs to the minimum named
+backend/on-call role and receipts to named privacy/security auditors; prohibit
+provider/database administrators from reusing them for product analytics;
+review access on an owner-approved cadence; and disable export unless approved.
+None of those controls is currently proved.
 
 ## Sanitization and enforcement
 
@@ -142,7 +181,7 @@ changes. Export is disabled by default.
    restrict access, follow approved deletion/notification policy, rotate exposed
    credentials without inspecting them, and preserve only safe incident facts.
 
-## Dashboards
+## Proposed dashboards — none deployed
 
 Maintain four small dashboards:
 

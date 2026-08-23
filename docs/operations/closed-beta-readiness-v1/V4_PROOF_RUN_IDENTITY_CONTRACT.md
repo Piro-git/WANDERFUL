@@ -1,6 +1,9 @@
 # V4 Proof Run Identity Contract
 
-Status: **VERSIONED FOR FUTURE ATTEMPTS; ATTEMPTS 1–5 BYTE-EXACT**
+Status: **VERSIONED FOR A FUTURE AUTHORIZED ATTEMPT; HISTORICAL RECEIPTS BYTE-EXACT**
+
+Attempts 10–12 are historical blocked receipts in current source. Attempt 13
+is not authorized and no identity or ledger namespace may be created for it.
 
 The original V4 summary validator was also the Attempt 1 validator. It required
 both summary commit fields to equal `cc4f478580ed883223e7eaa6140e686b2e5f5f6d`
@@ -75,8 +78,9 @@ byte-level Markdown and JSON hashes. Their bytes, identities, clocks, statuses,
 cleanup evidence, and semantic digests are unchanged. There is no permissive
 fallback from a future identity to a historical receipt.
 
-Attempt 7 is unavailable as admissible evidence and was not reconstructed. The
-only retained operational observation is that it terminated with
-`invalid_v4_summary`. It cannot support route-quality, release, or closed-beta
-claims, and its unused authorization cannot be reused. Any next live execution
-must be a newly authorized Attempt 8 with a fresh identity and ledger namespace.
+Attempts 6–9 are unavailable as admissible evidence and were not reconstructed.
+Attempts 10–12 remain governed by their committed blocked receipts and cannot
+support route-quality, release, or closed-beta claims. No unused authorization
+can be reused. Any future live execution must have a new explicit authorization,
+fresh identity, and fresh ledger namespace; Attempt 13 is not currently such an
+authorized execution.

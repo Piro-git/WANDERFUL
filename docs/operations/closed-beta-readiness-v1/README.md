@@ -1,203 +1,173 @@
-# Wanderful Physical-Device and Closed-Beta Readiness V1
+# TrailMind Backend Closed-Beta Readiness V1
 
-Status: **NO-GO — operational plan complete; live evidence absent**
-Audit date: 2026-08-04
-Scope: Harz and Innsbruck, hiking and trail-running loops only
+Status: **NO-GO**  
+Current-source audit: **2026-08-23**  
+Reviewed backend source: `0eaf7af8ab45ec1f4e7cd39239d8977e0d1bef95`  
+Parent main at source checkpoint: `3b437fc31a12f32b6e7348a58e0e852db6340eab`
 
-## Outcome
+## Executive verdict
 
-This package turns the current repository contracts into an executable,
-fail-closed path to a small closed beta. It does not claim that the path has
-been executed. No deployment, signing, device boot, provisioning, migration,
-regional import, provider call, feature enablement, or production-system call
-was performed while creating it.
+The backend now has locally verified production admission, coarse health,
+durable runtime composition, privacy-safe operational events, bounded drain,
+App Attest pruning, and a false-green-resistant package validator. Those
+changes remove important source-level P2 operational defects. They do not make
+the product deployable or beta-ready by themselves.
 
-The product remains **NO-GO**. In particular:
+The current decision remains **NO-GO** because no admitted HTTPS staging
+deployment, durable PostgreSQL/PostGIS environment, least-privilege grant
+proof, backup/restore rehearsal, physical-iPhone App Attest proof, signed
+TestFlight proof, provider authorization/budget, deployed monitoring/alerts,
+secret-rotation drill, or rollback rehearsal exists. The ordinary GraphHopper
+route adapter also lacks an explicit upstream response-byte ceiling and an
+ordinary-runtime circuit breaker. Every mandatory unresolved item is listed by
+ID in `go-no-go-checklist-v1.json`; missing evidence cannot become a pass.
 
-- no signed physical-iPhone App Attest proof or TestFlight proof exists;
-- no approved HTTPS staging deployment with durable PostgreSQL/PostGIS exists;
-- the concurrent routable-highlight V2 implementation and migration 007 have
-  not yet completed independent review;
-- no V4 provider proof exists after access-point integration;
-- current Harz and Innsbruck imports from earlier proofs were disposable and
-  were removed;
-- `ROUTE_PROVIDER_ENABLED` and `INTENT_PROVIDER_ENABLED` now use a locally
-  verified strict opt-in parser, but independent review and a deployed
-  flag-state receipt are still absent;
-- iOS feature flags are build-time settings, not an immediate remote kill
-  switch; emergency control therefore starts at the backend;
-- privacy, operational ownership, Apple-team, support, and retention decisions
-  remain open.
+This refresh performed no deployment, feature enablement, provider call,
+database provisioning, import, signing, device, cloud, DNS, or production
+mutation.
 
-`go-no-go-checklist-v1.json` is authoritative: GO is possible only when every
-mandatory item has verified evidence and an accountable owner.
+## Evidence classes
 
-## Current audited architecture
+The package uses these meanings consistently:
+
+- **Current automated proof:** a deterministic test at the reviewed source
+  commit passed in the current run.
+- **Current source verification:** the implementation was inspected at the
+  reviewed source commit but may still require an external runtime proof.
+- **Historical evidence only:** an immutable earlier receipt describes its own
+  run and cannot prove the current service or deployment.
+- **External blocker:** proof requires disposable PostGIS, staging/deployment,
+  a physical iPhone/App Attest environment, provider authorization, or an
+  owner/cloud decision.
+
+Recommended targets, proposed SLOs, and operator procedures are not evidence
+that a deployed system currently implements them.
+
+## What current code and tests prove locally
+
+| Contract | Current evidence | Boundary |
+| --- | --- | --- |
+| Production preflight | `backend/src/operations/productionConfiguration.js`, `backend/src/operations/preflight.js`, `backend/test/productionOperations.test.js` | Presence/exact parsing only; it performs no database/provider call and proves no deployed configuration. |
+| Durable App Attest admission | `backend/src/operations/serviceLifecycle.js`, `backend/src/appAttest/appAttestRuntime.js`, `backend/test/productionOperations.test.js`, `backend/test/providerFeatureFlags.test.js` | Production startup requires a durable PostgreSQL repository and real verifier; actual database grants/connectivity require staging. |
+| Provider flag fail-closed behavior | `backend/src/appAttest/routeSessionAuthorizer.js`, `backend/test/providerFeatureFlags.test.js` | Application parsers accept normalized `true`, `yes`, or `1`; production preflight permits exact `true` or `false` only. A deployed receipt is absent. |
+| Disabled zero-work behavior | `backend/src/server.js`, `backend/test/outdoorAdventureServer.test.js`, `backend/test/providerFeatureFlags.test.js` | Disabled research/provider paths consume no authorization, database, provider, lease, or rate-window work in local fakes. |
+| Liveness/readiness | `backend/src/server.js`, `backend/src/operations/serviceLifecycle.js`, `backend/test/productionOperations.test.js` | Liveness performs no dependency work; readiness returns only `ready`/`not_ready` from cached probes. Ingress behavior is unproved. |
+| Drain and shutdown | `backend/src/operations/serviceLifecycle.js`, `backend/test/productionOperations.test.js` | One deadline, late-work rejection, abort, pool/socket close, partial-start cleanup, and forced nonzero signal exit are locally tested. Orchestrator behavior is unproved. |
+| Request/content/cancellation bounds | `backend/src/server.js`, `backend/src/parseIntent.js`, `backend/test/routeServer.test.js`, `backend/test/outdoorAdventureServer.test.js`, `backend/test/intentReliability.test.js` | Content type, body size, intent response size, timeout, disconnect, and cancellation regressions pass. Ordinary GraphHopper response bytes remain unbounded. |
+| App Attest replay/budget/pruning | `backend/src/appAttest/postgresAppAttestRepository.js`, `backend/src/appAttest/pruneExpired.js`, `backend/test/postgresAppAttestRepository.test.js`, `backend/test/appAttestPrune.test.js` | Transactions, counter compare-and-set, request replay, weighted windows, leases, timeouts, App-security role URL precedence, aggregate pruning output, and pool cleanup are tested with fakes. Physical and deployed proof is absent. |
+| Privacy-safe operational events | `backend/src/operations/operationalEvents.js`, `backend/test/productionOperations.test.js` | Unknown/high-cardinality fields and synthetic sensitive sentinels are dropped locally. No deployed sink, metric exporter, dashboard, or alert route exists. |
+| Release package validation | `backend/src/operations/releasePackage.js`, `backend/test/releasePackage.test.js` | Source binding, package inventory, gate coverage/status, blocker reconciliation, unsafe feature states, evidence paths, and false-green decisions are validated. |
+
+The complete deterministic backend suite passed **801/801** with **0 skips**,
+`npm run build` passed, and the offline outdoor-adventure quality evaluation
+passed **101/101** with zero live traffic. These totals are current verification
+results, not staging receipts.
+
+## Current source findings that remain blockers
+
+- `backend/src/routing/graphHopperProvider.js` has timeout, cancellation,
+  manual redirect, HTTPS validation, and no automatic retry, but reads a
+  successful ordinary route response through `response.json()` without an
+  explicit byte ceiling and has no ordinary-runtime circuit breaker.
+- `backend/api/index.js` exports the bare request handler. It does not execute
+  standalone preflight, explicit pool composition, cached dependency
+  readiness, or signal-driven drain. It is not an admitted closed-beta entry
+  point until a platform-specific equivalent is proved.
+- The source does not configure broad CORS or trust proxy-forwarded client IP
+  headers. It uses the socket peer unless an explicit resolver is injected.
+  The correct ingress identity/rate-limit design remains a platform decision.
+- Error responses are bounded allowlisted messages without stack traces or
+  dependency detail. `Retry-After` is the only forwarded endpoint header and
+  accepts bounded decimal seconds.
+- App Attest pruning deletes expired challenges, route sessions, rate windows,
+  and provider leases. It does not delete registered keys or Apple receipts;
+  no retention period or deletion authority is approved.
+- Metrics, alerts, dashboards, on-call routing, SLOs, backup objectives,
+  zero-downtime behavior, and incident contacts in this package are proposals,
+  not deployed facts.
+
+## Trust boundaries
 
 ```text
-physical iPhone
-  -> DCAppAttestService support check and installation key
-  -> one-time registration challenge
-  -> attestation object verified by the backend
-  -> durable PostgreSQL registered-key record
-  -> one-time route-session challenge
-  -> assertion over canonical challenge/key/nonce request data
-  -> atomic assertion-counter update
-  -> opaque route-session token (hash stored server-side)
-  -> fixed-cost authorization plus unique request ID
-  -> outdoor planning feature and schema gates
-  -> repeatable-read, read-only PostGIS research snapshot
-  -> bounded provider routing
-  -> strict response validation and verified route geometry
+iOS client
+  -> HTTPS ingress and operator-selected peer identity boundary
+  -> Node HTTP parser, body limits, cancellation, and drain state
+  -> App Attest verifier and durable session authorization
+  -> App-security PostgreSQL role/pool
+  -> optional outdoor research/evidence PostgreSQL roles/pools
+  -> optional GraphHopper or remote intent provider
+  -> allowlisted application events -> operator-selected log/metric sinks
+
+operator-only migration/import/prune/backup/restore roles
+  -> separately authorized database and evidence operations
 ```
 
-### iOS contract
+Exact prompts, coordinates, geometry, App Attest assertions, key IDs,
+credentials, database/provider URLs, provider responses, and sensitive headers
+must not cross into health, preflight, logs, metrics, or receipts.
 
-- `AppAttestService` stores only the App Attest key identifier in the
-  Keychain. Attestation and assertion objects are transient request material.
-- A new key is registered through `/api/app-attest/challenge` and
-  `/api/app-attest/register`. A registered key obtains a route session through
-  a route-session challenge and `/api/app-attest/route-session`.
-- Route-session client data is a length-prefixed canonical sequence containing
-  a schema label, method, path, server challenge, key identifier, and 32-byte
-  session nonce. The assertion signs the SHA-256 digest of that sequence.
-- `RouteSessionService` keeps the returned session in memory, accounts for
-  local remaining cost, refreshes before expiry, shares concurrent refreshes,
-  and invalidates once on an expired/exhausted/invalid response.
-- The planning client uses a fixed authorization cost of 12, a unique request
-  ID, bounded bodies, and one refresh attempt. It validates either the strict
-  V1 or V2 response contract before presentation.
-- Release and non-loopback physical-device paths use App Attest. The insecure
-  placeholder authorizer exists only in Debug Simulator builds for exact local
-  loopback HTTP URLs.
-- The Release entitlement declares the App Attest production environment. A
-  signed profile/application-identifier match has not been proved.
+## Promotion dependency order
 
-### Backend contract
+1. Accept the exact source/evidence manifest and keep every provider/client
+   feature false.
+2. Select an admitted runtime/ingress/secret/egress design and named owners.
+3. Provision isolated HTTPS staging plus private PostgreSQL/PostGIS with
+   separate provisioner, migration, App-security, research, cancellation,
+   evidence, pruner, and audit authorities.
+4. Run production preflight, migrations 001-008, denied-access tests, backup
+   and restore, restart/drain, dependency-outage, and rollback exercises with
+   provider traffic disabled.
+5. Import/project current regional evidence only under separately authorized
+   data operations, then prove isolation, freshness, indexes, latency, and
+   cancellation using disposable/staging PostGIS.
+6. Execute the physical-iPhone development App Attest protocol, then the
+   independently signed TestFlight production-environment protocol.
+7. Obtain new provider authority and owner-approved cost/rate/concurrency/
+   circuit limits. Attempt 13 is not authorized and must not start.
+8. Complete route-quality, truth-boundary, monitoring, privacy, retention,
+   support, incident, and rollback gates.
+9. Re-run the package validator against the exact deployment candidate. This V1
+   validator admits only a reconciled **NO-GO** package and cannot authorize GO;
+   a separately reviewed promotion gate is required after every mandatory item
+   has real evidence and approval.
 
-- The verifier pins the Apple App Attestation root and validates the
-  certificate chain, nonce, RP ID derived from App ID prefix and bundle ID,
-  AAGUID environment, key identity, P-256 key, validation category, bundle
-  version, assertion signature, and increasing counter.
-- The durable repository stores challenges, registered public keys and Apple
-  attestation receipts, assertion counters, hashed session tokens, unique
-  request IDs, weighted rate windows, and expiring concurrency leases.
-  Operational proof receipts must not copy any of that sensitive material.
-- Production refuses an in-memory repository. Compare-and-set counters,
-  one-time challenge consumption, request replay prevention, cost debiting,
-  rate limiting, and lease acquisition are transactional.
-- Route and intent provider flags enable only for string values that normalize
-  to `true`, `yes`, or `1`. Missing, empty, false, malformed, and non-string
-  values remain disabled; the tracked example configuration keeps both false.
-- The HTTP handler short-circuits a disabled research-planning endpoint before
-  body parsing. The endpoint then checks the V2 access gate, validates the
-  request, authorizes the fixed cost, and only afterward resolves PostGIS and
-  provider dependencies.
-- Research reads run inside `REPEATABLE READ READ ONLY` transactions with a
-  local statement timeout. A separate one-connection cancellation pool may
-  call `pg_cancel_backend`; the product transaction is rolled back afterward.
-- Completion logs currently use typed state/error and bounded metadata. This
-  package narrows the allowed beta fields further in the observability policy.
+## Historical evidence boundary
 
-### What App Attest does not prove
+Existing server-side, staging, V2, V3, Golden Set, and V4 receipts under
+`docs/release/` remain byte-for-byte historical artifacts. V4 Attempts 10, 11,
+and 12 are current repository history but were blocked before producing
+accepted provider/route proof. Attempt 12 stopped before database provisioning
+and provider admission; Attempt 13 is not authorized. Historical cleanup and
+zero-traffic claims apply only to their recorded runs.
 
-App Attest is evidence of application/request integrity. It does not prove user
-identity, device location, route safety, route quality, provider correctness,
-trail access, legal status, current conditions, or that a selected highlight
-is reached. Those claims require separate evidence and remain explicitly
-partial or unverified when absent.
+No claim in this package relies on the incomplete Codex Security TAC scan. The
+current security assessment is an offline source/diff review plus the tests
+and limitations cited above.
 
-## Verified ordering contract
+## Package inventory
 
-For the research-planning endpoint the required ordering is:
+- `go-no-go-checklist-v1.json` — authoritative mandatory gate states.
+- `feature-flag-state-matrix-v1.json` — fail-closed feature-state contract.
+- `SOURCE_EVIDENCE_MANIFEST_V1.json` — source commit, package inventory,
+  classifications, and per-gate source evidence.
+- `STAGING_PROVISIONING_RUNBOOK_V1.md` — staging, database, migration, backup,
+  restore, and role proof.
+- `PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md` — physical-device protocol.
+- `OBSERVABILITY_AND_PRIVACY_V1.md` — implemented event boundary versus
+  proposed metrics/SLO/retention targets.
+- `ROLLBACK_AND_INCIDENT_RESPONSE_V1.md` — containment and recovery protocol.
+- `CLOSED_BETA_ROLLOUT_V1.md` — staging-to-beta-to-public promotion protocol.
+- `V4_OPERATIONAL_PROTOCOL.md`, `V4_PROOF_RUN_CLOCK_CONTRACT.md`, and
+  `V4_PROOF_RUN_IDENTITY_CONTRACT.md` — historical/future V4 boundaries;
+  Attempt 13 remains unauthorized.
 
-1. backend research gate;
-2. V2 access gate when schema V2 is requested;
-3. cancellation check and bounded configuration validation;
-4. strict request validation;
-5. attested route-session authorization and fixed cost/rate/concurrency debit;
-6. PostGIS repository and provider dependency resolution;
-7. research snapshot and candidate creation;
-8. bounded provider scheduling;
-9. strict response serialization and iOS validation;
-10. lease release and privacy-safe completion event.
+Machine validation command:
 
-Any disabled or invalid upstream gate must produce zero downstream provider
-work. The backend gate must be enabled and proved before a corresponding client
-gate is distributed. Proof-only flags must return to false after the proof.
+```sh
+cd backend
+npm run ops:validate-release-package
+```
 
-## Common receipt contract
-
-Every future physical, database, provider, quality, rollout, or rollback proof
-must create a new append-only receipt. A safe receipt may contain:
-
-- receipt schema/protocol version and opaque proof-run ID;
-- case or gate ID, UTC start/end time, and typed result;
-- non-secret operator role and approval-reference ID;
-- environment label, release channel, app version/build, OS major/minor, and
-  device model family without serial number or private device identifier;
-- reviewed source/deployment/migration/import digests or immutable references;
-- feature-contract version and boolean flag-state digest;
-- coarse region ID, activity, route type, freshness class, typed error code,
-  duration bucket, attempt count, result count, and bounded quality metrics;
-- booleans such as registration verified, assertion verified, counter advanced,
-  lease released, cleanup complete, and flags disabled;
-- provider authorization reference, hard ceiling, reconciled aggregate counts,
-  and unused count;
-- receipt digest, signer/key version identifier, and previous-receipt digest
-  when an append-only chain is used.
-
-It must never contain raw prompts, precise coordinates, route geometry,
-provider or database URLs, provider bodies/headers, unbounded errors,
-credentials, tokens, key IDs, challenges, attestation or assertion objects,
-Apple receipts, public/private key material, authorization headers, private
-device identifiers, or temporary paths.
-
-## Operating sequence
-
-1. Merge and independently accept the access-point correction lane and its
-   migration; identify a clean reviewed commit.
-2. Independently review the strict provider-flag correction, prove deployed
-   admission and disabled-state behavior, and approve owners.
-3. Provision isolated HTTPS staging and least-privilege PostgreSQL/PostGIS.
-4. Apply reviewed migrations repeatably and import/project current Harz and
-   Innsbruck data.
-5. Prove index use, latency, freshness, coverage, regional isolation,
-   cancellation, and rollback with provider traffic disabled.
-6. Execute the one-device App Attest protocol with a single provider-capable
-   planning case and immediately return proof flags to false.
-7. Obtain a new, explicit 15-call V4 authorization and run only the four
-   canonical cases under the serialized circuit-breaker protocol.
-8. Review route-quality and presentation results independently from security
-   and database results.
-9. Rehearse backend/provider/import/deployment rollback.
-10. Re-evaluate every mandatory checklist item. Only the named approver may
-    authorize a cohort stage.
-
-## Documents
-
-- `PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md` — one-device security proof.
-- `STAGING_PROVISIONING_RUNBOOK_V1.md` — HTTPS, PostgreSQL/PostGIS, migrations,
-  imports, projection, performance, promotion, and rollback.
-- `V4_OPERATIONAL_PROTOCOL.md` — bounded post-access-point live proof.
-- `OBSERVABILITY_AND_PRIVACY_V1.md` — low-cardinality metrics, retention, and
-  alert thresholds.
-- `ROLLBACK_AND_INCIDENT_RESPONSE_V1.md` — kill sequence and incident playbooks.
-- `CLOSED_BETA_ROLLOUT_V1.md` — narrow cohort stages and expansion criteria.
-- `feature-flag-state-matrix-v1.json` — machine-readable state machine.
-- `go-no-go-checklist-v1.json` — machine-readable mandatory decision evidence.
-
-## Product-owner decisions still required
-
-- Apple Developer team, App ID ownership, signing identity/profile ownership,
-  TestFlight app record, and supported physical-iPhone matrix;
-- staging host, database service/region, backups, recovery objectives, and
-  network/secret-management owners;
-- backend, database, provider credential, regional import, security incident,
-  privacy, and on-call owners;
-- provider authority, proof call budget, beta traffic budget, rotation cadence,
-  and emergency revocation process;
-- support contact, privacy-policy location, App Privacy answers, retention and
-  deletion periods, and ODbL/attribution legal review;
-- closed-beta territories, cohort ceilings, invitation criteria, daily-review
-  owner, participant communications, and final GO approver.
+The command emits bounded JSON and exits nonzero on stale source binding,
+missing evidence, inconsistent blockers, incomplete state coverage, unsafe
+feature states, or a false-green decision.

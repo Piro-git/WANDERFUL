@@ -1,6 +1,9 @@
 # V4 Proof Run Clock Contract
 
-Status: **VERSIONED FOR FUTURE ATTEMPTS; ATTEMPTS 1–5 UNCHANGED**
+Status: **VERSIONED FOR A FUTURE AUTHORIZED ATTEMPT; HISTORICAL RECEIPTS UNCHANGED**
+
+Attempts 10–12 are now historical blocked receipts in current source. They do
+not add accepted provider or route-quality proof. Attempt 13 is not authorized.
 
 Future V4 live attempts use run-context schema 2. The run controller reads the
 two completed active import/projection snapshots and then captures exactly one
@@ -44,3 +47,5 @@ Attempts 1–5 remain historical schema-1 evidence. Their fixed clocks,
 outcomes, bytes, receipt hashes, and semantic digests are not migrated or
 reinterpreted. In particular, Attempt 5 remains truthfully blocked because its
 fixed Attempt 4 evaluation clock preceded its current retrieval/import times.
+Attempts 10–12 likewise retain their recorded clock/identity absence or values
+and blocked outcomes byte-for-byte; this document does not upgrade them.
