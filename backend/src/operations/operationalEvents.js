@@ -17,7 +17,11 @@ const EVENT_SCHEMAS = Object.freeze({
   service_draining: Object.freeze(["reason"]),
   service_stopped: Object.freeze(["outcome"]),
   readiness_changed: Object.freeze(["state"]),
-  provider_circuit_state_changed: Object.freeze(["state", "reason"])
+  provider_circuit_state_changed: Object.freeze(["state", "reason"]),
+  runtime_capability_state: Object.freeze(["capability", "state"]),
+  database_pool_state_changed: Object.freeze(["state", "pressure"]),
+  database_pool_error: Object.freeze([]),
+  prune_job_completed: Object.freeze(["outcome"])
 });
 
 export function createOperationalLogger(options = {}) {
@@ -62,7 +66,21 @@ export function operationalEvent(input, options = {}) {
 function safeField(name, value) {
   if (value === undefined || value === null) return undefined;
   if (name === "state") {
-    return ["ready", "not_ready", "closed", "open", "half_open"].includes(value)
+    return [
+      "ready", "not_ready", "closed", "open", "half_open",
+      "available", "unavailable", "enabled", "disabled"
+    ].includes(value)
+      ? value
+      : undefined;
+  }
+  if (name === "capability") {
+    return [
+      "route_provider", "intent_provider", "outdoor_evidence",
+      "outdoor_research", "routable_highlight_access"
+    ].includes(value) ? value : undefined;
+  }
+  if (name === "pressure") {
+    return ["normal", "busy", "waiting", "saturated", "unknown"].includes(value)
       ? value
       : undefined;
   }
@@ -73,7 +91,9 @@ function safeField(name, value) {
     ].includes(value) ? value : undefined;
   }
   if (name === "outcome") {
-    return ["graceful", "deadline_exceeded"].includes(value) ? value : undefined;
+    return ["graceful", "deadline_exceeded", "succeeded", "failed"].includes(value)
+      ? value
+      : undefined;
   }
   if (name === "releaseStage") {
     return ["staging", "closed_beta", "public"].includes(value) ? value : undefined;
