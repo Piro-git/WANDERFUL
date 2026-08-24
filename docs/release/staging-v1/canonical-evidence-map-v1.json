@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "proofVersion": "trailmind-staging-readiness-v1",
+  "currentClassification": "NO_GO",
+  "currentMode": "offline_contract",
+  "attempt13Authorized": false,
+  "providerCallCeiling": 0,
+  "providerCalls": 0,
+  "productionMutations": 0,
+  "gates": [
+    {
+      "id": "candidate_identity",
+      "mandatory": true,
+      "currentEvidenceClass": "immutable_source",
+      "caseIds": ["git_candidate_attestation", "policy_contract_attestation", "historical_receipts_immutable"]
+    },
+    {
+      "id": "production_isolation",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["staging_origin_isolation", "supabase_project_isolation", "candidate_cross_binding"]
+    },
+    {
+      "id": "migration_repeatability",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["migration_ledger_001_008", "migration_second_run_noop", "schema_rls_index_digest"]
+    },
+    {
+      "id": "least_privilege",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["separated_role_attributes", "grants_denied_operations", "rls_data_api_denial", "runtime_function_boundary"]
+    },
+    {
+      "id": "regional_data",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["harz_import", "harz_projection", "innsbruck_import", "innsbruck_projection", "cross_region_isolation", "import_projection_cleanup"]
+    },
+    {
+      "id": "index_transaction_performance",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["gist_index_plan", "latency_distribution", "cancellation_pool_recovery"]
+    },
+    {
+      "id": "backup_restore",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["backup_policy_identity", "restore_reconciliation"]
+    },
+    {
+      "id": "https_startup",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["https_certificate", "dependency_free_liveness", "readiness_semantics", "startup_preflight", "non_root_runtime_image"]
+    },
+    {
+      "id": "lifecycle_rollback",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["graceful_drain", "restart_recovery", "deployment_rollback"]
+    },
+    {
+      "id": "monitoring_alerts",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["monitoring_privacy_pipeline", "alerts_configured_tested"]
+    },
+    {
+      "id": "outage_fail_closed",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["database_outage_fail_closed", "readiness_recovery", "optional_monitoring_outage"]
+    },
+    {
+      "id": "provider_containment",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["exact_feature_flags_false", "provider_disabled_zero_work", "provider_ledger_zero"]
+    },
+    {
+      "id": "privacy_cleanup",
+      "mandatory": true,
+      "currentEvidenceClass": "external_blocker",
+      "caseIds": ["privacy_redaction_scan", "cleanup_residual_state"]
+    },
+    {
+      "id": "physical_proof_admission",
+      "mandatory": true,
+      "currentEvidenceClass": "derived_attestation_after_all_prior_gates",
+      "caseIds": ["staging_prerequisite_reconciliation"]
+    }
+  ],
+  "immutableSources": [
+    "clean candidate Git commit and tree",
+    "versioned executable proof policy digest",
+    "byte-exact V4 historical receipt set",
+    "migrations 001-008 source digests",
+    "Harz/Innsbruck region-config digests",
+    "closed-beta feature-flag matrix digest"
+  ],
+  "requiredLiveObservationClasses": [
+    "non-production origin, project and database identity",
+    "runtime image, deployment revision and non-root identity",
+    "database versions, migrations, grants, RLS and function boundaries",
+    "regional imports, projections, freshness, row totals and isolation",
+    "index plans, latency, cancellation and pool recovery",
+    "backup restore and reconciliation",
+    "HTTPS, liveness, readiness, preflight, drain, restart and rollback",
+    "monitoring, alerts and privacy-safe delivery",
+    "dependency outage and recovery",
+    "exact deployed false flags and zero provider work",
+    "cleanup, residual state and final re-attestation"
+  ],
+  "externalBlockers": [
+    "database_lane_terminal_candidate_not_supplied",
+    "runtime_lane_terminal_candidate_not_supplied",
+    "read_only_staging_authorization_not_supplied",
+    "failure_drill_authorization_not_supplied",
+    "proof_access_not_supplied",
+    "production_identity_guard_not_supplied",
+    "observer_trust_not_supplied",
+    "operational_age_owner_decisions_not_supplied"
+  ]
+}
