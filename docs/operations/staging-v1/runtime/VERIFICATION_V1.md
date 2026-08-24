@@ -3,19 +3,22 @@
 Verification date: 2026-08-24. Source baseline:
 `fc7ea47968aebd7c1c9be747d2abe97c707e4636`, fetched `origin/main`.
 No remote service, database, registry, DNS, certificate, secret or provider was
-used by these gates.
+used by these gates. The correction pass used a disposable local PostgreSQL
+17.10/PostGIS cluster on a private Unix socket and removed it after testing.
 
 ## Passed local gates
 
 | Gate | Result |
 | --- | --- |
-| Focused staging/operations tests | 24/24 pass after adversarial corrections |
-| Complete backend suite | 836/836 pass; 94 suites; 0 fail; 0 skipped |
+| Focused staging/operations tests | 30/30 pass after private-schema/exact-privilege corrections |
+| Disposable PostgreSQL/PostGIS admission tests | 9/9 pass; exact positive runtime/control baseline plus reversible negative catalog drills |
+| Migrations 001–008 | first pass applied all eight; second pass emitted no applied migration and changed no migration ledger row |
+| Complete backend suite | 842/842 pass; 96 suites; 0 fail; 0 skipped |
 | `npm run build` | pass |
 | Offline outdoor quality evaluation | 101/101 pass; 0 skipped; no live provider traffic |
 | Release-package validator | package structurally valid; authoritative decision remains `NO_GO` with 48 unresolved gates |
 | Production dependency audit | 0 known vulnerabilities |
-| Deterministic application-image context | 89 files; pass; SHA-256 `adf5e9acb57cc2c6105127dd3922566dda9e867dd7012793f3b460edc804d640` |
+| Deterministic application-image context | 90 files; pass; SHA-256 `4996f283ba2f109b58121031dc755c5c4d5565ffc69200d06269525473f234ca` |
 | JavaScript/JSON/diff checks | pass |
 | Plaintext production project reference in owned runtime paths | absent |
 
@@ -32,13 +35,19 @@ initially pass. The corrected admission now rejects Node execution/TLS/debug
 overrides, PostgreSQL session/service overrides, connection-query overrides,
 enabled or malformed capability flags, and missing/mismatched approved project
 hashes or role names. App-security sessions pin and verify
-`search_path=pg_catalog,public`. Pool-error events are once per outage and pool
+`search_path=pg_catalog,<private_application_schema>,public,pg_temp`. Catalog
+admission uses parameterized schema/name inputs and exact runtime/control
+manifests. It rejects public shadows, role membership/unsafe attributes,
+inherited/direct excess grants and grant options, ownership, writable schemas,
+unexpected relations, sequences and functions. Pool-error events are once per outage and pool
 pressure is sampled before each readiness probe. The Docker base is no longer
 build-argument overrideable, and the image inspector checks the actual Node
 version, non-root identity, application write permissions, symlinks and content.
 
-Exact staging project/role approval, inherited/excess grant denial and distinct
-runtime/control credentials still require the database lane's remote receipt.
+The disposable database proves the query behavior, not the remote staging
+configuration. Exact staging project/schema/role approval, RLS/DML denial and
+distinct runtime/control/operator credentials still require the database lane's
+remote receipt.
 
 ## Truthfully blocked gates
 

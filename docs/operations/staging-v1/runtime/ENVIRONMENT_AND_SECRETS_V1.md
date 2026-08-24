@@ -2,8 +2,8 @@
 
 The machine-readable source is
 `backend/container/staging-runtime-contract-v1.json`. It contains names, types,
-role classes and required states only. No credential values belong in source,
-documents, commands, image layers, logs or receipts.
+role classes, exact privilege manifests and required states only. No credential
+values belong in source, documents, commands, image layers, logs or receipts.
 
 ## Web process
 
@@ -13,8 +13,14 @@ Required non-secret identity/configuration names:
 - `TRAILMIND_RELEASE_STAGE`: exact staging state;
 - `TRAILMIND_STAGING_PROJECT_REF_SHA256`: exact lowercase SHA-256 supplied by
   the database lane for the user-approved staging project identity;
+- `TRAILMIND_APPLICATION_SCHEMA`: required private application schema. It must
+  match `^trailmind_[a-z][a-z0-9]*(?:_[a-z0-9]+)*$`, be at most 48 characters,
+  and is never accepted as quoted, dotted, comma-separated, `public`, a system
+  schema or a `pg_*` name;
 - `APP_ATTEST_RUNTIME_ROLE`: exact least-privilege role name supplied by the
   database lane and matched to the URL username;
+- `APP_ATTEST_CONTROL_ROLE` and `APP_ATTEST_OPERATOR_ROLE`: non-secret identity
+  names used only to prove all three database responsibilities are distinct;
 - App Attest app identity, environment, validation category and allowed build
   version names already validated by production preflight;
 - bounded HTTP, App Attest, database and authorization settings when overriding
@@ -29,10 +35,17 @@ under the platform secret-file directory, never a default owner, admin or
 
 `NODE_OPTIONS`, TLS verification overrides, Node debug/extra-CA switches and
 PostgreSQL session/service overrides are forbidden. The container starts Node
-without execution arguments. The app-security pool pins
-`search_path=pg_catalog,public`, and startup verifies the effective value before
-listen. Because pre-main Node options act before JavaScript admission, the
-platform configuration receipt must independently prove these names absent.
+without execution arguments. The app-security pool pins and verifies
+`search_path=pg_catalog,"<validated_application_schema>",public,pg_temp` before
+listen. `pg_catalog` first prevents built-in shadowing; the private application
+schema precedes trusted `public`; explicit `pg_temp` last prevents its implicit
+front-of-path placement. Both roles are denied database `TEMPORARY` and `CREATE`
+on every schema, including the application schema and `public`. PostGIS can stay
+in trusted `public`; App Attest tables must exist only in the configured private
+schema, which must not be exposed through the Supabase Data API. Because
+pre-main Node options act before JavaScript admission, the platform
+configuration receipt must independently prove the forbidden process names
+absent.
 
 For the recommended IPv4-only Render target, the database lane must provide the
 Supavisor **session-mode** connection shape on port 5432 for a persistent Node
@@ -49,8 +62,37 @@ The service must receive exact `false` for:
 - every insecure-local, deterministic mock and in-memory App Attest switch
 
 Provider keys, legacy generic database URLs, optional research/evidence URLs,
-and all operator/control credentials are forbidden from the web process. The
-staging admission report returns only check names and pass/fail state.
+and all operator/control credentials are forbidden from the web process. Role
+names are not credentials. The staging admission report returns only check
+names and pass/fail state.
+
+## Exact App Attest privilege manifests
+
+Both identities are `LOGIN NOINHERIT` and must be neither superuser nor
+`CREATEDB`, `CREATEROLE`, `REPLICATION` or `BYPASSRLS`. They own no database,
+schema, table, sequence or function, have no direct or indirect role membership,
+receive database `CONNECT` only, and receive schema `USAGE` only on the private
+application schema and trusted `public`. Grant options are forbidden.
+
+The web runtime receives:
+
+| Private table | Exact privileges |
+| --- | --- |
+| `app_attest_challenges` | `SELECT`, `INSERT`, `UPDATE` |
+| `app_attest_keys` | `SELECT`, `INSERT`, `UPDATE` |
+| `app_attest_route_sessions` | `SELECT`, `INSERT`, `UPDATE` |
+| `app_attest_request_ids` | `INSERT` |
+| `app_attest_rate_windows` | `SELECT`, `INSERT`, `UPDATE` |
+| `app_attest_provider_leases` | `SELECT`, `INSERT`, `UPDATE` |
+
+The control/pruner receives `DELETE` only on
+`app_attest_challenges`, `app_attest_route_sessions`,
+`app_attest_rate_windows` and `app_attest_provider_leases`; it receives no
+privilege on the other two tables. Neither identity receives application/public
+sequence or function privileges, other application/public relation privileges,
+column-only extras, `TRUNCATE`, `REFERENCES`, `TRIGGER`, `MAINTAIN`, database
+`CREATE`/`TEMPORARY`, or schema `CREATE`. Required role-scoped RLS policy
+behavior remains part of the database lane's authoritative DML denial proof.
 
 ## Control/pruner job
 
@@ -60,10 +102,11 @@ service does not receive it. The job adapter maps it only in process memory to
 the existing pruning repository contract and removes the control name before
 composition. It rejects any simultaneously supplied runtime source, preventing
 role aliasing and shared secret scope, and emits only `succeeded` or `failed`.
-It also requires the approved project-ref hash plus distinct exact runtime and
-control role names, forbids unsafe process options, and pins the same schema
-search path. Database denial proof remains authoritative for inherited/excess
-grants and distinct credential ownership.
+It also requires the approved project-ref hash plus pairwise-distinct exact
+runtime, control and operator role names, runs the exact control manifest
+admission before pruning, forbids unsafe process options, and pins the same
+schema search path. Database denial proof remains authoritative for RLS and
+distinct credential ownership.
 
 Migration, import, projection, backup, restore and audit sources are outside
 this runtime package and must never be reused as either URL. The Node runtime
@@ -86,6 +129,6 @@ never uses a Supabase API service role or secret key.
 6. Record only credential version aliases or rotation-event IDs supplied by the
    platform, never values.
 
-Missing secrets, wrong roles, wrong project hash, weak TLS, unsafe process
-options, aliased runtime/control sources, malformed flags or enabled
-capabilities all block before listen.
+Missing secrets/schema, malformed identifiers, wrong or aliased roles, wrong
+project hash, weak TLS, unsafe process options, catalog/privilege drift,
+malformed flags or enabled capabilities all block before listen.

@@ -366,6 +366,10 @@ function productionEnv(overrides = {}) {
     HOST: "127.0.0.1",
     APP_ATTEST_DATABASE_URL:
       "postgresql://app_user:secret-sentinel@example.invalid/trailmind",
+    TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
+    APP_ATTEST_RUNTIME_ROLE: "app_user",
+    APP_ATTEST_CONTROL_ROLE: "app_pruner",
+    APP_ATTEST_OPERATOR_ROLE: "app_operator",
     APP_ATTEST_APP_ID_PREFIX: "ABCDE12345",
     APP_ATTEST_BUNDLE_ID: "com.trailmind.app",
     APP_ATTEST_ENVIRONMENT: "production",

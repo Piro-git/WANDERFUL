@@ -1,6 +1,49 @@
 {
-  "schemaVersion": 1,
-  "contractVersion": "staging-container-admission-v1",
+  "schemaVersion": 2,
+  "contractVersion": "staging-container-admission-v2",
+  "databaseAdmission": {
+    "applicationSchemaEnvironmentName": "TRAILMIND_APPLICATION_SCHEMA",
+    "applicationSchemaPattern": "^trailmind_[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+    "maximumApplicationSchemaLength": 48,
+    "rolePattern": "^[a-z_][a-z0-9_]{0,62}$",
+    "forbiddenIdentityRoles": ["postgres", "service_role", "supabase_admin", "anon", "authenticated"],
+    "searchPath": ["pg_catalog", "$application_schema", "public", "pg_temp"],
+    "privilegeManifests": {
+      "app_attest_runtime": {
+        "database": ["CONNECT"],
+        "schemas": { "application": ["USAGE"], "public": ["USAGE"] },
+        "tables": {
+          "app_attest_challenges": ["SELECT", "INSERT", "UPDATE"],
+          "app_attest_keys": ["SELECT", "INSERT", "UPDATE"],
+          "app_attest_route_sessions": ["SELECT", "INSERT", "UPDATE"],
+          "app_attest_request_ids": ["INSERT"],
+          "app_attest_rate_windows": ["SELECT", "INSERT", "UPDATE"],
+          "app_attest_provider_leases": ["SELECT", "INSERT", "UPDATE"]
+        },
+        "sequences": [],
+        "functions": []
+      },
+      "app_attest_control": {
+        "database": ["CONNECT"],
+        "schemas": { "application": ["USAGE"], "public": ["USAGE"] },
+        "tables": {
+          "app_attest_challenges": ["DELETE"],
+          "app_attest_keys": [],
+          "app_attest_route_sessions": ["DELETE"],
+          "app_attest_request_ids": [],
+          "app_attest_rate_windows": ["DELETE"],
+          "app_attest_provider_leases": ["DELETE"]
+        },
+        "sequences": [],
+        "functions": []
+      }
+    },
+    "rolesMustBePairwiseDistinct": [
+      "APP_ATTEST_RUNTIME_ROLE",
+      "APP_ATTEST_CONTROL_ROLE",
+      "APP_ATTEST_OPERATOR_ROLE"
+    ]
+  },
   "runtime": {
     "node": {
       "minimumMajor": 22,
@@ -11,7 +54,10 @@
       { "name": "NODE_ENV", "type": "exact_string", "requiredState": "production", "secret": false },
       { "name": "TRAILMIND_RELEASE_STAGE", "type": "exact_string", "requiredState": "staging", "secret": false },
       { "name": "TRAILMIND_STAGING_PROJECT_REF_SHA256", "type": "sha256", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "TRAILMIND_APPLICATION_SCHEMA", "type": "private_postgres_schema", "secret": false, "source": "database_lane_approved_identity" },
       { "name": "APP_ATTEST_RUNTIME_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_CONTROL_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_OPERATOR_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
       { "name": "APP_ATTEST_DATABASE_URL", "type": "postgres_url", "secret": true, "roleClass": "app_security_runtime", "tlsMode": "verify-full" },
       { "name": "APP_ATTEST_APP_ID_PREFIX", "type": "bounded_string", "secret": false },
       { "name": "APP_ATTEST_BUNDLE_ID", "type": "bundle_identifier", "secret": false },
@@ -33,6 +79,7 @@
     ],
     "forbidden": [
       "APP_ATTEST_CONTROL_DATABASE_URL",
+      "APP_ATTEST_OPERATOR_DATABASE_URL",
       "APP_ATTEST_PRUNER_DATABASE_URL",
       "DATABASE_URL",
       "POSTGRES_URL",
@@ -58,9 +105,25 @@
       { "name": "NODE_ENV", "type": "exact_string", "requiredState": "production", "secret": false },
       { "name": "TRAILMIND_RELEASE_STAGE", "type": "exact_string", "requiredState": "staging", "secret": false },
       { "name": "TRAILMIND_STAGING_PROJECT_REF_SHA256", "type": "sha256", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "TRAILMIND_APPLICATION_SCHEMA", "type": "private_postgres_schema", "secret": false, "source": "database_lane_approved_identity" },
       { "name": "APP_ATTEST_RUNTIME_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
       { "name": "APP_ATTEST_CONTROL_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_OPERATOR_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
       { "name": "APP_ATTEST_CONTROL_DATABASE_URL", "type": "postgres_url", "secret": true, "roleClass": "app_attest_pruner", "tlsMode": "verify-full" }
+    ],
+    "forbidden": [
+      "APP_ATTEST_DATABASE_URL",
+      "APP_ATTEST_OPERATOR_DATABASE_URL",
+      "DATABASE_URL",
+      "POSTGRES_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_SECRET_KEY",
+      "GRAPHHOPPER_API_KEY",
+      "GOOGLE_API_KEY",
+      "OPENROUTER_API_KEY",
+      "OUTDOOR_RESEARCH_DATABASE_URL",
+      "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL",
+      "OUTDOOR_EVIDENCE_DATABASE_URL"
     ],
     "mustNotAlias": "APP_ATTEST_DATABASE_URL",
     "runtimeSourceMustBeAbsent": true,

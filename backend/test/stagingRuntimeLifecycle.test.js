@@ -23,17 +23,19 @@ describe("staging runtime lifecycle", () => {
     let queries = 0;
     await assert.rejects(probeRequiredPools([{
       pool: {
-        async query(text) {
+        async query(text, values) {
           queries += 1;
           assert.match(text, /app_attest_challenges/);
           assert.match(text, /rolbypassrls/);
           assert.match(text, /has_schema_privilege/);
           assert.match(text, /current_setting\('search_path'\)/);
           assert.match(text, /has_table_privilege/);
+          assert.deepEqual(values, ["expected-schema"]);
           return { rows: [{ admitted: false }] };
         }
       },
       query: "SELECT app_attest_challenges, rolbypassrls, has_schema_privilege, current_setting('search_path'), has_table_privilege",
+      values: ["expected-schema"],
       requiresAdmission: true
     }], 1_000), /database_runtime_admission_failed/);
     assert.equal(queries, 1);
@@ -61,9 +63,18 @@ describe("staging runtime lifecycle", () => {
     assert.equal(FakePool.instances.length, 1);
     assert.equal(
       FakePool.instances[0].options.options,
-      "-c search_path=pg_catalog,public"
+      '-c search_path=pg_catalog,"trailmind_app",public,pg_temp'
     );
-    assert.match(FakePool.instances[0].queries[0], /app_attest_provider_leases/);
+    assert.equal(
+      FakePool.instances[0].queries[0].text.includes("app_attest_provider_leases"),
+      false
+    );
+    assert.equal(FakePool.instances[0].queries[0].values[0], "trailmind_app");
+    assert.equal(FakePool.instances[0].queries[0].values[2], "trailmind_runtime");
+    assert.equal(
+      FakePool.instances[0].queries[0].values[6].includes("app_attest_provider_leases"),
+      true
+    );
     assert.equal(events.some((event) =>
       event.event === "runtime_capability_state" && event.state === "disabled"
     ), true);
@@ -149,8 +160,8 @@ class FakePool extends EventEmitter {
     FakePool.instances.push(this);
   }
 
-  async query(text) {
-    this.queries.push(text);
+  async query(text, values) {
+    this.queries.push({ text, values });
     return text.includes("AS admitted")
       ? { rows: [{ admitted: true }] }
       : { rows: [{ "?column?": 1 }] };
@@ -199,6 +210,9 @@ function stagingEnvironment(overrides = {}) {
     TRAILMIND_STAGING_PROJECT_REF_SHA256:
       createHash("sha256").update("abcdefghijklmnopqrst").digest("hex"),
     APP_ATTEST_RUNTIME_ROLE: "trailmind_runtime",
+    APP_ATTEST_CONTROL_ROLE: "trailmind_pruner",
+    APP_ATTEST_OPERATOR_ROLE: "trailmind_operator",
+    TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
     APP_ATTEST_DATABASE_URL:
       "postgresql://trailmind_runtime.abcdefghijklmnopqrst:secret-sentinel@" +
       "aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=verify-full" +

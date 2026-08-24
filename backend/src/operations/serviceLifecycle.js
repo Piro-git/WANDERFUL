@@ -11,46 +11,9 @@ import {
   httpServerConfiguration,
   researchDatabaseConfiguration
 } from "./productionConfiguration.js";
+import { stagingDatabaseAdmissionProbe } from "./stagingDatabaseAdmission.js";
 
 const { Pool } = pg;
-const APP_ATTEST_RUNTIME_ADMISSION_SQL = `
-SELECT (
-  current_user NOT IN ('postgres', 'service_role', 'supabase_admin')
-  AND COALESCE((
-    SELECT NOT (
-      roles.rolsuper OR roles.rolcreatedb OR roles.rolcreaterole OR
-      roles.rolreplication OR roles.rolbypassrls
-    )
-      FROM pg_catalog.pg_roles AS roles
-     WHERE roles.rolname = current_user
-  ), false)
-  AND has_schema_privilege(current_user, 'public', 'USAGE')
-  AND replace(current_setting('search_path'), ' ', '') = 'pg_catalog,public'
-  AND to_regclass('public.app_attest_challenges') IS NOT NULL
-  AND to_regclass('public.app_attest_keys') IS NOT NULL
-  AND to_regclass('public.app_attest_route_sessions') IS NOT NULL
-  AND to_regclass('public.app_attest_request_ids') IS NOT NULL
-  AND to_regclass('public.app_attest_rate_windows') IS NOT NULL
-  AND to_regclass('public.app_attest_provider_leases') IS NOT NULL
-  AND COALESCE(has_table_privilege(
-    current_user, to_regclass('public.app_attest_challenges'), 'SELECT,INSERT,UPDATE'
-  ), false)
-  AND COALESCE(has_table_privilege(
-    current_user, to_regclass('public.app_attest_keys'), 'SELECT,INSERT,UPDATE'
-  ), false)
-  AND COALESCE(has_table_privilege(
-    current_user, to_regclass('public.app_attest_route_sessions'), 'SELECT,INSERT,UPDATE'
-  ), false)
-  AND COALESCE(has_table_privilege(
-    current_user, to_regclass('public.app_attest_request_ids'), 'INSERT'
-  ), false)
-  AND COALESCE(has_table_privilege(
-    current_user, to_regclass('public.app_attest_rate_windows'), 'SELECT,INSERT,UPDATE'
-  ), false)
-  AND COALESCE(has_table_privilege(
-    current_user, to_regclass('public.app_attest_provider_leases'), 'SELECT,INSERT,UPDATE'
-  ), false)
-) AS admitted`;
 
 export function createOperationalState(options = {}) {
   const logger = options.logger ?? { info() {} };
@@ -237,7 +200,10 @@ export async function probeRequiredPools(pools, timeoutMs, options = {}) {
   const probes = pools.map(async (target) => {
     const descriptor = target?.pool ? target : undefined;
     const pool = descriptor?.pool ?? target;
-    const result = await pool.query(descriptor?.query ?? "SELECT 1");
+    const result = await pool.query(
+      descriptor?.query ?? "SELECT 1",
+      descriptor?.values ?? []
+    );
     if (descriptor?.requiresAdmission === true && result?.rows?.[0]?.admitted !== true) {
       throw new Error("database_runtime_admission_failed");
     }
@@ -248,13 +214,14 @@ export async function probeRequiredPools(pools, timeoutMs, options = {}) {
 function createRuntimePools(env, PoolClass, owned = [], onPoolError) {
   const required = [];
   const appConfig = appAttestDatabaseConfiguration(env);
+  const appAdmission = stagingDatabaseAdmissionProbe(env, "runtime");
   const appSecurity = createPool(
     PoolClass,
     env.APP_ATTEST_DATABASE_URL,
     appConfig,
     {
       idleTransactionTimeoutMs: appConfig.idleTransactionTimeoutMs,
-      startupOptions: "-c search_path=pg_catalog,public"
+      startupOptions: appAdmission.startupOptions
     },
     onPoolError
   );
@@ -262,7 +229,8 @@ function createRuntimePools(env, PoolClass, owned = [], onPoolError) {
   required.push({
     id: "app_security",
     pool: appSecurity,
-    query: APP_ATTEST_RUNTIME_ADMISSION_SQL,
+    query: appAdmission.query,
+    values: appAdmission.values,
     requiresAdmission: true
   });
 

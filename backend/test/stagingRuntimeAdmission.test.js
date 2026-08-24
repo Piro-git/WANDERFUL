@@ -27,6 +27,7 @@ describe("staging container admission", () => {
       { APP_ATTEST_ALLOW_IN_MEMORY: "true" },
       { TRAILMIND_RELEASE_STAGE: "closed_beta" },
       { APP_ATTEST_CONTROL_DATABASE_URL: databaseUrl("trailmind_pruner") },
+      { APP_ATTEST_OPERATOR_DATABASE_URL: databaseUrl("trailmind_operator") },
       { DATABASE_URL: databaseUrl("legacy_runtime") },
       { GRAPHHOPPER_API_KEY: "unused-secret-sentinel" },
       { NODE_TLS_REJECT_UNAUTHORIZED: "0" },
@@ -34,6 +35,19 @@ describe("staging container admission", () => {
       { PGOPTIONS: "-c search_path=shadow,public" },
       { TRAILMIND_STAGING_PROJECT_REF_SHA256: "0".repeat(64) },
       { APP_ATTEST_RUNTIME_ROLE: "another_runtime" },
+      { APP_ATTEST_CONTROL_ROLE: "trailmind_runtime" },
+      { APP_ATTEST_OPERATOR_ROLE: "trailmind_runtime" },
+      { APP_ATTEST_OPERATOR_ROLE: "trailmind_pruner" },
+      { APP_ATTEST_OPERATOR_ROLE: "postgres" },
+      { TRAILMIND_APPLICATION_SCHEMA: "" },
+      { TRAILMIND_APPLICATION_SCHEMA: "public" },
+      { TRAILMIND_APPLICATION_SCHEMA: "pg_catalog" },
+      { TRAILMIND_APPLICATION_SCHEMA: "information_schema" },
+      { TRAILMIND_APPLICATION_SCHEMA: "pg_shadow" },
+      { TRAILMIND_APPLICATION_SCHEMA: "trailmind_App" },
+      { TRAILMIND_APPLICATION_SCHEMA: '"trailmind_app"' },
+      { TRAILMIND_APPLICATION_SCHEMA: "trailmind_app,public" },
+      { TRAILMIND_APPLICATION_SCHEMA: "trailmind.app" },
       { APP_ATTEST_DATABASE_URL: databaseUrl("service_role") },
       { APP_ATTEST_DATABASE_URL: databaseUrl("postgres") },
       { APP_ATTEST_DATABASE_URL: databaseUrl("trailmind_runtime", "require") },
@@ -75,9 +89,12 @@ describe("staging container admission", () => {
         TRAILMIND_STAGING_PROJECT_REF_SHA256: projectRefSha256(),
         APP_ATTEST_RUNTIME_ROLE: "trailmind_runtime",
         APP_ATTEST_CONTROL_ROLE: "trailmind_pruner",
+        APP_ATTEST_OPERATOR_ROLE: "trailmind_operator",
+        TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
         APP_ATTEST_CONTROL_DATABASE_URL: databaseUrl("trailmind_pruner")
       },
       execArgv: [],
+      PoolClass: FakePrunerPool,
       logger: { info(event) { events.push(event); }, error(event) { events.push(event); } },
       async runPrune(options) {
         received = options;
@@ -92,7 +109,10 @@ describe("staging container admission", () => {
     });
     const receivedUrl = new URL(received.env.APP_ATTEST_DATABASE_URL);
     assert.equal(receivedUrl.username, "trailmind_pruner.abcdefghijklmnopqrst");
-    assert.equal(receivedUrl.searchParams.get("options"), "-c search_path=pg_catalog,public");
+    assert.equal(
+      receivedUrl.searchParams.get("options"),
+      '-c search_path=pg_catalog,"trailmind_app",public,pg_temp'
+    );
     assert.equal("APP_ATTEST_CONTROL_DATABASE_URL" in received.env, false);
     assert.deepEqual(events, [{ event: "prune_job_completed", outcome: "succeeded" }]);
     assert.equal(JSON.stringify(events).includes(databaseUrl("trailmind_pruner")), false);
@@ -104,10 +124,13 @@ describe("staging container admission", () => {
         TRAILMIND_STAGING_PROJECT_REF_SHA256: projectRefSha256(),
         APP_ATTEST_RUNTIME_ROLE: "trailmind_runtime",
         APP_ATTEST_CONTROL_ROLE: "trailmind_pruner",
+        APP_ATTEST_OPERATOR_ROLE: "trailmind_operator",
+        TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
         APP_ATTEST_DATABASE_URL: databaseUrl("trailmind_pruner"),
         APP_ATTEST_CONTROL_DATABASE_URL: databaseUrl("trailmind_pruner")
       },
       execArgv: [],
+      PoolClass: FakePrunerPool,
       logger: { info() {}, error() {} },
       async runPrune() {}
     }), /pruner_runtime_source_forbidden/);
@@ -117,14 +140,61 @@ describe("staging container admission", () => {
         NODE_ENV: "production",
         TRAILMIND_RELEASE_STAGE: "staging",
         TRAILMIND_STAGING_PROJECT_REF_SHA256: projectRefSha256(),
-        APP_ATTEST_RUNTIME_ROLE: "trailmind_pruner",
+        APP_ATTEST_RUNTIME_ROLE: "trailmind_runtime",
         APP_ATTEST_CONTROL_ROLE: "trailmind_pruner",
+        APP_ATTEST_OPERATOR_ROLE: "trailmind_operator",
+        TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
+        APP_ATTEST_OPERATOR_DATABASE_URL: databaseUrl("trailmind_operator"),
         APP_ATTEST_CONTROL_DATABASE_URL: databaseUrl("trailmind_pruner")
       },
       execArgv: [],
+      PoolClass: FakePrunerPool,
       logger: { info() {}, error() {} },
       async runPrune() {}
-    }), /pruner_role_alias/);
+    }), /pruner_secret_scope_invalid/);
+
+    await assert.rejects(runStagingPruner({
+      env: {
+        NODE_ENV: "production",
+        TRAILMIND_RELEASE_STAGE: "staging",
+        TRAILMIND_STAGING_PROJECT_REF_SHA256: projectRefSha256(),
+        APP_ATTEST_RUNTIME_ROLE: "trailmind_pruner",
+        APP_ATTEST_CONTROL_ROLE: "trailmind_pruner",
+        APP_ATTEST_OPERATOR_ROLE: "trailmind_operator",
+        TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
+        APP_ATTEST_CONTROL_DATABASE_URL: databaseUrl("trailmind_pruner")
+      },
+      execArgv: [],
+      PoolClass: FakePrunerPool,
+      logger: { info() {}, error() {} },
+      async runPrune() {}
+    }), /staging_database_admission_invalid/);
+
+    const failedEvents = [];
+    await assert.rejects(runStagingPruner({
+      env: {
+        NODE_ENV: "production",
+        TRAILMIND_RELEASE_STAGE: "staging",
+        TRAILMIND_STAGING_PROJECT_REF_SHA256: projectRefSha256(),
+        APP_ATTEST_RUNTIME_ROLE: "trailmind_runtime",
+        APP_ATTEST_CONTROL_ROLE: "trailmind_pruner",
+        APP_ATTEST_OPERATOR_ROLE: "trailmind_operator",
+        TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
+        APP_ATTEST_CONTROL_DATABASE_URL: databaseUrl("trailmind_pruner")
+      },
+      execArgv: [],
+      PoolClass: class extends FakePrunerPool {
+        async query() { return { rows: [{ admitted: false }] }; }
+      },
+      logger: {
+        info(event) { failedEvents.push(event); },
+        error(event) { failedEvents.push(event); }
+      },
+      async runPrune() { throw new Error("unexpected_prune"); }
+    }), /pruner_database_admission_failed/);
+    assert.deepEqual(failedEvents, [
+      { event: "prune_job_completed", outcome: "failed" }
+    ]);
   });
 });
 
@@ -135,6 +205,9 @@ export function stagingEnvironment(overrides = {}) {
     HOST: "127.0.0.1",
     TRAILMIND_STAGING_PROJECT_REF_SHA256: projectRefSha256(),
     APP_ATTEST_RUNTIME_ROLE: "trailmind_runtime",
+    APP_ATTEST_CONTROL_ROLE: "trailmind_pruner",
+    APP_ATTEST_OPERATOR_ROLE: "trailmind_operator",
+    TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
     APP_ATTEST_DATABASE_URL: databaseUrl("trailmind_runtime"),
     APP_ATTEST_APP_ID_PREFIX: "ABCDE12345",
     APP_ATTEST_BUNDLE_ID: "com.trailmind.app",
@@ -153,6 +226,30 @@ export function stagingEnvironment(overrides = {}) {
     APP_ATTEST_ALLOW_IN_MEMORY: "false",
     ...overrides
   };
+}
+
+class FakePrunerPool {
+  constructor(options) {
+    this.options = options;
+    this.closed = false;
+  }
+
+  on() {}
+
+  async query(text, values) {
+    assert.match(text, /AS admitted/);
+    assert.equal(values[0], "trailmind_app");
+    assert.equal(values[2], "trailmind_pruner");
+    return { rows: [{ admitted: true }] };
+  }
+
+  async connect() {
+    throw new Error("unexpected_database_work");
+  }
+
+  async end() {
+    this.closed = true;
+  }
 }
 
 function databaseUrl(role, sslmode = "verify-full") {

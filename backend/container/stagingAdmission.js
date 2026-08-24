@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
+import {
+  applicationSchemaConfiguration,
+  stagingDatabaseIdentityConfiguration
+} from "../src/operations/stagingDatabaseAdmission.js";
 
-const CONTRACT_VERSION = "staging-container-admission-v1";
+const CONTRACT_VERSION = "staging-container-admission-v2";
 const OFF_LIMITS_PRODUCTION_PROJECT_REF_SHA256 =
   "730c9715a50e01394edff472b079a0742e6c34159c51329032d0bb8e8d7aa6b7";
 const EXACT_FALSE_FLAGS = Object.freeze([
@@ -17,6 +21,7 @@ const EXACT_FALSE_FLAGS = Object.freeze([
 ]);
 const FORBIDDEN_WEB_PROCESS_VALUES = Object.freeze([
   "APP_ATTEST_CONTROL_DATABASE_URL",
+  "APP_ATTEST_OPERATOR_DATABASE_URL",
   "APP_ATTEST_PRUNER_DATABASE_URL",
   "DATABASE_URL",
   "POSTGRES_URL",
@@ -77,11 +82,12 @@ export function evaluateStagingContainerEnvironment(env = process.env, options =
     if (!Array.isArray(execArgv) || execArgv.length !== 0) invalid();
   });
   check("least_privilege_staging_database", () => {
+    applicationSchemaConfiguration(env);
+    const identities = stagingDatabaseIdentityConfiguration(env);
     const parsed = requiredPostgresUrl(env.APP_ATTEST_DATABASE_URL);
     const role = decodeURIComponent(parsed.username).split(".", 1)[0].toLowerCase();
-    const expectedRole = requiredRoleName(env.APP_ATTEST_RUNTIME_ROLE);
     if (
-      !role || role !== expectedRole || !parsed.password ||
+      !role || role !== identities.runtimeRole || !parsed.password ||
       FORBIDDEN_DATABASE_ROLES.has(role)
     ) invalid();
     const projectRef = databaseProjectRef(parsed);
@@ -170,11 +176,6 @@ function requiredDatabaseSearchParameters(parsed) {
 
 function requiredExact(value, expected) {
   if (value !== expected) invalid();
-}
-
-function requiredRoleName(value) {
-  if (typeof value !== "string" || !/^[a-z_][a-z0-9_]{0,62}$/.test(value)) invalid();
-  return value;
 }
 
 function requiredSha256(value) {
