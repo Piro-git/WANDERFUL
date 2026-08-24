@@ -13,6 +13,44 @@ import {
 } from "./productionConfiguration.js";
 
 const { Pool } = pg;
+const APP_ATTEST_RUNTIME_ADMISSION_SQL = `
+SELECT (
+  current_user NOT IN ('postgres', 'service_role', 'supabase_admin')
+  AND COALESCE((
+    SELECT NOT (
+      roles.rolsuper OR roles.rolcreatedb OR roles.rolcreaterole OR
+      roles.rolreplication OR roles.rolbypassrls
+    )
+      FROM pg_catalog.pg_roles AS roles
+     WHERE roles.rolname = current_user
+  ), false)
+  AND has_schema_privilege(current_user, 'public', 'USAGE')
+  AND replace(current_setting('search_path'), ' ', '') = 'pg_catalog,public'
+  AND to_regclass('public.app_attest_challenges') IS NOT NULL
+  AND to_regclass('public.app_attest_keys') IS NOT NULL
+  AND to_regclass('public.app_attest_route_sessions') IS NOT NULL
+  AND to_regclass('public.app_attest_request_ids') IS NOT NULL
+  AND to_regclass('public.app_attest_rate_windows') IS NOT NULL
+  AND to_regclass('public.app_attest_provider_leases') IS NOT NULL
+  AND COALESCE(has_table_privilege(
+    current_user, to_regclass('public.app_attest_challenges'), 'SELECT,INSERT,UPDATE'
+  ), false)
+  AND COALESCE(has_table_privilege(
+    current_user, to_regclass('public.app_attest_keys'), 'SELECT,INSERT,UPDATE'
+  ), false)
+  AND COALESCE(has_table_privilege(
+    current_user, to_regclass('public.app_attest_route_sessions'), 'SELECT,INSERT,UPDATE'
+  ), false)
+  AND COALESCE(has_table_privilege(
+    current_user, to_regclass('public.app_attest_request_ids'), 'INSERT'
+  ), false)
+  AND COALESCE(has_table_privilege(
+    current_user, to_regclass('public.app_attest_rate_windows'), 'SELECT,INSERT,UPDATE'
+  ), false)
+  AND COALESCE(has_table_privilege(
+    current_user, to_regclass('public.app_attest_provider_leases'), 'SELECT,INSERT,UPDATE'
+  ), false)
+) AS admitted`;
 
 export function createOperationalState(options = {}) {
   const logger = options.logger ?? { info() {} };
@@ -90,10 +128,17 @@ export async function startStandaloneIntentService(options = {}) {
   let pools;
   let server;
   let monitor;
+  let databaseState;
   let shutdownPromise;
 
   try {
-    pools = createRuntimePools(env, PoolClass, ownedPools);
+    publishCapabilityStates(logger, preflight.capabilities);
+    pools = createRuntimePools(env, PoolClass, ownedPools, () => {
+      operationalState.setDependencyReady(false);
+      databaseState?.publish(false);
+      databaseState?.publishError();
+    });
+    databaseState = createDatabaseStatePublisher({ logger, pools: pools.required });
     const appAttestRepository = new PostgresAppAttestRepository({
       pool: pools.appSecurity
     });
@@ -121,6 +166,7 @@ export async function startStandaloneIntentService(options = {}) {
     configureHttpServer(server, http);
     await probeRequiredPools(pools.required, http.headersTimeoutMs, options);
     operationalState.setDependencyReady(true);
+    databaseState.publish(true);
     await listen(server, http.port, http.host);
     operationalState.markStarted();
     monitor = startReadinessMonitor({
@@ -128,6 +174,7 @@ export async function startStandaloneIntentService(options = {}) {
       operationalState,
       intervalMs: http.readinessProbeIntervalMs,
       timeoutMs: http.headersTimeoutMs,
+      databaseState,
       options
     });
     safeLog(logger, "info", {
@@ -187,21 +234,37 @@ export function configureHttpServer(server, configuration) {
 export async function probeRequiredPools(pools, timeoutMs, options = {}) {
   const setTimeoutImpl = options.setTimeoutImpl ?? setTimeout;
   const clearTimeoutImpl = options.clearTimeoutImpl ?? clearTimeout;
-  const probes = pools.map((pool) => pool.query("SELECT 1"));
+  const probes = pools.map(async (target) => {
+    const descriptor = target?.pool ? target : undefined;
+    const pool = descriptor?.pool ?? target;
+    const result = await pool.query(descriptor?.query ?? "SELECT 1");
+    if (descriptor?.requiresAdmission === true && result?.rows?.[0]?.admitted !== true) {
+      throw new Error("database_runtime_admission_failed");
+    }
+  });
   await withDeadline(Promise.all(probes), timeoutMs, setTimeoutImpl, clearTimeoutImpl);
 }
 
-function createRuntimePools(env, PoolClass, owned = []) {
+function createRuntimePools(env, PoolClass, owned = [], onPoolError) {
   const required = [];
   const appConfig = appAttestDatabaseConfiguration(env);
   const appSecurity = createPool(
     PoolClass,
     env.APP_ATTEST_DATABASE_URL,
     appConfig,
-    { idleTransactionTimeoutMs: appConfig.idleTransactionTimeoutMs }
+    {
+      idleTransactionTimeoutMs: appConfig.idleTransactionTimeoutMs,
+      startupOptions: "-c search_path=pg_catalog,public"
+    },
+    onPoolError
   );
   owned.push(appSecurity);
-  required.push(appSecurity);
+  required.push({
+    id: "app_security",
+    pool: appSecurity,
+    query: APP_ATTEST_RUNTIME_ADMISSION_SQL,
+    requiresAdmission: true
+  });
 
   let outdoorResearch;
   let outdoorResearchCancellation;
@@ -210,7 +273,9 @@ function createRuntimePools(env, PoolClass, owned = []) {
     outdoorResearch = createPool(
       PoolClass,
       env.OUTDOOR_RESEARCH_DATABASE_URL,
-      researchConfig
+      researchConfig,
+      {},
+      onPoolError
     );
     owned.push(outdoorResearch);
     required.push(outdoorResearch);
@@ -221,7 +286,9 @@ function createRuntimePools(env, PoolClass, owned = []) {
         ...researchConfig,
         maximumConnections: 1,
         statementTimeoutMs: 1_000
-      }
+      },
+      {},
+      onPoolError
     );
     owned.push(outdoorResearchCancellation);
     required.push(outdoorResearchCancellation);
@@ -233,7 +300,9 @@ function createRuntimePools(env, PoolClass, owned = []) {
     outdoorEvidence = createPool(
       PoolClass,
       env.OUTDOOR_EVIDENCE_DATABASE_URL,
-      evidenceConfig
+      evidenceConfig,
+      {},
+      onPoolError
     );
     owned.push(outdoorEvidence);
     required.push(outdoorEvidence);
@@ -248,8 +317,14 @@ function createRuntimePools(env, PoolClass, owned = []) {
   };
 }
 
-function createPool(PoolClass, connectionString, configuration, overrides = {}) {
-  return new PoolClass({
+function createPool(
+  PoolClass,
+  connectionString,
+  configuration,
+  overrides = {},
+  onPoolError
+) {
+  const pool = new PoolClass({
     connectionString,
     max: configuration.maximumConnections,
     connectionTimeoutMillis: configuration.connectionTimeoutMs,
@@ -259,8 +334,13 @@ function createPool(PoolClass, connectionString, configuration, overrides = {}) 
     idle_in_transaction_session_timeout:
       overrides.idleTransactionTimeoutMs ??
       Math.max(configuration.statementTimeoutMs * 2, 10_000),
+    ...(overrides.startupOptions ? { options: overrides.startupOptions } : {}),
     allowExitOnIdle: true
   });
+  if (typeof pool.on === "function") {
+    pool.on("error", () => onPoolError?.());
+  }
+  return pool;
 }
 
 function startReadinessMonitor({
@@ -268,6 +348,7 @@ function startReadinessMonitor({
   operationalState,
   intervalMs,
   timeoutMs,
+  databaseState,
   options
 }) {
   const setIntervalImpl = options.setIntervalImpl ?? setInterval;
@@ -276,11 +357,14 @@ function startReadinessMonitor({
   const poll = async () => {
     if (running) return;
     running = true;
+    databaseState?.publishPressure();
     try {
       await probeRequiredPools(pools, timeoutMs, options);
       operationalState.setDependencyReady(true);
+      databaseState?.publish(true);
     } catch {
       operationalState.setDependencyReady(false);
+      databaseState?.publish(false);
     } finally {
       running = false;
     }
@@ -288,6 +372,66 @@ function startReadinessMonitor({
   const timer = setIntervalImpl(poll, intervalMs);
   timer?.unref?.();
   return Object.freeze({ stop() { clearIntervalImpl(timer); } });
+}
+
+function createDatabaseStatePublisher({ logger, pools }) {
+  let previous;
+  let available = false;
+  let errorPublished = false;
+  const publish = (state, pressure, level) => {
+    const next = `${state}:${pressure}`;
+    if (next === previous) return;
+    previous = next;
+    safeLog(logger, level, {
+      event: "database_pool_state_changed",
+      state,
+      pressure
+    });
+  };
+  return Object.freeze({
+    publish(value) {
+      available = value === true;
+      if (available) errorPublished = false;
+      publish(
+        available ? "available" : "unavailable",
+        available ? aggregatePoolPressure(pools) : "unknown",
+        available ? "info" : "warn"
+      );
+    },
+    publishPressure() {
+      if (!available) return;
+      publish("available", aggregatePoolPressure(pools), "info");
+    },
+    publishError() {
+      if (errorPublished) return;
+      errorPublished = true;
+      safeLog(logger, "warn", { event: "database_pool_error" });
+    }
+  });
+}
+
+function aggregatePoolPressure(targets) {
+  const pools = targets.map((target) => target?.pool ?? target).filter(Boolean);
+  if (pools.some((pool) => Number(pool.waitingCount) > 0)) return "waiting";
+  if (pools.some((pool) => {
+    const maximum = Number(pool.options?.max);
+    return Number.isFinite(maximum) && maximum > 0 &&
+      Number(pool.totalCount) >= maximum && Number(pool.idleCount) === 0;
+  })) return "saturated";
+  if (pools.some((pool) => Number(pool.totalCount) > Number(pool.idleCount))) return "busy";
+  return pools.every((pool) =>
+    Number.isFinite(Number(pool.totalCount)) && Number.isFinite(Number(pool.idleCount))
+  ) ? "normal" : "unknown";
+}
+
+function publishCapabilityStates(logger, capabilities) {
+  for (const capability of capabilities ?? []) {
+    safeLog(logger, "info", {
+      event: "runtime_capability_state",
+      capability: capability.id,
+      state: capability.state
+    });
+  }
 }
 
 export async function drainAndShutdown({

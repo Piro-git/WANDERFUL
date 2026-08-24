@@ -21,7 +21,7 @@
     "outdoor-research:project-osm": "node scripts/project-osm-outdoor-research.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "asn1js": "3.0.7",

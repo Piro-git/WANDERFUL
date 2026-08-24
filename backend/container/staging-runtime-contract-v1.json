@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "staging-container-admission-v1",
+  "runtime": {
+    "node": {
+      "minimumMajor": 22,
+      "imageTag": "22.23.2-bookworm-slim",
+      "runtimeUser": "65532:65532"
+    },
+    "required": [
+      { "name": "NODE_ENV", "type": "exact_string", "requiredState": "production", "secret": false },
+      { "name": "TRAILMIND_RELEASE_STAGE", "type": "exact_string", "requiredState": "staging", "secret": false },
+      { "name": "TRAILMIND_STAGING_PROJECT_REF_SHA256", "type": "sha256", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_RUNTIME_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_DATABASE_URL", "type": "postgres_url", "secret": true, "roleClass": "app_security_runtime", "tlsMode": "verify-full" },
+      { "name": "APP_ATTEST_APP_ID_PREFIX", "type": "bounded_string", "secret": false },
+      { "name": "APP_ATTEST_BUNDLE_ID", "type": "bundle_identifier", "secret": false },
+      { "name": "APP_ATTEST_ENVIRONMENT", "type": "enum", "secret": false },
+      { "name": "APP_ATTEST_ALLOWED_VALIDATION_CATEGORIES", "type": "bounded_integer_list", "secret": false },
+      { "name": "APP_ATTEST_ALLOWED_BUNDLE_VERSIONS", "type": "bounded_version_list", "secret": false }
+    ],
+    "exactFalse": [
+      "ROUTE_PROVIDER_ENABLED",
+      "INTENT_PROVIDER_ENABLED",
+      "OUTDOOR_EVIDENCE_PROVIDER_ENABLED",
+      "OUTDOOR_RESEARCH_PLANNING_ENABLED",
+      "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING",
+      "INTENT_ALLOW_INSECURE_LOCAL_PARSING",
+      "INTENT_ALLOW_DETERMINISTIC_MOCK",
+      "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL",
+      "APP_ATTEST_ALLOW_IN_MEMORY"
+    ],
+    "forbidden": [
+      "APP_ATTEST_CONTROL_DATABASE_URL",
+      "APP_ATTEST_PRUNER_DATABASE_URL",
+      "DATABASE_URL",
+      "POSTGRES_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_SECRET_KEY",
+      "GRAPHHOPPER_API_KEY",
+      "GOOGLE_API_KEY",
+      "OPENROUTER_API_KEY",
+      "OUTDOOR_RESEARCH_DATABASE_URL",
+      "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL",
+      "OUTDOOR_EVIDENCE_DATABASE_URL",
+      "NODE_OPTIONS",
+      "NODE_TLS_REJECT_UNAUTHORIZED",
+      "NODE_EXTRA_CA_CERTS",
+      "NODE_DEBUG",
+      "PGOPTIONS",
+      "PGSERVICE",
+      "PGSERVICEFILE"
+    ]
+  },
+  "controlJob": {
+    "required": [
+      { "name": "NODE_ENV", "type": "exact_string", "requiredState": "production", "secret": false },
+      { "name": "TRAILMIND_RELEASE_STAGE", "type": "exact_string", "requiredState": "staging", "secret": false },
+      { "name": "TRAILMIND_STAGING_PROJECT_REF_SHA256", "type": "sha256", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_RUNTIME_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_CONTROL_ROLE", "type": "postgres_role_name", "secret": false, "source": "database_lane_approved_identity" },
+      { "name": "APP_ATTEST_CONTROL_DATABASE_URL", "type": "postgres_url", "secret": true, "roleClass": "app_attest_pruner", "tlsMode": "verify-full" }
+    ],
+    "mustNotAlias": "APP_ATTEST_DATABASE_URL",
+    "runtimeSourceMustBeAbsent": true,
+    "mustNotBeInjectedIntoWebProcess": true
+  },
+  "remoteMutationAuthorized": false
+}

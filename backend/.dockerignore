@@ -1,0 +1,13 @@
+*
+!package.json
+!package-lock.json
+!src/
+!src/**
+!config/
+!config/outdoor-regions/
+!config/outdoor-regions/*.json
+!config/outdoor-regions/*.geojson
+!container/
+!container/healthcheck.js
+!container/stagingAdmission.js
+!container/start.js
