@@ -35,7 +35,8 @@ The receipt contains exact top-level sections for:
 - candidate cross-binding;
 - environment/runtime/database observations;
 - migration ledger and true second-run no-op;
-- role, grant, RLS, Data API and five-function runtime boundary;
+- nine canonical roles in exact order, role/grant/RLS/Data API digests, the
+  five-function runtime boundary, and a first-class cancellation/control role;
 - Harz and Innsbruck import/projection lineages, freshness, rows and isolation;
 - GiST plan, latency, cancellation/rollback and pool recovery;
 - backup/restore identity and five reconciliation classes;
@@ -52,6 +53,14 @@ reject omission, duplicates and reordering. Strings, nesting and total output
 are bounded. Canonical serialization sorts object keys but preserves array
 order. Identical modeled run identity produces byte-identical bytes and the
 same semantic digest.
+
+The cancellation/control role is not represented by a detached digest. Its
+stable role ID, purpose, identity digest, exact privilege-manifest digest,
+role-evidence digest and managed-identity separation guards are inside the
+ordered role observation and the overall candidate binding. The least-
+privilege gate and cancellation-performance gate each contain a mandatory
+cancellation boundary case. A safe application runtime role cannot compensate
+for missing or unsafe cancellation evidence.
 
 ## Authenticity and anti-collusion boundary
 

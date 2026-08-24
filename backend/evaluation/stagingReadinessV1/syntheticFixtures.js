@@ -7,7 +7,10 @@ import {
   CANONICAL_PERFORMANCE_OPERATIONS,
   CANONICAL_REGION_IDS,
   CANONICAL_RESTORE_RECONCILIATIONS,
-  CANONICAL_ROLE_IDS,
+  CANONICAL_ROLE_CONTRACTS,
+  CANONICAL_ROLE_SEPARATION_GUARD_IDS,
+  CANCELLATION_CONTROL_PRIVILEGE_MANIFEST,
+  CANCELLATION_CONTROL_ROLE_ID,
   STAGING_READINESS_PROOF_VERSION,
   STAGING_READINESS_SCHEMA_VERSION
 } from "./constants.js";
@@ -17,7 +20,10 @@ import {
   makeStagingReadinessCaseV1,
   sealStagingReadinessReceiptV1
 } from "./contract.js";
-import { stagingReadinessCandidateBindingRecordV1 } from "./observations.js";
+import {
+  stagingReadinessCandidateBindingRecordV1,
+  stagingReadinessRoleSetRecordV1
+} from "./observations.js";
 import { stagingReadinessPolicyReceiptBindingV1 } from "./policy.js";
 import { sha256StagingReadinessV1 } from "./serialization.js";
 
@@ -191,7 +197,7 @@ function syntheticObservations(policy, candidate) {
       evidenceSha256: digest("database-evidence")
     },
     migrations: syntheticMigrations(policy),
-    roles: syntheticRoles(),
+    roles: syntheticRoles(policy),
     regions: CANONICAL_REGION_IDS.map((regionId, index) =>
       syntheticRegion(regionId, policy.regionConfigs[index])
     ),
@@ -278,31 +284,64 @@ function syntheticMigrations(policy) {
   };
 }
 
-function syntheticRoles() {
-  const runtimeRoleDigest = digest("role:outdoor_research_runtime_role");
-  return {
-    roleSetDigest: digest("role-set"),
-    grantDigest: digest("grant-set"),
-    rlsPolicyDigest: digest("rls-set"),
-    functionBoundaryDigest: digest("function-boundary"),
-    publicDataApiDenied: true,
-    runtimeDirectTableAccessDenied: true,
-    runtimeFunctionCount: 5,
-    runtimeRoleDigest,
-    cancellationRoleDigest: digest("cancellation-role"),
-    roles: CANONICAL_ROLE_IDS.map((id) => ({
-      id,
-      identityDigest: digest(`role:${id}`),
+function syntheticRoles(policy) {
+  const roles = CANONICAL_ROLE_CONTRACTS.map((contract) => {
+    const privilegeManifest = contract.id === CANCELLATION_CONTROL_ROLE_ID
+      ? structuredClone(CANCELLATION_CONTROL_PRIVILEGE_MANIFEST)
+      : null;
+    const roleRecord = {
+      id: contract.id,
+      purpose: contract.purpose,
+      identityDigest: digest(`role:${contract.id}`),
+      privilegeManifestDigest: privilegeManifest === null
+        ? digest(`privilege-manifest:${contract.id}`)
+        : digest(privilegeManifest),
+      privilegeManifest,
       separatedIdentity: true,
       boundaryPassed: true,
       prohibitedPrivilegesDenied: true,
       dangerousPrivilegeDetected: false,
+      unexpectedMembershipDetected: false,
+      unexpectedInheritanceDetected: false,
+      unexpectedOwnershipDetected: false,
+      unexpectedSchemaPrivilegeDetected: false,
+      unexpectedTablePrivilegeDetected: false,
+      publicDataApiExposed: false,
       rlsBoundaryPassed: true,
-      evidenceSha256: digest(`role-evidence:${id}`)
-    })),
-    observedAt: TIMES.observed,
-    evidenceSha256: digest("roles-evidence")
+      businessDataMutationBoundaryPassed: true
+    };
+    return { ...roleRecord, evidenceSha256: digest(roleRecord) };
+  });
+  const separationGuardIdentities = CANONICAL_ROLE_SEPARATION_GUARD_IDS.map(
+    (id) => ({ id, identityDigest: digest(`role-separation-guard:${id}`) })
+  );
+  const runtimeRole = roles.find((role) =>
+    role.id === "outdoor_research_runtime_role"
+  );
+  const cancellationRole = roles.find((role) =>
+    role.id === CANCELLATION_CONTROL_ROLE_ID
+  );
+  const record = {
+    roleContractDigest: digest(policy.canonicalRoleContracts),
+    roleSetDigest: null,
+    grantDigest: digest(roles.map((role) => ({
+      id: role.id,
+      privilegeManifestDigest: role.privilegeManifestDigest
+    }))),
+    rlsPolicyDigest: digest("rls-set"),
+    functionBoundaryDigest: digest("function-boundary"),
+    cancellationPrivilegeManifestDigest: cancellationRole.privilegeManifestDigest,
+    publicDataApiDenied: true,
+    runtimeDirectTableAccessDenied: true,
+    runtimeFunctionCount: 5,
+    runtimeRoleDigest: runtimeRole.identityDigest,
+    cancellationRoleDigest: cancellationRole.identityDigest,
+    roles,
+    separationGuardIdentities,
+    observedAt: TIMES.observed
   };
+  record.roleSetDigest = digest(stagingReadinessRoleSetRecordV1(record));
+  return { ...record, evidenceSha256: digest(record) };
 }
 
 function syntheticRegion(regionId, config) {

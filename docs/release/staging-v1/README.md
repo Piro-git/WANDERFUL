@@ -46,7 +46,7 @@ stable SHA-256 digests in a future live receipt.
 
 ## False-green boundary
 
-A V1 `GO` requires all 43 canonical cases and all 14 mandatory gates to pass in
+A V1 `GO` requires all 45 canonical cases and all 14 mandatory gates to pass in
 their exact order. It additionally requires:
 
 - an exact clean Git candidate and tree;
@@ -61,6 +61,9 @@ their exact order. It additionally requires:
   secret exposures, or residual resources;
 - every staging, provider, research, evidence, access, intent, insecure, mock,
   and in-memory flag independently observed exact false.
+- all nine canonical staging roles in exact order, including a distinct
+  first-class cancellation/control role whose identity and exact privilege
+  manifest are bound into the candidate digest.
 
 Offline/source-only receipts cannot claim a live case passed and can never be
 `GO`. This package also rejects every `live_staging` receipt at a final hard
@@ -102,3 +105,6 @@ case-to-evidence inventory is
 [`canonical-evidence-map-v1.json`](./canonical-evidence-map-v1.json).
 The independent P1/P2 review and corrected findings are recorded in
 [`ADVERSARIAL_AUDIT_V1.md`](./ADVERSARIAL_AUDIT_V1.md).
+The cancellation/control purpose, exact privilege manifest, alias guards and
+Markdown evidence format are defined in
+[`ROLE_CONTRACT_V1.md`](./ROLE_CONTRACT_V1.md).

@@ -3,7 +3,15 @@ import {
   generateKeyPairSync,
   sign
 } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { before, describe, it } from "node:test";
+import {
+  CANONICAL_CASES,
+  CANONICAL_ROLE_IDS,
+  CANONICAL_ROLE_SEPARATION_GUARD_IDS,
+  CANCELLATION_CONTROL_PRIVILEGE_MANIFEST,
+  CANCELLATION_CONTROL_ROLE_ID
+} from "../evaluation/stagingReadinessV1/constants.js";
 import {
   sealStagingReadinessReceiptV1,
   stagingReadinessObserverKeyIdV1,
@@ -11,6 +19,10 @@ import {
 } from "../evaluation/stagingReadinessV1/contract.js";
 import { loadStagingReadinessPolicyV1 } from
   "../evaluation/stagingReadinessV1/policy.js";
+import { stagingReadinessCandidateBindingRecordV1 } from
+  "../evaluation/stagingReadinessV1/observations.js";
+import { renderStagingReadinessRolesMarkdownV1 } from
+  "../evaluation/stagingReadinessV1/roleReport.js";
 import {
   createCompleteSyntheticStagingReceiptV1,
   SYNTHETIC_STAGING_PROOF_AS_OF
@@ -53,6 +65,66 @@ describe("staging readiness V1 strict receipt contract", () => {
       stableSerializeStagingReadinessV1(second),
       stableSerializeStagingReadinessV1(receipt)
     );
+  });
+
+  it("binds nine canonical roles and renders cancellation evidence deterministically", () => {
+    assert.equal(CANONICAL_CASES.length, 45);
+    assert.deepEqual(CANONICAL_ROLE_IDS, [
+      "platform_provisioner",
+      "migration_role",
+      "regional_import_role",
+      "projection_role",
+      "app_security_runtime_role",
+      "outdoor_research_runtime_role",
+      CANCELLATION_CONTROL_ROLE_ID,
+      "pruner_role",
+      "readonly_auditor_role"
+    ]);
+    const first = renderStagingReadinessRolesMarkdownV1({
+      roleObservation: receipt.observations.roles,
+      policy
+    });
+    const second = renderStagingReadinessRolesMarkdownV1({
+      roleObservation: receipt.observations.roles,
+      policy
+    });
+    assert.equal(first, second);
+    assert.match(first, /outdoor_research_cancellation_control_role/);
+    assert.match(first, /cancel_only_active_outdoor_research_backend/);
+    assert.match(first, /cancel_active_outdoor_research_backend_integer/);
+    assert.match(first, /backup_restore_role/);
+    assert.deepEqual(
+      cancellationRole(receipt).privilegeManifest,
+      CANCELLATION_CONTROL_PRIVILEGE_MANIFEST
+    );
+    const binding = stagingReadinessCandidateBindingRecordV1(
+      receipt.observations,
+      receipt.candidate
+    );
+    assert.equal(
+      binding.cancellationRoleIdentityDigest,
+      receipt.observations.roles.cancellationRoleDigest
+    );
+    assert.equal(
+      binding.cancellationPrivilegeManifestDigest,
+      cancellationRole(receipt).privilegeManifestDigest
+    );
+    const malformed = structuredClone(receipt.observations.roles);
+    malformed.roles[cancellationRoleIndex()].purpose = "forged_purpose";
+    assert.throws(() => renderStagingReadinessRolesMarkdownV1({
+      roleObservation: malformed,
+      policy
+    }), /role_report_contract_mismatch/);
+  });
+
+  it("keeps the documented cancellation privilege manifest byte-exact", async () => {
+    const markdown = await readFile(new URL(
+      "../../docs/release/staging-v1/ROLE_CONTRACT_V1.md",
+      import.meta.url
+    ), "utf8");
+    assert.ok(markdown.includes(
+      stableSerializeStagingReadinessV1(CANCELLATION_CONTROL_PRIVILEGE_MANIFEST)
+    ));
   });
 
   const adversarialCases = [
@@ -116,6 +188,139 @@ describe("staging readiness V1 strict receipt contract", () => {
     }],
     ["function boundary leakage", (value) => {
       value.observations.roles.runtimeFunctionCount = 6;
+    }],
+    ["missing cancellation control role", (value) => {
+      value.observations.roles.roles.splice(cancellationRoleIndex(), 1);
+    }],
+    ["duplicate cancellation control role", (value) => {
+      value.observations.roles.roles[cancellationRoleIndex()] = structuredClone(
+        value.observations.roles.roles[cancellationRoleIndex() - 1]
+      );
+    }],
+    ["reordered cancellation control role", (value) => {
+      const index = cancellationRoleIndex();
+      [value.observations.roles.roles[index], value.observations.roles.roles[index + 1]] =
+        [value.observations.roles.roles[index + 1], value.observations.roles.roles[index]];
+    }],
+    ["unknown cancellation control role ID", (value) => {
+      cancellationRole(value).id = "unknown_cancellation_role";
+    }],
+    ["wrong cancellation control purpose", (value) => {
+      cancellationRole(value).purpose = "serve_product_queries";
+    }],
+    ["cancellation superuser privilege", (value) => {
+      cancellationManifest(value).superuser = true;
+    }],
+    ["cancellation CREATEDB privilege", (value) => {
+      cancellationManifest(value).createDatabase = true;
+    }],
+    ["cancellation CREATEROLE privilege", (value) => {
+      cancellationManifest(value).createRole = true;
+    }],
+    ["cancellation REPLICATION privilege", (value) => {
+      cancellationManifest(value).replication = true;
+    }],
+    ["cancellation BYPASSRLS privilege", (value) => {
+      cancellationManifest(value).bypassRls = true;
+    }],
+    ["cancellation unexpected membership", (value) => {
+      cancellationManifest(value).membershipRoleIds.push("pg_signal_backend");
+    }],
+    ["cancellation unexpected inheritance", (value) => {
+      cancellationManifest(value).inheritPrivileges = true;
+    }],
+    ["cancellation object ownership", (value) => {
+      cancellationManifest(value).ownedObjectCount = 1;
+    }],
+    ["cancellation broad schema access", (value) => {
+      cancellationManifest(value).schemaUsageIds.push("public");
+    }],
+    ["cancellation broad table access", (value) => {
+      cancellationManifest(value).tablePrivilegeIds.push("public.all_tables_select");
+    }],
+    ["cancellation sequence access", (value) => {
+      cancellationManifest(value).sequencePrivilegeIds.push("public.all_sequences_usage");
+    }],
+    ["cancellation excess function execution", (value) => {
+      cancellationManifest(value).functionExecuteIds.push("pg_catalog.pg_terminate_backend");
+    }],
+    ["cancellation direct pg_cancel_backend execution", (value) => {
+      cancellationManifest(value).directPgCancelBackendExecute = true;
+    }],
+    ["cancellation public or Data API exposure", (value) => {
+      cancellationManifest(value).publicDataApiExposed = true;
+    }],
+    ["cancellation direct business-data read", (value) => {
+      cancellationManifest(value).directBusinessDataRead = true;
+    }],
+    ["cancellation business-data mutation", (value) => {
+      cancellationManifest(value).businessDataMutation = true;
+    }],
+    ["cancellation target substitution", (value) => {
+      cancellationManifest(value).targetRoleId = "app_security_runtime_role";
+    }],
+    ["cancellation target restriction disabled", (value) => {
+      cancellationManifest(value).targetRestrictionEnforced = false;
+    }],
+    ["cancellation product query execution", (value) => {
+      cancellationManifest(value).productQueryExecutionDenied = false;
+    }],
+    ["cancellation self privilege escalation", (value) => {
+      cancellationManifest(value).selfPrivilegeEscalationDenied = false;
+    }],
+    ["cancellation RLS boundary bypass", (value) => {
+      cancellationRole(value).rlsBoundaryPassed = false;
+    }],
+    ["hidden unsafe cancellation role behind safe runtime role", (value) => {
+      cancellationRole(value).dangerousPrivilegeDetected = true;
+    }],
+    ["mutable cancellation role evidence", (value) => {
+      cancellationRole(value).evidenceSha256 = "4".repeat(64);
+    }],
+    ["unknown cancellation privilege field", (value) => {
+      cancellationManifest(value).unexpectedPrivilege = true;
+    }],
+    ["malformed cancellation privilege manifest", (value) => {
+      cancellationRole(value).privilegeManifest = null;
+    }],
+    ["forged cancellation privilege digest", (value) => {
+      cancellationRole(value).privilegeManifestDigest = "4".repeat(64);
+    }],
+    ["forged cancellation role-set digest", (value) => {
+      value.observations.roles.roleSetDigest = "4".repeat(64);
+    }],
+    ["forged cancellation grant digest", (value) => {
+      value.observations.roles.grantDigest = "4".repeat(64);
+    }],
+    ["detached cancellation identity digest", (value) => {
+      value.observations.roles.cancellationRoleDigest = "4".repeat(64);
+    }],
+    ["forged cancellation contract digest", (value) => {
+      value.observations.roles.roleContractDigest = "4".repeat(64);
+    }],
+    ["cancellation identity aliased to backup restore", (value) => {
+      aliasCancellationToGuard(value, "backup_restore_role");
+    }],
+    ["cancellation identity aliased to anon", (value) => {
+      aliasCancellationToGuard(value, "anon");
+    }],
+    ["cancellation identity aliased to authenticated", (value) => {
+      aliasCancellationToGuard(value, "authenticated");
+    }],
+    ["cancellation identity aliased to service role", (value) => {
+      aliasCancellationToGuard(value, "service_role");
+    }],
+    ["cancellation identity aliased to administrative role", (value) => {
+      aliasCancellationToGuard(value, "postgres_administrator");
+    }],
+    ["missing separation guard identity", (value) => {
+      value.observations.roles.separationGuardIdentities.pop();
+    }],
+    ["reordered separation guard identities", (value) => {
+      [value.observations.roles.separationGuardIdentities[0],
+        value.observations.roles.separationGuardIdentities[1]] =
+        [value.observations.roles.separationGuardIdentities[1],
+          value.observations.roles.separationGuardIdentities[0]];
     }],
     ["empty regional import rows", (value) => {
       value.observations.regions[0].rowTotals.importedSegments = 0;
@@ -211,6 +416,15 @@ describe("staging readiness V1 strict receipt contract", () => {
     }]
   ];
 
+  for (const targetRoleId of CANONICAL_ROLE_IDS.filter((id) =>
+    id !== CANCELLATION_CONTROL_ROLE_ID
+  )) {
+    adversarialCases.push([
+      `cancellation identity aliased to ${targetRoleId}`,
+      (value) => { aliasCancellationToRole(value, targetRoleId); }
+    ]);
+  }
+
   for (const [name, mutate] of adversarialCases) {
     it(`rejects ${name}`, async () => {
       await assert.rejects(async () => {
@@ -275,4 +489,33 @@ async function resign(mutate) {
   delete changed.authenticity;
   mutate(changed);
   return sealStagingReadinessReceiptV1(changed, { signer: signer() });
+}
+
+function cancellationRoleIndex() {
+  return CANONICAL_ROLE_IDS.indexOf(CANCELLATION_CONTROL_ROLE_ID);
+}
+
+function cancellationRole(value) {
+  return value.observations.roles.roles[cancellationRoleIndex()];
+}
+
+function cancellationManifest(value) {
+  return cancellationRole(value).privilegeManifest;
+}
+
+function aliasCancellationToRole(value, targetRoleId) {
+  const target = value.observations.roles.roles.find((role) =>
+    role.id === targetRoleId
+  );
+  cancellationRole(value).identityDigest = target.identityDigest;
+  value.observations.roles.cancellationRoleDigest = target.identityDigest;
+}
+
+function aliasCancellationToGuard(value, targetGuardId) {
+  assert.ok(CANONICAL_ROLE_SEPARATION_GUARD_IDS.includes(targetGuardId));
+  const target = value.observations.roles.separationGuardIdentities.find(
+    (guard) => guard.id === targetGuardId
+  );
+  cancellationRole(value).identityDigest = target.identityDigest;
+  value.observations.roles.cancellationRoleDigest = target.identityDigest;
 }
