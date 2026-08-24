@@ -5,5 +5,6 @@ export * from "./io.js";
 export * from "./observations.js";
 export * from "./offlineHarness.js";
 export * from "./policy.js";
+export * from "./roleReport.js";
 export * from "./serialization.js";
 export * from "./validation.js";

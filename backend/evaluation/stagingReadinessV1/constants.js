@@ -23,15 +23,97 @@ export const CANONICAL_REGION_IDS = Object.freeze([
   "innsbruck-alps-v1"
 ]);
 
-export const CANONICAL_ROLE_IDS = Object.freeze([
-  "platform_provisioner",
-  "migration_role",
-  "regional_import_role",
-  "projection_role",
-  "app_security_runtime_role",
-  "outdoor_research_runtime_role",
-  "pruner_role",
-  "readonly_auditor_role"
+export const CANCELLATION_CONTROL_ROLE_ID =
+  "outdoor_research_cancellation_control_role";
+
+export const CANCELLATION_CONTROL_PRIVILEGE_MANIFEST = Object.freeze({
+  version: "cancellation-control-privileges-v1",
+  canLogin: true,
+  connectionLimit: 1,
+  statementTimeoutMilliseconds: 1_000,
+  inheritPrivileges: false,
+  superuser: false,
+  createDatabase: false,
+  createRole: false,
+  replication: false,
+  bypassRls: false,
+  membershipRoleIds: Object.freeze([]),
+  ownedObjectCount: 0,
+  schemaUsageIds: Object.freeze(["trailmind_control"]),
+  tablePrivilegeIds: Object.freeze([]),
+  sequencePrivilegeIds: Object.freeze([]),
+  functionExecuteIds: Object.freeze([
+    "trailmind_control.cancel_active_outdoor_research_backend_integer"
+  ]),
+  publicDataApiExposed: false,
+  directBusinessDataRead: false,
+  businessDataMutation: false,
+  directPgCancelBackendExecute: false,
+  targetRoleId: "outdoor_research_runtime_role",
+  targetRestrictionEnforced: true,
+  productQueryExecutionDenied: true,
+  selfPrivilegeEscalationDenied: true
+});
+
+export const CANONICAL_ROLE_CONTRACTS = Object.freeze([
+  Object.freeze({
+    id: "platform_provisioner",
+    purpose: "provision_staging_platform",
+    exactPrivilegeManifest: null
+  }),
+  Object.freeze({
+    id: "migration_role",
+    purpose: "apply_reviewed_migrations",
+    exactPrivilegeManifest: null
+  }),
+  Object.freeze({
+    id: "regional_import_role",
+    purpose: "import_approved_regional_sources",
+    exactPrivilegeManifest: null
+  }),
+  Object.freeze({
+    id: "projection_role",
+    purpose: "project_reviewed_active_imports",
+    exactPrivilegeManifest: null
+  }),
+  Object.freeze({
+    id: "app_security_runtime_role",
+    purpose: "serve_durable_app_attest_transactions",
+    exactPrivilegeManifest: null
+  }),
+  Object.freeze({
+    id: "outdoor_research_runtime_role",
+    purpose: "execute_five_bounded_research_reads",
+    exactPrivilegeManifest: null
+  }),
+  Object.freeze({
+    id: CANCELLATION_CONTROL_ROLE_ID,
+    purpose: "cancel_only_active_outdoor_research_backend",
+    exactPrivilegeManifest: CANCELLATION_CONTROL_PRIVILEGE_MANIFEST
+  }),
+  Object.freeze({
+    id: "pruner_role",
+    purpose: "prune_expired_app_attest_state",
+    exactPrivilegeManifest: null
+  }),
+  Object.freeze({
+    id: "readonly_auditor_role",
+    purpose: "read_sanitized_release_evidence",
+    exactPrivilegeManifest: null
+  })
+]);
+
+export const CANONICAL_ROLE_IDS = Object.freeze(
+  CANONICAL_ROLE_CONTRACTS.map((contract) => contract.id)
+);
+
+export const CANONICAL_ROLE_SEPARATION_GUARD_IDS = Object.freeze([
+  "backup_restore_role",
+  "anon",
+  "authenticated",
+  "service_role",
+  "postgres_administrator",
+  "managed_platform_administrator"
 ]);
 
 export const CANONICAL_FLAG_BINDINGS = Object.freeze([
@@ -111,7 +193,8 @@ export const CANONICAL_GATE_DEFINITIONS = Object.freeze([
       "separated_role_attributes",
       "grants_denied_operations",
       "rls_data_api_denial",
-      "runtime_function_boundary"
+      "runtime_function_boundary",
+      "cancellation_control_role_contract"
     ]
   },
   {
@@ -130,7 +213,8 @@ export const CANONICAL_GATE_DEFINITIONS = Object.freeze([
     caseIds: [
       "gist_index_plan",
       "latency_distribution",
-      "cancellation_pool_recovery"
+      "cancellation_pool_recovery",
+      "cancellation_control_target_and_mutation_denial"
     ]
   },
   {
@@ -217,6 +301,7 @@ export const POLICY_SOURCE_PATHS = Object.freeze([
   "backend/evaluation/stagingReadinessV1/validation.js",
   "backend/evaluation/stagingReadinessV1/policy.js",
   "backend/evaluation/stagingReadinessV1/observations.js",
+  "backend/evaluation/stagingReadinessV1/roleReport.js",
   "backend/evaluation/stagingReadinessV1/contract.js",
   "backend/evaluation/stagingReadinessV1/gitEvidence.js",
   "backend/evaluation/stagingReadinessV1/offlineHarness.js",

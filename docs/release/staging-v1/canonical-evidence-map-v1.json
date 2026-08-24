@@ -30,7 +30,7 @@
       "id": "least_privilege",
       "mandatory": true,
       "currentEvidenceClass": "external_blocker",
-      "caseIds": ["separated_role_attributes", "grants_denied_operations", "rls_data_api_denial", "runtime_function_boundary"]
+      "caseIds": ["separated_role_attributes", "grants_denied_operations", "rls_data_api_denial", "runtime_function_boundary", "cancellation_control_role_contract"]
     },
     {
       "id": "regional_data",
@@ -42,7 +42,7 @@
       "id": "index_transaction_performance",
       "mandatory": true,
       "currentEvidenceClass": "external_blocker",
-      "caseIds": ["gist_index_plan", "latency_distribution", "cancellation_pool_recovery"]
+      "caseIds": ["gist_index_plan", "latency_distribution", "cancellation_pool_recovery", "cancellation_control_target_and_mutation_denial"]
     },
     {
       "id": "backup_restore",
@@ -104,7 +104,7 @@
   "requiredLiveObservationClasses": [
     "non-production origin, project and database identity",
     "runtime image, deployment revision and non-root identity",
-    "database versions, migrations, grants, RLS and function boundaries",
+    "database versions, migrations, grants, RLS, function boundaries and nine canonical roles including cancellation control",
     "regional imports, projections, freshness, row totals and isolation",
     "index plans, latency, cancellation and pool recovery",
     "backup restore and reconciliation",

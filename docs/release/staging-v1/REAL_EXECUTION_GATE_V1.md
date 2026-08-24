@@ -38,12 +38,13 @@ the end:
 2. production guard and candidate cross-binding;
 3. HTTPS/TLS, dependency-free liveness and safe readiness;
 4. production preflight, image digest and non-root runtime;
-5. database versions, roles, grants, RLS/Data API/function denials;
+5. database versions, all nine ordered roles, grants, RLS/Data API/function
+   denials, and the exact cancellation/control privilege boundary;
 6. migrations 001–008 and an independently timed second true no-op;
 7. current active Harz/Innsbruck imports/projections, row totals, provenance,
    quarantine/residue and cross-region checks;
 8. GiST/plan, reviewed latency distributions, cancellation/rollback/pool
-   recovery;
+   recovery, target-role restriction and business-data mutation denial;
 9. isolated backup restore and all five reconciliations;
 10. drain, restart, known-good rollback and roll-forward;
 11. privacy-safe monitoring pipeline and delivery-tested alerts;

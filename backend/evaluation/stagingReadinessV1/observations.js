@@ -7,6 +7,9 @@ import {
   CANONICAL_REGION_IDS,
   CANONICAL_RESTORE_RECONCILIATIONS,
   CANONICAL_ROLE_IDS,
+  CANONICAL_ROLE_SEPARATION_GUARD_IDS,
+  CANCELLATION_CONTROL_PRIVILEGE_MANIFEST,
+  CANCELLATION_CONTROL_ROLE_ID,
   REGIONAL_FRESHNESS_THRESHOLD_DAYS,
   REVIEWED_THRESHOLDS
 } from "./constants.js";
@@ -218,42 +221,160 @@ function validateMigrationRun(value, context) {
 
 function validateRoles(value, context) {
   exactKeys(value, [
-    "roleSetDigest", "grantDigest", "rlsPolicyDigest", "functionBoundaryDigest",
+    "roleContractDigest", "roleSetDigest", "grantDigest", "rlsPolicyDigest",
+    "functionBoundaryDigest", "cancellationPrivilegeManifestDigest",
     "publicDataApiDenied", "runtimeDirectTableAccessDenied", "runtimeFunctionCount",
-    "runtimeRoleDigest", "cancellationRoleDigest", "roles", "observedAt",
-    "evidenceSha256"
+    "runtimeRoleDigest", "cancellationRoleDigest", "roles",
+    "separationGuardIdentities", "observedAt", "evidenceSha256"
   ]);
   for (const key of [
-    "roleSetDigest", "grantDigest", "rlsPolicyDigest", "functionBoundaryDigest",
+    "roleContractDigest", "roleSetDigest", "grantDigest", "rlsPolicyDigest",
+    "functionBoundaryDigest", "cancellationPrivilegeManifestDigest",
     "runtimeRoleDigest", "cancellationRoleDigest", "evidenceSha256"
   ]) assertDigest(value[key]);
   if (value.publicDataApiDenied !== true ||
       value.runtimeDirectTableAccessDenied !== true ||
-      value.runtimeFunctionCount !== REVIEWED_THRESHOLDS.runtimeReadFunctionCount ||
-      value.runtimeRoleDigest === value.cancellationRoleDigest) {
+      value.runtimeFunctionCount !== REVIEWED_THRESHOLDS.runtimeReadFunctionCount) {
     invalidStagingReadinessV1("role_boundary_invalid");
+  }
+  if (value.roleContractDigest !== context.sha256(
+    context.policy.canonicalRoleContracts
+  )) {
+    invalidStagingReadinessV1("role_contract_digest_mismatch");
   }
   assertExactOrderedIds(value.roles, CANONICAL_ROLE_IDS);
   const identities = new Set();
-  value.roles.forEach((role) => {
+  value.roles.forEach((role, index) => {
     exactKeys(role, [
-      "id", "identityDigest", "separatedIdentity", "boundaryPassed",
+      "id", "purpose", "identityDigest", "privilegeManifestDigest",
+      "privilegeManifest", "separatedIdentity", "boundaryPassed",
       "prohibitedPrivilegesDenied", "dangerousPrivilegeDetected",
-      "rlsBoundaryPassed", "evidenceSha256"
+      "unexpectedMembershipDetected", "unexpectedInheritanceDetected",
+      "unexpectedOwnershipDetected", "unexpectedSchemaPrivilegeDetected",
+      "unexpectedTablePrivilegeDetected", "publicDataApiExposed",
+      "rlsBoundaryPassed", "businessDataMutationBoundaryPassed",
+      "evidenceSha256"
     ]);
+    const contract = context.policy.canonicalRoleContracts[index];
+    if (role.purpose !== contract.purpose) {
+      invalidStagingReadinessV1("role_purpose_mismatch");
+    }
     assertDigest(role.identityDigest);
+    assertDigest(role.privilegeManifestDigest);
     assertDigest(role.evidenceSha256);
     identities.add(role.identityDigest);
     if (role.separatedIdentity !== true || role.boundaryPassed !== true ||
         role.prohibitedPrivilegesDenied !== true ||
-        role.dangerousPrivilegeDetected !== false || role.rlsBoundaryPassed !== true) {
+        role.dangerousPrivilegeDetected !== false ||
+        role.unexpectedMembershipDetected !== false ||
+        role.unexpectedInheritanceDetected !== false ||
+        role.unexpectedOwnershipDetected !== false ||
+        role.unexpectedSchemaPrivilegeDetected !== false ||
+        role.unexpectedTablePrivilegeDetected !== false ||
+        role.publicDataApiExposed !== false || role.rlsBoundaryPassed !== true ||
+        role.businessDataMutationBoundaryPassed !== true) {
       invalidStagingReadinessV1("privileged_or_leaking_role");
     }
+    if (role.id === CANCELLATION_CONTROL_ROLE_ID) {
+      validateCancellationControlPrivilegeManifest(role, context);
+    } else if (role.privilegeManifest !== null) {
+      invalidStagingReadinessV1("unexpected_exact_role_privilege_manifest");
+    }
+    const { evidenceSha256, ...roleRecord } = role;
+    if (context.sha256(roleRecord) !== evidenceSha256) {
+      invalidStagingReadinessV1("role_evidence_digest_mismatch");
+    }
   });
-  if (identities.size !== CANONICAL_ROLE_IDS.length) {
+  assertExactOrderedIds(
+    value.separationGuardIdentities,
+    CANONICAL_ROLE_SEPARATION_GUARD_IDS
+  );
+  value.separationGuardIdentities.forEach((guard) => {
+    exactKeys(guard, ["id", "identityDigest"]);
+    assertDigest(guard.identityDigest);
+    identities.add(guard.identityDigest);
+  });
+  if (identities.size !== CANONICAL_ROLE_IDS.length +
+      CANONICAL_ROLE_SEPARATION_GUARD_IDS.length) {
     invalidStagingReadinessV1("role_identity_alias");
   }
+  const runtimeRole = value.roles.find((role) =>
+    role.id === "outdoor_research_runtime_role"
+  );
+  const cancellationRole = value.roles.find((role) =>
+    role.id === CANCELLATION_CONTROL_ROLE_ID
+  );
+  if (value.runtimeRoleDigest !== runtimeRole.identityDigest ||
+      value.cancellationRoleDigest !== cancellationRole.identityDigest ||
+      value.runtimeRoleDigest === value.cancellationRoleDigest ||
+      value.cancellationPrivilegeManifestDigest !==
+        cancellationRole.privilegeManifestDigest) {
+    invalidStagingReadinessV1("role_boundary_invalid");
+  }
+  if (value.roleSetDigest !== context.sha256(
+    stagingReadinessRoleSetRecordV1(value)
+  ) || value.grantDigest !== context.sha256(
+    value.roles.map((role) => ({
+      id: role.id,
+      privilegeManifestDigest: role.privilegeManifestDigest
+    }))
+  )) {
+    invalidStagingReadinessV1("role_set_or_grant_digest_mismatch");
+  }
+  const { evidenceSha256, ...roleObservationRecord } = value;
+  if (context.sha256(roleObservationRecord) !== evidenceSha256) {
+    invalidStagingReadinessV1("roles_evidence_digest_mismatch");
+  }
   assertObservationClock(value.observedAt, context);
+}
+
+function validateCancellationControlPrivilegeManifest(role, context) {
+  const manifest = role.privilegeManifest;
+  exactKeys(manifest, Object.keys(CANCELLATION_CONTROL_PRIVILEGE_MANIFEST),
+    "cancellation_control_manifest_schema_drift");
+  const expectedDigest = context.sha256(CANCELLATION_CONTROL_PRIVILEGE_MANIFEST);
+  if (role.privilegeManifestDigest !== expectedDigest ||
+      context.sha256(manifest) !== expectedDigest) {
+    invalidStagingReadinessV1("cancellation_control_privilege_manifest_mismatch");
+  }
+  if (manifest.canLogin !== true || manifest.connectionLimit !== 1 ||
+      manifest.statementTimeoutMilliseconds !== 1_000 ||
+      manifest.inheritPrivileges !== false || manifest.superuser !== false ||
+      manifest.createDatabase !== false || manifest.createRole !== false ||
+      manifest.replication !== false || manifest.bypassRls !== false ||
+      manifest.membershipRoleIds.length !== 0 || manifest.ownedObjectCount !== 0 ||
+      manifest.schemaUsageIds.length !== 1 ||
+      manifest.schemaUsageIds[0] !== "trailmind_control" ||
+      manifest.tablePrivilegeIds.length !== 0 ||
+      manifest.sequencePrivilegeIds.length !== 0 ||
+      manifest.functionExecuteIds.length !== 1 ||
+      manifest.functionExecuteIds[0] !==
+        "trailmind_control.cancel_active_outdoor_research_backend_integer" ||
+      manifest.publicDataApiExposed !== false ||
+      manifest.directBusinessDataRead !== false ||
+      manifest.businessDataMutation !== false ||
+      manifest.directPgCancelBackendExecute !== false ||
+      manifest.targetRoleId !== "outdoor_research_runtime_role" ||
+      manifest.targetRestrictionEnforced !== true ||
+      manifest.productQueryExecutionDenied !== true ||
+      manifest.selfPrivilegeEscalationDenied !== true) {
+    invalidStagingReadinessV1("cancellation_control_privilege_boundary_failed");
+  }
+}
+
+export function stagingReadinessRoleSetRecordV1(value) {
+  return {
+    roles: value.roles.map((role) => ({
+      id: role.id,
+      purpose: role.purpose,
+      identityDigest: role.identityDigest,
+      privilegeManifestDigest: role.privilegeManifestDigest
+    })),
+    separationGuardIdentities: value.separationGuardIdentities.map((guard) => ({
+      id: guard.id,
+      identityDigest: guard.identityDigest
+    }))
+  };
 }
 
 function validateRegions(value, context) {
@@ -810,7 +931,13 @@ export function stagingReadinessCandidateBindingRecordV1(observations, candidate
     httpsOriginDigest: observations.environment.httpsOriginDigest,
     supabaseProjectRefDigest: observations.environment.supabaseProjectRefDigest,
     databaseInstanceDigest: observations.database.databaseInstanceDigest,
-    supabaseRegion: observations.database.supabaseRegion
+    supabaseRegion: observations.database.supabaseRegion,
+    roleContractDigest: observations.roles.roleContractDigest,
+    roleSetDigest: observations.roles.roleSetDigest,
+    grantDigest: observations.roles.grantDigest,
+    cancellationRoleIdentityDigest: observations.roles.cancellationRoleDigest,
+    cancellationPrivilegeManifestDigest:
+      observations.roles.cancellationPrivilegeManifestDigest
   };
 }
 
