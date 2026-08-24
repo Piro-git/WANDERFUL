@@ -10,7 +10,8 @@ digests, fixed outcomes, status codes and bounded durations.
 | Drill | Expected result with every capability false |
 | --- | --- |
 | Database unavailable at startup | App Attest schema/grant probe fails; process never binds; all constructed pools close; nonzero exit |
-| Missing schema or runtime grant | Admission returns blocked without table/role/URL detail |
+| Missing/private-schema mismatch or shadow object | Admission returns blocked without schema/table/role/URL detail; a `public` shadow cannot satisfy admission |
+| Excess database privilege | Membership, inherited/direct excess DML, ownership, schema `CREATE`, sequence or function execution makes admission false |
 | Database loss after readiness | Pool error or cached probe makes readiness false; late work returns bounded 503; liveness remains live; no raw stack |
 | Database recovery | A later bounded probe restores readiness without restarting or duplicating pools |
 | Statement timeout/cancellation | Typed bounded unavailable/cancelled result; transaction rollback; client released; no SQL/error payload |
@@ -19,7 +20,7 @@ digests, fixed outcomes, status codes and bounded durations.
 | Provider endpoint unavailable | No call is attempted because admission forbids the key and flag remains false |
 | SIGTERM while idle | readiness false, socket stops accepting, idle connections close, pools end, graceful outcome before deadline |
 | SIGTERM in flight | no late registration/body parsing; request abort at deadline; sockets/pools close; nonzero forced exit if deadline exceeded |
-| Configuration drift | enabled/malformed flag, wrong stage/project/role, weak TLS, unsafe Node/Postgres option, privileged DB identity or operator secret blocks before listen |
+| Configuration drift | enabled/malformed flag, wrong stage/project/schema/role, weak TLS, unsafe Node/Postgres option, privileged/aliased DB identity or operator secret blocks before listen |
 | Secret missing/rotation | missing source blocks; replacement candidate proves ready before prior credential revocation |
 | Health reconnaissance | fixed live/ready bodies only; all methods/paths outside contract return bounded 404/503 without dependency detail |
 

@@ -1,44 +1,102 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import pg from "pg";
 import { runAppAttestPrune } from "../../../src/appAttest/pruneExpired.js";
+import {
+  PostgresAppAttestRepository
+} from "../../../src/appAttest/postgresAppAttestRepository.js";
 import { createOperationalLogger } from "../../../src/operations/operationalEvents.js";
+import { appAttestDatabaseConfiguration } from "../../../src/operations/productionConfiguration.js";
+import {
+  stagingDatabaseAdmissionProbe,
+  stagingDatabaseIdentityConfiguration
+} from "../../../src/operations/stagingDatabaseAdmission.js";
+
+const { Pool } = pg;
 
 const OFF_LIMITS_PRODUCTION_PROJECT_REF_SHA256 =
   "730c9715a50e01394edff472b079a0742e6c34159c51329032d0bb8e8d7aa6b7";
+const FORBIDDEN_CONTROL_JOB_VALUES = Object.freeze([
+  "APP_ATTEST_OPERATOR_DATABASE_URL",
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_SECRET_KEY",
+  "GRAPHHOPPER_API_KEY",
+  "GOOGLE_API_KEY",
+  "OPENROUTER_API_KEY",
+  "OUTDOOR_RESEARCH_DATABASE_URL",
+  "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL",
+  "OUTDOOR_EVIDENCE_DATABASE_URL"
+]);
 
 export async function runStagingPruner(options = {}) {
   const env = options.env ?? process.env;
   const logger = options.logger ?? createOperationalLogger(options.loggerOptions);
   assertCleanProcessEnvironment(env, options.execArgv ?? process.execArgv);
-  const runtimeRole = validatedRoleName(env.APP_ATTEST_RUNTIME_ROLE);
-  const controlRole = validatedRoleName(env.APP_ATTEST_CONTROL_ROLE);
-  if (runtimeRole === controlRole) throw new TypeError("pruner_role_alias");
+  const identities = stagingDatabaseIdentityConfiguration(env);
   const projectHash = validatedProjectHash(env.TRAILMIND_STAGING_PROJECT_REF_SHA256);
   const controlUrl = validatedControlUrl(
     env.APP_ATTEST_CONTROL_DATABASE_URL,
-    controlRole,
+    identities.controlRole,
     projectHash
   );
   if (env.APP_ATTEST_DATABASE_URL !== undefined && env.APP_ATTEST_DATABASE_URL !== "") {
     throw new TypeError("pruner_runtime_source_forbidden");
   }
+  for (const name of FORBIDDEN_CONTROL_JOB_VALUES) {
+    if (env[name] !== undefined && env[name] !== "") {
+      throw new TypeError("pruner_secret_scope_invalid");
+    }
+  }
+  const admission = stagingDatabaseAdmissionProbe(env, "control");
+  const databaseConfiguration = appAttestDatabaseConfiguration(env);
+  const PoolClass = options.PoolClass ?? Pool;
+  const pool = new PoolClass({
+    connectionString: controlUrl,
+    max: 1,
+    connectionTimeoutMillis: databaseConfiguration.connectionTimeoutMs,
+    idleTimeoutMillis: databaseConfiguration.idleTimeoutMs,
+    query_timeout: databaseConfiguration.statementTimeoutMs,
+    statement_timeout: databaseConfiguration.statementTimeoutMs,
+    idle_in_transaction_session_timeout: databaseConfiguration.idleTransactionTimeoutMs,
+    options: admission.startupOptions,
+    allowExitOnIdle: true
+  });
+  pool.on?.("error", () => {});
   const pruneEnv = {
     ...env,
-    APP_ATTEST_DATABASE_URL: pinnedSearchPathUrl(controlUrl)
+    APP_ATTEST_DATABASE_URL: withStartupOptions(controlUrl, admission.startupOptions)
   };
   delete pruneEnv.APP_ATTEST_CONTROL_DATABASE_URL;
+  let counts;
+  let operationError;
   try {
-    const counts = await (options.runPrune ?? runAppAttestPrune)({
+    const result = await pool.query(admission.query, admission.values);
+    if (result?.rows?.[0]?.admitted !== true) {
+      throw new TypeError("pruner_database_admission_failed");
+    }
+    const repository = new PostgresAppAttestRepository({ pool });
+    counts = await (options.runPrune ?? runAppAttestPrune)({
       env: pruneEnv,
+      repository,
       write() {}
     });
-    logger.info({ event: "prune_job_completed", outcome: "succeeded" });
-    return counts;
   } catch (error) {
-    logger.error({ event: "prune_job_completed", outcome: "failed" });
-    throw error;
+    operationError = error;
   }
+  try {
+    await pool.end();
+  } catch (error) {
+    operationError ??= error;
+  }
+  if (operationError) {
+    logger.error({ event: "prune_job_completed", outcome: "failed" });
+    throw operationError;
+  }
+  logger.info({ event: "prune_job_completed", outcome: "succeeded" });
+  return counts;
 }
 
 function validatedControlUrl(value, expectedRole, expectedProjectHash) {
@@ -81,13 +139,6 @@ function hasExactDatabaseSearchParameters(parsed) {
   );
 }
 
-function validatedRoleName(value) {
-  if (typeof value !== "string" || !/^[a-z_][a-z0-9_]{0,62}$/.test(value)) {
-    throw new TypeError("pruner_configuration_invalid");
-  }
-  return value;
-}
-
 function validatedProjectHash(value) {
   if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) {
     throw new TypeError("pruner_configuration_invalid");
@@ -112,9 +163,9 @@ function assertCleanProcessEnvironment(env, execArgv) {
   }
 }
 
-function pinnedSearchPathUrl(value) {
+function withStartupOptions(value, startupOptions) {
   const parsed = new URL(value);
-  parsed.searchParams.set("options", "-c search_path=pg_catalog,public");
+  parsed.searchParams.set("options", startupOptions);
   return parsed.toString();
 }
 

@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { describe, it } from "node:test";
 import { stagingAdmissionContract } from "../container/stagingAdmission.js";
+import {
+  APP_ATTEST_CONTROL_PRIVILEGE_MANIFEST,
+  APP_ATTEST_RUNTIME_PRIVILEGE_MANIFEST
+} from "../src/operations/stagingDatabaseAdmission.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -76,6 +80,7 @@ describe("staging OCI artifact", () => {
       "utf8"
     ));
     const sourceContract = stagingAdmissionContract();
+    assert.equal(machineContract.schemaVersion, 2);
     assert.equal(machineContract.contractVersion, sourceContract.contractVersion);
     assert.deepEqual(machineContract.runtime.exactFalse, sourceContract.exactFalseFlags);
     assert.deepEqual(machineContract.runtime.forbidden, sourceContract.forbiddenWebProcessValues);
@@ -84,8 +89,26 @@ describe("staging OCI artifact", () => {
     const runtimeRequired = new Set(machineContract.runtime.required.map(({ name }) => name));
     assert.equal(runtimeRequired.has("TRAILMIND_STAGING_PROJECT_REF_SHA256"), true);
     assert.equal(runtimeRequired.has("APP_ATTEST_RUNTIME_ROLE"), true);
+    assert.equal(runtimeRequired.has("APP_ATTEST_CONTROL_ROLE"), true);
+    assert.equal(runtimeRequired.has("APP_ATTEST_OPERATOR_ROLE"), true);
+    assert.equal(runtimeRequired.has("TRAILMIND_APPLICATION_SCHEMA"), true);
     const controlRequired = new Set(machineContract.controlJob.required.map(({ name }) => name));
     assert.equal(controlRequired.has("APP_ATTEST_CONTROL_ROLE"), true);
+    assert.equal(controlRequired.has("APP_ATTEST_OPERATOR_ROLE"), true);
+    assert.equal(machineContract.controlJob.forbidden.includes(
+      "APP_ATTEST_OPERATOR_DATABASE_URL"
+    ), true);
+    assert.deepEqual(machineContract.databaseAdmission.searchPath, [
+      "pg_catalog", "$application_schema", "public", "pg_temp"
+    ]);
+    assert.deepEqual(
+      machineContract.databaseAdmission.privilegeManifests.app_attest_runtime.tables,
+      machinePrivileges(APP_ATTEST_RUNTIME_PRIVILEGE_MANIFEST)
+    );
+    assert.deepEqual(
+      machineContract.databaseAdmission.privilegeManifests.app_attest_control.tables,
+      machinePrivileges(APP_ATTEST_CONTROL_PRIVILEGE_MANIFEST)
+    );
     assert.equal(machineContract.controlJob.runtimeSourceMustBeAbsent, true);
     assert.equal(machineContract.remoteMutationAuthorized, false);
   });
@@ -93,4 +116,12 @@ describe("staging OCI artifact", () => {
 
 function escapePattern(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function machinePrivileges(manifest) {
+  const names = ["select", "insert", "update", "delete", "truncate", "references", "trigger"];
+  return Object.fromEntries(manifest.tables.map((table) => [
+    table.name,
+    names.filter((privilege) => table[`can_${privilege}`]).map((value) => value.toUpperCase())
+  ]));
 }
