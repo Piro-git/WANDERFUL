@@ -4,7 +4,7 @@ Status: repository contract implemented; provider/platform provisioning and curr
 
 ## Decision
 
-Production outdoor-research reads use five bounded `SECURITY DEFINER` functions from migration `008_outdoor_research_runtime_read_contract.sql`. The application runtime role receives schema `USAGE` and `EXECUTE` on those functions only. It receives no table, sequence, active-view, migration-ledger, import, projection, policy, or App Attest privileges.
+Production outdoor-research reads use five bounded `SECURITY DEFINER` functions. Historical portable migration `008_outdoor_research_runtime_read_contract.sql` is retained for non-Supabase/public-PostGIS compatibility evidence only. The approved Supabase candidate policy is the mutually exclusive sequence `001-007` plus `009_supabase_postgis_isolated_runtime_read_contract.sql`; it never applies `008`. The application runtime role receives private application-schema `USAGE` and `EXECUTE` on those functions only. It receives no table, sequence, active-view, migration-ledger, import, projection, policy, App Attest, public-schema or GIS-schema privilege.
 
 The functions implement the exact operations used by `PostgresOutdoorResearchRepository`:
 
@@ -39,61 +39,69 @@ The snapshot-context operation may report inactive context fields so the reposit
 
 The migration and all five functions must be owned by one narrowly scoped `NOLOGIN NOINHERIT` schema owner with no dangerous role attributes and no role memberships. The application schema must also be owned by that role. An audited migration login may be allowed to `SET ROLE` to the owner; neither the runtime nor auditor login may be a member of it.
 
-Migration `008` validates the owner and schema ACLs, then captures a fixed search path with the application schema first, `pg_catalog` ahead of `public` for a non-public application schema, and `pg_temp` last. It fails when the application schema or required PostGIS `public` schema grants `CREATE` to an untrusted role. The runtime role must also have no schema `CREATE` or database `TEMPORARY` privilege.
+Supabase replacement migration `009` requires PostGIS to have been installed directly in locked `trailmind_gis`, proves that no PostGIS routine is in `public`, and rejects GIS ownership or GIS `CREATE` by the application-function owner. The five functions capture exactly `pg_catalog,trailmind_app,trailmind_gis,pg_temp`; no writable or untrusted schema precedes their dependencies. Runtime connections use `pg_catalog,trailmind_app,pg_temp`, receive no `USAGE` on `public`, managed `extensions`, or `trailmind_gis`, and have no database `TEMPORARY` privilege. Direct PostGIS or shared-extension invocation is therefore unavailable even when provider-owned routines retain `PUBLIC` execute ACLs inside an inaccessible schema.
 
 ## Production role provisioning
 
-Role names may differ by platform, but the capability split must not. The example below assumes a dedicated database named `trailmind`, the application schema `public`, non-login owner `trailmind_schema_owner`, audited login `trailmind_migration_operator`, and runtime login `trailmind_outdoor_runtime`.
+Role names may differ by platform, but the capability split must not. The reviewed Supabase candidate uses private application schema `trailmind_app`, locked extension schema `trailmind_gis`, non-login owner `trailmind_app_owner`, audited login `migration_role`, and runtime login `outdoor_research_runtime_role`. The complete guarded SQL is in `docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql` and `PHASE_1_POST_MIGRATION_V2.sql`; the abbreviated shape below is explanatory, not an operator substitute.
 
 Run role creation through the platform's audited provisioner, not through an application migration:
 
 ```sql
-CREATE ROLE trailmind_schema_owner
+CREATE ROLE trailmind_app_owner
   NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
   NOREPLICATION NOBYPASSRLS;
-GRANT trailmind_schema_owner TO trailmind_migration_operator;
+GRANT trailmind_app_owner TO migration_role
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
 
-CREATE ROLE trailmind_outdoor_runtime
+CREATE ROLE outdoor_research_runtime_role
   LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
   NOREPLICATION NOBYPASSRLS;
 
-REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-ALTER SCHEMA public OWNER TO trailmind_schema_owner;
+CREATE SCHEMA trailmind_gis;
+REVOKE ALL ON SCHEMA trailmind_gis FROM PUBLIC, anon, authenticated, service_role;
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA trailmind_gis;
+CREATE SCHEMA trailmind_app AUTHORIZATION trailmind_app_owner;
+GRANT USAGE ON SCHEMA trailmind_gis TO trailmind_app_owner;
+REVOKE CREATE ON SCHEMA trailmind_gis FROM trailmind_app_owner;
 
--- Apply migrations 001-008 from the audited login after:
-SET ROLE trailmind_schema_owner;
--- run the migration runner here
+-- Apply policy 001-007 + 009 from the audited login after:
+SET ROLE trailmind_app_owner;
+SET search_path = trailmind_app, pg_catalog, trailmind_gis, pg_temp;
+-- run the explicitly selected Supabase V2 migration policy here
 RESET ROLE;
 
-GRANT CONNECT ON DATABASE trailmind TO trailmind_outdoor_runtime;
-REVOKE CREATE ON SCHEMA public FROM trailmind_outdoor_runtime;
-GRANT USAGE ON SCHEMA public TO trailmind_outdoor_runtime;
+GRANT CONNECT ON DATABASE trailmind TO outdoor_research_runtime_role;
+GRANT USAGE ON SCHEMA trailmind_app TO outdoor_research_runtime_role;
+REVOKE ALL ON SCHEMA trailmind_gis FROM outdoor_research_runtime_role;
+ALTER ROLE outdoor_research_runtime_role
+  SET search_path = pg_catalog, trailmind_app, pg_temp;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA public FROM trailmind_outdoor_runtime;
-REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM trailmind_outdoor_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA trailmind_app FROM outdoor_research_runtime_role;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA trailmind_app FROM outdoor_research_runtime_role;
 
 GRANT EXECUTE ON FUNCTION
-  public.trailmind_runtime_outdoor_research_snapshot_context_v1(
+  trailmind_app.trailmind_runtime_outdoor_research_snapshot_context_v1(
     text, double precision, double precision
-  ) TO trailmind_outdoor_runtime;
+  ) TO outdoor_research_runtime_role;
 GRANT EXECUTE ON FUNCTION
-  public.trailmind_runtime_outdoor_research_highlights_v1(
+  trailmind_app.trailmind_runtime_outdoor_research_highlights_v1(
     uuid, text, double precision, double precision, text[],
     double precision, text[], integer, double precision
-  ) TO trailmind_outdoor_runtime;
+  ) TO outdoor_research_runtime_role;
 GRANT EXECUTE ON FUNCTION
-  public.trailmind_runtime_outdoor_research_route_memberships_v1(
+  trailmind_app.trailmind_runtime_outdoor_research_route_memberships_v1(
     uuid, text, double precision, double precision,
     double precision, integer, integer
-  ) TO trailmind_outdoor_runtime;
+  ) TO outdoor_research_runtime_role;
 GRANT EXECUTE ON FUNCTION
-  public.trailmind_runtime_outdoor_research_route_assertions_v1(
+  trailmind_app.trailmind_runtime_outdoor_research_route_assertions_v1(
     uuid, uuid[], text[], integer
-  ) TO trailmind_outdoor_runtime;
+  ) TO outdoor_research_runtime_role;
 GRANT EXECUTE ON FUNCTION
-  public.trailmind_runtime_outdoor_research_trail_access_candidates_v1(
+  trailmind_app.trailmind_runtime_outdoor_research_trail_access_candidates_v1(
     uuid, text, uuid[], double precision, integer, text[], text[], integer
-  ) TO trailmind_outdoor_runtime;
+  ) TO outdoor_research_runtime_role;
 ```
 
 PostgreSQL grants database `TEMPORARY` to `PUBLIC` by default. A dedicated TrailMind database should revoke it from `PUBLIC` and grant it back only to reviewed maintenance roles; revoking it from the runtime role alone cannot override a `PUBLIC` grant:
@@ -105,11 +113,11 @@ REVOKE TEMPORARY ON DATABASE trailmind FROM PUBLIC;
 Keep future objects closed by default under the migration owner:
 
 ```sql
-ALTER DEFAULT PRIVILEGES FOR ROLE trailmind_schema_owner IN SCHEMA public
+ALTER DEFAULT PRIVILEGES FOR ROLE trailmind_app_owner IN SCHEMA trailmind_app
   REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
-ALTER DEFAULT PRIVILEGES FOR ROLE trailmind_schema_owner IN SCHEMA public
+ALTER DEFAULT PRIVILEGES FOR ROLE trailmind_app_owner IN SCHEMA trailmind_app
   REVOKE ALL ON TABLES FROM PUBLIC;
-ALTER DEFAULT PRIVILEGES FOR ROLE trailmind_schema_owner IN SCHEMA public
+ALTER DEFAULT PRIVILEGES FOR ROLE trailmind_app_owner IN SCHEMA trailmind_app
   REVOKE ALL ON SEQUENCES FROM PUBLIC;
 ```
 

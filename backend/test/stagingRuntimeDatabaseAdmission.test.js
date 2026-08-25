@@ -16,11 +16,11 @@ describe("staging database admission contract", () => {
     assert.equal(probe.role, "trailmind_runtime");
     assert.equal(
       probe.startupOptions,
-      '-c search_path=pg_catalog,"trailmind_app",public,pg_temp'
+      '-c search_path=pg_catalog,"trailmind_app",pg_temp'
     );
     assert.equal(probe.query.includes("trailmind_app"), false);
     assert.equal(probe.values[0], "trailmind_app");
-    assert.equal(probe.values[1], "pg_catalog,trailmind_app,public,pg_temp");
+    assert.equal(probe.values[1], "pg_catalog,trailmind_app,pg_temp");
     assert.deepEqual(probe.values[3], [
       "trailmind_runtime", "trailmind_pruner", "trailmind_operator"
     ]);
@@ -103,7 +103,8 @@ describe("staging database admission contract", () => {
         connect: true, create: false, temporary: false
       });
       assert.deepEqual(manifest.schemas.application, { usage: true, create: false });
-      assert.deepEqual(manifest.schemas.public, { usage: true, create: false });
+      assert.deepEqual(manifest.schemas.public, { usage: false, create: false });
+      assert.deepEqual(manifest.schemas.trailmindGis, { usage: false, create: false });
       assert.deepEqual(manifest.applicationSequences, []);
       assert.deepEqual(manifest.applicationFunctions, []);
       assert.deepEqual(manifest.publicFunctionExtensions, []);
@@ -130,6 +131,7 @@ describe("staging database admission contract", () => {
       "has_sequence_privilege",
       "has_function_privilege",
       "dependency.deptype = 'e'",
+      "namespace.nspname = 'trailmind_gis'",
       "shadow.relname = ANY",
       "namespace.nspowner",
       "relation.relowner",

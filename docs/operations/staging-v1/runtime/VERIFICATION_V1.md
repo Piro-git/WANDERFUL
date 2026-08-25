@@ -1,7 +1,7 @@
 # Staging Runtime V1 Local Verification
 
-Verification date: 2026-08-24. Source baseline:
-`fc7ea47968aebd7c1c9be747d2abe97c707e4636`, fetched `origin/main`.
+Verification date: 2026-08-25. Candidate baseline and fetched `origin/main`:
+`72b98e3e065ae442168ece20984d8baba26e2d11`.
 No remote service, database, registry, DNS, certificate, secret or provider was
 used by these gates. The correction pass used a disposable local PostgreSQL
 17.10/PostGIS cluster on a private Unix socket and removed it after testing.
@@ -10,15 +10,16 @@ used by these gates. The correction pass used a disposable local PostgreSQL
 
 | Gate | Result |
 | --- | --- |
-| Focused staging/operations tests | 30/30 pass after private-schema/exact-privilege corrections |
-| Disposable PostgreSQL/PostGIS admission tests | 9/9 pass; exact positive runtime/control baseline plus reversible negative catalog drills |
-| Migrations 001–008 | first pass applied all eight; second pass emitted no applied migration and changed no migration ledger row |
-| Complete backend suite | 842/842 pass; 96 suites; 0 fail; 0 skipped |
+| Focused Supabase V2 static/operator/capability/quarantine tests | 47/47 pass |
+| Disposable PostgreSQL 17/PostGIS proof | 87/87 pass across rollback, production runner, provider-owned topology, V2 runtime/adversarial, portable V1, and App Attest suites |
+| Historical blocked migration attempt (`001–008`) | **not run remotely**. The operation stopped during pre-migration PostGIS admission, compensated, and left no TrailMind schema, role, object, ledger, or PostGIS extension. This is historical evidence, not the current Supabase retry policy. |
+| Current Supabase retry policy (`001–007 + 009`) | local disposable proof only; future remote execution requires a fresh authorization and explicit `supabase-postgis-isolation-v2` selection. |
+| Complete backend suite | 1,014/1,014 pass; 106 suites; 0 fail; 0 skipped |
 | `npm run build` | pass |
 | Offline outdoor quality evaluation | 101/101 pass; 0 skipped; no live provider traffic |
-| Release-package validator | package structurally valid; authoritative decision remains `NO_GO` with 48 unresolved gates |
-| Production dependency audit | 0 known vulnerabilities |
-| Deterministic application-image context | 90 files; pass; SHA-256 `4996f283ba2f109b58121031dc755c5c4d5565ffc69200d06269525473f234ca` |
+| Release-package validator | not rerun in this correction pass; authoritative decision remains `NO_GO` |
+| Production dependency audit | not rerun in this correction pass |
+| Deterministic application-image context | 90 files; pass; SHA-256 `10b87ca2f6a62f72754c3f65f7e60ec0f0617a34aeb902ca558c5f670beeb2c6` |
 | JavaScript/JSON/diff checks | pass |
 | Plaintext production project reference in owned runtime paths | absent |
 
@@ -35,7 +36,7 @@ initially pass. The corrected admission now rejects Node execution/TLS/debug
 overrides, PostgreSQL session/service overrides, connection-query overrides,
 enabled or malformed capability flags, and missing/mismatched approved project
 hashes or role names. App-security sessions pin and verify
-`search_path=pg_catalog,<private_application_schema>,public,pg_temp`. Catalog
+`search_path=pg_catalog,<private_application_schema>,pg_temp`. Catalog
 admission uses parameterized schema/name inputs and exact runtime/control
 manifests. It rejects public shadows, role membership/unsafe attributes,
 inherited/direct excess grants and grant options, ownership, writable schemas,

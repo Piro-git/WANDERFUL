@@ -168,7 +168,10 @@ The OSM wiki documents community tagging practice and its limitations; it is not
 The importer never downloads data and never calls public Overpass or Nominatim. Prerequisites are deliberately external gates:
 
 - PostgreSQL with PostGIS 3.2 or later already installed and configured (`ST_DumpSegments` is used)
-- migrations applied with `npm run db:migrate`
+- migrations applied with one explicit reviewed policy command; Supabase uses
+  the full `npm run db:migrate:supabase-postgis-isolation-v2` operator
+  (`001–007 + 009`), which remains disabled until its reviewed live adapter is
+  separately installed and authorized
 - osm2pgsql 2.3 or later (native flex `timestamptz` columns are used)
 - osmium-tool 1.x or later
 - a user-supplied regional `.osm.pbf`

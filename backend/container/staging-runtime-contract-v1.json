@@ -1,17 +1,17 @@
 {
-  "schemaVersion": 2,
-  "contractVersion": "staging-container-admission-v2",
+  "schemaVersion": 4,
+  "contractVersion": "staging-container-admission-v4-shared-extension-isolation",
   "databaseAdmission": {
     "applicationSchemaEnvironmentName": "TRAILMIND_APPLICATION_SCHEMA",
     "applicationSchemaPattern": "^trailmind_[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
     "maximumApplicationSchemaLength": 48,
     "rolePattern": "^[a-z_][a-z0-9_]{0,62}$",
     "forbiddenIdentityRoles": ["postgres", "service_role", "supabase_admin", "anon", "authenticated"],
-    "searchPath": ["pg_catalog", "$application_schema", "public", "pg_temp"],
+    "searchPath": ["pg_catalog", "$application_schema", "pg_temp"],
     "privilegeManifests": {
       "app_attest_runtime": {
         "database": ["CONNECT"],
-        "schemas": { "application": ["USAGE"], "public": ["USAGE"] },
+        "schemas": { "application": ["USAGE"], "public": [], "extensions": [], "trailmind_gis": [] },
         "tables": {
           "app_attest_challenges": ["SELECT", "INSERT", "UPDATE"],
           "app_attest_keys": ["SELECT", "INSERT", "UPDATE"],
@@ -25,7 +25,7 @@
       },
       "app_attest_control": {
         "database": ["CONNECT"],
-        "schemas": { "application": ["USAGE"], "public": ["USAGE"] },
+        "schemas": { "application": ["USAGE"], "public": [], "extensions": [], "trailmind_gis": [] },
         "tables": {
           "app_attest_challenges": ["DELETE"],
           "app_attest_keys": [],

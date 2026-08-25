@@ -2,7 +2,7 @@
 
 ## Status
 
-The repository includes a provider-neutral PostgreSQL adapter selected when `DATABASE_URL` is explicitly configured or, when it is absent or empty, when Vercel's Supabase integration provides `POSTGRES_URL`. A non-empty `DATABASE_URL` always takes precedence and an invalid value fails closed. Protected production traffic remains blocked until a dedicated PostgreSQL database is provisioned, `npm run db:migrate` succeeds, the adapter passes its integration suite against a disposable database, and all App Attest/provider configuration is present.
+The repository includes a provider-neutral PostgreSQL adapter selected when `DATABASE_URL` is explicitly configured or, when it is absent or empty, when Vercel's Supabase integration provides `POSTGRES_URL`. A non-empty `DATABASE_URL` always takes precedence and an invalid value fails closed. Protected production traffic remains blocked until a dedicated PostgreSQL database is provisioned, an explicit reviewed migration policy succeeds, the adapter passes its integration suite against a disposable database, and all App Attest/provider configuration is present. The current Supabase candidate is the full, fail-closed `npm run db:migrate:supabase-postgis-isolation-v2` operator (`001–007 + 009`); that entrypoint remains disabled until a reviewed live adapter is installed. Raw migration execution, `001–008`, and the historical portable command are not Supabase operator paths.
 
 `PostgresAppAttestRepository` uses parameterized queries, row locks, atomic upserts, compare-and-set updates, and transaction-scoped advisory locks. `InMemoryAppAttestRepository` remains limited to unit tests and explicitly opted-in local development; production endpoints reject it.
 

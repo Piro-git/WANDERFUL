@@ -36,13 +36,13 @@ under the platform secret-file directory, never a default owner, admin or
 `NODE_OPTIONS`, TLS verification overrides, Node debug/extra-CA switches and
 PostgreSQL session/service overrides are forbidden. The container starts Node
 without execution arguments. The app-security pool pins and verifies
-`search_path=pg_catalog,"<validated_application_schema>",public,pg_temp` before
-listen. `pg_catalog` first prevents built-in shadowing; the private application
-schema precedes trusted `public`; explicit `pg_temp` last prevents its implicit
-front-of-path placement. Both roles are denied database `TEMPORARY` and `CREATE`
-on every schema, including the application schema and `public`. PostGIS can stay
-in trusted `public`; App Attest tables must exist only in the configured private
-schema, which must not be exposed through the Supabase Data API. Because
+`search_path=pg_catalog,"<validated_application_schema>",pg_temp` before
+listen. `pg_catalog` first prevents built-in shadowing and explicit `pg_temp`
+last prevents its implicit front-of-path placement. Both roles are denied
+database `TEMPORARY`, `USAGE`/`CREATE` on `public`, managed `extensions`, and locked `trailmind_gis`,
+and `CREATE` on every schema. PostGIS is installed directly in
+`trailmind_gis`; App Attest tables exist only in the configured private schema,
+and neither schema is exposed through the Supabase Data API. Because
 pre-main Node options act before JavaScript admission, the platform
 configuration receipt must independently prove the forbidden process names
 absent.
@@ -72,7 +72,8 @@ Both identities are `LOGIN NOINHERIT` and must be neither superuser nor
 `CREATEDB`, `CREATEROLE`, `REPLICATION` or `BYPASSRLS`. They own no database,
 schema, table, sequence or function, have no direct or indirect role membership,
 receive database `CONNECT` only, and receive schema `USAGE` only on the private
-application schema and trusted `public`. Grant options are forbidden.
+application schema. They receive no `public`, `extensions`, or `trailmind_gis` schema usage.
+Grant options are forbidden.
 
 The web runtime receives:
 
@@ -88,8 +89,8 @@ The web runtime receives:
 The control/pruner receives `DELETE` only on
 `app_attest_challenges`, `app_attest_route_sessions`,
 `app_attest_rate_windows` and `app_attest_provider_leases`; it receives no
-privilege on the other two tables. Neither identity receives application/public
-sequence or function privileges, other application/public relation privileges,
+privilege on the other two tables. Neither identity receives application,
+public, managed-extension or PostGIS sequence/function privileges, other application/public relation privileges,
 column-only extras, `TRUNCATE`, `REFERENCES`, `TRIGGER`, `MAINTAIN`, database
 `CREATE`/`TEMPORARY`, or schema `CREATE`. Required role-scoped RLS policy
 behavior remains part of the database lane's authoritative DML denial proof.

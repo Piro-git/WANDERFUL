@@ -25,7 +25,9 @@ export const APP_ATTEST_RUNTIME_PRIVILEGE_MANIFEST = deepFreeze({
   database: { connect: true, create: false, temporary: false },
   schemas: {
     application: { usage: true, create: false },
-    public: { usage: true, create: false }
+    public: { usage: false, create: false },
+    extensions: { usage: false, create: false },
+    trailmindGis: { usage: false, create: false }
   },
   tables: [
     tablePrivileges("app_attest_challenges", ["select", "insert", "update"]),
@@ -46,7 +48,9 @@ export const APP_ATTEST_CONTROL_PRIVILEGE_MANIFEST = deepFreeze({
   database: { connect: true, create: false, temporary: false },
   schemas: {
     application: { usage: true, create: false },
-    public: { usage: true, create: false }
+    public: { usage: false, create: false },
+    extensions: { usage: false, create: false },
+    trailmindGis: { usage: false, create: false }
   },
   tables: [
     tablePrivileges("app_attest_challenges", ["delete"]),
@@ -129,6 +133,36 @@ public_functions AS (
     JOIN pg_catalog.pg_namespace AS namespace
       ON namespace.oid = procedure.pronamespace
    WHERE namespace.nspname = 'public'
+),
+extensions_functions AS (
+  SELECT procedure.oid
+    FROM pg_catalog.pg_proc AS procedure
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.oid = procedure.pronamespace
+   WHERE namespace.nspname = 'extensions'
+),
+gis_functions AS (
+  SELECT procedure.oid, procedure.proowner
+    FROM pg_catalog.pg_proc AS procedure
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.oid = procedure.pronamespace
+   WHERE namespace.nspname = 'trailmind_gis'
+),
+postgis_topology AS (
+  SELECT extension.extowner,
+         extension_owner.rolname AS extension_owner,
+         namespace.oid AS namespace_oid,
+         namespace.nspowner,
+         schema_owner.rolname AS schema_owner
+    FROM pg_catalog.pg_extension extension
+    JOIN pg_catalog.pg_roles extension_owner
+      ON extension_owner.oid = extension.extowner
+    JOIN pg_catalog.pg_namespace namespace
+      ON namespace.oid = extension.extnamespace
+    JOIN pg_catalog.pg_roles schema_owner
+      ON schema_owner.oid = namespace.nspowner
+   WHERE extension.extname = 'postgis'
+     AND namespace.nspname = 'trailmind_gis'
 )
 SELECT (
   current_user = $3
@@ -171,9 +205,49 @@ SELECT (
   AND pg_catalog.has_schema_privilege(current_user, $1, 'USAGE')
   AND NOT pg_catalog.has_schema_privilege(current_user, $1, 'USAGE WITH GRANT OPTION')
   AND NOT pg_catalog.has_schema_privilege(current_user, $1, 'CREATE')
-  AND pg_catalog.has_schema_privilege(current_user, 'public', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'public', 'USAGE')
   AND NOT pg_catalog.has_schema_privilege(current_user, 'public', 'USAGE WITH GRANT OPTION')
   AND NOT pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'extensions', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(
+    current_user, 'extensions', 'USAGE WITH GRANT OPTION'
+  )
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'extensions', 'CREATE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'trailmind_gis', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(
+    current_user, 'trailmind_gis', 'USAGE WITH GRANT OPTION'
+  )
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'trailmind_gis', 'CREATE')
+  AND EXISTS (
+    SELECT 1
+      FROM postgis_topology topology
+     WHERE topology.schema_owner = 'postgres'
+       AND topology.extension_owner IN ('postgres', 'supabase_admin')
+       AND (
+         topology.extowner = topology.nspowner OR
+         topology.extension_owner = 'supabase_admin'
+       )
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM gis_functions AS gis_function
+      CROSS JOIN postgis_topology topology
+     WHERE gis_function.proowner <> topology.extowner
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM postgis_topology topology
+      JOIN pg_catalog.pg_namespace namespace
+        ON namespace.oid = topology.namespace_oid
+      CROSS JOIN LATERAL pg_catalog.aclexplode(
+        COALESCE(
+          namespace.nspacl,
+          pg_catalog.acldefault('n', namespace.nspowner)
+        )
+      ) privilege
+     WHERE privilege.privilege_type = 'CREATE'
+       AND privilege.grantee <> namespace.nspowner
+  )
   AND NOT EXISTS (
     SELECT 1
       FROM pg_catalog.pg_namespace AS namespace
@@ -182,7 +256,7 @@ SELECT (
   AND NOT EXISTS (
     SELECT 1
       FROM pg_catalog.pg_namespace AS namespace
-     WHERE namespace.nspname NOT IN ($1, 'public', 'pg_catalog', 'information_schema')
+     WHERE namespace.nspname NOT IN ($1, 'pg_catalog', 'information_schema')
        AND namespace.nspname NOT LIKE 'pg_toast%'
        AND namespace.nspname NOT LIKE 'pg_temp_%'
        AND pg_catalog.has_schema_privilege(current_user, namespace.oid, 'USAGE')
@@ -350,7 +424,8 @@ SELECT (
   AND NOT EXISTS (
     SELECT 1
       FROM public_functions AS public_function
-     WHERE pg_catalog.has_function_privilege(
+     WHERE pg_catalog.has_schema_privilege(current_user, 'public', 'USAGE')
+       AND pg_catalog.has_function_privilege(
              current_user, public_function.oid, 'EXECUTE'
            )
        AND NOT EXISTS (
@@ -369,6 +444,28 @@ SELECT (
       FROM public_functions AS public_function
      WHERE pg_catalog.has_function_privilege(
        current_user, public_function.oid, 'EXECUTE WITH GRANT OPTION'
+     )
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM extensions_functions AS extension_function
+     WHERE pg_catalog.has_schema_privilege(current_user, 'extensions', 'USAGE')
+       AND pg_catalog.has_function_privilege(
+             current_user, extension_function.oid, 'EXECUTE'
+           )
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM extensions_functions AS extension_function
+     WHERE pg_catalog.has_function_privilege(
+       current_user, extension_function.oid, 'EXECUTE WITH GRANT OPTION'
+     )
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM gis_functions AS gis_function
+     WHERE pg_catalog.has_function_privilege(
+       current_user, gis_function.oid, 'EXECUTE WITH GRANT OPTION'
      )
   )
   AND NOT EXISTS (
@@ -440,13 +537,13 @@ export function stagingDatabaseAdmissionProbe(env = process.env, responsibility 
   const role = responsibility === "runtime"
     ? identities.runtimeRole
     : identities.controlRole;
-  const normalizedSearchPath = `pg_catalog,${applicationSchema},public,pg_temp`;
+  const normalizedSearchPath = `pg_catalog,${applicationSchema},pg_temp`;
   return deepFreeze({
     responsibility,
     applicationSchema,
     role,
     startupOptions:
-      `-c search_path=pg_catalog,${quotePostgresIdentifier(applicationSchema)},public,pg_temp`,
+      `-c search_path=pg_catalog,${quotePostgresIdentifier(applicationSchema)},pg_temp`,
     query: EXACT_DATABASE_PRIVILEGE_ADMISSION_SQL,
     values: [
       applicationSchema,

@@ -4,7 +4,7 @@ import {
   stagingDatabaseIdentityConfiguration
 } from "../src/operations/stagingDatabaseAdmission.js";
 
-const CONTRACT_VERSION = "staging-container-admission-v2";
+const CONTRACT_VERSION = "staging-container-admission-v4-shared-extension-isolation";
 const OFF_LIMITS_PRODUCTION_PROJECT_REF_SHA256 =
   "730c9715a50e01394edff472b079a0742e6c34159c51329032d0bb8e8d7aa6b7";
 const EXACT_FALSE_FLAGS = Object.freeze([

@@ -75,13 +75,14 @@ the platform proxy and is not a closed-beta traffic-control receipt.
   and insecure/local flag to be exact `false`.
 - Unsafe Node/TLS/PostgreSQL process options are forbidden. The app-security
   pool pins and verifies
-  `search_path=pg_catalog,<private_application_schema>,public,pg_temp`.
+  `search_path=pg_catalog,<private_application_schema>,pg_temp`.
 - The application schema name is a bounded, unquoted `trailmind_...`
   identifier. SQL receives it only as a parameter; the startup option uses the
   safely quoted validated identifier. `pg_catalog` is first, `pg_temp` is last,
   and neither runtime identity may create in any schema or create temporary
-  objects. PostGIS may remain in non-writable trusted `public` without moving
-  application tables into a Data API schema.
+  objects. Both lack `USAGE` on `public`, managed `extensions`, and locked
+  `trailmind_gis`; PostGIS is installed directly in the latter and application
+  tables remain outside Data API schemas.
 - Runtime admission rejects direct/indirect memberships, unsafe role
   attributes, ownership, grant options, unexpected schema access, public
   shadows, and excess table/column/sequence/function privileges.

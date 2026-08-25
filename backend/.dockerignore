@@ -3,6 +3,10 @@
 !package-lock.json
 !src/
 !src/**
+src/operations/migrationRunner.js
+src/operations/stagingMigrationCapability.js
+src/operations/stagingMigrationPolicy.js
+src/operations/stagingPhase1V2Operator.js
 !config/
 !config/outdoor-regions/
 !config/outdoor-regions/*.json

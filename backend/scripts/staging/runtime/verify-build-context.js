@@ -16,6 +16,12 @@ const REQUIRED_PREFIXES = Object.freeze([
   "src/",
   "config/outdoor-regions/"
 ]);
+const OPERATOR_ONLY_FILES = new Set([
+  "src/operations/migrationRunner.js",
+  "src/operations/stagingMigrationCapability.js",
+  "src/operations/stagingMigrationPolicy.js",
+  "src/operations/stagingPhase1V2Operator.js"
+]);
 const FORBIDDEN_SUFFIXES = Object.freeze([
   ".env", ".xcconfig", ".pbf", ".log", ".pem", ".key"
 ]);
@@ -58,7 +64,10 @@ export async function verifyBuildContext(options = {}) {
 }
 
 function includedInImageContext(name) {
-  return REQUIRED_FILES.has(name) || REQUIRED_PREFIXES.some((prefix) => name.startsWith(prefix));
+  return !OPERATOR_ONLY_FILES.has(name) && (
+    REQUIRED_FILES.has(name) ||
+    REQUIRED_PREFIXES.some((prefix) => name.startsWith(prefix))
+  );
 }
 
 async function filesBelow(root, directory = root) {

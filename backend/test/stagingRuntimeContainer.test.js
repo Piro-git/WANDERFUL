@@ -52,6 +52,12 @@ describe("staging OCI artifact", () => {
     for (const forbidden of ["test", "scripts", "evaluation", "migrations", ".env", "node_modules"] ) {
       assert.doesNotMatch(ignore, new RegExp(`^!.*${escapePattern(forbidden)}`, "m"));
     }
+    for (const operatorOnly of [
+      "src/operations/migrationRunner.js",
+      "src/operations/stagingMigrationCapability.js",
+      "src/operations/stagingMigrationPolicy.js",
+      "src/operations/stagingPhase1V2Operator.js"
+    ]) assert.match(ignore, new RegExp(`^${escapePattern(operatorOnly)}$`, "m"));
   });
 
   it("passes the deterministic application-context secret and content scan", async () => {
@@ -80,7 +86,7 @@ describe("staging OCI artifact", () => {
       "utf8"
     ));
     const sourceContract = stagingAdmissionContract();
-    assert.equal(machineContract.schemaVersion, 2);
+    assert.equal(machineContract.schemaVersion, 4);
     assert.equal(machineContract.contractVersion, sourceContract.contractVersion);
     assert.deepEqual(machineContract.runtime.exactFalse, sourceContract.exactFalseFlags);
     assert.deepEqual(machineContract.runtime.forbidden, sourceContract.forbiddenWebProcessValues);
@@ -99,15 +105,23 @@ describe("staging OCI artifact", () => {
       "APP_ATTEST_OPERATOR_DATABASE_URL"
     ), true);
     assert.deepEqual(machineContract.databaseAdmission.searchPath, [
-      "pg_catalog", "$application_schema", "public", "pg_temp"
+      "pg_catalog", "$application_schema", "pg_temp"
     ]);
     assert.deepEqual(
       machineContract.databaseAdmission.privilegeManifests.app_attest_runtime.tables,
       machinePrivileges(APP_ATTEST_RUNTIME_PRIVILEGE_MANIFEST)
     );
     assert.deepEqual(
+      machineContract.databaseAdmission.privilegeManifests.app_attest_runtime.schemas,
+      machineSchemas(APP_ATTEST_RUNTIME_PRIVILEGE_MANIFEST)
+    );
+    assert.deepEqual(
       machineContract.databaseAdmission.privilegeManifests.app_attest_control.tables,
       machinePrivileges(APP_ATTEST_CONTROL_PRIVILEGE_MANIFEST)
+    );
+    assert.deepEqual(
+      machineContract.databaseAdmission.privilegeManifests.app_attest_control.schemas,
+      machineSchemas(APP_ATTEST_CONTROL_PRIVILEGE_MANIFEST)
     );
     assert.equal(machineContract.controlJob.runtimeSourceMustBeAbsent, true);
     assert.equal(machineContract.remoteMutationAuthorized, false);
@@ -124,4 +138,13 @@ function machinePrivileges(manifest) {
     table.name,
     names.filter((privilege) => table[`can_${privilege}`]).map((value) => value.toUpperCase())
   ]));
+}
+
+function machineSchemas(manifest) {
+  return {
+    application: manifest.schemas.application.usage ? ["USAGE"] : [],
+    public: manifest.schemas.public.usage ? ["USAGE"] : [],
+    extensions: manifest.schemas.extensions.usage ? ["USAGE"] : [],
+    trailmind_gis: manifest.schemas.trailmindGis.usage ? ["USAGE"] : []
+  };
 }

@@ -111,7 +111,7 @@ describe("staging container admission", () => {
     assert.equal(receivedUrl.username, "trailmind_pruner.abcdefghijklmnopqrst");
     assert.equal(
       receivedUrl.searchParams.get("options"),
-      '-c search_path=pg_catalog,"trailmind_app",public,pg_temp'
+      '-c search_path=pg_catalog,"trailmind_app",pg_temp'
     );
     assert.equal("APP_ATTEST_CONTROL_DATABASE_URL" in received.env, false);
     assert.deepEqual(events, [{ event: "prune_job_completed", outcome: "succeeded" }]);

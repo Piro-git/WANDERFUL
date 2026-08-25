@@ -63,7 +63,7 @@ describe("staging runtime lifecycle", () => {
     assert.equal(FakePool.instances.length, 1);
     assert.equal(
       FakePool.instances[0].options.options,
-      '-c search_path=pg_catalog,"trailmind_app",public,pg_temp'
+      '-c search_path=pg_catalog,"trailmind_app",pg_temp'
     );
     assert.equal(
       FakePool.instances[0].queries[0].text.includes("app_attest_provider_leases"),
