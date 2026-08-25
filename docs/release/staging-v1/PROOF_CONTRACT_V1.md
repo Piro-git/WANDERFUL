@@ -25,7 +25,10 @@ The authoritative executable schema is
 and nested validators. The semantic policy digest binds the executable contract,
 closed-beta checklist, feature matrix, provisioning/rollback/monitoring/V4
 contracts, App Store blockers, regional definitions, runtime read boundary,
-reviewed performance policy and migrations 001–008.
+reviewed performance policy and one explicitly selected migration policy. The
+historical portable V1 policy is `001–008`; the current Supabase isolated V2
+policy is the mutually exclusive `001–007 + 009`. A receipt must bind the
+policy ID and reject mixed or cross-policy ledgers before mutation.
 
 The receipt contains exact top-level sections for:
 

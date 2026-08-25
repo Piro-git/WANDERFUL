@@ -7,6 +7,36 @@
   "providerCallCeiling": 0,
   "providerCalls": 0,
   "productionMutations": 0,
+  "historicalErrata": [
+    {
+      "id": "trailmind-phase1-foundation-proof-erratum-001",
+      "markdownSha256": "df2bb5a7b008ac822ea7a555ff487dc565d93ada0374cd9c17f64c1a7de02b8e",
+      "jsonSha256": "1f72741e1f7f3682107efeba7659eb356c845264f3c079317bc3d333a04761e2"
+    }
+  ],
+  "localCandidateCorrections": [
+    {
+      "id": "trailmind-phase1-postgis-isolation-v2-review-correction",
+      "classification": "local_only_remote_blocked",
+      "markdownSha256": "3fb608488ac96af1e600daa3d267f28e745797653500f646f596a9af6f4e43fa",
+      "jsonSha256": "da52e0bac71de72b8d2957e0ff39849670d863702b405c18a3c9122bb8d9d73a"
+    },
+    {
+      "id": "trailmind-phase1-postgis-isolation-v2-review-correction-002-final-seal-001-local",
+      "classification": "checkpoint_ready_local_managed_supabase_unproven",
+      "markdownSha256": "82217430bf965676b7373836a82bc97a28211708a9f5a1bd643837ecc4c4cf9c",
+      "jsonSha256": "a4387e8642926fe08bb5bc9a081fb916198f9af76060e78e15e4f8070577d793",
+      "databaseSupplementSha256": "7bd7727758215c5fe8a77abf8e50d282c6445f1e173a2461bac4fba55379e0e5",
+      "managedSupabaseExecution": "not_run_unproven",
+      "gitStatus": {
+        "modified": 32,
+        "untracked": 35,
+        "staged": 0,
+        "totalEntries": 67,
+        "statusSha256": "ee661547a0ba4845eaaece67c04854ad22ac61111c1f6d8a92c930084fcbf517"
+      }
+    }
+  ],
   "gates": [
     {
       "id": "candidate_identity",
@@ -24,7 +54,7 @@
       "id": "migration_repeatability",
       "mandatory": true,
       "currentEvidenceClass": "external_blocker",
-      "caseIds": ["migration_ledger_001_008", "migration_second_run_noop", "schema_rls_index_digest"]
+      "caseIds": ["migration_ledger_supabase_postgis_isolation_v2", "migration_second_run_noop", "schema_rls_index_digest"]
     },
     {
       "id": "least_privilege",
@@ -97,7 +127,7 @@
     "clean candidate Git commit and tree",
     "versioned executable proof policy digest",
     "byte-exact V4 historical receipt set",
-    "migrations 001-008 source digests",
+    "Supabase PostGIS-isolation V2 migrations 001-007 plus 009 source digests",
     "Harz/Innsbruck region-config digests",
     "closed-beta feature-flag matrix digest"
   ],

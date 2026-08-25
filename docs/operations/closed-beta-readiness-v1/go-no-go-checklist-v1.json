@@ -133,9 +133,9 @@
           "mandatory": true,
           "ownerRole": "database_operations_owner",
           "evidenceRequired": ["service/version receipt", "private network and backup policy", "restore test", "environment isolation"],
-          "currentState": "absent",
-          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md"],
-          "blocker": "No staging database deployment was performed.",
+          "currentState": "partial",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md", "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.md"],
+          "blocker": "A disposable PostgreSQL 17/PostGIS V2 contract passes locally, but the managed Supabase ownership/ACL gate and remote foundation are not executed or proven.",
           "liveActionExecuted": false
         },
         {
@@ -144,9 +144,9 @@
           "mandatory": true,
           "ownerRole": "database_security_owner",
           "evidenceRequired": ["grant/RLS policy digests", "denied-access tests", "separate product/cancellation pool roles"],
-          "currentState": "absent",
-          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md"],
-          "blocker": "Role design is documented but not provisioned or tested.",
+          "currentState": "partial",
+          "evidenceReferences": ["docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md", "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js"],
+          "blocker": "Exact V2 roles, owner transitions, runtime denials, extensions isolation, and cancellation boundaries pass locally; managed Supabase grants remain a fresh remote gate.",
           "liveActionExecuted": false
         },
         {
@@ -156,8 +156,8 @@
           "ownerRole": "database_release_owner",
           "evidenceRequired": ["clean candidate migration digests", "first/second migration ledger receipts", "schema/index/RLS verification"],
           "currentState": "partial",
-          "evidenceReferences": ["backend/scripts/migrate.js", "backend/migrations/001_app_attest.sql", "backend/migrations/007_routable_highlight_access_geography_index.sql", "backend/migrations/008_outdoor_research_runtime_read_contract.sql", "backend/test/routableHighlightAccessMigration.test.js", "backend/test/outdoorResearchRuntimeReadMigration.test.js"],
-          "blocker": "Migrations 001-008 are tracked and covered by current static tests, but clean disposable PostGIS repeatability, ledger, grants, RLS, index, and rollback evidence is absent.",
+          "evidenceReferences": ["backend/scripts/migrate.js", "backend/src/operations/stagingMigrationPolicy.js", "backend/migrations/008_outdoor_research_runtime_read_contract.sql", "backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql", "backend/test/stagingMigrationRunnerPostgresIntegration.test.js", "backend/test/supabasePostgisIsolationV2RollbackIntegration.test.js"],
+          "blocker": "Historical portable 001-008 and Supabase isolated 001-007 + 009 are explicit mutually exclusive policies with local repeatability and rollback proof; the exact remote Supabase ledger is not yet executed.",
           "liveActionExecuted": false
         },
         {
@@ -229,7 +229,7 @@
           "evidenceRequired": ["valid/ready index receipt", "current-volume explain-plan receipt", "route-membership p95 below 1500 ms", "all access operations below 2000 ms"],
           "currentState": "partial",
           "evidenceReferences": ["backend/test/outdoorRouteMembershipPerformance.test.js", "backend/test/outdoorResearchExecutorPostgisIntegration.test.js"],
-          "blocker": "Repository gates and migrations 007-008 exist; disposable/current staging-volume query plans, latency evidence, and independent database acceptance are absent.",
+          "blocker": "The Supabase isolated V2 policy contains indexes 006 and 007 plus runtime contract 009; portable 008 is historical-policy-only. Current staging-volume query plans, latency evidence, and independent managed-database acceptance are absent.",
           "liveActionExecuted": false
         }
       ]

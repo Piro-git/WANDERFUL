@@ -31,7 +31,8 @@ node backend/scripts/run-staging-readiness-v1.js \
 ```
 
 The current offline command attests clean Git state, the exact policy/source
-digest, migrations 001–008 as source inputs, the tracked provider-off matrix,
+digest, both migration-policy source sets (`001–008` historical portable V1
+and `001–007 + 009` Supabase isolated V2), the tracked provider-off matrix,
 and byte-exact preservation of all historical V4 receipts, then writes a
 machine-readable `NO_GO` receipt with every unavailable live case explicitly
 `blocked` or `not_run`. A truthful `NO_GO` exits `1`; invalid input, timeout,

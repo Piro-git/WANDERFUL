@@ -88,8 +88,10 @@ test "${CONFIRM_DISPOSABLE_TRAILMIND_DB:-}" = "yes" || {
 
 unset GRAPHHOPPER_API_KEY GOOGLE_API_KEY OPENROUTER_API_KEY
 
-NODE_ENV=test DATABASE_URL="$TRAILMIND_TEST_DATABASE_URL" npm run db:migrate
-NODE_ENV=test DATABASE_URL="$TRAILMIND_TEST_DATABASE_URL" npm run db:migrate
+NODE_ENV=test DATABASE_URL="$TRAILMIND_TEST_DATABASE_URL" \
+  npm run db:migrate:historical-portable-v1
+NODE_ENV=test DATABASE_URL="$TRAILMIND_TEST_DATABASE_URL" \
+  npm run db:migrate:historical-portable-v1
 
 NODE_ENV=test node --test test/postgresAppAttestIntegration.test.js
 
@@ -136,7 +138,7 @@ One scheduler owner should be configured. The SQL is transactional and repeatabl
 
 ## Migration and rollback
 
-- `npm run db:migrate` takes a transaction-scoped advisory lock, applies strictly named local SQL files, and records a migration version only inside the successful transaction.
+- `npm run db:migrate:historical-portable-v1` selects the explicit portable local policy, takes a transaction-scoped advisory lock, applies strictly named local SQL files, and records a migration version only inside the successful transaction. It is not the Supabase V2 operator path.
 - A migration failure rolls the transaction back and must block deployment.
 - The current migration is additive and repeatable. During an application rollback, leave the authorization tables and recorded migration in place; do not run destructive down-migration SQL.
 - The timeout/lease guard and attempt-order fix require no schema change.

@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "proofKind": "trailmind_phase_1_postgis_isolation_v2_review_correction_local_only",
+  "status": "locally_fixed_remote_execution_blocked",
+  "proofDate": "2026-08-25",
+  "baselineCommit": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "fetchedOriginMain": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "supersedesLocalAssertionsIn": "PHASE_1_POSTGIS_ISOLATION_V2_LOCAL_PROOF.json",
+  "historicalRemoteReceiptSuperseded": false,
+  "remoteSupabaseContact": false,
+  "remoteSupabaseMutation": false,
+  "productionContact": false,
+  "planuaContact": false,
+  "paidResourceCreated": false,
+  "providerCallCount": 0,
+  "featureFlagsEnabled": 0,
+  "migrationPolicies": {
+    "historicalPortableV1": {
+      "id": "historical-portable-v1",
+      "range": "001-008"
+    },
+    "supabaseIsolatedV2": {
+      "id": "supabase-postgis-isolation-v2",
+      "files": [
+        "001_app_attest.sql",
+        "002_outdoor_evidence.sql",
+        "003_outdoor_research_graph.sql",
+        "004_osm_outdoor_research_projection.sql",
+        "005_outdoor_research_projection_geometry.sql",
+        "006_outdoor_route_membership_point_index.sql",
+        "007_routable_highlight_access_geography_index.sql",
+        "009_supabase_postgis_isolated_runtime_read_contract.sql"
+      ],
+      "firstRunAppliedCount": 8,
+      "secondRunAppliedCount": 0,
+      "historical008Applied": false
+    },
+    "genericCommandRequiresExplicitPolicy": true,
+    "mixedLedgerRejected": true
+  },
+  "ownerTransitions": {
+    "runnerSessionUser": "migration_role",
+    "runnerOwner": "trailmind_app_owner",
+    "runnerUsesSetLocalRole": true,
+    "postStepSessionUser": "postgres",
+    "postStepOwners": ["trailmind_app_owner", "trailmind_control_owner"],
+    "postStepTransitionsExplicit": true,
+    "outputOnlyAfterCommit": true,
+    "statementTimeoutMilliseconds": 30000
+  },
+  "postgis": {
+    "installSchema": "trailmind_gis",
+    "installedDirectly": true,
+    "explicitVersionClause": false,
+    "publicRoutineCount": 0,
+    "disposablePostgresqlVersion": "17.10",
+    "disposablePostgisVersion": "3.6.4"
+  },
+  "sharedSchemaPolicy": {
+    "schemas": ["public", "extensions", "trailmind_gis"],
+    "publicUsageFixtureBeforeProvisioning": true,
+    "runtimeDirectCapabilityAfterProvisioning": false,
+    "providerPrincipalPrivilegesPreserved": true,
+    "preStepMutatesSharedAcl": false,
+    "postStepHardeningAtomic": true
+  },
+  "rollback": {
+    "rawAclEqualityRequired": true,
+    "semanticAclEqualityRequired": true,
+    "dropOwnedUsed": false,
+    "cascadeUsed": false,
+    "ledgerOrFoundationRefused": true,
+    "activeSessionRefused": true,
+    "unexpectedObjectRefused": true,
+    "repeatedRollbackRefused": true,
+    "zeroFoundationResidue": true
+  },
+  "operatorGate": {
+    "remoteAdapterPresent": false,
+    "directExecutionAuthorized": false,
+    "freshnessMilliseconds": 300000,
+    "requiresExactIdentityHealthAndZeroCost": true,
+    "requiresBothPreAdvisors": true,
+    "requiresExactAclAndRestoreDigests": true,
+    "requiresEmptyStateAndNoSiblingWriter": true,
+    "requiresNonwaitingLockAndLockedReinspection": true,
+    "productionAndPlanuaDenied": true
+  },
+  "tests": {
+    "supabaseV2Static": { "passed": 5, "failed": 0, "skipped": 0 },
+    "rollbackAclRestoration": { "passed": 7, "failed": 0, "skipped": 0 },
+    "migrationRunnerStateMachine": { "passed": 6, "failed": 0, "skipped": 0 },
+    "managedStyleV2Postgis": { "passed": 12, "failed": 0, "skipped": 0 },
+    "portableHistoricalV1AndAppAttest": { "passed": 56, "failed": 0, "skipped": 0 },
+    "combinedDisposablePostgres": { "passed": 81, "failed": 0, "skipped": 0 },
+    "focusedStagingAdmissionReadiness": { "passed": 168, "failed": 0, "skipped": 0 },
+    "focusedOsmRunnerRegression": { "passed": 7, "failed": 0, "skipped": 0 },
+    "completeBackend": { "passed": 992, "failed": 0, "skipped": 0 },
+    "offlineOutdoorQuality": { "passed": 101, "failed": 0, "skipped": 0 },
+    "build": "passed"
+  },
+  "protectedEvidenceSha256": {
+    "PHASE_0_RESOURCE_DECISION.md": "390fa66e83963e218161a853894cba4ff7cfe3ecb881fbeaa82dd71c98c620d5",
+    "PHASE_1_PRE_MIGRATION.sql": "acbc878d02ddf04647c11fc6fa0f5df9ed4e53942dd9a3da7eedf5f01eee1be9",
+    "PHASE_1_POST_MIGRATION.sql": "f67a92fc1d003b10601555973f263d2d5a50c53d0f95e67269e6901976611485",
+    "PHASE_1_BLOCKED_ROLLBACK.sql": "4f4cdbaee71df8b5b4fd5fdc93dc5711c74cd9746c873fa1524196b52011378e",
+    "PHASE_1_FOUNDATION_PROOF.md": "3209e082f48d33199c68b4cf7e4a8f4b8f08d3e1a07e09faf5faab5c1dabaaff",
+    "PHASE_1_FOUNDATION_PROOF.json": "45c756fce9a68440c36f8c2cb0ed4228bf7047015166ec603700619abce646a6",
+    "008_outdoor_research_runtime_read_contract.sql": "e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32"
+  },
+  "erratum": {
+    "id": "trailmind-phase1-foundation-proof-erratum-001",
+    "migration006Sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4",
+    "markdownSha256": "df2bb5a7b008ac822ea7a555ff487dc565d93ada0374cd9c17f64c1a7de02b8e",
+    "jsonSha256": "1f72741e1f7f3682107efeba7659eb356c845264f3c079317bc3d333a04761e2"
+  },
+  "candidateSha256": {
+    "009_supabase_postgis_isolated_runtime_read_contract.sql": "de440269a78c81d36e9f1da05cb81dc52f8a29440ff43b4c2aad3cc7dcc715cc",
+    "migrationRunner.js": "1c1be8a2e3ac6c34729e8b5aa0ae4586f08dd82ac4e951a3ed69f7bc6fe501cf",
+    "stagingMigrationPolicy.js": "be8fbb0e5798f8b466c67c2fd97e0346c4cc41f5234eea3350eaabb69aa0847a",
+    "stagingPhase1V2Operator.js": "72e9db1eb274275a77b3799b8e26b3a0d8fa1edf68bb9c7804435559c06ec414",
+    "PHASE_1_PRE_MIGRATION_V2.sql": "1a3270109816152c1fa3e0a750aedc1e9a6025e777cec6b1928aee5f1caa7011",
+    "PHASE_1_POST_MIGRATION_V2.sql": "b2b09db6e1ac0cf3568ed96a2d0b1e21ab4053322f06453d8a93231100133a51",
+    "PHASE_1_PRE_MIGRATION_V2_ROLLBACK.sql": "7fd59051e6df1a0e9c8d2faa030bdc31df23a8cc37734583666dfdaccbc968d0"
+  },
+  "localP1P2FindingsRemaining": 0,
+  "managedSupabaseProven": false,
+  "gitStaged": false,
+  "gitCommitted": false,
+  "gitPushed": false
+}

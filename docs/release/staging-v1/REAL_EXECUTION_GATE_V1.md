@@ -40,7 +40,11 @@ the end:
 4. production preflight, image digest and non-root runtime;
 5. database versions, all nine ordered roles, grants, RLS/Data API/function
    denials, and the exact cancellation/control privilege boundary;
-6. migrations 001–008 and an independently timed second true no-op;
+6. the candidate-bound ten-phase Phase 1 operator, including its internally
+   sealed exact first run and true zero-output second no-op: Supabase execution
+   must select `supabase-postgis-isolation-v2` (`001–007 + 009`), while the raw
+   runner and `historical-portable-v1` (`001–008`) are never Supabase operator
+   paths;
 7. current active Harz/Innsbruck imports/projections, row totals, provenance,
    quarantine/residue and cross-region checks;
 8. GiST/plan, reviewed latency distributions, cancellation/rollback/pool

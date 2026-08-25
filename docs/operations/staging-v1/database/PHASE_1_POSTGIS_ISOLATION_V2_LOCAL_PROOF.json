@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "proofKind": "trailmind_phase_1_postgis_isolation_v2_local_only",
+  "status": "locally_fixed_remote_not_proven",
+  "proofDate": "2026-08-25",
+  "baselineCommit": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "fetchedOriginMain": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "stagingProjectRef": "mbvzwsrtqcrwhvykugcd",
+  "productionProjectRef": "bejvhhjbgtvctpsnlwid",
+  "remoteSupabaseContact": false,
+  "remoteSupabaseMutation": false,
+  "productionContact": false,
+  "paidResourceCreated": false,
+  "providerCallCount": 0,
+  "featureFlagsEnabled": 0,
+  "migrationPolicy": {
+    "id": "supabase-postgis-isolation-v2",
+    "historical008Applied": false,
+    "files": [
+      "001_app_attest.sql",
+      "002_outdoor_evidence.sql",
+      "003_outdoor_research_graph.sql",
+      "004_osm_outdoor_research_projection.sql",
+      "005_outdoor_research_projection_geometry.sql",
+      "006_outdoor_route_membership_point_index.sql",
+      "007_routable_highlight_access_geography_index.sql",
+      "009_supabase_postgis_isolated_runtime_read_contract.sql"
+    ],
+    "firstRunAppliedCount": 8,
+    "secondRunAppliedCount": 0,
+    "failureRollbackApplicationRelationCount": 0,
+    "failureRollbackApplicationFunctionCount": 0,
+    "failureRollbackLedgerPresent": false
+  },
+  "postgis": {
+    "installSchema": "trailmind_gis",
+    "installedDirectly": true,
+    "explicitVersionClause": false,
+    "publicRoutineCount": 0,
+    "disposablePostgresqlVersion": "17.10",
+    "disposablePostgisVersion": "3.6.4"
+  },
+  "searchPaths": {
+    "definerFunctions": "pg_catalog,trailmind_app,trailmind_gis,pg_temp",
+    "appRuntime": "pg_catalog,trailmind_app,pg_temp",
+    "outdoorRuntime": "pg_catalog,trailmind_app,pg_temp",
+    "cancellationControl": "pg_catalog,trailmind_control,pg_temp",
+    "readonlyAuditor": "pg_catalog,pg_temp"
+  },
+  "tests": {
+    "supabaseV2Static": { "passed": 4, "failed": 0, "skipped": 0 },
+    "supabaseV2Disposable": { "passed": 11, "failed": 0, "skipped": 0 },
+    "focusedStagingReadinessRuntime": { "passed": 147, "failed": 0, "skipped": 0 },
+    "portablePostgisIntegration": { "passed": 48, "failed": 0, "skipped": 0 },
+    "appAttestPostgresIntegration": { "passed": 8, "failed": 0, "skipped": 0 },
+    "completeBackend": { "passed": 971, "failed": 0, "skipped": 0 },
+    "offlineOutdoorQuality": { "passed": 101, "failed": 0, "skipped": 0 },
+    "build": "passed"
+  },
+  "rollback": {
+    "appliedFoundationRefusedBeforeDeletion": true,
+    "preOnlyCompensationPassed": true,
+    "residualTrailmindRoleCount": 0,
+    "residualTrailmindSchemaCount": 0,
+    "residualPostgisExtensionCount": 0
+  },
+  "protectedEvidenceSha256": {
+    "PHASE_0_RESOURCE_DECISION.md": "390fa66e83963e218161a853894cba4ff7cfe3ecb881fbeaa82dd71c98c620d5",
+    "PHASE_1_PRE_MIGRATION.sql": "acbc878d02ddf04647c11fc6fa0f5df9ed4e53942dd9a3da7eedf5f01eee1be9",
+    "PHASE_1_POST_MIGRATION.sql": "f67a92fc1d003b10601555973f263d2d5a50c53d0f95e67269e6901976611485",
+    "PHASE_1_BLOCKED_ROLLBACK.sql": "4f4cdbaee71df8b5b4fd5fdc93dc5711c74cd9746c873fa1524196b52011378e",
+    "PHASE_1_FOUNDATION_PROOF.md": "3209e082f48d33199c68b4cf7e4a8f4b8f08d3e1a07e09faf5faab5c1dabaaff",
+    "PHASE_1_FOUNDATION_PROOF.json": "45c756fce9a68440c36f8c2cb0ed4228bf7047015166ec603700619abce646a6",
+    "008_outdoor_research_runtime_read_contract.sql": "e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32"
+  },
+  "remoteBlockers": [
+    "independent_review_of_unstaged_v2_candidate",
+    "fresh_remote_identity_cost_empty_state_and_concurrency_gate",
+    "authorized_v2_operator_execution",
+    "remote_supabase_advisors_and_containment_proof",
+    "stop_on_managed_platform_semantic_difference"
+  ],
+  "gitStaged": false,
+  "gitCommitted": false,
+  "gitPushed": false
+}

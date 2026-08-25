@@ -2,10 +2,21 @@ export const STAGING_READINESS_SCHEMA_VERSION = 1;
 export const STAGING_READINESS_PROOF_VERSION =
   "trailmind-staging-readiness-v1";
 export const STAGING_READINESS_POLICY_VERSION =
-  "trailmind-staging-readiness-policy-v1";
+  "trailmind-staging-readiness-policy-v2-supabase-postgis-isolation";
 export const MAXIMUM_RECEIPT_BYTES = 524_288;
 export const MAXIMUM_CLOCK_SKEW_MILLISECONDS = 5 * 60 * 1_000;
 export const REGIONAL_FRESHNESS_THRESHOLD_DAYS = 14;
+
+export const HISTORICAL_CANONICAL_MIGRATIONS_V1 = Object.freeze([
+  "001_app_attest.sql",
+  "002_outdoor_evidence.sql",
+  "003_outdoor_research_graph.sql",
+  "004_osm_outdoor_research_projection.sql",
+  "005_outdoor_research_projection_geometry.sql",
+  "006_outdoor_route_membership_point_index.sql",
+  "007_routable_highlight_access_geography_index.sql",
+  "008_outdoor_research_runtime_read_contract.sql"
+]);
 
 export const CANONICAL_MIGRATIONS = Object.freeze([
   "001_app_attest.sql",
@@ -15,7 +26,7 @@ export const CANONICAL_MIGRATIONS = Object.freeze([
   "005_outdoor_research_projection_geometry.sql",
   "006_outdoor_route_membership_point_index.sql",
   "007_routable_highlight_access_geography_index.sql",
-  "008_outdoor_research_runtime_read_contract.sql"
+  "009_supabase_postgis_isolated_runtime_read_contract.sql"
 ]);
 
 export const CANONICAL_REGION_IDS = Object.freeze([
@@ -182,7 +193,7 @@ export const CANONICAL_GATE_DEFINITIONS = Object.freeze([
   {
     id: "migration_repeatability",
     caseIds: [
-      "migration_ledger_001_008",
+      "migration_ledger_supabase_postgis_isolation_v2",
       "migration_second_run_noop",
       "schema_rls_index_digest"
     ]

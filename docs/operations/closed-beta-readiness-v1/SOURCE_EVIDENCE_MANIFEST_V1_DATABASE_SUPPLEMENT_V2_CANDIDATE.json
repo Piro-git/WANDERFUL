@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "trailmind-database-foundation-v2-uncommitted-candidate-supplement-final-seal-001",
+  "status": "uncommitted_local_candidate_remote_blocked",
+  "generatedOn": "2026-08-25",
+  "baseManifest": {
+    "path": "docs/operations/closed-beta-readiness-v1/SOURCE_EVIDENCE_MANIFEST_V1.json",
+    "sourceCommit": "76f6552a1cd525a38a3840a0204cd81aede94406",
+    "homogeneousWithThisCandidate": false
+  },
+  "candidate": {
+    "baselineCommit": "72b98e3e065ae442168ece20984d8baba26e2d11",
+    "originMainObserved": "72b98e3e065ae442168ece20984d8baba26e2d11",
+    "checkpointCommit": null,
+    "workingTreeState": "unstaged_uncommitted",
+    "finalSealGeneration": "trailmind-phase1-postgis-v2-review-correction-002-final-seal-001-local",
+    "gitStatus": {
+      "modified": 32,
+      "untracked": 35,
+      "staged": 0,
+      "totalEntries": 67,
+      "statusSha256": "ee661547a0ba4845eaaece67c04854ad22ac61111c1f6d8a92c930084fcbf517"
+    },
+    "managedSupabaseProof": false,
+    "remoteMutationAuthorized": false
+  },
+  "candidateProof": {
+    "markdown": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.md",
+      "sha256": "82217430bf965676b7373836a82bc97a28211708a9f5a1bd643837ecc4c4cf9c"
+    },
+    "receipt": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.json",
+      "sha256": "a4387e8642926fe08bb5bc9a081fb916198f9af76060e78e15e4f8070577d793"
+    },
+    "managedSupabaseExecution": "not_run_unproven",
+    "hashBindingDirection": "receipt_sources_then_markdown_receipt_then_supplement_pair_then_canonical_map_supplement"
+  },
+  "migrationPolicies": {
+    "supabaseCurrent": {
+      "policyId": "supabase-postgis-isolation-v2",
+      "orderedMigrations": [
+        {
+          "path": "backend/migrations/001_app_attest.sql",
+          "sha256": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16"
+        },
+        {
+          "path": "backend/migrations/002_outdoor_evidence.sql",
+          "sha256": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d"
+        },
+        {
+          "path": "backend/migrations/003_outdoor_research_graph.sql",
+          "sha256": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928"
+        },
+        {
+          "path": "backend/migrations/004_osm_outdoor_research_projection.sql",
+          "sha256": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3"
+        },
+        {
+          "path": "backend/migrations/005_outdoor_research_projection_geometry.sql",
+          "sha256": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8"
+        },
+        {
+          "path": "backend/migrations/006_outdoor_route_membership_point_index.sql",
+          "sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4"
+        },
+        {
+          "path": "backend/migrations/007_routable_highlight_access_geography_index.sql",
+          "sha256": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7"
+        },
+        {
+          "path": "backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql",
+          "sha256": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"
+        }
+      ]
+    },
+    "historicalPortable": {
+      "policyId": "historical-portable-v1",
+      "range": "001-008",
+      "supabaseOperatorEligible": false,
+      "migration008": {
+        "path": "backend/migrations/008_outdoor_research_runtime_read_contract.sql",
+        "sha256": "e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32"
+      }
+    }
+  },
+  "currentDatabaseGateOverrides": [
+    {
+      "id": "database-staging-postgis",
+      "status": "partial_local_only",
+      "sourceEvidence": [
+        "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql",
+        "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql",
+        "backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql",
+        "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js",
+        "backend/test/stagingMigrationRunnerProviderOwnershipPostgresIntegration.test.js"
+      ],
+      "remoteBlocker": "The exact managed Supabase catalogs, ACLs, advisors, identity, cost and final state have not been observed by a fresh authorized operator run."
+    },
+    {
+      "id": "database-least-privilege-roles",
+      "status": "partial_local_only",
+      "sourceEvidence": [
+        "backend/src/operations/migrationRunner.js",
+        "backend/src/operations/stagingDatabaseAdmission.js",
+        "backend/test/stagingMigrationRunnerPostgresIntegration.test.js",
+        "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js"
+      ],
+      "remoteBlocker": "Managed-role attributes, membership grantors and effective provider ACLs remain a fresh remote admission gate."
+    },
+    {
+      "id": "database-migrations-repeatable",
+      "status": "partial_local_only",
+      "sourceEvidence": [
+        "backend/src/operations/stagingMigrationPolicy.js",
+        "backend/src/operations/migrationRunner.js",
+        "backend/src/operations/stagingMigrationCapability.js",
+        "backend/test/stagingMigrationRunnerPostgresIntegration.test.js",
+        "backend/test/stagingMigrationCapability.test.js",
+        "backend/test/supabasePostgisIsolationMigrationV2.test.js"
+      ],
+      "remoteBlocker": "The remote V2 ledger has not been created; historical 008 was not run remotely and is not in the Supabase policy."
+    }
+  ],
+  "operatorBindings": {
+    "entrypoint": {
+      "path": "backend/scripts/staging/phase1-v2-operator.js",
+      "sha256": "0414ffe7245e966de7a69c2dafbeefff814a8eff206ee45d5e7678fae12283aa"
+    },
+    "stateMachine": {
+      "path": "backend/src/operations/stagingPhase1V2Operator.js",
+      "sha256": "6c29625695d6e7a3f47cd1e64220910a6204081cd1e6f8a59d2d9ca2a7d974a3"
+    },
+    "stateMachineTest": {
+      "path": "backend/test/stagingPhase1V2Operator.test.js",
+      "sha256": "5bda4770098787c4325defcc46676da3d31d0337d38f74a36ac29f4ea5a7033d"
+    },
+    "runnerTest": {
+      "path": "backend/test/stagingMigrationRunnerPostgresIntegration.test.js",
+      "sha256": "4c4e66776283734f03a66469f0dd926ec4c518c5d082c91e05b854f6635b699a"
+    },
+    "capabilityTest": {
+      "path": "backend/test/stagingMigrationCapability.test.js",
+      "sha256": "2fdc560f62c86c0998941a80008a3cf592c5ba5817a73cf3b03f64176f0ba63e"
+    },
+    "providerOwnershipTest": {
+      "path": "backend/test/stagingMigrationRunnerProviderOwnershipPostgresIntegration.test.js",
+      "sha256": "928c0d97fa4a6f1d9369d9ad69b95c6512077f5613ff97d4ee37c0a96cf495fe"
+    },
+    "migrationPolicy": {
+      "path": "backend/src/operations/stagingMigrationPolicy.js",
+      "sha256": "be8fbb0e5798f8b466c67c2fd97e0346c4cc41f5234eea3350eaabb69aa0847a"
+    },
+    "migrationRunner": {
+      "path": "backend/src/operations/migrationRunner.js",
+      "sha256": "9809a3e1ca7ba8a2beb055180b73ba01169eda796ea1366cfabf772eace6cd81"
+    },
+    "migrationCapability": {
+      "path": "backend/src/operations/stagingMigrationCapability.js",
+      "sha256": "ce74ae2343a4ba7a8a878fe43029fe6e68d178d831d064bb27a6f740216858c4"
+    },
+    "v2PreStep": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql",
+      "sha256": "047d2e09e91fbe5bcaf39bcfc9d3e24a4d2d9d05e764ad8ce65419e67e185e6d"
+    },
+    "v2PostStep": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql",
+      "sha256": "4fa331be00f95c252af35633cb527cfecd1ebc20a6864e5d048750bfa013d57f"
+    },
+    "v2PreLedgerCompensation": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2_ROLLBACK.sql",
+      "sha256": "13a7a053ec9a055b9a2297b7e30302be83701e59788eee956c0fc27569efd863"
+    }
+  },
+  "historicalSafetyBindings": {
+    "foundationErratum": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF_ERRATUM_001.json",
+      "sha256": "1f72741e1f7f3682107efeba7659eb356c845264f3c079317bc3d333a04761e2"
+    },
+    "rollbackQuarantine": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.json",
+      "sha256": "5d66eebcff9c5c77780b77c4824f38575d4475cb98ce0d9d59312d3af0b03476"
+    },
+    "quarantineTest": {
+      "path": "backend/test/stagingHistoricalRollbackQuarantine.test.js",
+      "sha256": "00a90558867c7ac9dffd6006e8d3466d58427871813c434dc14cdb048de275f7"
+    }
+  },
+  "featureFlagCount": 13,
+  "allFeatureFlagsRequiredFalse": true,
+  "providerCalls": 0,
+  "providerCallsMeaning": "No GraphHopper, AI or application-provider traffic in this correction pass.",
+  "remoteSupabaseCalls": 0,
+  "costUsd": 0,
+  "authoritativeLocalVerification": {
+    "focused": { "passed": 47, "tests": 47, "suites": 4, "skipped": 0 },
+    "disposablePostgresPostgis": { "passed": 87, "tests": 87, "suites": 9, "skipped": 0 },
+    "backend": { "passed": 1014, "tests": 1014, "suites": 106, "skipped": 0 },
+    "build": "passed",
+    "offlineQuality": { "passed": 101, "cases": 101, "skipped": 0 }
+  }
+}

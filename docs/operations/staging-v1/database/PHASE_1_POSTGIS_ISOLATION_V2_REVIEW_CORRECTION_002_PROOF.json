@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 2,
+  "receiptVersion": "trailmind-phase1-postgis-v2-review-correction-002-final-seal-001-local",
+  "generatedOn": "2026-08-25",
+  "outcome": "checkpoint_ready_local_managed_supabase_unproven",
+  "baselineCommit": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "headObserved": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "originMainObserved": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "originMainObservation": "read_only_local_ref_no_fetch_this_seal",
+  "candidateState": "unstaged_uncommitted",
+  "concurrencyGate": {
+    "teamAgentCount": 1,
+    "indexLockPresent": false,
+    "additionalOpenCandidateFilesObserved": 0,
+    "equivalentWriterObserved": false
+  },
+  "gitStatus": {
+    "command": "git status --porcelain=v1 --untracked-files=all",
+    "modified": 32,
+    "untracked": 35,
+    "staged": 0,
+    "totalEntries": 67,
+    "statusSha256": "ee661547a0ba4845eaaece67c04854ad22ac61111c1f6d8a92c930084fcbf517",
+    "modifiedInventorySha256": "4b1e0c0352cbb6cd184f7b5584361733d8d3dd6fbfc995fd654cad22074b957c",
+    "untrackedInventorySha256": "f59c90034990fa1dd4cae73f42f4166cab7dedcefd0e3870ada13eedc8b36ff3",
+    "modifiedPaths": [
+      "backend/.dockerignore",
+      "backend/README.md",
+      "backend/container/staging-runtime-contract-v1.json",
+      "backend/container/stagingAdmission.js",
+      "backend/docs/app-attest-durable-storage.md",
+      "backend/docs/outdoor-evidence.md",
+      "backend/docs/outdoor-research-runtime-read-boundary.md",
+      "backend/evaluation/stagingReadinessV1/constants.js",
+      "backend/package.json",
+      "backend/scripts/migrate.js",
+      "backend/scripts/staging/runtime/verify-build-context.js",
+      "backend/src/operations/stagingDatabaseAdmission.js",
+      "backend/test/outdoorResearchMigration.test.js",
+      "backend/test/outdoorResearchOsmProjectionMigration.test.js",
+      "backend/test/outdoorResearchPostgisIntegration.test.js",
+      "backend/test/stagingRuntimeAdmission.test.js",
+      "backend/test/stagingRuntimeContainer.test.js",
+      "backend/test/stagingRuntimeDatabaseAdmission.test.js",
+      "backend/test/stagingRuntimeLifecycle.test.js",
+      "docs/OSM_OUTDOOR_RESEARCH_PROJECTION_V1.md",
+      "docs/operations/closed-beta-readiness-v1/README.md",
+      "docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md",
+      "docs/operations/closed-beta-readiness-v1/go-no-go-checklist-v1.json",
+      "docs/operations/staging-v1/database/PHASE_0_RESOURCE_DECISION.md",
+      "docs/operations/staging-v1/runtime/ENVIRONMENT_AND_SECRETS_V1.md",
+      "docs/operations/staging-v1/runtime/README.md",
+      "docs/operations/staging-v1/runtime/VERIFICATION_V1.md",
+      "docs/release/BACKEND_STAGING_PROOF.md",
+      "docs/release/staging-v1/PROOF_CONTRACT_V1.md",
+      "docs/release/staging-v1/README.md",
+      "docs/release/staging-v1/REAL_EXECUTION_GATE_V1.md",
+      "docs/release/staging-v1/canonical-evidence-map-v1.json"
+    ],
+    "untrackedPaths": [
+      "backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql",
+      "backend/scripts/disposable/run-authorized-supabase-postgis-v2-migrations.js",
+      "backend/scripts/disposable/run-supabase-postgis-isolation-v2.js",
+      "backend/scripts/staging/phase1-v2-operator.js",
+      "backend/src/operations/migrationRunner.js",
+      "backend/src/operations/stagingMigrationCapability.js",
+      "backend/src/operations/stagingMigrationPolicy.js",
+      "backend/src/operations/stagingPhase1V2Operator.js",
+      "backend/test/stagingHistoricalRollbackQuarantine.test.js",
+      "backend/test/stagingMigrationCapability.test.js",
+      "backend/test/stagingMigrationRunnerPostgresIntegration.test.js",
+      "backend/test/stagingMigrationRunnerProviderOwnershipPostgresIntegration.test.js",
+      "backend/test/stagingPhase1V2Operator.test.js",
+      "backend/test/supabasePostgisIsolationMigrationV2.test.js",
+      "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js",
+      "backend/test/supabasePostgisIsolationV2RollbackIntegration.test.js",
+      "docs/operations/closed-beta-readiness-v1/SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_CANDIDATE.json",
+      "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK.sql",
+      "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.json",
+      "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.md",
+      "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.json",
+      "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.md",
+      "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF_ERRATUM_001.json",
+      "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF_ERRATUM_001.md",
+      "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_LOCAL_PROOF.json",
+      "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_LOCAL_PROOF.md",
+      "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.json",
+      "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.md",
+      "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_PROOF.json",
+      "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_PROOF.md",
+      "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION.sql",
+      "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql",
+      "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION.sql",
+      "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql",
+      "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2_ROLLBACK.sql"
+    ]
+  },
+  "gitStatusDefectCorrection": {
+    "independentObservation": {
+      "modified": 32,
+      "untracked": 34,
+      "staged": 0,
+      "totalEntries": 66
+    },
+    "cause": "non_atomic_correction_002_proof_pair_generation",
+    "derivation": {
+      "untrackedExcludingCorrection002Pair": 33,
+      "oneCorrection002ArtifactPresent": 34,
+      "bothCorrection002ArtifactsPresent": 35
+    },
+    "resolution": "Both correction-002 artifacts are required candidate evidence. The final stable inventory was captured after both existed and is embedded above with independent status and inventory digests. No candidate or unrelated file was deleted to force the earlier count."
+  },
+  "managedSupabaseProof": false,
+  "remainingFindings": {
+    "localP1": 0,
+    "localP2": 0,
+    "localP3": 0,
+    "remoteGates": [
+      "independent_checkpoint_review_not_completed",
+      "reviewed_live_adapter_not_installed",
+      "fresh_remote_authorization_not_supplied",
+      "independently_approved_acl_restore_plan_digest_not_supplied",
+      "managed_identity_cost_catalog_acl_advisor_final_state_not_observed"
+    ]
+  },
+  "migrationPolicies": {
+    "supabasePostgisIsolationV2": [
+      "001_app_attest.sql",
+      "002_outdoor_evidence.sql",
+      "003_outdoor_research_graph.sql",
+      "004_osm_outdoor_research_projection.sql",
+      "005_outdoor_research_projection_geometry.sql",
+      "006_outdoor_route_membership_point_index.sql",
+      "007_routable_highlight_access_geography_index.sql",
+      "009_supabase_postgis_isolated_runtime_read_contract.sql"
+    ],
+    "historicalPortableV1": [
+      "001_app_attest.sql",
+      "002_outdoor_evidence.sql",
+      "003_outdoor_research_graph.sql",
+      "004_osm_outdoor_research_projection.sql",
+      "005_outdoor_research_projection_geometry.sql",
+      "006_outdoor_route_membership_point_index.sql",
+      "007_routable_highlight_access_geography_index.sql",
+      "008_outdoor_research_runtime_read_contract.sql"
+    ],
+    "mixedLedgerAllowed": false
+  },
+  "operator": {
+    "phaseCount": 10,
+    "phaseIds": [
+      "initial_unlocked_admission",
+      "nonwaiting_lock_acquisition",
+      "locked_state_reinspection",
+      "v2_pre_step_committed",
+      "v2_first_runner_committed",
+      "v2_second_runner_zero_output_noop",
+      "v2_post_step_committed",
+      "post_ddl_advisors_acceptable",
+      "final_containment_reinspection",
+      "sanitized_durable_receipt"
+    ],
+    "restorePlanDigestIndependentlyRequired": true,
+    "aclAndRestorePlanComparedUnlockedAndLocked": true,
+    "rawV2RunnerTopLevelAllowed": false,
+    "sealedCapability": {
+      "singleUse": true,
+      "lifetimeMilliseconds": 30000,
+      "inMemoryOnly": true,
+      "environmentConstructible": false,
+      "targetBound": true,
+      "policyBound": true,
+      "purposeBound": true
+    },
+    "cliLiveAdapterInstalled": false,
+    "remoteExecutionAuthorized": false
+  },
+  "databaseProof": {
+    "postgresVersion": "17.10",
+    "postgisVersion": "3.6.4",
+    "postgisDirectSchema": "trailmind_gis",
+    "publicPostgisRoutines": 0,
+    "acceptedOwnerTopologies": [
+      "schema_postgres_extension_and_members_postgres",
+      "schema_postgres_extension_and_members_supabase_admin"
+    ],
+    "migrationRoleOutgoingMembership": {
+      "target": "trailmind_app_owner",
+      "inheritOption": false,
+      "setOption": true,
+      "adminOption": false,
+      "additionalDirectOrReachableRoles": 0
+    },
+    "runtimeFunctionCount": 5,
+    "runtimeDirectPostgis": false,
+    "runtimeDirectBaseTables": false,
+    "appAttestAdmission": true,
+    "outdoorRuntimeAdmission": true,
+    "cancellationAdmission": true,
+    "exactAclCompensation": true,
+    "historicalRollbackQuarantinedAndUnreachable": true,
+    "dataApiPublicExtensionsAndGisFailClosed": true,
+    "providerProductionPlanuaCostAdvisorEmptyStateFlagsAndSiblingWriterFailClosed": true
+  },
+  "verificationEnvironment": {
+    "operatingSystem": "Darwin 25.4.0 arm64",
+    "node": "v22.22.3",
+    "npm": "10.9.8",
+    "postgresql": "17.10 Homebrew",
+    "postgis": "3.6.4",
+    "dependencyMode": "pre_existing_read_only_install_copied_only_into_disposable_git_mirror",
+    "packageLockSha256": "f68d2c233fa98ed7dd57ba1bee8ab560069205b61cf371ca205f26f03f5c2533",
+    "candidateDependencyArtifactsAdded": false
+  },
+  "tests": {
+    "focused": {
+      "command": "node --test --test-concurrency=1 test/supabasePostgisIsolationMigrationV2.test.js test/stagingPhase1V2Operator.test.js test/stagingMigrationCapability.test.js test/stagingHistoricalRollbackQuarantine.test.js",
+      "tests": 47,
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 4
+    },
+    "disposablePostgres": {
+      "command": "npm run test:supabase-postgis-isolation-v2",
+      "tests": 87,
+      "passed": 87,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 9,
+      "subtotals": {
+        "exactPreLedgerCompensation": "8/8",
+        "runnerStateMachineMembershipOwnerDriftAndBypass": "9/9",
+        "managedOwnerTopology": "2/2",
+        "v2RuntimeAdversarial": "12/12",
+        "portableV1PostgisAndAppAttest": "56/56"
+      }
+    },
+    "backend": {
+      "command": "npm test",
+      "tests": 1014,
+      "passed": 1014,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 106
+    },
+    "build": {
+      "command": "npm run build",
+      "status": "passed"
+    },
+    "offlineQuality": {
+      "command": "npm run eval:outdoor-adventure-quality",
+      "cases": 101,
+      "passed": 101,
+      "failed": 0,
+      "skipped": 0
+    },
+    "applicationImageContext": {
+      "command": "node scripts/staging/runtime/verify-build-context.js",
+      "files": 90,
+      "status": "passed",
+      "sha256": "10b87ca2f6a62f72754c3f65f7e60ec0f0617a34aeb902ca558c5f670beeb2c6"
+    },
+    "environmentLimitations": [
+      "The first sandboxed PostgreSQL bootstrap failed before schema creation because SysV shared memory was denied. The same local-only harness passed under approved local process permissions.",
+      "A first disposable source mirror intentionally omitted Git metadata, so five V4 byte-attestation tests failed closed with git_attestation_unavailable while 1004 tests passed. The authoritative rerun used a disposable local shared Git clone at the exact baseline and passed 1014/1014."
+    ]
+  },
+  "migrationDigests": {
+    "001_app_attest.sql": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16",
+    "002_outdoor_evidence.sql": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d",
+    "003_outdoor_research_graph.sql": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928",
+    "004_osm_outdoor_research_projection.sql": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3",
+    "005_outdoor_research_projection_geometry.sql": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8",
+    "006_outdoor_route_membership_point_index.sql": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4",
+    "007_routable_highlight_access_geography_index.sql": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7",
+    "009_supabase_postgis_isolated_runtime_read_contract.sql": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"
+  },
+  "criticalSourceDigests": {
+    "backend/src/operations/migrationRunner.js": "9809a3e1ca7ba8a2beb055180b73ba01169eda796ea1366cfabf772eace6cd81",
+    "backend/src/operations/stagingMigrationCapability.js": "ce74ae2343a4ba7a8a878fe43029fe6e68d178d831d064bb27a6f740216858c4",
+    "backend/src/operations/stagingMigrationPolicy.js": "be8fbb0e5798f8b466c67c2fd97e0346c4cc41f5234eea3350eaabb69aa0847a",
+    "backend/src/operations/stagingPhase1V2Operator.js": "6c29625695d6e7a3f47cd1e64220910a6204081cd1e6f8a59d2d9ca2a7d974a3",
+    "backend/scripts/migrate.js": "5a19fe2943a180a8d1fff6d73b57792b62b6c0c940253b4b9a210d4db89f2409",
+    "backend/scripts/staging/phase1-v2-operator.js": "0414ffe7245e966de7a69c2dafbeefff814a8eff206ee45d5e7678fae12283aa",
+    "backend/scripts/disposable/run-authorized-supabase-postgis-v2-migrations.js": "bfcea7fe4fcdcffa9c2fe73632afcc89ed1587f30bd466907c98ecf4c3e8dbf2",
+    "backend/scripts/disposable/run-supabase-postgis-isolation-v2.js": "86f324e50854af6a9a9b56296d28c5f8d81336d9cefd96bf175b7dc15770b26c",
+    "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql": "047d2e09e91fbe5bcaf39bcfc9d3e24a4d2d9d05e764ad8ce65419e67e185e6d",
+    "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql": "4fa331be00f95c252af35633cb527cfecd1ebc20a6864e5d048750bfa013d57f",
+    "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2_ROLLBACK.sql": "13a7a053ec9a055b9a2297b7e30302be83701e59788eee956c0fc27569efd863",
+    "backend/test/stagingMigrationRunnerPostgresIntegration.test.js": "4c4e66776283734f03a66469f0dd926ec4c518c5d082c91e05b854f6635b699a",
+    "backend/test/stagingMigrationRunnerProviderOwnershipPostgresIntegration.test.js": "928c0d97fa4a6f1d9369d9ad69b95c6512077f5613ff97d4ee37c0a96cf495fe",
+    "backend/test/stagingMigrationCapability.test.js": "2fdc560f62c86c0998941a80008a3cf592c5ba5817a73cf3b03f64176f0ba63e",
+    "backend/test/stagingPhase1V2Operator.test.js": "5bda4770098787c4325defcc46676da3d31d0337d38f74a36ac29f4ea5a7033d",
+    "backend/test/stagingHistoricalRollbackQuarantine.test.js": "00a90558867c7ac9dffd6006e8d3466d58427871813c434dc14cdb048de275f7",
+    "backend/test/supabasePostgisIsolationMigrationV2.test.js": "5c75d35fa51122934170b83e9d0728d9086460f40feb4eea39670c3af98be4d4",
+    "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js": "daee05881e176205d845df398bcd58151202a4997b500aebf0eed9dbb084eadf",
+    "backend/test/supabasePostgisIsolationV2RollbackIntegration.test.js": "e616ebbadd155fc0fcfa84c1ce3e45234e4dceb3f6375934a108ab42d0eac677",
+    "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.md": "711b18894556e89db0d048d1936608535bac0b1ebcc6f73f2be7c0f7dcadb7ba",
+    "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.json": "5d66eebcff9c5c77780b77c4824f38575d4475cb98ce0d9d59312d3af0b03476"
+  },
+  "protectedHistoricalDigests": {
+    "backend/migrations/008_outdoor_research_runtime_read_contract.sql": "e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32",
+    "docs/operations/staging-v1/database/PHASE_0_RESOURCE_DECISION.md": "390fa66e83963e218161a853894cba4ff7cfe3ecb881fbeaa82dd71c98c620d5",
+    "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION.sql": "acbc878d02ddf04647c11fc6fa0f5df9ed4e53942dd9a3da7eedf5f01eee1be9",
+    "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION.sql": "f67a92fc1d003b10601555973f263d2d5a50c53d0f95e67269e6901976611485",
+    "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK.sql": "4f4cdbaee71df8b5b4fd5fdc93dc5711c74cd9746c873fa1524196b52011378e",
+    "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.md": "3209e082f48d33199c68b4cf7e4a8f4b8f08d3e1a07e09faf5faab5c1dabaaff",
+    "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.json": "45c756fce9a68440c36f8c2cb0ed4228bf7047015166ec603700619abce646a6",
+    "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF_ERRATUM_001.md": "df2bb5a7b008ac822ea7a555ff487dc565d93ada0374cd9c17f64c1a7de02b8e",
+    "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF_ERRATUM_001.json": "1f72741e1f7f3682107efeba7659eb356c845264f3c079317bc3d333a04761e2",
+    "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.md": "711b18894556e89db0d048d1936608535bac0b1ebcc6f73f2be7c0f7dcadb7ba",
+    "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.json": "5d66eebcff9c5c77780b77c4824f38575d4475cb98ce0d9d59312d3af0b03476",
+    "historicalV4ReceiptSet": {
+      "receiptCount": 16,
+      "totalBytes": 211118,
+      "manifestSha256": "9238333cc726b1b52affcaf66b29c0df4c03fabbfa2338ac399097d52ae37692"
+    }
+  },
+  "hashBindingModel": {
+    "receiptSelfHashEmbedded": false,
+    "reason": "Embedding this JSON file's own digest would be circular.",
+    "order": [
+      "This JSON receipt binds immutable source, migrations, V2 SQL, tests, quarantine, protected artifacts, versions, commands, totals, and Git inventory.",
+      "The paired Markdown binds this finalized JSON digest.",
+      "The database candidate supplement binds both paired proof digests.",
+      "The canonical evidence map binds the finalized supplement digest."
+    ]
+  },
+  "safety": {
+    "remoteSupabaseControlPlaneCalls": 0,
+    "remoteSupabaseDatabaseCalls": 0,
+    "productionCalls": 0,
+    "planuaCalls": 0,
+    "graphHopperCalls": 0,
+    "aiProviderCalls": 0,
+    "appleCalls": 0,
+    "paidServiceCalls": 0,
+    "secretsInspected": 0,
+    "configurationLocalXcconfigInspected": false,
+    "costUsd": 0,
+    "featureFlagCount": 13,
+    "allFeatureProviderInsecureDefaultsFalse": true,
+    "disposableResourcesRemoved": true,
+    "committed": false,
+    "staged": false,
+    "pushed": false,
+    "deployed": false,
+    "pbfImported": false
+  }
+}
