@@ -18,7 +18,10 @@ const trailAccessIndexMigrationURL = new URL(
   "../migrations/007_routable_highlight_access_geography_index.sql",
   import.meta.url
 );
-const migrationRunnerURL = new URL("../scripts/migrate.js", import.meta.url);
+const migrationRunnerURL = new URL(
+  "../src/operations/migrationRunner.js",
+  import.meta.url
+);
 const membershipPerformanceRecordURL = new URL(
   "../../docs/OUTDOOR_MAPPED_ROUTE_MEMBERSHIP_PERFORMANCE_V1.md",
   import.meta.url

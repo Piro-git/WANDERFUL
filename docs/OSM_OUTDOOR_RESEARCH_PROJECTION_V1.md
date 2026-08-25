@@ -349,7 +349,8 @@ documentation, source identifiers, or review references.
 ### 1. Apply migrations
 
 ```sh
-DATABASE_URL='<operator-provided PostgreSQL URL>' npm run db:migrate
+DATABASE_URL='<operator-provided disposable PostgreSQL URL>' \
+  npm run db:migrate:historical-portable-v1
 ```
 
 ### 2. Explicitly activate the reviewed policy

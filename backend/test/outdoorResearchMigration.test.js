@@ -53,10 +53,21 @@ describe("outdoor research graph migration", () => {
   });
 
   it("remains discoverable by the deterministic migration runner", async () => {
-    const runner = await readFile(new URL("../scripts/migrate.js", import.meta.url), "utf8");
-    assert.match(runner, /\^\\d\+_\[a-z0-9_\]\+\\\.sql\$/);
-    assert.match(runner, /SELECT 1 FROM trailmind_schema_migrations WHERE version = \$1/);
-    assert.match(runner, /if \(existing\.rowCount > 0\) continue/);
+    const entrypoint = await readFile(
+      new URL("../scripts/migrate.js", import.meta.url), "utf8"
+    );
+    const runner = await readFile(
+      new URL("../src/operations/migrationRunner.js", import.meta.url), "utf8"
+    );
+    const policy = await readFile(
+      new URL("../src/operations/stagingMigrationPolicy.js", import.meta.url),
+      "utf8"
+    );
+    assert.match(entrypoint, /requiredMigrationPolicy/);
+    assert.match(runner, /trailmind_migration_ledger_incompatible/);
+    assert.match(runner, /ORDER BY applied_at, version/);
+    assert.match(runner, /SET LOCAL ROLE trailmind_app_owner/);
+    assert.match(policy, /003_outdoor_research_graph\.sql/);
   });
 
   it("leaves the tracked iOS Release evidence gate disabled", async () => {

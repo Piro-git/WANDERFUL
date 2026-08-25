@@ -112,7 +112,12 @@ describe("outdoor research graph PostGIS integration", { skip: !connectionString
       "options",
       `-crole=${functionOwnerRoleName} -csearch_path=${runnerSchemaName},public`
     );
-    const environment = { ...process.env, DATABASE_URL: runnerURL.toString(), POSTGRES_URL: "" };
+    const environment = {
+      ...process.env,
+      DATABASE_URL: runnerURL.toString(),
+      POSTGRES_URL: "",
+      TRAILMIND_MIGRATION_POLICY: "historical-portable-v1"
+    };
     const first = await executeFile(process.execPath, ["scripts/migrate.js"], {
       cwd: new URL("..", import.meta.url),
       env: environment
