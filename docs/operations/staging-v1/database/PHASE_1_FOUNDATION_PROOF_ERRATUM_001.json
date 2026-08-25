@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "erratumId": "trailmind-phase1-foundation-proof-erratum-001",
+  "status": "append_only_historical_correction",
+  "remoteEvidenceAdded": false,
+  "corrections": {
+    "migration006Sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4",
+    "providerCallsZeroMeaning": "zero_graphhopper_ai_and_application_provider_calls_not_zero_supabase_control_plane_operations"
+  },
+  "protectedBindings": {
+    "PHASE_1_FOUNDATION_PROOF.md": "3209e082f48d33199c68b4cf7e4a8f4b8f08d3e1a07e09faf5faab5c1dabaaff",
+    "PHASE_1_FOUNDATION_PROOF.json": "45c756fce9a68440c36f8c2cb0ed4228bf7047015166ec603700619abce646a6",
+    "008_outdoor_research_runtime_read_contract.sql": "e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "noticeId": "trailmind-phase1-blocked-rollback-quarantine-001",
+  "classification": "non-executable-superseded-historical-evidence",
+  "historicalArtifact": {
+    "path": "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK.sql",
+    "sha256": "4f4cdbaee71df8b5b4fd5fdc93dc5711c74cd9746c873fa1524196b52011378e",
+    "bytesModifiedByNotice": false,
+    "risk": [
+      "drop-owned",
+      "cascade",
+      "incomplete-object-inventory"
+    ]
+  },
+  "historicalReceiptBindings": {
+    "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.md": "3209e082f48d33199c68b4cf7e4a8f4b8f08d3e1a07e09faf5faab5c1dabaaff",
+    "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.json": "45c756fce9a68440c36f8c2cb0ed4228bf7047015166ec603700619abce646a6"
+  },
+  "supersededBy": {
+    "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2_ROLLBACK.sql",
+    "scope": "guarded-v2-pre-ledger-compensation-only"
+  },
+  "activeSelectionAllowed": false,
+  "historicalArtifactFixed": false
+}

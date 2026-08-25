@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "proofId": "trailmind-supabase-staging-phase-1-foundation-2026-08-24",
+  "generatedAt": "2026-08-24T20:29:51Z",
+  "outcome": "blocked_rolled_back",
+  "sourceCommit": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "staging": {
+    "organizationId": "wbnftkftyamxzvxsftda",
+    "organizationName": "Alibra AI",
+    "projectId": "mbvzwsrtqcrwhvykugcd",
+    "projectName": "TrailMind Outdoor Staging V1",
+    "region": "eu-central-1",
+    "status": "ACTIVE_HEALTHY",
+    "postgresEngine": "17",
+    "platformVersion": "17.6.1.155",
+    "monthlyProjectCostUsd": 0
+  },
+  "protectedProduction": {
+    "projectId": "bejvhhjbgtvctpsnlwid",
+    "projectName": "TrailMind",
+    "status": "ACTIVE_HEALTHY",
+    "platformVersion": "17.6.1.141",
+    "mutationCount": 0,
+    "postgisInstalled": false,
+    "providerMigrationCount": 1,
+    "publicTableCount": 8,
+    "phase1RoleCount": 0,
+    "phase1SchemaCount": 0
+  },
+  "gates": {
+    "latestOriginMainFetched": "passed",
+    "baselineAtOrAfterRequiredCommit": "passed",
+    "duplicateAndConcurrencyGate": "passed",
+    "stagingIdentityAndProductionSeparation": "passed",
+    "initialApplicationStateEmpty": "passed",
+    "freeOnlyBoundary": "passed",
+    "secretHandling": "passed"
+  },
+  "blocker": {
+    "status": "blocked",
+    "code": "hosted_postgis_public_execute_conflicts_with_exact_runtime_admission",
+    "summary": "Hosted Supabase creates public PostGIS routines as supabase_admin and grants EXECUTE to PUBLIC. The managed postgres role cannot revoke those owner-controlled ACLs, while the committed App Attest admission contract requires public schema usage and permits zero executable public-extension functions.",
+    "executablePublicRoutineCountObservedForRuntime": 744,
+    "providerOwnedExample": "public.st_point(double precision, double precision)",
+    "providerOwnerRole": "supabase_admin",
+    "providerOwnerReachableByManagedPostgres": false,
+    "contractChangeAttempted": false,
+    "privilegeEscalationAttempted": false
+  },
+  "remoteExecution": {
+    "preFoundation": "applied_then_compensated",
+    "postgisDefaultVersionInstalledWithoutVersionClause": "3.3.7",
+    "canonicalMigrations001Through008": "not_run",
+    "postMigrationGrantsAndPolicies": "not_run",
+    "secondCanonicalMigrationRun": "not_run",
+    "compensatingRollback": "passed",
+    "finalPostgisInstalled": false,
+    "finalPhase1RoleCount": 0,
+    "finalPhase1SchemaCount": 0,
+    "finalPhase1RelationCount": 0,
+    "finalPhase1RoutineCount": 0,
+    "finalPublicApplicationRelationCount": 0,
+    "finalApplicationLedgerExists": false,
+    "supabaseMigrationHistory": [
+      "trailmind_phase_1_pre_migration_foundation",
+      "trailmind_phase_1_blocked_compensating_rollback"
+    ]
+  },
+  "localRehearsal": {
+    "postgres17PostgisFoundation": "passed",
+    "firstCanonicalMigrationRunAppliedCount": 8,
+    "firstCanonicalMigrationRunOrder": [
+      "001_app_attest.sql",
+      "002_outdoor_evidence.sql",
+      "003_outdoor_research_graph.sql",
+      "004_osm_outdoor_research_projection.sql",
+      "005_outdoor_research_projection_geometry.sql",
+      "006_outdoor_route_membership_point_index.sql",
+      "007_routable_highlight_access_geography_index.sql",
+      "008_outdoor_research_runtime_read_contract.sql"
+    ],
+    "secondCanonicalMigrationRunAppliedCount": 0,
+    "secondCanonicalMigrationRunWasTrueNoOp": true,
+    "appAttestRuntimeAdmission": "passed",
+    "appAttestControlAdmission": "passed",
+    "outdoorRuntimeExecutableApplicationFunctionCount": 5,
+    "outdoorRuntimeDirectApplicationRelationPrivilegeCount": 0,
+    "cancellationWrongTargetDenied": true,
+    "cancellationDirectPgCancelDenied": true,
+    "cancellationProductQueryDenied": true,
+    "cancellationOutdoorTargetCancelled": true,
+    "cancellationNonTargetSurvived": true,
+    "compensatingRollbackRehearsal": "passed"
+  },
+  "advisors": {
+    "beforeRollback": {
+      "securityErrorCount": 1,
+      "securityWarningCount": 7,
+      "performanceNoticeCount": 0
+    },
+    "afterRollback": {
+      "securityNoticeCount": 0,
+      "performanceNoticeCount": 0
+    }
+  },
+  "verification": {
+    "focusedTests": {
+      "status": "passed",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0
+    },
+    "completeBackendTests": {
+      "status": "passed",
+      "passed": 967,
+      "failed": 0,
+      "skipped": 0
+    },
+    "backendSyntaxBuild": "passed",
+    "offlineOutdoorQualityEvaluation": {
+      "status": "passed",
+      "passed": 101,
+      "failed": 0,
+      "skipped": 0
+    },
+    "remotePostgisGistSanity": "not_run_rolled_back_before_application_migrations",
+    "remoteLeastPrivilegeAndRlsDrills": "not_run_rolled_back_before_application_migrations",
+    "remoteCanonicalLedgerAndNoOp": "not_run_rolled_back_before_application_migrations"
+  },
+  "featureFlags": {
+    "reviewedCount": 13,
+    "allTrackedDefaultsFalse": true,
+    "remoteEnableActions": 0
+  },
+  "scope": {
+    "osmImports": 0,
+    "providerCalls": 0,
+    "backendDeployments": 0,
+    "newProjects": 0,
+    "paidProducts": 0,
+    "nonzeroSpendUsd": 0,
+    "backupRestoreClaims": 0
+  }
+}

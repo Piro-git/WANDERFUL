@@ -1,14 +1,20 @@
 # Staging database Phase 0 and resource decision
 
-Status: free-project creation blocked by the provider's active Free-project limit; no staging resource was created.
+Status: approved separate Free/Nano staging project created successfully at
+USD 0/month. Phase 1 database DDL is reported separately.
 
 Audit date: 2026-08-24 (Europe/Berlin)
 
 ## Baseline and ownership
 
-- Fetched `origin/main`; both `HEAD` at task start and refreshed `origin/main` were `fc7ea47968aebd7c1c9be747d2abe97c707e4636`.
-- Dedicated task branch: `codex/supabase-staging-data-v1`.
-- Worktree was clean and detached before the dedicated branch was created; the index remains empty.
+- The original Phase 0 audit fetched `origin/main` at
+  `fc7ea47968aebd7c1c9be747d2abe97c707e4636` on the dedicated
+  `codex/supabase-staging-data-v1` worktree.
+- The Phase 1 continuation fetched the latest `origin/main`; both `HEAD` and
+  `origin/main` were the required later baseline
+  `72b98e3e065ae442168ece20984d8baba26e2d11` before database work.
+- The Phase 1 worktree and index were clean and detached before evidence files
+  were created.
 - Available local storage at the audit was 26 GiB on the data volume. Repository working data was 17 MiB. No PBF or derivative was downloaded.
 - The active sibling tasks are `codex/staging-runtime-v1` (runtime owner) and `codex/staging-readiness-proof-v1` (proof owner). Neither owns remote Supabase database mutations or this task's local paths.
 - No equivalent active staging database owner, staging Supabase project, or staging database branch was found in current tasks, worktrees, repository paths, Git branches, or the organization project inventory.
@@ -146,8 +152,40 @@ The owner subsequently approved exactly one separate project with the identity a
 
 After the required zero-cost confirmation, the create request was rejected before provisioning because the organization owner already had the maximum two active Free projects. The provider reported a two-project active Free limit and required deleting, pausing, or upgrading another project to continue.
 
-On the owner's explicit 2026-08-24 follow-up, the duplicate, organization-plan, production-containment, and quote gates were run again. The exact project name was still absent, production was still healthy with no branches, and the immediately refreshed quote was again exactly USD 0 monthly. One new zero-cost confirmation and one new create request were issued. Supabase rejected that request with the same two-active-Free-project limit before provisioning. No further retry, pause, deletion, upgrade, branch, add-on, backup/PITR product, custom domain, or alternate resource was attempted.
+On the owner's explicit 2026-08-24 follow-up, the duplicate,
+organization-plan, production-containment, and quote gates were run again. The
+exact project name was still absent, production was still healthy with no
+branches, and the immediately refreshed quote was again exactly USD 0 monthly.
+One new zero-cost confirmation and one new create request were issued. Supabase
+rejected that request with the same two-active-Free-project limit before
+provisioning. No upgrade, paid branch, add-on, backup/PITR product, custom
+domain, or alternate paid resource was attempted.
 
-A final post-failure read-only inventory confirmed that no project named `TrailMind Outdoor Staging V1` exists and production remains `ACTIVE_HEALTHY` on platform version `17.6.1.141` with no branches. Database foundation, roles, extensions, migrations, imports, projections, backup/restore, advisors, and capacity tests were therefore not run because there is no authorized staging target.
+The owner later authorized pausing the separate non-production `Planua`
+project. Planua (`cmkvbxppgofteoutfslp`) was paused successfully and remains
+preserved with status `INACTIVE`; it was not deleted, migrated, inspected for
+secrets, or otherwise placed in TrailMind scope. The duplicate, organization,
+production-containment, and exact quote gates were then repeated. Supabase
+again quoted the separate `TrailMind Outdoor Staging V1` project at exactly
+`type=project`, `recurrence=monthly`, `amount=0`.
 
-Precise blocker: the approved zero-cost project cannot be created while the owner remains at Supabase's two-active-Free-project limit. Resolving this requires a new explicit decision about an existing non-production project or a paid plan; neither is authorized by this task.
+After that final zero-cost confirmation, Supabase created the authorized
+resource successfully:
+
+- organization: `Alibra AI` (`wbnftkftyamxzvxsftda`), Free plan;
+- project: `TrailMind Outdoor Staging V1` (`mbvzwsrtqcrwhvykugcd`);
+- region: Frankfurt (`eu-central-1`);
+- status after creation and after the Phase 1 attempt: `ACTIVE_HEALTHY`;
+- PostgreSQL: engine 17, platform version `17.6.1.155`;
+- recurring project quote: USD 0/month;
+- initial TrailMind roles/schemas/application objects: zero;
+- initial application migration ledger: absent;
+- initial PostGIS state: not installed;
+- initial public application relations: zero.
+
+The project is a Free/Nano staging resource. It retains the Phase 0 capacity
+and lifecycle limits: 500 MB recommended database size, up to 0.5 GB memory,
+possible low-activity pause, no documented managed daily backup/PITR on Free,
+and no claim of restore capability until a real isolated logical restore is
+authorized and completed. No import, provider call, deployment, feature enable,
+paid product, or nonzero spend was authorized by creation.
