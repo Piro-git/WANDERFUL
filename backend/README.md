@@ -84,11 +84,25 @@ npm start
 
 The standalone runtime requires `APP_ATTEST_DATABASE_URL`. When research or evidence is enabled, it additionally requires explicit, non-aliased runtime connection strings for each pool named in `config.example.env`. These URLs must be injected by the deployment platform; never place a value in a command or receipt. Source validation can reject missing or textually aliased URLs, but only staging grant/denial tests can prove database role separation.
 
-Migrations are an operator-only responsibility and are never run by the application process. After the migration role has received its environment through the approved secret-injection mechanism, run:
+Migrations are an operator-only responsibility and are never run by the application process.
+
+`npm run db:migrate` requires an explicit `TRAILMIND_MIGRATION_POLICY` and
+fails closed when it is absent or unknown. Use the named historical portable
+command only for its local/public-PostGIS compatibility contract. The Supabase
+command is the fail-closed Phase 1 operator entrypoint; it is intentionally
+disabled until a reviewed live adapter supplies all ten admission, execution,
+advisor, containment, and receipt phases:
 
 ```sh
-npm run db:migrate
+npm run db:migrate:historical-portable-v1
+npm run db:migrate:supabase-postgis-isolation-v2
 ```
+
+Supabase isolated V2 is `001–007 + 009`; historical portable V1 is `001–008`.
+The two ledgers are mutually exclusive. The raw migration runner is an internal
+primitive. Supabase V2 refuses it without a bounded, single-use capability
+issued inside the admitted operator state machine; `DATABASE_URL` plus a policy
+environment variable cannot bypass that gate.
 
 Migration output contains filenames only; connection strings and database records are never printed. Use `TRAILMIND_TEST_DATABASE_URL` only with a disposable dedicated database to run the real PostgreSQL integration suite.
 

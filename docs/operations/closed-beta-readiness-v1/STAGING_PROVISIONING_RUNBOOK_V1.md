@@ -161,23 +161,41 @@ cancellation, and outdoor evidence only when the corresponding capability is
 approved. Production preflight rejects missing or textually aliased active
 pool URLs; that source check does not replace database grant/denial proof.
 
-### 3. Apply migrations 001 through 008
+### 3. Select and apply one migration policy
 
-From `backend/`, with the migration role injected:
+From `backend/`:
+
+`npm run db:migrate` intentionally fails unless
+`TRAILMIND_MIGRATION_POLICY` selects a reviewed policy. The named commands are:
 
 ```sh
-npm run db:migrate
+npm run db:migrate:historical-portable-v1
+npm run db:migrate:supabase-postgis-isolation-v2
 ```
 
-The runner sorts migrations, takes the
-`trailmind-schema-migrations` advisory lock, applies each unapplied file inside
-one transaction, and prints filenames only.
+The historical portable command applies `001–008` only to a reviewed guarded
+local/admin portable topology. It is not a Supabase operator command. The
+current Supabase named command is the fail-closed Phase 1 operator entrypoint,
+not a direct migration runner. It is intentionally disabled until a separately
+reviewed live adapter supplies the complete target/cost/advisor inspection,
+nonwaiting lock, locked reinspection, V2 pre-step, exact first/no-op migration
+runs, V2 post-step, post-advisors, final containment inspection, and sanitized
+durable receipt.
+
+The raw V2 runner is an internal primitive. It accepts only an in-memory,
+short-lived, single-use capability issued by that operator state machine. It
+then authenticates the exact `migration_role` login and its complete bounded
+membership set, enters `trailmind_app_owner` inside the transaction, fixes the
+trusted search path, rejects non-prefix/cross-policy ledgers, and prints
+filenames only after commit. A connection variable and policy selection alone
+cannot execute Supabase V2.
 
 Current review boundary:
 
-- migrations 001 through 008 are tracked current-source inputs;
-- migration 008 adds the operation-scoped outdoor-research runtime read
-  contract and revokes its default `PUBLIC` function privileges;
+- historical portable V1 is exactly `001–008`;
+- Supabase isolated V2 is exactly `001–007 + 009` and never applies `008`;
+- migrations `008` and `009` define mutually exclusive topology-specific
+  versions of the same five operation-scoped runtime bodies;
 - role creation and runtime grants remain an audited platform action and are
   not performed by migration 008;
 - V4 must stop if the accepted reviewed migration set does not contain the
@@ -190,7 +208,10 @@ runtime and operator/auditor connections must use distinct roles.
 
 ### 4. Prove migration repeatability
 
-Run `npm run db:migrate` a second time against the same disposable database.
+For the portable local policy, run its explicit named command a second time.
+For Supabase V2, the admitted operator performs and binds the second runner
+invocation inside the same ten-phase operation; do not launch a second remote
+operator command as a substitute.
 Require no new ledger rows and no schema drift. Compare:
 
 - ordered filenames and cryptographic digests from the reviewed commit;

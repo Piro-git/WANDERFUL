@@ -126,9 +126,12 @@ must not cross into health, preflight, logs, metrics, or receipts.
 3. Provision isolated HTTPS staging plus private PostgreSQL/PostGIS with
    separate provisioner, migration, App-security, research, cancellation,
    evidence, pruner, and audit authorities.
-4. Run production preflight, migrations 001-008, denied-access tests, backup
-   and restore, restart/drain, dependency-outage, and rollback exercises with
-   provider traffic disabled.
+4. Run production preflight and the candidate-bound ten-phase database
+   operator. Supabase must use `supabase-postgis-isolation-v2`
+   (`001–007 + 009`) behind the sealed operator context; the raw runner and
+   historical portable `001–008` policy are not operator substitutes. Then run
+   denied-access, backup/restore, restart/drain, dependency-outage, and rollback
+   exercises with provider traffic disabled.
 5. Import/project current regional evidence only under separately authorized
    data operations, then prove isolation, freshness, indexes, latency, and
    cancellation using disposable/staging PostGIS.
@@ -162,6 +165,10 @@ and limitations cited above.
 - `feature-flag-state-matrix-v1.json` — fail-closed feature-state contract.
 - `SOURCE_EVIDENCE_MANIFEST_V1.json` — source commit, package inventory,
   classifications, and per-gate source evidence.
+- `SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_CANDIDATE.json` —
+  explicitly uncommitted, non-homogeneous database-candidate supplement. It
+  overrides only the current local database gate evidence and does not
+  regenerate or relabel the older commit-bound source manifest.
 - `STAGING_PROVISIONING_RUNBOOK_V1.md` — staging, database, migration, backup,
   restore, and role proof.
 - `PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md` — physical-device protocol.
