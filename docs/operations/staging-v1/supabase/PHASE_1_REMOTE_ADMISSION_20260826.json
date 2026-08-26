@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "id": "trailmind-supabase-phase1-remote-admission-20260826",
+  "status": "blocked_remote_adapter_unavailable",
+  "generatedAt": "2026-08-26T14:03:15.637050Z",
+  "repository": {
+    "requiredOriginMain": "90c874f4206c8fa4895c7e6c0a275a21b85f62cb",
+    "observedOriginMain": "90c874f4206c8fa4895c7e6c0a275a21b85f62cb",
+    "branch": "codex/supabase-phase1-staging",
+    "duplicateRemoteExecutionFound": false
+  },
+  "target": {
+    "projectRef": "mbvzwsrtqcrwhvykugcd",
+    "name": "TrailMind Outdoor Staging V1",
+    "organizationId": "wbnftkftyamxzvxsftda",
+    "organizationPlan": "free",
+    "region": "eu-central-1",
+    "status": "ACTIVE_HEALTHY",
+    "postgresEngine": "17",
+    "platformVersion": "17.6.1.155",
+    "serverVersion": "17.6",
+    "recurringCostUsd": 0
+  },
+  "protectedProduction": {
+    "projectRef": "bejvhhjbgtvctpsnlwid",
+    "name": "TrailMind",
+    "mutationCount": 0
+  },
+  "remotePrestate": {
+    "observedAt": "2026-08-26T14:03:15.637050Z",
+    "databaseSizeBytes": 11709587,
+    "trailmindSchemaCount": 0,
+    "trailmindRoleCount": 0,
+    "trailmindRelationCount": 0,
+    "trailmindFunctionCount": 0,
+    "publicApplicationRelationCount": 0,
+    "postgisInstalled": false,
+    "installedReviewedExtensions": [
+      {
+        "name": "pg_stat_statements",
+        "schema": "extensions",
+        "version": "1.11"
+      },
+      {
+        "name": "pgcrypto",
+        "schema": "extensions",
+        "version": "1.3"
+      },
+      {
+        "name": "uuid-ossp",
+        "schema": "extensions",
+        "version": "1.1"
+      }
+    ],
+    "supabaseMigrationLedger": [
+      {
+        "version": "20260824201634",
+        "name": "trailmind_phase_1_pre_migration_foundation"
+      },
+      {
+        "version": "20260824202617",
+        "name": "trailmind_phase_1_blocked_compensating_rollback"
+      }
+    ],
+    "applicationMigrationLedgerExists": false,
+    "publicSchema": {
+      "publicCreate": false,
+      "anonCreate": false,
+      "authenticatedCreate": false,
+      "serviceRoleCreate": false
+    },
+    "securityAdvisorFindingCount": 0,
+    "performanceAdvisorFindingCount": 0,
+    "dataApiSchemasSettingObserved": false
+  },
+  "reviewedMigrationPolicy": {
+    "id": "supabase-postgis-isolation-v2",
+    "historicalPortablePolicy": "001-008",
+    "managedSupabasePolicy": "001-007+009",
+    "mixedPolicyForbidden": true,
+    "migrations": [
+      {
+        "file": "001_app_attest.sql",
+        "sha256": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16"
+      },
+      {
+        "file": "002_outdoor_evidence.sql",
+        "sha256": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d"
+      },
+      {
+        "file": "003_outdoor_research_graph.sql",
+        "sha256": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928"
+      },
+      {
+        "file": "004_osm_outdoor_research_projection.sql",
+        "sha256": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3"
+      },
+      {
+        "file": "005_outdoor_research_projection_geometry.sql",
+        "sha256": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8"
+      },
+      {
+        "file": "006_outdoor_route_membership_point_index.sql",
+        "sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4"
+      },
+      {
+        "file": "007_routable_highlight_access_geography_index.sql",
+        "sha256": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7"
+      },
+      {
+        "file": "009_supabase_postgis_isolated_runtime_read_contract.sql",
+        "sha256": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"
+      }
+    ]
+  },
+  "executionDecision": {
+    "migrationStatus": "not_run",
+    "reason": "reviewed_live_adapter_unavailable",
+    "operatorEntryPointFailsClosed": true,
+    "singleSessionFoundationLockRequired": true,
+    "lockedPrestateReinspectionRequired": true,
+    "inMemorySingleUseCapabilityRequired": true,
+    "firstRunAndNoOpRunRequiredWithinOneOperatorOperation": true,
+    "postAdvisorAndFinalContainmentRequired": true,
+    "mcpCallsCannotSubstituteForOneLockBoundOperatorSession": true,
+    "directDatabaseAccessAdmitted": false,
+    "rawApplyMigrationBypassUsed": false
+  },
+  "regionalData": {
+    "harz": "not_run_schema_unavailable",
+    "innsbruck": "not_run_schema_unavailable",
+    "activeImportCount": 0,
+    "activeProjectionCount": 0,
+    "sourceMaterialDownloaded": false,
+    "publicOverpassUsed": false,
+    "coverageProved": false,
+    "freshnessProved": false,
+    "corridorQueriesRun": false,
+    "membershipQueriesRun": false,
+    "trailAccessQueriesRun": false
+  },
+  "backupRestore": {
+    "status": "not_run_no_isolated_restore_target_or_direct_logical_dump_access",
+    "freePlanManagedDailyBackupClaimed": false,
+    "logicalBackupRequired": true,
+    "onlyStagingDatabaseDestroyedOrReset": false
+  },
+  "externalEffects": {
+    "stagingReadOnlyInspectionCountGreaterThanZero": true,
+    "stagingMutationCount": 0,
+    "productionMutationCount": 0,
+    "graphHopperCalls": 0,
+    "aiProviderCalls": 0,
+    "paidResourceOperations": 0,
+    "secretsReadPrintedCopiedOrStored": false,
+    "featureFlagCount": 13,
+    "allFeatureFlagsRemainFalse": true
+  },
+  "goNoGo": {
+    "databaseFoundation": "NO_GO",
+    "regionalDataActivation": "NO_GO",
+    "hostingRuntimeConnection": "NO_GO",
+    "reason": "The remote project is correctly isolated and empty, but the reviewed transactional operator cannot yet be executed through an admitted live adapter."
+  }
+}
