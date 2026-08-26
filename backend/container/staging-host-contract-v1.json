@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "wanderful-staging-host-v1-render-free",
+  "canonicalService": {
+    "platform": "render",
+    "serviceName": "wanderful-staging-v1",
+    "region": "frankfurt",
+    "plan": "free",
+    "runtime": "docker",
+    "instances": 1
+  },
+  "baseUrl": {
+    "state": "unassigned",
+    "value": null,
+    "requiredScheme": "https",
+    "source": "validated_remote_deployment_receipt"
+  },
+  "lifecycle": {
+    "healthCheckPath": "/health/live",
+    "readinessPath": "/health/ready",
+    "maximumShutdownDelaySeconds": 30,
+    "applicationDrainDeadlineSeconds": 10,
+    "automaticDeploys": false
+  },
+  "freeTierLimitations": {
+    "idleSpinDownMinutes": 15,
+    "coldStartExpected": true,
+    "platformMayRestartAtAnyTime": true,
+    "persistentDiskAvailable": false,
+    "oneOffJobsAvailable": false,
+    "privateNetworkAvailable": false,
+    "productionEligible": false
+  },
+  "releasePolicy": {
+    "iosConnection": "blocked_until_validated_remote_deployment_receipt",
+    "closedBeta": "not_eligible",
+    "providerFlags": "exact_false",
+    "remoteMutationAuthorized": false
+  }
+}

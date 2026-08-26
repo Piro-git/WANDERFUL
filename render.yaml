@@ -1,0 +1,64 @@
+previews:
+  generation: off
+
+services:
+  - type: web
+    name: wanderful-staging-v1
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeployTrigger: off
+    renderSubdomainPolicy: enabled
+    healthCheckPath: /health/live
+    maxShutdownDelaySeconds: 30
+    numInstances: 1
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRAILMIND_RELEASE_STAGE
+        value: staging
+      - key: TRAILMIND_STAGING_PROJECT_REF_SHA256
+        sync: false
+      - key: TRAILMIND_APPLICATION_SCHEMA
+        sync: false
+      - key: APP_ATTEST_RUNTIME_ROLE
+        sync: false
+      - key: APP_ATTEST_CONTROL_ROLE
+        sync: false
+      - key: APP_ATTEST_OPERATOR_ROLE
+        sync: false
+      - key: APP_ATTEST_DATABASE_URL
+        sync: false
+      - key: APP_ATTEST_APP_ID_PREFIX
+        sync: false
+      - key: APP_ATTEST_BUNDLE_ID
+        sync: false
+      - key: APP_ATTEST_ENVIRONMENT
+        value: production
+      - key: APP_ATTEST_ALLOWED_VALIDATION_CATEGORIES
+        sync: false
+      - key: APP_ATTEST_ALLOWED_BUNDLE_VERSIONS
+        sync: false
+      - key: ROUTE_PROVIDER_ENABLED
+        value: "false"
+      - key: INTENT_PROVIDER_ENABLED
+        value: "false"
+      - key: OUTDOOR_EVIDENCE_PROVIDER_ENABLED
+        value: "false"
+      - key: OUTDOOR_RESEARCH_PLANNING_ENABLED
+        value: "false"
+      - key: OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED
+        value: "false"
+      - key: ROUTE_ALLOW_INSECURE_LOCAL_ROUTING
+        value: "false"
+      - key: INTENT_ALLOW_INSECURE_LOCAL_PARSING
+        value: "false"
+      - key: INTENT_ALLOW_DETERMINISTIC_MOCK
+        value: "false"
+      - key: OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL
+        value: "false"
+      - key: APP_ATTEST_ALLOW_IN_MEMORY
+        value: "false"
