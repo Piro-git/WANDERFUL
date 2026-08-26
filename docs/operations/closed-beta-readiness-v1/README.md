@@ -166,9 +166,13 @@ and limitations cited above.
 - `SOURCE_EVIDENCE_MANIFEST_V1.json` — source commit, package inventory,
   classifications, and per-gate source evidence.
 - `SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_CANDIDATE.json` —
-  explicitly uncommitted, non-homogeneous database-candidate supplement. It
-  overrides only the current local database gate evidence and does not
-  regenerate or relabel the older commit-bound source manifest.
+  historical final-seal database-candidate supplement. It truthfully records
+  the then-uncommitted, non-homogeneous generation and remains unchanged as
+  checkpoint evidence.
+- `SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_DIFF_CHECK_CORRECTION_001.json`
+  — current append-only correction for the checkpoint's committed-range
+  diff-check evidence; it preserves the older supplement and binds the exact
+  regression validation and erratum.
 - `STAGING_PROVISIONING_RUNBOOK_V1.md` — staging, database, migration, backup,
   restore, and role proof.
 - `PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md` — physical-device protocol.

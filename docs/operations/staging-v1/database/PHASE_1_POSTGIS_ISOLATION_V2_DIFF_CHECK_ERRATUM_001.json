@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "id": "trailmind-phase1-postgis-isolation-v2-diff-check-erratum-001",
+  "status": "append_only_evidence_correction",
+  "generatedOn": "2026-08-26",
+  "severity": "evidence_integrity_non_runtime",
+  "baselineCommit": "72b98e3e065ae442168ece20984d8baba26e2d11",
+  "checkpointCommit": "360360714c5d467552fc1f9fdc00b255081ea422",
+  "correctedClaim": {
+    "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.md",
+    "line": 209,
+    "classification": "inaccurate_final_range_diff_check_claim",
+    "reason": "A clean working-tree diff check after commit did not validate the committed baseline-to-checkpoint range."
+  },
+  "originalRangeValidation": {
+    "command": "git diff --check 72b98e3e065ae442168ece20984d8baba26e2d11..360360714c5d467552fc1f9fdc00b255081ea422",
+    "exitCode": 2,
+    "findingCount": 5,
+    "noOtherFindings": true
+  },
+  "findings": [
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_LOCAL_PROOF.md",
+      "lines": [5, 6, 7, 8],
+      "findingCount": 4,
+      "classification": "intentional_commonmark_hard_breaks",
+      "runtimeOrSecurityImpact": false,
+      "preserved": true,
+      "checkpointGitBlobSha1": "bfa4c3b67c1dac146c186e5aa20018a7450de9e2",
+      "checkpointFileSha256": "3d20be8107a89b811921571586f8443eccac1c4b08aece0c7d355cc473d35be7",
+      "terminalBytesPerLineHex": "20200a"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION.sql",
+      "lines": [345],
+      "findingCount": 1,
+      "classification": "harmless_extra_blank_line_at_eof_in_protected_historical_sql",
+      "runtimeOrSecurityImpact": false,
+      "preserved": true,
+      "checkpointGitBlobSha1": "446a66362f9254f2e6e8d8bb05fa618ba3a024e6",
+      "checkpointFileSha256": "f67a92fc1d003b10601555973f263d2d5a50c53d0f95e67269e6901976611485",
+      "terminalBytesHex": "0a0a",
+      "protectedBy": [
+        "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_LOCAL_PROOF.json",
+        "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_PROOF.json",
+        "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.json"
+      ]
+    }
+  ],
+  "byteDecision": {
+    "historicalBytesPreserved": true,
+    "reason": "The checkpoint blobs are historical evidence and the SQL digest is explicitly receipt-bound; the honest repair is append-only evidence rather than a silent rewrite."
+  },
+  "regressionValidation": {
+    "path": "backend/test/stagingPhase1V2DiffCheckEvidence.test.js",
+    "explicitCommittedRangeRequired": true,
+    "cleanWorkingTreeOnlyIsInsufficient": true,
+    "originalRangeExpected": {
+      "exitCode": 2,
+      "findingCount": 5
+    },
+    "correctiveCommitRange": {
+      "base": "360360714c5d467552fc1f9fdc00b255081ea422",
+      "expectedExitCode": 0,
+      "expectedOutput": ""
+    }
+  },
+  "migrationPolicies": {
+    "historicalPortableV1": "001-008",
+    "isolatedSupabaseV2": "001-007+009",
+    "changedByThisCorrection": false
+  },
+  "managedSupabaseExecution": "not_run_unproven",
+  "remoteDatabaseCalls": 0,
+  "applicationProviderCalls": 0,
+  "costUsd": 0,
+  "featureFlagCount": 13,
+  "allFeatureFlagsRemainFalse": true
+}

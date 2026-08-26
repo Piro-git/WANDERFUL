@@ -35,6 +35,21 @@
         "totalEntries": 67,
         "statusSha256": "ee661547a0ba4845eaaece67c04854ad22ac61111c1f6d8a92c930084fcbf517"
       }
+    },
+    {
+      "id": "trailmind-phase1-postgis-isolation-v2-diff-check-erratum-001",
+      "classification": "append_only_evidence_integrity_correction_managed_supabase_unproven",
+      "parentCheckpointCommit": "360360714c5d467552fc1f9fdc00b255081ea422",
+      "markdownSha256": "2689a9aa8f2d64f0e0ee414b39dd2a2818a63b7a83ce4b961a387d06b176ad2c",
+      "jsonSha256": "d711eae43531c78c40ef2a6260419b9eb99b60734726fe84a42b5be6521643b1",
+      "regressionTestSha256": "7f94dabdac715e1ce47ff33171bf90a3f940596c69d65b1170ac613bbbdd16ef",
+      "databaseSupplementSha256": "8311cdb26471a85b236eba02cc62db450162fe0ca285471026b39b9d47b3bfbd",
+      "originalRangeDiffCheck": {
+        "exitCode": 2,
+        "findingCount": 5,
+        "noOtherFindings": true
+      },
+      "managedSupabaseExecution": "not_run_unproven"
     }
   ],
   "gates": [

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "trailmind-database-foundation-v2-diff-check-correction-001",
+  "status": "append_only_evidence_correction_remote_blocked",
+  "generatedOn": "2026-08-26",
+  "parentCheckpointCommit": "360360714c5d467552fc1f9fdc00b255081ea422",
+  "historicalCheckpointBindings": {
+    "correction002MarkdownSha256": "82217430bf965676b7373836a82bc97a28211708a9f5a1bd643837ecc4c4cf9c",
+    "correction002ReceiptSha256": "a4387e8642926fe08bb5bc9a081fb916198f9af76060e78e15e4f8070577d793",
+    "candidateSupplementSha256": "7bd7727758215c5fe8a77abf8e50d282c6445f1e173a2461bac4fba55379e0e5"
+  },
+  "correctionBindings": {
+    "markdown": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_DIFF_CHECK_ERRATUM_001.md",
+      "sha256": "2689a9aa8f2d64f0e0ee414b39dd2a2818a63b7a83ce4b961a387d06b176ad2c"
+    },
+    "receipt": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_DIFF_CHECK_ERRATUM_001.json",
+      "sha256": "d711eae43531c78c40ef2a6260419b9eb99b60734726fe84a42b5be6521643b1"
+    },
+    "regressionTest": {
+      "path": "backend/test/stagingPhase1V2DiffCheckEvidence.test.js",
+      "sha256": "7f94dabdac715e1ce47ff33171bf90a3f940596c69d65b1170ac613bbbdd16ef"
+    }
+  },
+  "originalRangeDiffCheck": {
+    "range": "72b98e3e065ae442168ece20984d8baba26e2d11..360360714c5d467552fc1f9fdc00b255081ea422",
+    "exitCode": 2,
+    "findingCount": 5,
+    "noOtherFindings": true
+  },
+  "correctiveCommitDiffCheck": {
+    "base": "360360714c5d467552fc1f9fdc00b255081ea422",
+    "expectedExitCode": 0,
+    "expectedOutput": ""
+  },
+  "migrationPolicies": {
+    "historicalPortableV1": "001-008",
+    "isolatedSupabaseV2": "001-007+009",
+    "changedByThisCorrection": false
+  },
+  "managedSupabaseProof": false,
+  "remoteMutationAuthorized": false,
+  "featureFlagCount": 13,
+  "allFeatureFlagsRequiredFalse": true,
+  "providerCalls": 0,
+  "remoteSupabaseCalls": 0,
+  "costUsd": 0
+}
