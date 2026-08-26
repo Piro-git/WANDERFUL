@@ -578,12 +578,23 @@ final class IntentParsingFoundationTests: XCTestCase {
     }
 
     #if DEBUG
+    func testDebugRemoteParserRequestCannotBypassDisabledSignedGate() {
+        let provider = IntentParsingProviderFactory.makeDefaultProvider(
+            environment: ["TRAILMIND_INTENT_PARSER_MODE": "remote_with_local_fallback"],
+            remoteIntentEnabled: false
+        )
+
+        XCTAssertTrue(provider is LocalIntentParsingProvider)
+    }
+
     func testDebugParserModeCanBeConfiguredFromEnvironment() {
         let localProvider = IntentParsingProviderFactory.makeDefaultProvider(
-            environment: ["TRAILMIND_INTENT_PARSER_MODE": "local_only"]
+            environment: ["TRAILMIND_INTENT_PARSER_MODE": "local_only"],
+            remoteIntentEnabled: true
         )
         let remoteProvider = IntentParsingProviderFactory.makeDefaultProvider(
-            environment: ["TRAILMIND_INTENT_PARSER_MODE": "remote_with_local_fallback"]
+            environment: ["TRAILMIND_INTENT_PARSER_MODE": "remote_with_local_fallback"],
+            remoteIntentEnabled: true
         )
 
         XCTAssertTrue(localProvider is LocalIntentParsingProvider)

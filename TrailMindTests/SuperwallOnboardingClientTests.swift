@@ -10,9 +10,10 @@ final class SuperwallOnboardingClientTests: XCTestCase {
         XCTAssertNil(SuperwallConfiguration.normalizedPublicAPIKey("pk_your_public_key"))
         XCTAssertNil(SuperwallConfiguration.normalizedPublicAPIKey("not-a-superwall-key"))
         XCTAssertNil(SuperwallConfiguration.normalizedPublicAPIKey("pk_"))
+        XCTAssertNil(SuperwallConfiguration.normalizedPublicAPIKey("  pk_public_valid123  "))
         XCTAssertEqual(
-            SuperwallConfiguration.normalizedPublicAPIKey("  pk_public_example  "),
-            "pk_public_example"
+            SuperwallConfiguration.normalizedPublicAPIKey("pk_public_valid123"),
+            "pk_public_valid123"
         )
     }
 

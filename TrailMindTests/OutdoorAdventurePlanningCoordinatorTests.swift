@@ -351,7 +351,7 @@ final class OutdoorAdventurePlanningCoordinatorTests: XCTestCase {
         CoordinatorNetworkURLProtocol.reset()
         let authorizer = RecordingCoordinatorAuthorizer()
         let bundle = try makeConfigurationBundle([
-            "INTENT_BACKEND_BASE_URL": "https://sensitive.example.invalid",
+            "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
             "RESEARCH_GUIDED_PLANNING_ENABLED": "false"
         ])
         let client = OutdoorAdventurePlanningClientFactory.makeDefault(
@@ -666,11 +666,17 @@ final class OutdoorAdventurePlanningCoordinatorTests: XCTestCase {
             withIntermediateDirectories: true
         )
         var info: [String: Any] = [
-            "CFBundleIdentifier": "com.trailmind.coordinator.\(identifier)",
+            "CFBundleIdentifier": "com.trailmind.app.local",
+            "CFBundleDisplayName": "Wanderful Local",
             "CFBundleInfoDictionaryVersion": "6.0",
             "CFBundleName": "TrailMindCoordinatorTests",
             "CFBundlePackageType": "BNDL",
-            "CFBundleVersion": "1"
+            "CFBundleVersion": "1",
+            "TRAILMIND_APP_ENVIRONMENT": "local",
+            "TRAILMIND_APP_ATTEST_ENVIRONMENT": "development",
+            "SUPABASE_PROJECT_URL": "",
+            "SUPABASE_PUBLISHABLE_KEY": "",
+            "SUPERWALL_API_KEY": ""
         ]
         for (key, value) in values {
             info[key] = value

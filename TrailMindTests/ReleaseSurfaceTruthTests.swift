@@ -116,7 +116,12 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
             "SUPABASE_ONBOARDING_SYNC_ENABLED = false",
             "RESEARCH_GUIDED_PLANNING_ENABLED = false",
             "OUTDOOR_EVIDENCE_ENABLED = false",
-            "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED = false"
+            "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED = false",
+            "REMOTE_INTENT_ENABLED = false",
+            "DIRECT_GRAPHHOPPER_ENABLED = false",
+            "INSECURE_LOCAL_BACKEND_AUTH_ENABLED = false",
+            "IN_MEMORY_APP_ATTEST_ENABLED = false",
+            "SUPERWALL_ENABLED = false"
         ] {
             XCTAssertTrue(sharedConfiguration.contains(setting), "Missing disabled setting: \(setting)")
         }

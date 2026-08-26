@@ -268,6 +268,7 @@ final class LoopbackDevelopmentSessionAuthorizerTests: XCTestCase {
             let opener = FakeRouteSessionOpener(sessions: [attestedSession()])
             let authorizer = TrailMindBackendSecurity.makeSessionAuthorizer(
                 baseURL: try XCTUnwrap(URL(string: value)),
+                allowsInsecureLoopback: true,
                 attestedSessionAuthorizer: RouteSessionService(opener: opener)
             )
 
@@ -285,7 +286,7 @@ final class LoopbackDevelopmentSessionAuthorizerTests: XCTestCase {
             "https://127.0.0.1:3000",
             "http://127.0.0.2:3000",
             "http://127.0.0.1.example.com:3000",
-            "https://backend-zeta-amber-69.vercel.app"
+            "https://api.example.com"
         ]
 
         for value in values {

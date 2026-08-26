@@ -22,7 +22,11 @@ final class PrivacyReleaseContentTests: XCTestCase {
 
         XCTAssertEqual(
             try releaseBranchStatements(in: defaultProviderBody),
-            ["_ = environment", "return LocalIntentParsingProvider()"]
+            [
+                "_ = environment",
+                "_ = remoteIntentEnabled",
+                "return LocalIntentParsingProvider()"
+            ]
         )
         XCTAssertEqual(
             TrailMindAboutContent.releasePromptParsingDetail,

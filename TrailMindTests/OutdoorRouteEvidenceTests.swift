@@ -223,7 +223,7 @@ final class OutdoorRouteEvidenceTests: XCTestCase {
 
     func testMissingFlagSelectsNoOpProviderEvenWithValidBackendURL() throws {
         let bundle = try makeConfigurationBundle([
-            "INTENT_BACKEND_BASE_URL": "https://example.com"
+            "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000"
         ])
 
         let provider = OutdoorRouteEvidenceProviderFactory.makeDefault(bundle: bundle)
@@ -235,7 +235,7 @@ final class OutdoorRouteEvidenceTests: XCTestCase {
     func testExplicitFalseValuesSelectNoOpProvider() throws {
         for value: Any in [false, "false", "no", "0"] {
             let bundle = try makeConfigurationBundle([
-                "INTENT_BACKEND_BASE_URL": "https://example.com",
+                "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                 "OUTDOOR_EVIDENCE_ENABLED": value
             ])
 
@@ -247,9 +247,9 @@ final class OutdoorRouteEvidenceTests: XCTestCase {
     }
 
     func testMalformedFlagValuesSelectNoOpProvider() throws {
-        for value: Any in ["enabled", "2", "", 2, ["true"]] {
+        for value: Any in ["enabled", "2", "", "yes", "TRUE", " true ", true, 1, 2, ["true"]] {
             let bundle = try makeConfigurationBundle([
-                "INTENT_BACKEND_BASE_URL": "https://example.com",
+                "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                 "OUTDOOR_EVIDENCE_ENABLED": value
             ])
 
@@ -260,10 +260,10 @@ final class OutdoorRouteEvidenceTests: XCTestCase {
         }
     }
 
-    func testExplicitTrueValuesWithValidBackendURLSelectBackendProvider() throws {
-        for value: Any in [true, "true", "yes", "1"] {
+    func testCanonicalTrueWithValidBackendURLSelectsBackendProvider() throws {
+        for value: Any in ["true"] {
             let bundle = try makeConfigurationBundle([
-                "INTENT_BACKEND_BASE_URL": "https://example.com",
+                "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                 "OUTDOOR_EVIDENCE_ENABLED": value
             ])
 
@@ -341,11 +341,17 @@ final class OutdoorRouteEvidenceTests: XCTestCase {
             withIntermediateDirectories: true
         )
         var info: [String: Any] = [
-            "CFBundleIdentifier": "com.trailmind.tests.\(identifier)",
+            "CFBundleIdentifier": "com.trailmind.app.local",
+            "CFBundleDisplayName": "Wanderful Local",
             "CFBundleInfoDictionaryVersion": "6.0",
             "CFBundleName": "TrailMindConfigurationTests",
             "CFBundlePackageType": "BNDL",
-            "CFBundleVersion": "1"
+            "CFBundleVersion": "1",
+            "TRAILMIND_APP_ENVIRONMENT": "local",
+            "TRAILMIND_APP_ATTEST_ENVIRONMENT": "development",
+            "SUPABASE_PROJECT_URL": "",
+            "SUPABASE_PUBLISHABLE_KEY": "",
+            "SUPERWALL_API_KEY": ""
         ]
         for (key, value) in values { info[key] = value }
         let data = try PropertyListSerialization.data(

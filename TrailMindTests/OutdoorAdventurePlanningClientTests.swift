@@ -18,13 +18,16 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
             "enabled",
             "2",
             " true-ish ",
+            "yes",
+            "TRUE",
+            " true ",
             true,
             1
         ]
 
         for value in values {
             var configuration: [String: Any] = [
-                "INTENT_BACKEND_BASE_URL": "https://example.com"
+                "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000"
             ]
             if let value {
                 configuration["RESEARCH_GUIDED_PLANNING_ENABLED"] = value
@@ -43,10 +46,10 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         }
     }
 
-    func testOnlyTrueYesAndOneSelectBackendClientWithValidURL() throws {
-        for value in ["true", " TRUE ", "yes", "YeS", "1", " 1 "] {
+    func testOnlyCanonicalTrueSelectsBackendClientWithValidURL() throws {
+        for value in ["true"] {
             let bundle = try makeConfigurationBundle([
-                "INTENT_BACKEND_BASE_URL": "https://example.com",
+                "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                 "RESEARCH_GUIDED_PLANNING_ENABLED": value
             ])
             XCTAssertTrue(
@@ -82,7 +85,7 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
     {
         for value: Any? in [nil, "", "false", "0", "enabled", true, 1] {
             var configuration: [String: Any] = [
-                "INTENT_BACKEND_BASE_URL": "https://example.com",
+                "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                 "RESEARCH_GUIDED_PLANNING_ENABLED": "true"
             ]
             if let value {
@@ -94,11 +97,11 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
                 )
             )
         }
-        for value in ["true", " TRUE ", "yes", "YeS", "1"] {
+        for value in ["true"] {
             XCTAssertTrue(
                 TrailMindBackendConfiguration.routableHighlightAccessEnabled(
                     bundle: try makeConfigurationBundle([
-                        "INTENT_BACKEND_BASE_URL": "https://example.com",
+                        "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                         "RESEARCH_GUIDED_PLANNING_ENABLED": "true",
                         "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": value
                     ])
@@ -108,7 +111,7 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         XCTAssertFalse(
             TrailMindBackendConfiguration.routableHighlightAccessEnabled(
                 bundle: try makeConfigurationBundle([
-                    "INTENT_BACKEND_BASE_URL": "https://example.com",
+                    "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                     "RESEARCH_GUIDED_PLANNING_ENABLED": "false",
                     "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": "true"
                 ])
@@ -139,7 +142,7 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
 
     func testDisabledClientPerformsNoAuthorizationOrNetworkWork() async throws {
         let bundle = try makeConfigurationBundle([
-            "INTENT_BACKEND_BASE_URL": "https://example.com",
+            "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
             "RESEARCH_GUIDED_PLANNING_ENABLED": "false"
         ])
         let authorizer = RecordingOutdoorAdventurePlanningAuthorizer()
@@ -1081,11 +1084,17 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
             withIntermediateDirectories: true
         )
         var info: [String: Any] = [
-            "CFBundleIdentifier": "com.trailmind.tests.\(identifier)",
+            "CFBundleIdentifier": "com.trailmind.app.local",
+            "CFBundleDisplayName": "Wanderful Local",
             "CFBundleInfoDictionaryVersion": "6.0",
             "CFBundleName": "TrailMindOutdoorPlanningTests",
             "CFBundlePackageType": "BNDL",
-            "CFBundleVersion": "1"
+            "CFBundleVersion": "1",
+            "TRAILMIND_APP_ENVIRONMENT": "local",
+            "TRAILMIND_APP_ATTEST_ENVIRONMENT": "development",
+            "SUPABASE_PROJECT_URL": "",
+            "SUPABASE_PUBLISHABLE_KEY": "",
+            "SUPERWALL_API_KEY": ""
         ]
         for (key, value) in values {
             info[key] = value
