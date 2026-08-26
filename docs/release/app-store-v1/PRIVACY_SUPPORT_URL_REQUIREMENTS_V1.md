@@ -3,7 +3,7 @@
 Status: **both production URLs UNKNOWN; public release blocked**
 Placeholders are forbidden in App Store Connect and shipping UI.
 
-Apple requires an iOS privacy-policy URL and requires the privacy policy to be easily accessible inside the app. A Support URL is required and must lead to actual contact information. Sources retrieved 2026-08-23: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/), [App Review Guidelines 5.1.1](https://developer.apple.com/app-store/review/guidelines/), [platform version information](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/).
+Apple requires an iOS privacy-policy URL and requires the privacy policy to be easily accessible inside the app. A Support URL is required and must lead to actual contact information. Core requirements rechecked 2026-08-26: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/), [App Review Guidelines 5.1.1](https://developer.apple.com/app-store/review/guidelines/), [platform version information](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/).
 
 ## Privacy policy page
 

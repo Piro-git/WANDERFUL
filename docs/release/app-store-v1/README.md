@@ -1,9 +1,9 @@
 # Wanderful App Store Release Package V1
 
 Status: **NO-GO for public App Store release**
-Stage: **Stage B local Simulator verification complete; external distribution, legal, backend and physical-device gates open**
-Source baseline: `8fce37f2c4db552a3a2ba8acad636fd0b80327ec`
-Audit date: 2026-08-23
+Stage: **Stage C three-environment artifact verification complete; external distribution, legal, backend and physical-device gates open**
+Source baseline: `79d3f981c58c9da9653a5f058493763558065efc`
+Audit date: 2026-08-26
 Shipping name: **Wanderful**
 Bundle identifier: `com.trailmind.app`
 
@@ -11,7 +11,7 @@ Bundle identifier: `com.trailmind.app`
 
 Wanderful is not ready for TestFlight or public submission. Local Stage B evidence now proves the complete non-live unit/UI suites, standalone Debug and Release Simulator builds, deterministic onboarding/planning/save/export/error paths, built identity/flags/privacy manifests/signatures/icon opacity, and exclusion of fake voice code and overclaimed provider copy from Release. It also found two release-visible accessibility gaps: the app forces light appearance, and route cards do not remain acceptably legible at accessibility XXXL. Physical-device App Attest, production-backend rehearsal, public legal/support assets, owner decisions, signing and App Store Connect configuration remain unproved.
 
-The integrated matrix proves **24 of 50 applicable release gates (48.0%)**. This percentage measures independently evidenced gates, not files created. Simulator proof never substitutes for physical-device or distribution proof.
+The integrated matrix proves **25 of 50 applicable release gates (50.0%)**. This percentage measures independently evidenced gates, not files created. Simulator and unsigned-device proof never substitute for physical-device or distribution proof.
 
 ## Dependency order
 
@@ -60,7 +60,7 @@ Research-guided planning, outdoor evidence, routable-highlight access and Supaba
 - A source-backed gate and its built-product counterpart are separate gates.
 - `Configuration/Local.xcconfig` and `backend/.env` are excluded from every inspection, hash, scan and artifact.
 - Unknown values remain `UNKNOWN`; no sample URL, email, Apple identifier, team, product, screenshot or approval state is valid production evidence.
-- All official web sources in this package were retrieved on 2026-08-23.
+- The original source inventory was retrieved on 2026-08-23. Apple App Review, privacy, App Information, App Attest, App ID, upload and TestFlight requirements were rechecked against official Apple pages on 2026-08-26.
 
 ## Stage B execution record
 
@@ -77,3 +77,17 @@ Research-guided planning, outdoor evidence, routable-highlight access and Supaba
 - Route cards use bounded SwiftUI `Path` thumbnails rather than interactive maps: 512 thumbnail/4,096 map-point caps and cache capacity 48. No obvious rapid-scroll task explosion was observed.
 - After the exact task-owned DerivedData path was confirmed handle-free and removed, storage settled at 28,233,920 / 28,232,880 / 28,232,824 KiB. The Simulator was shut down, not erased or deleted; no pre-existing artifact was removed.
 - No archive was created because it was not necessary for the local artifact claims and would not prove distribution signing. No provider, backend, Supabase, Superwall, App Store Connect, TestFlight, upload or submission traffic or mutation occurred.
+
+## Stage C environment and release-artifact record — 2026-08-26
+
+- Debug, Staging and Release generic Simulator builds passed from one isolated worktree. The complete unit/UI test bundle compiled; tests were not executed because no Simulator was booted or booted by this task.
+- Built identities were exact: `Wanderful Local` / `com.trailmind.app.local` / local / App Attest development; `Wanderful Staging` / `com.trailmind.app.staging` / staging / App Attest production; `Wanderful` / `com.trailmind.app` / production / App Attest production.
+- All nine protected feature flags were `false` in all three products. Backend, Supabase and Superwall configuration values were empty. The production app therefore remains intentionally unavailable for live planning until the hosting lane supplies a reviewed canonical HTTPS URL.
+- The hardened verifier passed **41/41** checks against the built Release app and **38** isolated adversarial cases plus stale-report recovery. It now fails closed on wrong environment identity, missing or enabled flags, nonempty service configuration, placeholder values, release mocks/overclaims, missing attribution and malformed signing/entitlement evidence.
+- A pre-existing `PIPE_FAIL` defect could hide or falsely report large-binary marker matches. The verifier now performs literal in-memory marker checks; a large-binary regression case proves both required and forbidden markers behave deterministically. Generic `XCTest` and Superwall's dormant localhost test-mode string are not used as first-party release markers; linked XCTest frameworks, test bundles and Wanderful-owned test/mock markers remain prohibited.
+- An unsigned generic iPhoneOS Release build passed as archive-equivalent source/product inspection. It is not a signed archive, TestFlight build or App Store proof.
+- `security find-identity` found zero valid code-signing identities. Read-only device discovery found no connected iPhone. Therefore no signed archive, installation, physical App Attest, TestFlight or App Store Connect action was attempted.
+- The selected Release composition retains required GraphHopper, OpenStreetMap/ODbL and Mapterhorn attribution plus the planning-aid boundary. `FakeVoicePlanningService`, old “Live trail geometry”/“trail-network data” wording, guaranteed-safety/scenic claims and competitor-superiority claims are prohibited.
+- No backend, Supabase, GraphHopper, AI, Superwall or Apple network mutation occurred. `Configuration/Local.xcconfig`, clipboard data, private certificate material and secret values were not inspected.
+
+The machine-readable Stage C record is `APPLE_RELEASE_READINESS_AUDIT_V1.json`. Historical Stage B executed-test evidence remains preserved separately and is not relabeled as current execution.

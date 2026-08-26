@@ -5,11 +5,19 @@ Blocker: `ASV1-010`
 
 The Release entitlement source selects App Attest `production`. This is necessary but not proof that attestation and assertion validation work. Simulator, unsigned Simulator build, source inspection and a development-environment key are invalid substitutes.
 
-Apple states that distributed apps use the production App Attest environment. Server validation must verify the attestation and subsequent assertions for the expected app identity and payload. Sources retrieved 2026-08-23: [App Attest environment entitlement](https://developer.apple.com/documentation/BundleResources/Entitlements/com.apple.developer.devicecheck.appattest-environment), [Validating apps that connect to your server](https://developer.apple.com/documentation/devicecheck/validating-apps-that-connect-to-your-server).
+Apple states that distributed apps use the production App Attest environment. Server validation must verify the attestation and subsequent assertions for the expected app identity and payload. Sources rechecked 2026-08-26: [App Attest environment entitlement](https://developer.apple.com/documentation/BundleResources/Entitlements/com.apple.developer.devicecheck.appattest-environment), [Validating apps that connect to your server](https://developer.apple.com/documentation/devicecheck/validating-apps-that-connect-to-your-server).
+
+## Required staging-first sequence
+
+1. Prove the staging bundle `com.trailmind.app.staging` against the single reviewed canonical staging HTTPS backend using the Staging configuration and production App Attest environment.
+2. Repeat replay, tamper, missing-proof and fresh-valid-assertion cases below without enabling provider/research flags beyond the separately authorized proof.
+3. Only after staging passes, validate the production bundle `com.trailmind.app` and production backend configuration on the exact distribution candidate.
+
+No canonical staging HTTPS URL has been supplied to this lane. Keep both tracked backend URLs empty until the hosting lane hands off a reviewed live URL; a placeholder or historical deployment is not acceptable proof.
 
 ## Preconditions
 
-- Explicit App ID `com.trailmind.app` has App Attest enabled for the approved team.
+- Explicit App IDs `com.trailmind.app.staging` and `com.trailmind.app` have App Attest enabled for the approved team.
 - A signed TestFlight/App Store-distributed Release build has the production entitlement after signing.
 - Exact team identifier, bundle identifier, build number and backend relying-party configuration are approved.
 - Backend test window is authorized and can distinguish the proof requests without exposing raw tokens or personal data.

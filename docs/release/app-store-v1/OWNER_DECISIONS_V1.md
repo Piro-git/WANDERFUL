@@ -9,6 +9,7 @@ This checklist contains product/legal/account decisions an engineer must not fab
 - [ ] `ASV1-006` — Confirm active Apple Developer team, exact legal entity/developer name, Account Holder and authorized release operator.
 - [ ] `ASV1-007` — Approve App Store Connect app record, immutable SKU, primary language and name-availability/right for **Wanderful**.
 - [ ] Confirm that `com.trailmind.app` remains the V1 bundle identifier despite the Wanderful shipping name; any change requires an explicit migration decision.
+- [ ] Approve `com.trailmind.app.staging` as the separate internal staging App ID and enable App Attest on both staging and production identifiers.
 - [ ] Approve copyright owner/year and applicable trader/business disclosures.
 
 ## Product scope and positioning

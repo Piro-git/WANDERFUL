@@ -3,6 +3,18 @@
 Status: **runbook only; no signed archive, validation, upload or App Store mutation performed**
 Current source identity: `Wanderful`, `com.trailmind.app`, version `1.0`, build `1`, iPhone, iOS `26.0`
 
+## Configuration and identifier matrix
+
+| Lane | Scheme/configuration | Display name | Bundle ID | App Attest source | Distribution purpose |
+| --- | --- | --- | --- | --- | --- |
+| Local | `TrailMind` / Debug | Wanderful Local | `com.trailmind.app.local` | development | Local development only; never upload |
+| Staging | `TrailMind Staging` / Staging | Wanderful Staging | `com.trailmind.app.staging` | production | Internal device/TestFlight validation against the canonical staging HTTPS backend |
+| Production | `TrailMind` / Release | Wanderful | `com.trailmind.app` | production | Final App Store candidate only |
+
+The owner must register distinct explicit App IDs for staging and production and enable App Attest on each. Do not reuse the production bundle identity for staging, silently change a bundle ID, or point either lane at an unreviewed host. Local does not need distribution configuration.
+
+Current read-only state on 2026-08-26: zero valid code-signing identities and no connected physical iPhone. Debug/Staging/Release Simulator builds and an unsigned generic iPhoneOS Release build pass. Those facts do not prove Apple team membership, profiles, device installation, TestFlight processing or App Attest.
+
 Apple's current submission requirement is Xcode 26 or later with the iOS 26 SDK for uploads beginning April 28, 2026. Source retrieved 2026-08-23: [Upcoming requirements](https://developer.apple.com/news/upcoming-requirements/).
 
 ## Stop gate 0 — release evidence
@@ -23,7 +35,7 @@ An Account Holder/Admin-authorized operator verifies, without copying credential
 
 1. Active Apple Developer Program membership, legal entity, current agreements and required compliance/business information.
 2. App Store Connect record with shipping name, primary language, bundle ID and immutable SKU selected by owner.
-3. Explicit App ID exactly `com.trailmind.app`; App Attest capability enabled.
+3. Explicit App IDs exactly `com.trailmind.app.staging` and `com.trailmind.app`; App Attest capability enabled on both.
 4. No unapproved bundle-ID change. A change requires owner/legal, backend App Attest relying-party and App Store record review.
 5. Roles permit certificate/profile management, build upload and app-version editing as needed.
 
@@ -32,7 +44,7 @@ Record only non-secret identifiers and evidence dates in the external release tr
 ## Stop gate 2 — certificate and provisioning profile
 
 - Verify a current Apple Distribution certificate whose private key is available to the authorized build operator.
-- Create/download an App Store provisioning profile for the explicit App ID and correct team.
+- Create/download separate App Store provisioning profiles for the staging and production explicit App IDs and correct team.
 - Confirm the profile's application identifier and App Attest entitlement align with the signed Release product.
 - Confirm Release uses `production`, Debug uses `development`; never “fix” this by weakening Release.
 - Confirm version/build are unique for upload and approved. Increment build deliberately; do not silently change marketing version.
@@ -65,6 +77,8 @@ Apple requires certain listed SDKs to include privacy manifests/signatures and X
 ## TestFlight procedure
 
 Only with upload authority:
+
+Apple currently permits up to 100 internal testers and up to 10,000 external testers; the first external build may require TestFlight App Review, and a build remains testable for up to 90 days. These are platform limits, not a recommendation to invite that many users. Sources rechecked 2026-08-26: [TestFlight overview](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview), [add internal testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/).
 
 1. Upload the already validated archive once; never expose upload credentials in logs or docs.
 2. Wait for processing. Resolve build-state, privacy-manifest, export-compliance or signing issues before assigning testers.

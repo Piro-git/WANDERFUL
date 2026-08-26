@@ -1,7 +1,7 @@
 # Release Gate Matrix V1
 
-Baseline: `8fce37f2c4db552a3a2ba8acad636fd0b80327ec`
-Assessment date: 2026-08-23
+Baseline: `79d3f981c58c9da9653a5f058493763558065efc`
+Assessment date: 2026-08-26
 Public-release decision: **NO-GO**
 
 ## Classification vocabulary
@@ -16,11 +16,11 @@ Public-release decision: **NO-GO**
 
 ## Completion
 
-Exactly 24 of 50 applicable gates are proved: **48.0%**. A grouped row counts as one gate. Simulator evidence does not complete a physical-device, signed-distribution or external gate.
+Exactly 25 of 50 applicable gates are proved: **50.0%**. A grouped row counts as one gate. Simulator or unsigned-device evidence does not complete a physical-device, signed-distribution or external gate.
 
 | Gate | Requirement | Classification | Current evidence or acceptance criterion | Blocker |
 | --- | --- | --- | --- | --- |
-| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Clean isolated worktree selected `79c70f9…`; scoped release correction is `8fce37f…`; shared checkout preserved | — |
+| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Clean isolated worktree selected exact `origin/main` `90c874f…`; scoped verifier baseline is `79d3f98…`; shared checkout preserved | — |
 | G-002 | Shipping display name | proved | `Configuration/TrailMind-Info.plist`: `CFBundleDisplayName = Wanderful` | — |
 | G-003 | Bundle ID and version/build source settings | proved | `project.pbxproj`: `com.trailmind.app`, `1.0`, `1` | — |
 | G-004 | Platform source settings | proved | iPhone family `1`, minimum iOS `26.0`, portrait, Catalyst disabled | — |
@@ -28,12 +28,12 @@ Exactly 24 of 50 applicable gates are proved: **48.0%**. A grouped row counts as
 | G-006 | App icon source asset exists | proved | One universal 1024×1024 PNG declared in AppIcon asset catalog | — |
 | G-007 | Compiled icon variants are opaque and accepted | proved | Source is 1024×1024 RGB/no alpha; rebuilt Release has phone icon variants with uniform alpha 255 and compiled AppIcon `Opaque=true`; verifier passes | — |
 | G-008 | Active Apple Developer Program team/legal entity | Apple-account | Owner supplies verified team/legal entity and current agreements | ASV1-006 |
-| G-009 | Explicit App ID and App Attest capability | Apple-account | Developer portal identifier must exactly match `com.trailmind.app` with App Attest enabled | ASV1-006 |
+| G-009 | Explicit App IDs and App Attest capability | Apple-account | Developer portal identifiers must exactly match `com.trailmind.app.staging` and `com.trailmind.app`, both with App Attest enabled | ASV1-006 |
 | G-010 | Distribution certificate and App Store profile | Apple-account | Current Apple Distribution identity and App Store profile match team, ID and entitlement | ASV1-006 |
-| G-011 | Debug/Release App Attest source mapping | proved | Debug entitlement `development`; Release entitlement `production`; project maps each configuration | — |
+| G-011 | Debug/Staging/Release App Attest source mapping | proved | Debug entitlement is `development`; Staging and Release entitlements are `production`; processed environment identity agrees | — |
 | G-012 | Production App Attest proof | physical-device | Complete `APP_ATTEST_PHYSICAL_DEVICE_PROOF_V1.md` on real iPhone/TestFlight build | ASV1-010 |
 | G-013 | Production backend availability and release compatibility | blocked | Prove approved URL availability, retention, rate limiting, route contract and App Attest enforcement without relying on historical receipts | ASV1-011 |
-| G-014 | Tracked iOS feature defaults | proved | Outdoor evidence, research-guided planning, routable-highlight access and Supabase onboarding sync are `false`; Superwall key and Supabase URL/key are empty | — |
+| G-014 | Tracked iOS feature defaults | proved | All nine protected feature flags are exactly `false` in Debug/Staging/Release; backend, Supabase and Superwall values are empty | — |
 | G-015 | Deployed backend/provider feature defaults | blocked | Deployment owner proves route availability and all research/evidence/provider defaults for the release environment | ASV1-011 |
 | G-016 | First-party privacy manifest source | proved | Tracking false; linked Device ID for app functionality; approved reasons `C617.1` and `CA92.1` | — |
 | G-017 | Embedded third-party privacy manifests/signatures | proved | Rebuilt Debug/Release contain valid first-party, Superwall and swift-crypto manifests; no dynamic Frameworks are embedded; deep signature verification passes | — |
@@ -59,17 +59,17 @@ Exactly 24 of 50 applicable gates are proved: **48.0%**. A grouped row counts as
 | G-037 | Network/offline/error/retry behavior | proved | Focused/unit/UI coverage and manual fail-once/no-routes seams prove safe bounded error, retry and empty-result surfaces without live traffic | — |
 | G-038 | No mock/developer/fake voice behavior in Release | proved | Fake service and preview are DEBUG-gated; release-surface regression passes and rebuilt Release contains no `FakeVoicePlanningService` string | — |
 | G-039 | No overclaimed provider copy | proved | Reachable copy uses “Mapped route geometry”/“mapped routing data”/“routed geometry”; focused tests pass and rebuilt Release contains none of the old claims | — |
-| G-040 | Release verifier matches shipping identity | proved | Corrected verifier accepts Wanderful identity/embedded manifests, enforces compiled icon opacity, passes 25 isolated cases plus stale recovery, and clears 37/37 Release checks | — |
-| G-041 | Built identity, flags, permissions and secret absence | proved | Final Debug/Release prove identity/version/platform, purpose strings, four false flags, local Release parser, empty tracked SDK values, expected Simulator entitlements and no forbidden config/credential-pattern match | — |
-| G-042 | Focused and practical complete non-live test suites | proved | Focused 395/395; complete non-live unit 672/672 with exactly two authorized live exclusions; deterministic UI 18/18; post-fix focused 4/4 | — |
-| G-043 | Debug and Release Simulator builds | proved | Standalone Debug and Release Simulator builds passed before and after the scoped correction using one bounded DerivedData path | — |
-| G-044 | Optional unsigned/local archive inspection | blocked | Not run because built app inspection was sufficient; a local unsigned archive would not prove distribution validity | — |
+| G-040 | Release verifier matches shipping identity | proved | Verifier schema V2 enforces Wanderful production identity, nine false flags, empty services, attribution, privacy, mocks/claims and signing evidence; 38 adversarial cases plus stale recovery and 41/41 built-Release checks pass | — |
+| G-041 | Built identity, flags, permissions and secret absence | proved | Debug/Staging/Release processed Info products prove exact lane identities, all nine false flags, empty services, expected purpose strings, valid signatures/manifests and no prohibited first-party release marker | — |
+| G-042 | Focused and practical complete non-live test suites | proved | Historical Stage B: focused 395/395, unit 672/672, UI 18/18; current Stage C complete unit/UI bundle compilation passes. Stage C did not execute tests without a booted Simulator | — |
+| G-043 | Debug, Staging and Release Simulator builds | proved | All three generic Simulator configurations passed on the current baseline using one bounded DerivedData path | — |
+| G-044 | Optional unsigned/local archive-equivalent inspection | proved | Unsigned generic iPhoneOS Release build passed and was inspected; zero valid signing identities prevented a signed archive. This proves no distribution state | — |
 | G-045 | Signed distribution archive validation | Apple-account | Archive with App Store profile, inspect signing/privacy report and validate in Organizer | ASV1-020 |
 | G-046 | TestFlight processing and tester proof | Apple-account | Upload/process build, export compliance, internal QA, then external beta review if used | ASV1-020 |
 | G-047 | App Review submission and resolution | Apple-account | Complete required metadata/privacy/build/review declarations and submit with authority | ASV1-020 |
 | G-048 | App Store Connect record, SKU and name availability | Apple-account | Owner creates/verifies record; no ID or name availability is inferred | ASV1-007 |
 | G-049 | Geographic availability/coverage decision | public-URL/legal | Owner selects launch storefronts and confirms whether Navigation-category coverage-file rules apply | ASV1-008 |
-| G-050 | Final evidence manifest on integrated source | proved | All listed tracked source blobs were rehashed at `8fce37f…`; local Simulator evidence is explicitly separated from external, physical-device and signed-distribution gates | — |
+| G-050 | Final evidence manifest on integrated source | proved | Listed tracked source blobs were rehashed at `79d3f98…`; Stage B executed evidence and current Stage C build/artifact evidence are explicitly separated | — |
 
 ## Primary evidence paths
 

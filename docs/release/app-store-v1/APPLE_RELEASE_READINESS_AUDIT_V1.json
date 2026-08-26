@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "package": "Wanderful Apple Release Readiness V1",
+  "assessed_at": "2026-08-26",
+  "source_baseline": "79d3f981c58c9da9653a5f058493763558065efc",
+  "decision": "no_go",
+  "scope": "local read-only Apple state plus source, generic Simulator, unsigned generic iPhoneOS and compiled-test-bundle evidence",
+  "duplicate_work": {
+    "result": "extended_existing_package",
+    "prior_branches_already_in_baseline": [
+      "codex/app-store-release-v1",
+      "codex/app-store-release-v1-stage-b"
+    ]
+  },
+  "builds": {
+    "debug_generic_simulator": "passed",
+    "staging_generic_simulator": "passed",
+    "release_generic_simulator": "passed",
+    "unsigned_release_generic_iphoneos": "passed",
+    "signed_distribution_archive": "not_run_no_signing_identity",
+    "complete_test_bundle_compilation": "passed",
+    "test_execution": "not_run_no_booted_simulator"
+  },
+  "artifacts": {
+    "debug": {
+      "display_name": "Wanderful Local",
+      "bundle_identifier": "com.trailmind.app.local",
+      "environment": "local",
+      "app_attest_environment": "development",
+      "binary_sha256": "a12e0f2c5ecb6db9fb8ad6e043e6990ea7a692c4542758ed61147fb01a5e4f66"
+    },
+    "staging": {
+      "display_name": "Wanderful Staging",
+      "bundle_identifier": "com.trailmind.app.staging",
+      "environment": "staging",
+      "app_attest_environment": "production",
+      "binary_sha256": "0ced0808c21bf06e4b418d0e7045f40fe97dd0bd21ed04654d42e8e40b4ec2dc"
+    },
+    "release": {
+      "display_name": "Wanderful",
+      "bundle_identifier": "com.trailmind.app",
+      "environment": "production",
+      "app_attest_environment": "production",
+      "binary_sha256": "400ac916accb544291e53b2c6bbeaf64abd9912d8e3f0ed0813d90660d42a86d",
+      "verifier": {
+        "passed": 41,
+        "failed": 0,
+        "status": "passed"
+      }
+    },
+    "unsigned_release_iphoneos": {
+      "binary_sha256": "dcd4df0b9a8590fe957612fed10b1625c414fff529036e625ea75814f87a6589",
+      "distribution_claim": false
+    }
+  },
+  "protected_feature_flags": {
+    "DIRECT_GRAPHHOPPER_ENABLED": false,
+    "INSECURE_LOCAL_BACKEND_AUTH_ENABLED": false,
+    "IN_MEMORY_APP_ATTEST_ENABLED": false,
+    "OUTDOOR_EVIDENCE_ENABLED": false,
+    "REMOTE_INTENT_ENABLED": false,
+    "RESEARCH_GUIDED_PLANNING_ENABLED": false,
+    "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": false,
+    "SUPABASE_ONBOARDING_SYNC_ENABLED": false,
+    "SUPERWALL_ENABLED": false
+  },
+  "service_configuration": {
+    "INTENT_BACKEND_BASE_URL": "empty",
+    "SUPABASE_PROJECT_URL": "empty",
+    "SUPABASE_PUBLISHABLE_KEY": "empty",
+    "SUPERWALL_API_KEY": "empty"
+  },
+  "verifier_regression": {
+    "isolated_cases_passed": 38,
+    "stale_report_recovery": "passed",
+    "large_binary_pipefail_regression": "passed"
+  },
+  "apple_external_state": {
+    "valid_code_signing_identities": 0,
+    "connected_physical_iphone": false,
+    "developer_program_membership": "unknown",
+    "app_store_connect_record": "unknown",
+    "explicit_app_ids_and_capabilities": "unknown",
+    "provisioning_profiles": "unknown",
+    "testflight": "not_run",
+    "physical_app_attest": "not_run"
+  },
+  "owner_actions": [
+    "confirm Apple legal entity, team and authorized release operator",
+    "register staging and production explicit App IDs with App Attest",
+    "create distribution certificate and separate App Store profiles",
+    "create or verify the Wanderful App Store Connect record and SKU",
+    "publish real privacy-policy and support HTTPS pages and add working in-app links",
+    "approve age rating, export compliance, content rights, category, storefronts and support contact",
+    "approve Superwall exclusion for V1 or perform a separate purchase/privacy review",
+    "supply the reviewed canonical staging HTTPS backend and complete physical-iPhone App Attest proof",
+    "correct and re-verify forced-light and accessibility-XXXL route-card findings",
+    "produce, validate and install a signed archive before TestFlight"
+  ],
+  "external_calls": {
+    "backend": 0,
+    "supabase": 0,
+    "graphhopper": 0,
+    "ai": 0,
+    "superwall": 0,
+    "apple_mutations": 0
+  },
+  "privacy_and_secret_boundary": {
+    "local_xcconfig_inspected": false,
+    "clipboard_inspected": false,
+    "private_certificate_material_inspected": false,
+    "secret_values_inspected": false
+  },
+  "no_go_reasons": [
+    "no signed distribution identity/profile/archive",
+    "no connected physical iPhone or production App Attest proof",
+    "no live reviewed staging or production backend URL",
+    "privacy policy and support URLs plus in-app links are unresolved",
+    "Apple account, legal and App Store Connect owner decisions are unproved",
+    "forced-light and accessibility-XXXL findings remain open"
+  ]
+}

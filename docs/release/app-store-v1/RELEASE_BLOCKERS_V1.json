@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
-  "assessed_at": "2026-08-23",
-  "source_baseline": "8fce37f2c4db552a3a2ba8acad636fd0b80327ec",
+  "assessed_at": "2026-08-26",
+  "source_baseline": "79d3f981c58c9da9653a5f058493763558065efc",
   "public_release_decision": "NO-GO",
   "status_vocabulary": [
     "open",
@@ -127,7 +127,7 @@
       "title": "Production backend readiness and provider boundaries are unproved",
       "owner": "backend, operations and privacy owners",
       "dependency": "approved production environment evidence",
-      "evidence": ["tracked production URL exists", "availability, deployed flags, App Attest enforcement, logging, retention and provider accounting are UNKNOWN"],
+      "evidence": ["tracked production backend URL is intentionally empty and the Release lane fails unavailable", "availability, deployed flags, App Attest enforcement, logging, retention and provider accounting are UNKNOWN"],
       "acceptance_criterion": "Approved evidence proves availability, route contract, fail-closed App Attest, retention, rate limits, deployed flags and exact provider/data attribution.",
       "status": "open",
       "blocking_public_release": true
@@ -203,8 +203,8 @@
       "severity": "P2",
       "title": "Release verifier matches Wanderful and accepts embedded SDK manifests",
       "owner": "iOS release tooling owner",
-      "dependency": "none; identity/manifest correction at 894ff2e4f33d8dffb65ce8c66a88463e18f5e8fa and opacity/public-certificate correction at 8fce37f2c4db552a3a2ba8acad636fd0b80327ec",
-      "evidence": ["Debug product reproduced bundle_identity, permission_contract and recursive privacy_manifest_presence failures", "contract preserves CFBundleName TrailMind while expecting Wanderful display/permission text", "root-manifest validation permits embedded SDK manifests", "verifier enforces compiled icon opacity and narrowly permits only the exact public Superwall certificate resources", "25 isolated cases plus stale-report recovery pass", "final Release passes 37 of 37 checks"],
+      "dependency": "none; current verifier correction at 79d3f981c58c9da9653a5f058493763558065efc",
+      "evidence": ["contract preserves CFBundleName TrailMind while expecting Wanderful display/permission text", "root-manifest validation permits embedded SDK manifests", "verifier enforces production environment identity, nine false flags, four empty services, attribution, compiled icon opacity and exact public Superwall certificate resources", "38 isolated adversarial cases plus stale-report recovery pass", "large Release binary marker checks are PIPE_FAIL-safe", "final Release passes 41 of 41 checks"],
       "acceptance_criterion": "Artifact verifier accepts the truthful Wanderful identity without weakening other checks; any mismatch is corrected with a focused tooling test.",
       "status": "resolved",
       "blocking_public_release": false
@@ -281,7 +281,7 @@
       "title": "Built identity, flags, permissions, entitlements and secret absence are proved locally",
       "owner": "iOS release and security owners",
       "dependency": "physical-device entitlement proof remains under ASV1-010",
-      "evidence": ["final Debug and Release Info.plist prove Wanderful, com.trailmind.app, 1.0/1, iPhone family 1, iOS 26.0 and truthful purpose strings", "outdoor evidence, research-guided planning, routable-highlight access and Supabase sync are false", "tracked Supabase and Superwall values are empty and Release parser is local", "bundles contain no forbidden local configuration/API-key Info key or credential-pattern match", "Simulator entitlements are empty as expected and do not prove physical App Attest", "secret-bearing local files were explicitly excluded"],
+      "evidence": ["final Debug, Staging and Release Info.plist products prove exact lane identities, 1.0/1, iPhone family 1, iOS 26.0 and truthful purpose strings", "all nine protected feature flags are false", "tracked backend, Supabase and Superwall values are empty and Release parser is local", "bundles contain no forbidden local configuration/API-key Info key or credential-pattern match", "source maps local to development and staging/production to production App Attest; Simulator evidence does not prove physical App Attest", "secret-bearing local files were explicitly excluded"],
       "acceptance_criterion": "Built products show exact identity/version/platform, expected purpose strings/entitlements/flags and no key, token, local configuration or forbidden endpoint material.",
       "status": "resolved",
       "blocking_public_release": false
