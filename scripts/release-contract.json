@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "product": {
     "bundle_identifier": "com.trailmind.app",
     "bundle_name": "TrailMind",
@@ -16,12 +16,33 @@
       "UIInterfaceOrientationPortrait"
     ],
     "app_category": "public.app-category.navigation",
-    "backend_info_key": "INTENT_BACKEND_BASE_URL",
-    "backend_url": "https://backend-zeta-amber-69.vercel.app",
     "usage_descriptions": {
       "NSMicrophoneUsageDescription": "Wanderful uses the microphone to turn your spoken route request into text.",
       "NSSpeechRecognitionUsageDescription": "Apple Speech can send captured audio to Apple's servers for processing. Wanderful does not retain raw audio or send it to its own backend."
     }
+  },
+  "environment": {
+    "name_info_key": "TRAILMIND_APP_ENVIRONMENT",
+    "name": "production",
+    "app_attest_info_key": "TRAILMIND_APP_ATTEST_ENVIRONMENT",
+    "app_attest_environment": "production"
+  },
+  "feature_flags": {
+    "DIRECT_GRAPHHOPPER_ENABLED": "false",
+    "INSECURE_LOCAL_BACKEND_AUTH_ENABLED": "false",
+    "IN_MEMORY_APP_ATTEST_ENABLED": "false",
+    "OUTDOOR_EVIDENCE_ENABLED": "false",
+    "REMOTE_INTENT_ENABLED": "false",
+    "RESEARCH_GUIDED_PLANNING_ENABLED": "false",
+    "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": "false",
+    "SUPABASE_ONBOARDING_SYNC_ENABLED": "false",
+    "SUPERWALL_ENABLED": "false"
+  },
+  "service_configuration": {
+    "INTENT_BACKEND_BASE_URL": "",
+    "SUPABASE_PROJECT_URL": "",
+    "SUPABASE_PUBLISHABLE_KEY": "",
+    "SUPERWALL_API_KEY": ""
   },
   "platforms": {
     "simulator-app": {
@@ -90,6 +111,20 @@
     "NSLocationAlwaysAndWhenInUseUsageDescription",
     "NSLocationTemporaryUsageDescriptionDictionary"
   ],
+  "forbidden_info_value_markers": [
+    "change-me",
+    "changeme",
+    "example.com",
+    "example.invalid",
+    "placeholder",
+    "todo"
+  ],
+  "required_binary_markers": [
+    "GraphHopper calculates route geometry",
+    "OpenStreetMap data is available",
+    "Elevation data by Mapterhorn",
+    "Wanderful is a planning aid, not live navigation."
+  ],
   "forbidden_binary_markers": [
     "--trailmind-ui-testing",
     "--trailmind-ui-scenario",
@@ -98,6 +133,7 @@
     "MockAIPlannerService",
     "MockRoutingService",
     "RouteEditAIView",
+    "FakeVoicePlanningService",
     "RemoteAIIntentParsingProvider",
     "RemoteWithLocalFallbackIntentParsingProvider",
     "parse-intent",
@@ -114,10 +150,14 @@
     "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "LIVE ROUTING DEMO",
     "Edit with AI",
-    "XCTest",
+    "Live trail geometry",
+    "trail-network data",
+    "guaranteed safe",
+    "guaranteed scenic",
+    "better than Komoot",
+    "example.com/privacy",
+    "example.com/support",
     "TrailMindTests",
-    "TrailMindUITests",
-    "http://127.0.0.1:3000",
-    "http://localhost:3000"
+    "TrailMindUITests"
   ]
 }

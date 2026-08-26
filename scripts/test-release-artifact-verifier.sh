@@ -267,7 +267,12 @@ make_info_plist() {
       }
     }
     + $c.product.usage_descriptions
-    + {($c.product.backend_info_key): $c.product.backend_url}
+    + {
+      ($c.environment.name_info_key): $c.environment.name,
+      ($c.environment.app_attest_info_key): $c.environment.app_attest_environment
+    }
+    + $c.feature_flags
+    + $c.service_configuration
   ' > "$output_path"
   plutil -convert xml1 "$output_path"
 }
@@ -287,7 +292,8 @@ make_app_fixture() {
   make_privacy_manifest "$app_path/PrivacyInfo.xcprivacy"
   mkdir -p -- "$app_path/EmbeddedSDK.bundle"
   make_privacy_manifest "$app_path/EmbeddedSDK.bundle/PrivacyInfo.xcprivacy"
-  print -r -- 'SYNTHETIC TRAILMIND RELEASE EXECUTABLE' > "$app_path/TrailMind"
+  print -r -- 'SYNTHETIC WANDERFUL RELEASE EXECUTABLE' > "$app_path/TrailMind"
+  jq -r '.required_binary_markers[]' "$CONTRACT" >> "$app_path/TrailMind"
   chmod +x "$app_path/TrailMind"
   print -r -- 'ASSET CATALOG' > "$app_path/Assets.car"
   print -rn -- 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC' |
@@ -369,8 +375,8 @@ clone_simulator_fixture() {
 
 expect_status 0 "$VERIFIER" simulator-app "$simulator_app"
 assert_report '
-  .schema_version == 1 and
-  .verifier == "trailmind-release-artifact" and
+  .schema_version == 2 and
+  .verifier == "wanderful-release-artifact" and
   .mode == "simulator-app" and
   .artifact_kind == "app" and
   .failed_check_count == 0 and
@@ -415,10 +421,50 @@ wrong_family_app="$(clone_simulator_fixture wrong-family)"
 expect_status 1 "$VERIFIER" simulator-app "$wrong_family_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("device_family_contract") != null)'
 
+wrong_display_name_app="$(clone_simulator_fixture wrong-display-name)"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName TrailMind' "$wrong_display_name_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$wrong_display_name_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("bundle_identity") != null)'
+
+wrong_bundle_identifier_app="$(clone_simulator_fixture wrong-bundle-identifier)"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier com.trailmind.app.staging' "$wrong_bundle_identifier_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$wrong_bundle_identifier_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("bundle_identity") != null)'
+
+wrong_environment_app="$(clone_simulator_fixture wrong-environment)"
+/usr/libexec/PlistBuddy -c 'Set :TRAILMIND_APP_ENVIRONMENT staging' "$wrong_environment_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$wrong_environment_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("environment_identity_contract") != null)'
+
+wrong_app_attest_environment_app="$(clone_simulator_fixture wrong-app-attest-environment)"
+/usr/libexec/PlistBuddy -c 'Set :TRAILMIND_APP_ATTEST_ENVIRONMENT development' "$wrong_app_attest_environment_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$wrong_app_attest_environment_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("environment_identity_contract") != null)'
+
 wrong_backend_app="$(clone_simulator_fixture wrong-backend)"
 /usr/libexec/PlistBuddy -c 'Set :INTENT_BACKEND_BASE_URL http://127.0.0.1:3000' "$wrong_backend_app/Info.plist"
 expect_status 1 "$VERIFIER" simulator-app "$wrong_backend_app"
-assert_report '.final_status == "failed" and (.failed_check_ids | index("backend_contract") != null)'
+assert_report '.final_status == "failed" and (.failed_check_ids | index("service_configuration_contract") != null)'
+
+enabled_research_app="$(clone_simulator_fixture enabled-research)"
+/usr/libexec/PlistBuddy -c 'Set :RESEARCH_GUIDED_PLANNING_ENABLED true' "$enabled_research_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$enabled_research_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
+
+enabled_superwall_app="$(clone_simulator_fixture enabled-superwall)"
+/usr/libexec/PlistBuddy -c 'Set :SUPERWALL_ENABLED yes' "$enabled_superwall_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$enabled_superwall_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
+
+missing_flag_app="$(clone_simulator_fixture missing-flag)"
+/usr/libexec/PlistBuddy -c 'Delete :OUTDOOR_EVIDENCE_ENABLED' "$missing_flag_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$missing_flag_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
+
+placeholder_url_app="$(clone_simulator_fixture placeholder-url)"
+/usr/libexec/PlistBuddy -c 'Add :PRIVACY_POLICY_URL string https://example.com/privacy' "$placeholder_url_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$placeholder_url_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("forbidden_info_values") != null)'
 
 extra_permission_app="$(clone_simulator_fixture extra-permission)"
 /usr/libexec/PlistBuddy -c 'Add :NSLocationWhenInUseUsageDescription string Unexpected' "$extra_permission_app/Info.plist"
@@ -466,6 +512,28 @@ print -r -- '--trailmind-ui-testing' >> "$debug_marker_app/TrailMind"
 expect_status 1 "$VERIFIER" simulator-app "$debug_marker_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
 
+large_debug_marker_app="$(clone_simulator_fixture large-debug-marker)"
+print -r -- '--trailmind-ui-testing' >> "$large_debug_marker_app/TrailMind"
+awk 'BEGIN { for (i = 0; i < 150000; i++) print "release-padding-" i }' >> \
+  "$large_debug_marker_app/TrailMind"
+expect_status 1 "$VERIFIER" simulator-app "$large_debug_marker_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
+
+fake_voice_app="$(clone_simulator_fixture fake-voice)"
+print -r -- 'FakeVoicePlanningService' >> "$fake_voice_app/TrailMind"
+expect_status 1 "$VERIFIER" simulator-app "$fake_voice_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
+
+unverified_claim_app="$(clone_simulator_fixture unverified-claim)"
+print -r -- 'guaranteed safe' >> "$unverified_claim_app/TrailMind"
+expect_status 1 "$VERIFIER" simulator-app "$unverified_claim_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
+
+missing_attribution_app="$(clone_simulator_fixture missing-attribution)"
+sed -i '' '/GraphHopper calculates route geometry/d' "$missing_attribution_app/TrailMind"
+expect_status 1 "$VERIFIER" simulator-app "$missing_attribution_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("required_attribution_markers") != null)'
+
 expect_status 1 env TRAILMIND_RELEASE_STUB_SCENARIO=invalid_signature \
   "$VERIFIER" simulator-app "$simulator_app"
 assert_report '
@@ -481,6 +549,11 @@ assert_report '.final_status == "failed" and (.failed_check_ids | index("dsym_co
 expect_status 1 env \
   TRAILMIND_RELEASE_STUB_ARCHIVE_ENTITLEMENTS="$development_entitlements" \
   "$VERIFIER" distribution-signed-archive "$archive_path"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("entitlement_contract") != null)'
+
+expect_status 1 env \
+  TRAILMIND_RELEASE_STUB_SIMULATOR_ENTITLEMENTS="$development_entitlements" \
+  "$VERIFIER" simulator-app "$simulator_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("entitlement_contract") != null)'
 
 expect_status 1 env TRAILMIND_RELEASE_STUB_SCENARIO=development_identity \
@@ -507,7 +580,7 @@ stale_status=$?
 set -e
 [[ "$stale_status" == "1" ]] || fail_test "Missing artifact did not fail closed."
 jq -e '
-  .verifier == "trailmind-release-artifact" and
+  .verifier == "wanderful-release-artifact" and
   .final_status == "failed" and
   (.failed_check_ids | index("artifact_path_contract") != null) and
   (has("stale_sensitive_value") | not)

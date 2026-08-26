@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-# Fail-closed verification for TrailMind Release artifacts.
+# Fail-closed verification for Wanderful Release artifacts.
 #
 # This command deliberately has two non-interchangeable modes:
 #   simulator-app      verifies a Release simulator .app without claiming
@@ -20,8 +20,8 @@ setopt PIPE_FAIL
 umask 077
 export LC_ALL=C
 
-readonly RELEASE_VERIFIER_SCHEMA_VERSION=1
-readonly RELEASE_VERIFIER_NAME="trailmind-release-artifact"
+readonly RELEASE_VERIFIER_SCHEMA_VERSION=2
+readonly RELEASE_VERIFIER_NAME="wanderful-release-artifact"
 readonly RELEASE_VERIFIER_SCRIPT_DIR="${0:A:h}"
 readonly RELEASE_VERIFIER_CONTRACT="${RELEASE_VERIFIER_SCRIPT_DIR}/release-contract.json"
 
@@ -112,7 +112,7 @@ print_release_summary() {
   local final_status="$1"
   local failed_id
 
-  print -r -- "TrailMind release verification"
+  print -r -- "Wanderful release verification"
   print -r -- "Mode: ${RELEASE_MODE}"
   print -r -- "Passed checks: ${#RELEASE_PASSED_CHECKS[@]}"
   print -r -- "Failed checks: ${#RELEASE_FAILED_CHECKS[@]}"
@@ -138,7 +138,7 @@ required_commands_available() {
 contract_is_valid() {
   [[ -f "$RELEASE_VERIFIER_CONTRACT" && ! -L "$RELEASE_VERIFIER_CONTRACT" ]] || return 1
   jq -e '
-    .schema_version == 1 and
+    .schema_version == 2 and
     (.product.bundle_identifier | type == "string" and length > 0) and
     (.product.bundle_name | type == "string" and length > 0) and
     (.product.display_name | type == "string" and length > 0) and
@@ -149,14 +149,34 @@ contract_is_valid() {
     (.product.development_region | type == "string" and length > 0) and
     (.product.device_family | type == "array" and length > 0) and
     (.product.orientations | type == "array" and length > 0) and
-    (.product.backend_url | type == "string" and startswith("https://")) and
     (.product.usage_descriptions | type == "object" and length > 0) and
+    (.environment.name_info_key == "TRAILMIND_APP_ENVIRONMENT") and
+    (.environment.name == "production") and
+    (.environment.app_attest_info_key == "TRAILMIND_APP_ATTEST_ENVIRONMENT") and
+    (.environment.app_attest_environment == "production") and
+    (.feature_flags | type == "object" and length == 9) and
+    (.feature_flags | keys | sort) == ([
+      "DIRECT_GRAPHHOPPER_ENABLED",
+      "INSECURE_LOCAL_BACKEND_AUTH_ENABLED",
+      "IN_MEMORY_APP_ATTEST_ENABLED",
+      "OUTDOOR_EVIDENCE_ENABLED",
+      "REMOTE_INTENT_ENABLED",
+      "RESEARCH_GUIDED_PLANNING_ENABLED",
+      "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "SUPABASE_ONBOARDING_SYNC_ENABLED",
+      "SUPERWALL_ENABLED"
+    ] | sort) and
+    (.feature_flags | all(to_entries[]; .value == "false")) and
+    (.service_configuration | type == "object" and length == 4) and
+    (.service_configuration | all(to_entries[]; .value == "")) and
     (.platforms["simulator-app"].allowed_architectures | type == "array" and length > 0) and
     (.platforms["distribution-signed-archive"].allowed_architectures | type == "array" and length > 0) and
     (.platforms["distribution-signed-archive"].requires_beta_reports_active == true) and
     (.privacy_manifest.filename == "PrivacyInfo.xcprivacy") and
     (.privacy_manifest.expected | type == "object") and
     (.forbidden_info_keys | type == "array") and
+    (.forbidden_info_value_markers | type == "array" and length > 0) and
+    (.required_binary_markers | type == "array" and length > 0) and
     (.forbidden_binary_markers | type == "array")
   ' "$RELEASE_VERIFIER_CONTRACT" >/dev/null 2>&1
 }
@@ -188,6 +208,8 @@ validate_info_contract() {
   local mode="$2"
   local expected
   local actual_usage expected_usage forbidden_keys
+  local expected_name_key expected_attest_key expected_name expected_attest
+  local expected_flags expected_services forbidden_value_markers
 
   expected="$(jq -r '.product.bundle_identifier' "$RELEASE_VERIFIER_CONTRACT")"
   json_matches_string "$info_json" '.CFBundleIdentifier' "$expected" &&
@@ -250,19 +272,50 @@ validate_info_contract() {
     record_failure "platform_contract"
   fi
 
-  expected="$(jq -r '.product.backend_url' "$RELEASE_VERIFIER_CONTRACT")"
-  local backend_key
-  backend_key="$(jq -r '.product.backend_info_key' "$RELEASE_VERIFIER_CONTRACT")"
+  expected_name_key="$(jq -r '.environment.name_info_key' "$RELEASE_VERIFIER_CONTRACT")"
+  expected_attest_key="$(jq -r '.environment.app_attest_info_key' "$RELEASE_VERIFIER_CONTRACT")"
+  expected_name="$(jq -r '.environment.name' "$RELEASE_VERIFIER_CONTRACT")"
+  expected_attest="$(jq -r '.environment.app_attest_environment' "$RELEASE_VERIFIER_CONTRACT")"
   if print -r -- "$info_json" | jq -e \
-      --arg key "$backend_key" --arg expected "$expected" \
-      '.[$key] == $expected and
-       ($expected | startswith("https://")) and
-       ($expected | contains("@") | not) and
-       ($expected | contains("?") | not) and
-       ($expected | contains("#") | not)' >/dev/null 2>&1; then
-    record_pass "backend_contract"
+      --arg name_key "$expected_name_key" \
+      --arg attest_key "$expected_attest_key" \
+      --arg name "$expected_name" \
+      --arg attest "$expected_attest" \
+      '.[$name_key] == $name and .[$attest_key] == $attest' >/dev/null 2>&1; then
+    record_pass "environment_identity_contract"
   else
-    record_failure "backend_contract"
+    record_failure "environment_identity_contract"
+  fi
+
+  expected_flags="$(jq -cS '.feature_flags' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || expected_flags='{}'
+  if print -r -- "$info_json" | jq -e \
+      --argjson expected "$expected_flags" --argjson info "$info_json" '
+      all($expected | to_entries[]; . as $entry | $info[$entry.key] == $entry.value) and
+      (($info | [keys[] | select(endswith("_ENABLED"))] | sort) == ($expected | keys | sort))
+    ' >/dev/null 2>&1; then
+    record_pass "feature_flag_contract"
+  else
+    record_failure "feature_flag_contract"
+  fi
+
+  expected_services="$(jq -cS '.service_configuration' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || expected_services='{}'
+  if print -r -- "$info_json" | jq -e \
+      --argjson expected "$expected_services" --argjson info "$info_json" '
+      all($expected | to_entries[]; . as $entry | $info[$entry.key] == $entry.value)
+    ' >/dev/null 2>&1; then
+    record_pass "service_configuration_contract"
+  else
+    record_failure "service_configuration_contract"
+  fi
+
+  forbidden_value_markers="$(jq -c '.forbidden_info_value_markers' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || forbidden_value_markers='[]'
+  if print -r -- "$info_json" | jq -e --argjson forbidden "$forbidden_value_markers" '
+      ([.. | strings | ascii_downcase] as $values |
+       all($forbidden[]; . as $marker | all($values[]; contains($marker) | not)))
+    ' >/dev/null 2>&1; then
+    record_pass "forbidden_info_values"
+  else
+    record_failure "forbidden_info_values"
   fi
 
   actual_usage="$(print -r -- "$info_json" | jq -cS \
@@ -377,7 +430,7 @@ validate_binary() {
   local mode="$3"
   local executable_path="${app_path}/${executable_name}"
   local file_description architectures allowed_architectures architecture
-  local linked_libraries binary_strings marker markers_valid=true
+  local linked_libraries binary_strings marker markers_valid=true required_markers_valid=true
 
   if [[ -f "$executable_path" && ! -L "$executable_path" && -x "$executable_path" && -s "$executable_path" ]]; then
     file_description="$(file -b "$executable_path" 2>/dev/null)" || file_description=""
@@ -426,7 +479,9 @@ validate_binary() {
   binary_strings="$(strings -a "$executable_path" 2>/dev/null)" || binary_strings=""
   while IFS= read -r marker; do
     [[ -z "$marker" ]] && continue
-    if print -r -- "$binary_strings" | grep -Fq -- "$marker"; then
+    # Avoid a false negative under PIPE_FAIL when grep exits early after a
+    # match and the producer receives SIGPIPE for a large Release binary.
+    if [[ "$binary_strings" == *"$marker"* ]]; then
       markers_valid=false
       break
     fi
@@ -437,8 +492,22 @@ validate_binary() {
     record_failure "release_composition_markers"
   fi
 
-  if print -r -- "$binary_strings" | grep -Eq -- \
-      '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|AIza[0-9A-Za-z_-]{35}|sk-(proj-)?[0-9A-Za-z_-]{24,}|ghp_[0-9A-Za-z]{30,}'; then
+  while IFS= read -r marker; do
+    [[ -z "$marker" ]] && continue
+    if [[ "$binary_strings" != *"$marker"* ]]; then
+      required_markers_valid=false
+      break
+    fi
+  done < <(jq -r '.required_binary_markers[]' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)
+  if [[ "$required_markers_valid" == true ]]; then
+    record_pass "required_attribution_markers"
+  else
+    record_failure "required_attribution_markers"
+  fi
+
+  if grep -Eq -- \
+      '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|AIza[0-9A-Za-z_-]{35}|sk-(proj-)?[0-9A-Za-z_-]{24,}|ghp_[0-9A-Za-z]{30,}' \
+      <<< "$binary_strings"; then
     record_failure "credential_pattern_scan"
   else
     record_pass "credential_pattern_scan"
