@@ -10,23 +10,26 @@ enum SuperwallConfiguration {
     static let onboardingCompletionCallback = "wanderful_onboarding_complete"
 
     static func publicAPIKey(bundle: Bundle = .main) -> String? {
-        normalizedPublicAPIKey(
-            bundle.object(forInfoDictionaryKey: apiKeyInfoDictionaryKey)
-        )
+        guard bundle.bundleURL == Bundle.main.bundleURL,
+              let configuration = WanderfulAppConfigurationSnapshot.configuration,
+              configuration.features.superwall
+        else { return nil }
+        return configuration.superwall.configuredValue?.publicSDKKey
     }
 
     static func normalizedPublicAPIKey(_ rawValue: Any?) -> String? {
         guard let rawValue = rawValue as? String else { return nil }
-        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty,
-              value.hasPrefix("pk_"),
-              value.count > 3,
-              !value.contains("$("),
-              value != "pk_your_public_key"
+        guard rawValue == rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawValue.isEmpty,
+              rawValue.hasPrefix("pk_"),
+              rawValue.count > 8,
+              !rawValue.contains("$("),
+              !rawValue.localizedCaseInsensitiveContains("placeholder"),
+              !rawValue.localizedCaseInsensitiveContains("your_")
         else {
             return nil
         }
-        return value
+        return rawValue
     }
 
     static func isAutomation(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {

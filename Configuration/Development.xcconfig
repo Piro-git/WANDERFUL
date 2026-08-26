@@ -1,0 +1,26 @@
+#include "Shared.xcconfig"
+#include? "Local.xcconfig"
+
+// Protected signed-build identity. These assignments intentionally follow the
+// optional local include so Local.xcconfig cannot select another environment.
+TRAILMIND_APP_ENVIRONMENT = local
+TRAILMIND_APP_ATTEST_ENVIRONMENT = development
+TRAILMIND_PRODUCT_BUNDLE_IDENTIFIER = com.trailmind.app.local
+TRAILMIND_DISPLAY_NAME = Wanderful Local
+
+INTENT_BACKEND_BASE_URL = $(LOCAL_BACKEND_BASE_URL)
+SUPABASE_PROJECT_URL =
+SUPABASE_PUBLISHABLE_KEY =
+SUPERWALL_API_KEY = $(LOCAL_SUPERWALL_PUBLIC_SDK_KEY)
+
+// Local.xcconfig cannot activate provider/research capabilities. An explicit
+// command-line build-setting override is required for a separately reviewed run.
+OUTDOOR_EVIDENCE_ENABLED = false
+RESEARCH_GUIDED_PLANNING_ENABLED = false
+ROUTABLE_HIGHLIGHT_ACCESS_ENABLED = false
+REMOTE_INTENT_ENABLED = false
+DIRECT_GRAPHHOPPER_ENABLED = false
+INSECURE_LOCAL_BACKEND_AUTH_ENABLED = false
+IN_MEMORY_APP_ATTEST_ENABLED = false
+SUPABASE_ONBOARDING_SYNC_ENABLED = false
+SUPERWALL_ENABLED = false

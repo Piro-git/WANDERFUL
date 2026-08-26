@@ -1,17 +1,31 @@
-// Safe default for fresh checkouts. Local.xcconfig is optional and gitignored.
-INTENT_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000
-PRODUCTION_BACKEND_BASE_URL = https:/$()/backend-zeta-amber-69.vercel.app
-// Optional post-routing outdoor evidence is release-gated and opt-in.
+// Shared fail-closed defaults. Environment identity is assigned only by the
+// environment-specific xcconfig selected by the Xcode build configuration.
+
+// Every remote/provider capability stays opt-in and disabled in tracked source.
 OUTDOOR_EVIDENCE_ENABLED = false
-// Research-guided orchestration is an iOS-only seam and remains opt-in.
 RESEARCH_GUIDED_PLANNING_ENABLED = false
-// Routable highlight access uses the strict orchestration V2 contract.
 ROUTABLE_HIGHLIGHT_ACCESS_ENABLED = false
-// Superwall uses a public SDK key, but keep environment-specific values local.
-SUPERWALL_API_KEY =
-// Hiking-profile sync is local-only and non-activatable in V1.
+REMOTE_INTENT_ENABLED = false
+DIRECT_GRAPHHOPPER_ENABLED = false
+INSECURE_LOCAL_BACKEND_AUTH_ENABLED = false
+IN_MEMORY_APP_ATTEST_ENABLED = false
 SUPABASE_ONBOARDING_SYNC_ENABLED = false
-// Reserved public-client fields remain blank in tracked configuration.
-SUPABASE_PROJECT_URL =
-SUPABASE_PUBLISHABLE_KEY =
-#include? "Local.xcconfig"
+SUPERWALL_ENABLED = false
+
+// Local values may be supplied only by ignored Local.xcconfig. The validator
+// accepts HTTP only for exact loopback hosts in a local build.
+LOCAL_BACKEND_BASE_URL =
+LOCAL_SUPERWALL_PUBLIC_SDK_KEY =
+
+// CI/release automation may supply these environment-scoped public values.
+// Keeping staging and production variable names separate prevents one lane's
+// values from being selected by the other lane's checked-in configuration.
+STAGING_BACKEND_BASE_URL =
+STAGING_SUPABASE_PROJECT_URL =
+STAGING_SUPABASE_PUBLISHABLE_KEY =
+STAGING_SUPERWALL_PUBLIC_SDK_KEY =
+
+PRODUCTION_BACKEND_BASE_URL =
+PRODUCTION_SUPABASE_PROJECT_URL =
+PRODUCTION_SUPABASE_PUBLISHABLE_KEY =
+PRODUCTION_SUPERWALL_PUBLIC_SDK_KEY =

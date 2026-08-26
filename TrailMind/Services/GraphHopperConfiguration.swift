@@ -20,8 +20,10 @@ struct GraphHopperConfiguration: Sendable {
 
     nonisolated static func local(
         bundle: Bundle = .main,
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        providerEnabled: Bool = TrailMindBackendConfiguration.directGraphHopperEnabled()
     ) throws -> GraphHopperConfiguration {
+        guard providerEnabled else { throw GraphHopperError.missingAPIKey }
         if let environmentKey = environment[infoPlistKey], isUsableKey(environmentKey) {
             return try GraphHopperConfiguration(apiKey: environmentKey)
         }

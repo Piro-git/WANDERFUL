@@ -1,21 +1,13 @@
-// Copy this file to Local.xcconfig for local-only overrides.
-// Never commit Local.xcconfig. Permanent provider keys belong on the backend.
-// Optional DEBUG intent backend override for Simulator/local development.
-// INTENT_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000
-// Release/CI uses the tracked Shared.xcconfig endpoint unless an owner-approved
-// HTTPS production endpoint is explicitly supplied here. Never include credentials in the URL.
-// PRODUCTION_BACKEND_BASE_URL = https:/$()/api.example.com
-// Enable only after the PostGIS/import, corridor-smoke-test, privacy, and attribution gates pass.
-// OUTDOOR_EVIDENCE_ENABLED = true
-// Keep disabled until the research-guided planning coordinator is intentionally integrated.
-// RESEARCH_GUIDED_PLANNING_ENABLED = true
-// Add the public iOS SDK key from Superwall Settings > Keys.
-// Do not commit the real value; Local.xcconfig is intentionally gitignored.
-// SUPERWALL_API_KEY = pk_your_public_key
-// Hiking-profile sync is deliberately non-activatable in V1. These placeholders
-// document the future public-client shape and intentionally fail validation.
-// SUPABASE_ONBOARDING_SYNC_ENABLED = false
-// SUPABASE_PROJECT_URL = https:/$()/your-project-ref.supabase.co
-// Use a public publishable/anon client key only in a separately reviewed future release.
-// Never use a service-role key here.
-// SUPABASE_PUBLISHABLE_KEY = sb_publishable_your_public_key
+// Copy this example to Configuration/Local.xcconfig without opening an
+// existing Local.xcconfig. The destination is gitignored and Development-only.
+// Never commit Local.xcconfig or place production/staging values in it.
+
+// Optional local backend. Only exact loopback HTTP is accepted.
+// LOCAL_BACKEND_BASE_URL = http:/$()/127.0.0.1:3000
+
+// Provider/research flags are protected false by Development.xcconfig. No
+// GraphHopper, Supabase, AI, or private key belongs in this file.
+
+// Superwall uses a public SDK key, but its flag remains protected false and
+// onboarding remains native in V1.
+// LOCAL_SUPERWALL_PUBLIC_SDK_KEY = pk_public_placeholder

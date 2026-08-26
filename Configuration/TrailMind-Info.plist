@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Wanderful</string>
+	<string>$(TRAILMIND_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -22,20 +22,34 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>INTENT_BACKEND_BASE_URL</key>
 	<string>$(INTENT_BACKEND_BASE_URL)</string>
+	<key>DIRECT_GRAPHHOPPER_ENABLED</key>
+	<string>$(DIRECT_GRAPHHOPPER_ENABLED)</string>
+	<key>INSECURE_LOCAL_BACKEND_AUTH_ENABLED</key>
+	<string>$(INSECURE_LOCAL_BACKEND_AUTH_ENABLED)</string>
+	<key>IN_MEMORY_APP_ATTEST_ENABLED</key>
+	<string>$(IN_MEMORY_APP_ATTEST_ENABLED)</string>
 	<key>OUTDOOR_EVIDENCE_ENABLED</key>
 	<string>$(OUTDOOR_EVIDENCE_ENABLED)</string>
 	<key>RESEARCH_GUIDED_PLANNING_ENABLED</key>
 	<string>$(RESEARCH_GUIDED_PLANNING_ENABLED)</string>
+	<key>REMOTE_INTENT_ENABLED</key>
+	<string>$(REMOTE_INTENT_ENABLED)</string>
 	<key>ROUTABLE_HIGHLIGHT_ACCESS_ENABLED</key>
 	<string>$(ROUTABLE_HIGHLIGHT_ACCESS_ENABLED)</string>
 	<key>SUPERWALL_API_KEY</key>
 	<string>$(SUPERWALL_API_KEY)</string>
+	<key>SUPERWALL_ENABLED</key>
+	<string>$(SUPERWALL_ENABLED)</string>
 	<key>SUPABASE_ONBOARDING_SYNC_ENABLED</key>
 	<string>$(SUPABASE_ONBOARDING_SYNC_ENABLED)</string>
 	<key>SUPABASE_PROJECT_URL</key>
 	<string>$(SUPABASE_PROJECT_URL)</string>
 	<key>SUPABASE_PUBLISHABLE_KEY</key>
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>TRAILMIND_APP_ATTEST_ENVIRONMENT</key>
+	<string>$(TRAILMIND_APP_ATTEST_ENVIRONMENT)</string>
+	<key>TRAILMIND_APP_ENVIRONMENT</key>
+	<string>$(TRAILMIND_APP_ENVIRONMENT)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
 	<key>NSMicrophoneUsageDescription</key>

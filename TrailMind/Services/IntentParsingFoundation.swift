@@ -597,9 +597,11 @@ private extension URLError {
 
 enum IntentParsingProviderFactory {
     static func makeDefaultProvider(
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        remoteIntentEnabled: Bool = TrailMindBackendConfiguration.remoteIntentEnabled()
     ) -> any IntentParsingProvider {
         #if DEBUG
+        guard remoteIntentEnabled else { return LocalIntentParsingProvider() }
         switch debugParserMode(environment: environment) {
         case .localOnly:
             return LocalIntentParsingProvider()
@@ -608,6 +610,7 @@ enum IntentParsingProviderFactory {
         }
         #else
         _ = environment
+        _ = remoteIntentEnabled
         return LocalIntentParsingProvider()
         #endif
     }

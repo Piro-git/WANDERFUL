@@ -211,17 +211,36 @@ enum HikingPreferenceProfileSyncFactoryV1 {
         SupabaseOnboardingSyncConfigurationV1
     ) -> any HikingPreferenceProfileSyncingV1
 
-    static func make(bundle: Bundle = .main) -> any HikingPreferenceProfileSyncingV1 {
-        make(infoDictionary: bundle.infoDictionary ?? [:]) { configuration in
-            #if canImport(Supabase)
-            let remote = SupabaseHikingPreferenceProfileRemoteSyncClientV1(
-                configuration: configuration
-            )
-            return RetryingHikingPreferenceProfileSyncClientV1(remote: remote)
-            #else
+    static func make(
+        configuration: WanderfulAppConfiguration? =
+            WanderfulAppConfigurationSnapshot.configuration
+    ) -> any HikingPreferenceProfileSyncingV1 {
+        guard remoteSyncAvailableInV1,
+              configuration?.features.supabaseOnboardingSync == true,
+              let resolved = configuration?.supabaseOnboarding.configuredValue
+        else {
             return NoOpHikingPreferenceProfileSyncClientV1()
-            #endif
         }
+        let legacyConfiguration = SupabaseOnboardingSyncConfigurationV1(
+            projectURL: resolved.projectURL,
+            publishableKey: resolved.publishableKey
+        )
+        #if canImport(Supabase)
+        let remote = SupabaseHikingPreferenceProfileRemoteSyncClientV1(
+            configuration: legacyConfiguration
+        )
+        return RetryingHikingPreferenceProfileSyncClientV1(remote: remote)
+        #else
+        return NoOpHikingPreferenceProfileSyncClientV1()
+        #endif
+    }
+
+    static func make(bundle: Bundle) -> any HikingPreferenceProfileSyncingV1 {
+        let configuration = try? WanderfulAppConfiguration.resolve(
+            infoDictionary: bundle.infoDictionary ?? [:],
+            signedIdentity: WanderfulSignedLaneIdentity.value
+        )
+        return make(configuration: configuration)
     }
 
     static func make(

@@ -28,10 +28,13 @@ enum TrailMindBackendSecurity {
 
     static func makeSessionAuthorizer(
         baseURL: URL?,
+        allowsInsecureLoopback: Bool = TrailMindBackendConfiguration
+            .insecureLocalBackendAuthorizationEnabled(),
         attestedSessionAuthorizer: any RouteSessionAuthorizing = TrailMindBackendSecurity.attestedSessionAuthorizer
     ) -> any RouteSessionAuthorizing {
         #if DEBUG && targetEnvironment(simulator)
-        if LoopbackDevelopmentSessionAuthorizer.supports(baseURL: baseURL) {
+        if allowsInsecureLoopback,
+           LoopbackDevelopmentSessionAuthorizer.supports(baseURL: baseURL) {
             return LoopbackDevelopmentSessionAuthorizer()
         }
         #endif

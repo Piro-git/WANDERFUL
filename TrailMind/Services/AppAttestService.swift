@@ -331,68 +331,58 @@ struct URLSessionAppAttestAPI: AppAttestAPI, Sendable {
 
 enum TrailMindBackendConfiguration {
     nonisolated static func baseURL(bundle: Bundle = .main) -> URL? {
-        guard
-            let value = bundle.object(forInfoDictionaryKey: "INTENT_BACKEND_BASE_URL") as? String,
-            let url = URL(string: value),
-            url.host != nil
-        else {
-            return nil
-        }
-        if url.scheme == "https" { return url }
-        #if DEBUG
-        if url.scheme == "http", ["127.0.0.1", "localhost", "::1"].contains(url.host ?? "") {
-            return url
-        }
-        #endif
-        return nil
+        configuration(bundle: bundle)?.backend.configuredValue?.baseURL
     }
 
     nonisolated static func outdoorEvidenceEnabled(bundle: Bundle = .main) -> Bool {
-        guard let configured = bundle.object(forInfoDictionaryKey: "OUTDOOR_EVIDENCE_ENABLED") else {
-            return false
-        }
-        if let value = configured as? Bool { return value }
-        if let value = configured as? NSNumber {
-            if value == 1 { return true }
-            return false
-        }
-        if let value = configured as? String {
-            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            return ["1", "true", "yes"].contains(normalized)
-        }
-        return false
+        guard let configuration = configuration(bundle: bundle) else { return false }
+        return configuration.features.outdoorEvidence && configuration.backend.isAvailable
     }
 
     nonisolated static func researchGuidedPlanningEnabled(
         bundle: Bundle = .main
     ) -> Bool {
-        guard let value = bundle.object(
-            forInfoDictionaryKey: "RESEARCH_GUIDED_PLANNING_ENABLED"
-        ) as? String else {
-            return false
-        }
-        let normalized = value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        guard ["true", "yes", "1"].contains(normalized) else {
-            return false
-        }
-        return baseURL(bundle: bundle) != nil
+        guard let configuration = configuration(bundle: bundle) else { return false }
+        return configuration.features.researchGuidedPlanning && configuration.backend.isAvailable
     }
 
     nonisolated static func routableHighlightAccessEnabled(
         bundle: Bundle = .main
     ) -> Bool {
-        guard researchGuidedPlanningEnabled(bundle: bundle),
-              let value = bundle.object(
-                forInfoDictionaryKey: "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED"
-              ) as? String
-        else {
+        guard let configuration = configuration(bundle: bundle) else { return false }
+        return configuration.features.researchGuidedPlanning &&
+            configuration.features.routableHighlightAccess &&
+            configuration.backend.isAvailable
+    }
+
+    nonisolated static func remoteIntentEnabled() -> Bool {
+        WanderfulAppConfigurationSnapshot.configuration?.features.remoteIntent == true
+    }
+
+    nonisolated static func directGraphHopperEnabled() -> Bool {
+        guard let configuration = WanderfulAppConfigurationSnapshot.configuration else {
             return false
         }
-        return ["true", "yes", "1"].contains(
-            value.trimmingCharacters(in: .whitespacesAndNewlines)
-                .lowercased()
+        return configuration.environment == .local && configuration.features.directGraphHopper
+    }
+
+    nonisolated static func insecureLocalBackendAuthorizationEnabled() -> Bool {
+        guard let configuration = WanderfulAppConfigurationSnapshot.configuration else {
+            return false
+        }
+        return configuration.environment == .local &&
+            configuration.features.insecureLocalBackendAuthorization
+    }
+
+    private nonisolated static func configuration(
+        bundle: Bundle
+    ) -> WanderfulAppConfiguration? {
+        if bundle.bundleURL == Bundle.main.bundleURL {
+            return WanderfulAppConfigurationSnapshot.configuration
+        }
+        return try? WanderfulAppConfiguration.resolve(
+            infoDictionary: bundle.infoDictionary ?? [:],
+            signedIdentity: WanderfulSignedLaneIdentity.value
         )
     }
 }

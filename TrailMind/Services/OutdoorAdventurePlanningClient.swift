@@ -288,14 +288,15 @@ struct NoOpOutdoorAdventurePlanningClientV1:
 
 enum OutdoorAdventurePlanningClientFactory {
     static func makeDefault(
-        bundle: Bundle = .main,
+        configuration: WanderfulAppConfiguration? =
+            WanderfulAppConfigurationSnapshot.configuration,
         session: URLSession = .shared,
         authorizer: (any RouteSessionAuthorizing)? = nil,
         limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard
     ) -> any OutdoorAdventurePlanningClientV1 {
-        guard TrailMindBackendConfiguration.researchGuidedPlanningEnabled(
-            bundle: bundle
-        ), let baseURL = TrailMindBackendConfiguration.baseURL(bundle: bundle)
+        guard let configuration,
+              configuration.features.researchGuidedPlanning,
+              let baseURL = configuration.backend.configuredValue?.baseURL
         else {
             return NoOpOutdoorAdventurePlanningClientV1()
         }
@@ -305,9 +306,25 @@ enum OutdoorAdventurePlanningClientFactory {
             authorizer: authorizer,
             limits: limits,
             usesRoutableHighlightAccessV2:
-                TrailMindBackendConfiguration.routableHighlightAccessEnabled(
-                    bundle: bundle
-                )
+                configuration.features.routableHighlightAccess
+        )
+    }
+
+    static func makeDefault(
+        bundle: Bundle,
+        session: URLSession = .shared,
+        authorizer: (any RouteSessionAuthorizing)? = nil,
+        limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard
+    ) -> any OutdoorAdventurePlanningClientV1 {
+        let configuration = try? WanderfulAppConfiguration.resolve(
+            infoDictionary: bundle.infoDictionary ?? [:],
+            signedIdentity: WanderfulSignedLaneIdentity.value
+        )
+        return makeDefault(
+            configuration: configuration,
+            session: session,
+            authorizer: authorizer,
+            limits: limits
         )
     }
 }

@@ -295,14 +295,26 @@ struct BackendOutdoorRouteEvidenceProvider: OutdoorRouteEvidenceProviding, Senda
 
 enum OutdoorRouteEvidenceProviderFactory {
     static func makeDefault(
-        bundle: Bundle = .main
+        configuration: WanderfulAppConfiguration? =
+            WanderfulAppConfigurationSnapshot.configuration
     ) -> any OutdoorRouteEvidenceProviding {
-        guard TrailMindBackendConfiguration.outdoorEvidenceEnabled(bundle: bundle),
-              let baseURL = TrailMindBackendConfiguration.baseURL(bundle: bundle)
+        guard let configuration,
+              configuration.features.outdoorEvidence,
+              let baseURL = configuration.backend.configuredValue?.baseURL
         else {
             return NoOpOutdoorRouteEvidenceProvider()
         }
         return BackendOutdoorRouteEvidenceProvider(baseURL: baseURL)
+    }
+
+    static func makeDefault(
+        bundle: Bundle
+    ) -> any OutdoorRouteEvidenceProviding {
+        let configuration = try? WanderfulAppConfiguration.resolve(
+            infoDictionary: bundle.infoDictionary ?? [:],
+            signedIdentity: WanderfulSignedLaneIdentity.value
+        )
+        return makeDefault(configuration: configuration)
     }
 }
 
