@@ -15,7 +15,7 @@
     "db:migrate": "node scripts/migrate.js",
     "db:migrate:historical-portable-v1": "TRAILMIND_MIGRATION_POLICY=historical-portable-v1 node scripts/migrate.js",
     "db:migrate:supabase-postgis-isolation-v2": "node scripts/staging/phase1-v2-operator.js",
-    "test:supabase-postgis-isolation-v2": "node scripts/disposable/run-supabase-postgis-isolation-v2.js",
+    "test:supabase-postgis-isolation-v2": "node scripts/disposable/run-supabase-postgis-isolation-v2.js && node scripts/disposable/run-staging-phase1-v2-single-session-adapter.js",
     "ops:preflight": "node src/operations/preflight.js",
     "ops:prune-app-attest": "node src/appAttest/pruneExpired.js",
     "ops:validate-release-package": "node src/operations/validateReleasePackage.js",

@@ -60,7 +60,8 @@ describe("Supabase PostGIS isolation V2 disposable PostgreSQL contract", {
       "005_outdoor_research_projection_geometry.sql",
       "006_outdoor_route_membership_point_index.sql",
       "007_routable_highlight_access_geography_index.sql",
-      "009_supabase_postgis_isolated_runtime_read_contract.sql"
+      "009_supabase_postgis_isolated_runtime_read_contract.sql",
+      "010_bounded_outdoor_import_schema_provisioning.sql"
     ]);
     const extension = await admin.query(`
       SELECT namespace.nspname AS schema_name,
@@ -103,7 +104,11 @@ describe("Supabase PostGIS isolation V2 disposable PostgreSQL contract", {
       assert.equal(role.rolreplication, false, role.rolname);
       assert.equal(role.rolbypassrls, false, role.rolname);
       assert.equal(role.rolinherit, false, role.rolname);
-      assert.equal(role.rolcanlogin, role.rolname !== "platform_provisioner", role.rolname);
+      assert.equal(
+        role.rolcanlogin,
+        !["platform_provisioner", "migration_role"].includes(role.rolname),
+        role.rolname
+      );
       assert.equal(
         role.rolconnlimit,
         role.rolname === "outdoor_research_cancellation_control_role" ? 1 : -1,
@@ -140,15 +145,35 @@ describe("Supabase PostGIS isolation V2 disposable PostgreSQL contract", {
        WHERE member.rolname = 'postgres'
          AND target.rolname = ANY($1::text[])
        ORDER BY target.rolname
-    `, [["trailmind_app_owner", "trailmind_control_owner", ...operationalRoles]]);
-    assert.equal(providerCreatorMemberships.rowCount, 11);
-    for (const membership of providerCreatorMemberships.rows) {
-      const ownerMembership = [
-        "trailmind_app_owner", "trailmind_control_owner"
-      ].includes(membership.target);
-      assert.equal(membership.inherit_option, false, membership.target);
-      assert.equal(membership.set_option, ownerMembership, membership.target);
-      assert.equal(membership.admin_option, true, membership.target);
+    `, [[
+      "trailmind_app_owner", "trailmind_control_owner",
+      "trailmind_import_schema_owner", ...operationalRoles
+    ]]);
+    assert.equal(providerCreatorMemberships.rowCount, 16);
+    const setTargets = new Set([
+      "trailmind_app_owner", "trailmind_control_owner",
+      "trailmind_import_schema_owner", "migration_role"
+    ]);
+    for (const target of [
+      "trailmind_app_owner", "trailmind_control_owner",
+      "trailmind_import_schema_owner", ...operationalRoles
+    ]) {
+      const actual = providerCreatorMemberships.rows
+        .filter((membership) => membership.target === target)
+        .map(({ inherit_option, set_option, admin_option }) =>
+          ({ inherit_option, set_option, admin_option }))
+        .sort((left, right) => Number(right.admin_option) - Number(left.admin_option));
+      const expected = [{
+        inherit_option: false,
+        set_option: false,
+        admin_option: true
+      }];
+      if (setTargets.has(target)) expected.push({
+        inherit_option: false,
+        set_option: true,
+        admin_option: false
+      });
+      assert.deepEqual(actual, expected, target);
     }
   });
 
@@ -203,8 +228,8 @@ describe("Supabase PostGIS isolation V2 disposable PostgreSQL contract", {
     ]) {
       const privileges = await schemaPrivileges(role, "extensions");
       assert.equal(privileges.usage, true, role);
-      assert.equal(privileges.create, false, role);
-      assert.equal(privileges.grant, false, role);
+      assert.equal(privileges.create, role === "supabase_admin", role);
+      assert.equal(privileges.grant, role === "supabase_admin", role);
       assert.equal((await queryAsRole(role,
         "SELECT extensions.fixture_extension_routine() AS value"
       )).rows[0].value, 1, role);

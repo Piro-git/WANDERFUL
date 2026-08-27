@@ -88,7 +88,7 @@ describe("managed Supabase-style PostGIS ownership topology", {
     assert.deepEqual(providerRole.rows, [{
       rolcanlogin: false,
       rolinherit: false,
-      rolsuper: false,
+      rolsuper: true,
       rolcreatedb: false,
       rolcreaterole: false,
       rolreplication: false,

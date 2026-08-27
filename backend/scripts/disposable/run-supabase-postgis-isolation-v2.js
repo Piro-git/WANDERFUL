@@ -1,6 +1,8 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import {
+  chmod, copyFile, mkdtemp, rm, stat, writeFile
+} from "node:fs/promises";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const backendRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -14,23 +16,41 @@ const postMigration = join(
   "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql"
 );
 const port = 55_347;
+const recoveryFixture = Object.freeze({
+  runId: "00000000-0000-4000-8000-000000000010",
+  authorizationDigest: "a".repeat(64),
+  candidateCommit: "b".repeat(40),
+  candidateTree: "c".repeat(40),
+  operatorDigest: "d".repeat(64),
+  providerDigest: "e".repeat(64)
+});
+const supautilsLibrary = await requiredSupautilsLibrary();
 
 assertLocalPostgres17();
 await withCluster("rollback", async (cluster) => {
   provisionManagedFixture(cluster);
   executePsqlFile(cluster, preMigration, "postgres");
-  executePsql(cluster, "ALTER ROLE postgres NOSUPERUSER;", "trailmind_v2_admin");
-  normalizeManagedRoleCreatorMemberships(cluster);
   runNodeTests(cluster, [
     "test/supabasePostgisIsolationV2RollbackIntegration.test.js"
-  ], { PGUSER: "postgres" });
+  ], {
+    PGUSER: "postgres",
+    TRAILMIND_PHASE1_V2_FIXTURE_RUN_ID: recoveryFixture.runId,
+    TRAILMIND_PHASE1_V2_FIXTURE_AUTHORIZATION_DIGEST:
+      recoveryFixture.authorizationDigest,
+    TRAILMIND_PHASE1_V2_FIXTURE_CANDIDATE_COMMIT:
+      recoveryFixture.candidateCommit,
+    TRAILMIND_PHASE1_V2_FIXTURE_CANDIDATE_TREE:
+      recoveryFixture.candidateTree,
+    TRAILMIND_PHASE1_V2_FIXTURE_OPERATOR_DIGEST:
+      recoveryFixture.operatorDigest,
+    TRAILMIND_PHASE1_V2_FIXTURE_PROVIDER_DIGEST:
+      recoveryFixture.providerDigest
+  });
 });
 
 await withCluster("foundation", async (cluster) => {
   provisionManagedFixture(cluster);
   executePsqlFile(cluster, preMigration, "postgres");
-  executePsql(cluster, "ALTER ROLE postgres NOSUPERUSER;", "trailmind_v2_admin");
-  normalizeManagedRoleCreatorMemberships(cluster);
   runNodeTests(cluster, [
     "test/stagingMigrationRunnerPostgresIntegration.test.js"
   ]);
@@ -38,7 +58,7 @@ await withCluster("foundation", async (cluster) => {
   provisionSupabaseAdminPostgisTopologyFixture(cluster);
   const providerOwnershipEnvironment = environment(cluster, {
     PGDATABASE: "trailmind_v2_17_provider_ownership",
-    PGUSER: "migration_role",
+    PGUSER: "postgres",
     TRAILMIND_MIGRATION_POLICY: "supabase-postgis-isolation-v2"
   });
   run("node", [
@@ -63,7 +83,7 @@ await withCluster("foundation", async (cluster) => {
   });
 
   const migrationEnvironment = environment(cluster, {
-    PGUSER: "migration_role",
+    PGUSER: "postgres",
     TRAILMIND_MIGRATION_POLICY: "supabase-postgis-isolation-v2"
   });
   run("node", [
@@ -87,6 +107,7 @@ await withCluster("foundation", async (cluster) => {
   runNodeTests(cluster, [
     "test/supabasePostgisIsolationV2PostgresIntegration.test.js"
   ]);
+  await runRealImporterWorkflow(cluster);
 
   executePsql(cluster, `
     CREATE DATABASE trailmind_portable_test
@@ -107,9 +128,14 @@ async function withCluster(label, operation) {
   const root = await mkdtemp(`/private/tmp/trailmind-postgis-isolation-v2.${label}.`);
   const data = join(root, "data");
   const socket = join(root, "socket");
+  const localSupautilsLibrary = join(
+    root, `supautils${extname(supautilsLibrary)}`
+  );
   let started = false;
   try {
     run("mkdir", ["-p", socket], { cwd: backendRoot });
+    await copyFile(supautilsLibrary, localSupautilsLibrary);
+    await chmod(localSupautilsLibrary, 0o500);
     run("initdb", [
       "-D", data,
       "--username=trailmind_v2_admin",
@@ -120,7 +146,14 @@ async function withCluster(label, operation) {
     run("pg_ctl", [
       "-D", data,
       "-l", join(root, "postgres.log"),
-      "-o", `-c listen_addresses='' -c unix_socket_directories='${socket}' -c port=${port}`,
+      "-o", `-c listen_addresses=127.0.0.1 ` +
+        `-c unix_socket_directories='${socket}' -c port=${port} ` +
+        `-c dynamic_library_path='${root}' ` +
+        `-c shared_preload_libraries=supautils ` +
+        `-c supautils.privileged_role=postgres ` +
+        `-c supautils.superuser=supabase_admin ` +
+        `-c supautils.privileged_extensions_superuser=supabase_admin ` +
+        `-c supautils.privileged_extensions=postgis`,
       "-w",
       "start"
     ], { cwd: backendRoot });
@@ -143,12 +176,16 @@ function provisionManagedFixture(cluster) {
     CREATE ROLE authenticated NOLOGIN NOINHERIT;
     CREATE ROLE service_role LOGIN NOINHERIT;
     CREATE ROLE authenticator NOLOGIN NOINHERIT;
-    CREATE ROLE supabase_admin NOLOGIN NOINHERIT;
+    CREATE ROLE supabase_admin NOLOGIN NOINHERIT SUPERUSER;
     CREATE ROLE dashboard_user NOLOGIN NOINHERIT;
     CREATE ROLE supabase_auth_admin NOLOGIN NOINHERIT;
     CREATE ROLE supabase_storage_admin NOLOGIN NOINHERIT;
-    CREATE ROLE postgres LOGIN NOINHERIT SUPERUSER
+    CREATE ROLE postgres LOGIN NOINHERIT NOSUPERUSER
       CREATEDB CREATEROLE NOREPLICATION NOBYPASSRLS;
+    GRANT pg_signal_backend TO postgres
+      WITH INHERIT FALSE, SET FALSE, ADMIN TRUE;
+    GRANT pg_read_all_settings TO postgres
+      WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
     CREATE ROLE trailmind_v2_operator LOGIN NOINHERIT NOSUPERUSER
       CREATEDB CREATEROLE NOREPLICATION NOBYPASSRLS;
     ALTER DATABASE postgres OWNER TO postgres;
@@ -166,21 +203,6 @@ function provisionManagedFixture(cluster) {
   `, "trailmind_v2_admin");
 }
 
-function normalizeManagedRoleCreatorMemberships(cluster) {
-  // PostgreSQL 17 gives a non-superuser CREATEROLE creator an automatic
-  // ADMIN-only, non-SET membership in every role it creates. The fixture must
-  // run CREATE EXTENSION as a temporary superuser for the upstream PostGIS
-  // package, so recreate those documented managed-creator rows after demotion.
-  executePsql(cluster, `
-    GRANT platform_provisioner, migration_role, regional_import_role,
-      projection_role, app_security_runtime_role,
-      outdoor_research_runtime_role,
-      outdoor_research_cancellation_control_role, pruner_role,
-      readonly_auditor_role
-    TO postgres WITH INHERIT FALSE, SET FALSE, ADMIN TRUE;
-  `, "trailmind_v2_admin");
-}
-
 function provisionSupabaseAdminPostgisTopologyFixture(cluster) {
   executePsql(cluster, `
     CREATE DATABASE trailmind_v2_17_provider_ownership
@@ -194,22 +216,11 @@ function provisionSupabaseAdminPostgisTopologyFixture(cluster) {
     REVOKE ALL ON SCHEMA trailmind_app, trailmind_gis FROM PUBLIC;
     GRANT USAGE ON SCHEMA trailmind_gis TO trailmind_app_owner;
   `, "trailmind_v2_admin", "trailmind_v2_17_provider_ownership");
-  executePsql(cluster,
-    "ALTER ROLE supabase_admin SUPERUSER;",
-    "trailmind_v2_admin"
-  );
-  try {
-    executePsql(cluster, `
-      SET ROLE supabase_admin;
-      CREATE EXTENSION postgis WITH SCHEMA trailmind_gis;
-      RESET ROLE;
-    `, "trailmind_v2_admin", "trailmind_v2_17_provider_ownership");
-  } finally {
-    executePsql(cluster,
-      "ALTER ROLE supabase_admin NOSUPERUSER;",
-      "trailmind_v2_admin"
-    );
-  }
+  executePsql(cluster, `
+    SET ROLE supabase_admin;
+    CREATE EXTENSION postgis WITH SCHEMA trailmind_gis;
+    RESET ROLE;
+  `, "trailmind_v2_admin", "trailmind_v2_17_provider_ownership");
 }
 
 function runNodeTests(cluster, tests, extraEnvironment = {}) {
@@ -220,7 +231,73 @@ function runNodeTests(cluster, tests, extraEnvironment = {}) {
   ], { env: environment(cluster, extraEnvironment) });
 }
 
+async function runRealImporterWorkflow(cluster) {
+  const osm = join(cluster.root, "bounded-import.osm");
+  const pbf = join(cluster.root, "bounded-import.osm.pbf");
+  await writeFile(osm, `<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="TrailMind disposable proof">
+  <node id="1" lat="51.8000" lon="10.6180" version="1" timestamp="2026-08-28T00:00:00Z"/>
+  <node id="2" lat="51.8010" lon="10.6190" version="1" timestamp="2026-08-28T00:00:00Z"/>
+  <way id="10" version="1" timestamp="2026-08-28T00:00:00Z">
+    <nd ref="1"/><nd ref="2"/><tag k="highway" v="path"/>
+    <tag k="name" v="Disposable bounded import trail"/>
+  </way>
+</osm>
+`, { mode: 0o600 });
+  run("osmium", ["cat", osm, "-o", pbf, "--overwrite"], {
+    cwd: backendRoot,
+    capture: true
+  });
+  const imported = run(process.execPath, [
+    "scripts/import-outdoor-evidence.js",
+    "--region", "harz-v1",
+    "--pbf", pbf,
+    "--dataset-name", "Disposable bounded import proof",
+    "--source-id", "urn:trailmind:disposable-bounded-import",
+    "--retrieved-at", "2026-08-28T00:00:00Z",
+    "--source-timestamp", "2026-08-28T00:00:00Z",
+    "--acquisition-channel", "operator_supplied_local"
+  ], {
+    env: environment(cluster, {
+      PGUSER: "regional_import_role",
+      DATABASE_URL:
+        `postgresql://regional_import_role@127.0.0.1:${cluster.port}/postgres` +
+        "?sslmode=disable"
+    }),
+    capture: true
+  });
+  if (
+    !/Outdoor evidence import [0-9a-f-]+ is active: 0 POIs, 1 trail segments, 0 mapped hiking relations\.\n$/
+      .test(imported.stdout ?? "") ||
+    imported.stderr !== ""
+  ) throw new Error("bounded importer workflow output was invalid");
+  const proof = executePsql(cluster, `
+    DO $proof$
+    BEGIN
+      IF (SELECT pg_catalog.count(*) FROM trailmind_app.outdoor_evidence_imports
+           WHERE status = 'active') <> 1 OR
+         (SELECT pg_catalog.count(*) FROM trailmind_app.outdoor_evidence_trail_segments) <> 1 OR
+         EXISTS (SELECT 1 FROM pg_catalog.pg_namespace
+                  WHERE nspname LIKE 'outdoor_import\\_%' ESCAPE '\\') OR
+         EXISTS (SELECT 1 FROM trailmind_app.outdoor_import_schema_leases
+                  WHERE released_at IS NULL) THEN
+        RAISE EXCEPTION 'bounded importer workflow cleanup failed';
+      END IF;
+    END
+    $proof$;
+  `, "trailmind_v2_admin");
+  if (proof !== undefined) throw new Error("unexpected importer proof result");
+}
+
 function executePsqlFile(cluster, path, user) {
+  const recoverySettings = path === preMigration ? [
+    "-c", `SET trailmind.phase1_v2_run_id = '${recoveryFixture.runId}'`,
+    "-c", `SET trailmind.phase1_v2_authorization_binding_digest = '${recoveryFixture.authorizationDigest}'`,
+    "-c", `SET trailmind.phase1_v2_candidate_commit = '${recoveryFixture.candidateCommit}'`,
+    "-c", `SET trailmind.phase1_v2_candidate_tree = '${recoveryFixture.candidateTree}'`,
+    "-c", `SET trailmind.phase1_v2_operator_digests_digest = '${recoveryFixture.operatorDigest}'`,
+    "-c", `SET trailmind.phase1_v2_provider_acl_restore_plan_digest = '${recoveryFixture.providerDigest}'`
+  ] : [];
   run("psql", [
     "-X",
     "-v", "ON_ERROR_STOP=1",
@@ -228,6 +305,7 @@ function executePsqlFile(cluster, path, user) {
     "-p", String(cluster.port),
     "-U", user,
     "-d", "postgres",
+    ...recoverySettings,
     "-f", path
   ], { cwd: backendRoot });
 }
@@ -288,6 +366,21 @@ function assertLocalPostgres17() {
   } catch {
     throw new Error("PostGIS for the active PostgreSQL 17 installation is required");
   }
+}
+
+async function requiredSupautilsLibrary() {
+  const requested = process.env.TRAILMIND_SUPAUTILS_LIBRARY_PATH;
+  if (typeof requested !== "string" || requested.length === 0) {
+    throw new Error(
+      "TRAILMIND_SUPAUTILS_LIBRARY_PATH is required for PostgreSQL proof"
+    );
+  }
+  const library = resolve(requested);
+  const metadata = await stat(library);
+  if (!metadata.isFile() || !/^supautils\.(?:dylib|so)$/.test(basename(library))) {
+    throw new Error("the official PostgreSQL 17 supautils library is required");
+  }
+  return library;
 }
 
 function run(command, args, options = {}) {

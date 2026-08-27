@@ -57,7 +57,7 @@ describe("migration runner PostgreSQL 17 state machine", {
 
   it("resumes a valid prefix and emits only files committed after the prefix", async () => {
     const database = await cloneDatabase("prefix");
-    const client = await roleClient(database, "migration_role");
+    const client = await roleClient(database, "postgres");
     try {
       const prefix = SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.slice(0, 3);
       await client.query("BEGIN");
@@ -162,7 +162,10 @@ describe("migration runner PostgreSQL 17 state machine", {
     const database = await cloneDatabase("concurrent");
     const results = await Promise.all([runCli(database), runCli(database)]);
     const emitted = results.map(({ stdout }) => appliedOutput(stdout));
-    assert.deepEqual(emitted.map((files) => files.length).sort((a, b) => a - b), [0, 8]);
+    assert.deepEqual(
+      emitted.map((files) => files.length).sort((a, b) => a - b),
+      [0, SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.length]
+    );
     assert.deepEqual(emitted.flat(), SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2);
     assert.deepEqual(await ledger(database), SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2);
   });
@@ -171,33 +174,42 @@ describe("migration runner PostgreSQL 17 state machine", {
     const missingGis = await cloneDatabase("missing_gis");
     await queryAs(missingGis, "trailmind_v2_admin",
       "REVOKE USAGE ON SCHEMA trailmind_gis FROM trailmind_app_owner");
-    assert.match((await runCliFailure(missingGis)).stderr, /login_owner_contract_invalid/);
+    assert.match(
+      (await runCliFailure(missingGis)).stderr,
+      /trailmind_migration_operator_owner_contract_invalid/
+    );
 
     const wrongSession = await cloneDatabase("wrong_session");
     assert.match((await runCliFailure(wrongSession, {
       user: "trailmind_v2_admin"
-    })).stderr, /login_owner_contract_invalid/);
+    })).stderr, /trailmind_migration_operator_owner_contract_invalid/);
 
     const wrongCurrent = await cloneDatabase("wrong_current");
     assert.match((await runCliFailure(wrongCurrent, {
       pgOptions: "-c role=trailmind_app_owner"
-    })).stderr, /login_owner_contract_invalid/);
+    })).stderr, /trailmind_migration_operator_owner_contract_invalid/);
 
     const wrongOwner = await cloneDatabase("wrong_owner");
     await queryAs(wrongOwner, "trailmind_v2_admin",
       "ALTER SCHEMA trailmind_app OWNER TO trailmind_v2_operator");
-    assert.match((await runCliFailure(wrongOwner)).stderr, /login_owner_contract_invalid/);
+    assert.match(
+      (await runCliFailure(wrongOwner)).stderr,
+      /trailmind_migration_operator_owner_contract_invalid/
+    );
 
     const missingMembership = await cloneDatabase("missing_membership");
-    await maintenance.query("REVOKE trailmind_app_owner FROM migration_role");
+    await maintenance.query(
+      "REVOKE trailmind_app_owner FROM migration_role GRANTED BY postgres"
+    );
     try {
       assert.match(
         (await runCliFailure(missingMembership)).stderr,
-        /login_owner_contract_invalid/
+        /trailmind_migration_operator_owner_contract_invalid/
       );
     } finally {
       await maintenance.query(
-        "GRANT trailmind_app_owner TO migration_role WITH INHERIT FALSE, SET TRUE, ADMIN FALSE"
+        "GRANT trailmind_app_owner TO migration_role " +
+        "WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY postgres"
       );
     }
   });
@@ -220,7 +232,11 @@ describe("migration runner PostgreSQL 17 state machine", {
       try {
         const failure = await runCliFailure(database);
         assert.equal(failure.stdout, "", label);
-        assert.match(failure.stderr, /login_owner_contract_invalid/, label);
+        assert.match(
+          failure.stderr,
+          /trailmind_migration_operator_owner_contract_invalid/,
+          label
+        );
         await assertNoRunnerResidue(database);
       } finally {
         await maintenance.query(`REVOKE ${quoteIdentifier(role)} FROM migration_role`);
@@ -239,7 +255,10 @@ describe("migration runner PostgreSQL 17 state machine", {
     try {
       const failure = await runCliFailure(indirectDatabase);
       assert.equal(failure.stdout, "");
-      assert.match(failure.stderr, /login_owner_contract_invalid/);
+      assert.match(
+        failure.stderr,
+        /trailmind_migration_operator_owner_contract_invalid/
+      );
       await assertNoRunnerResidue(indirectDatabase);
     } finally {
       await maintenance.query(
@@ -255,7 +274,10 @@ describe("migration runner PostgreSQL 17 state machine", {
       "ALTER SCHEMA trailmind_gis OWNER TO trailmind_v2_operator");
     const failure = await runCliFailure(database);
     assert.equal(failure.stdout, "");
-    assert.match(failure.stderr, /postgis_ownership_contract_invalid/);
+    assert.match(
+      failure.stderr,
+      /trailmind_migration_operator_owner_contract_invalid|postgis_ownership_contract_invalid/
+    );
     await assertNoRunnerResidue(database);
   });
 
@@ -360,7 +382,7 @@ async function runDirectCliFailure(database) {
   assert.fail("direct V2 migration CLI unexpectedly succeeded");
 }
 
-function cliEnvironment(database, { user = "migration_role", pgOptions } = {}) {
+function cliEnvironment(database, { user = "postgres", pgOptions } = {}) {
   return {
     PATH: process.env.PATH,
     PGHOST: disposable.host,

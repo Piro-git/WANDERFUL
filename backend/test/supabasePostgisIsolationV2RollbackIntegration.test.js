@@ -39,13 +39,14 @@ describe("Supabase PostGIS isolation V2 exact pre-ledger compensation", {
        ORDER BY member.rolname, target.rolname
     `, [[
       "trailmind_app_owner", "trailmind_control_owner",
+      "trailmind_import_schema_owner",
       "platform_provisioner", "migration_role", "regional_import_role",
       "projection_role", "app_security_runtime_role",
       "outdoor_research_runtime_role",
       "outdoor_research_cancellation_control_role", "pruner_role",
       "readonly_auditor_role"
     ]]);
-    assert.equal(memberships.rowCount, 13, JSON.stringify(memberships.rows));
+    assert.equal(memberships.rowCount, 18, JSON.stringify(memberships.rows));
     assert(memberships.rows.every((membership) =>
       membership.member === "migration_role" ||
       membership.member === "trailmind_control_owner" ||
@@ -137,6 +138,7 @@ describe("Supabase PostGIS isolation V2 exact pre-ledger compensation", {
           WHERE rolname = ANY(ARRAY[
             'trailmind_app_owner',
             'trailmind_control_owner',
+            'trailmind_import_schema_owner',
             'platform_provisioner',
             'migration_role',
             'regional_import_role',
@@ -180,6 +182,9 @@ async function runRollback(pool, rollbackSql) {
     await client.query(
       "SET trailmind.phase_1_v2_rollback_confirmation = 'mbvzwsrtqcrwhvykugcd:pre-only'"
     );
+    for (const [name, value] of Object.entries(recoveryBinding())) {
+      await client.query("SELECT pg_catalog.set_config($1, $2, false)", [name, value]);
+    }
     try {
       await client.query(rollbackSql);
     } catch (error) {
@@ -189,6 +194,23 @@ async function runRollback(pool, rollbackSql) {
   } finally {
     client.release();
   }
+}
+
+function recoveryBinding() {
+  return {
+    "trailmind.phase_1_v2_recovery_run_id":
+      process.env.TRAILMIND_PHASE1_V2_FIXTURE_RUN_ID,
+    "trailmind.phase_1_v2_recovery_authorization_binding_digest":
+      process.env.TRAILMIND_PHASE1_V2_FIXTURE_AUTHORIZATION_DIGEST,
+    "trailmind.phase_1_v2_recovery_candidate_commit":
+      process.env.TRAILMIND_PHASE1_V2_FIXTURE_CANDIDATE_COMMIT,
+    "trailmind.phase_1_v2_recovery_candidate_tree":
+      process.env.TRAILMIND_PHASE1_V2_FIXTURE_CANDIDATE_TREE,
+    "trailmind.phase_1_v2_recovery_operator_digests_digest":
+      process.env.TRAILMIND_PHASE1_V2_FIXTURE_OPERATOR_DIGEST,
+    "trailmind.phase_1_v2_recovery_provider_acl_digest":
+      process.env.TRAILMIND_PHASE1_V2_FIXTURE_PROVIDER_DIGEST
+  };
 }
 
 async function assertPreFoundationPresent(pool) {

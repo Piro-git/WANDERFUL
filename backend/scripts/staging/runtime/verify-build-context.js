@@ -20,6 +20,8 @@ const OPERATOR_ONLY_FILES = new Set([
   "src/operations/migrationRunner.js",
   "src/operations/stagingMigrationCapability.js",
   "src/operations/stagingMigrationPolicy.js",
+  "src/operations/stagingPhase1V2Admission.js",
+  "src/operations/stagingPhase1V2SingleSessionAdapter.js",
   "src/operations/stagingPhase1V2Operator.js"
 ]);
 const FORBIDDEN_SUFFIXES = Object.freeze([

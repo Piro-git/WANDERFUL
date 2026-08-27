@@ -16,6 +16,10 @@ const aclDigest = canonicalAclDigest({
   public: ["PUBLIC=USAGE"]
 });
 const restorePlanDigest = "d".repeat(64);
+const authorizationBindingDigest = "a".repeat(64);
+const candidateCommit = "5".repeat(40);
+const candidateTree = "6".repeat(40);
+const operatorDigestsDigest = "b".repeat(64);
 const runtimeFunctions = [
   "trailmind_runtime_outdoor_research_snapshot_context_v1",
   "trailmind_runtime_outdoor_research_highlights_v1",
@@ -56,7 +60,7 @@ describe("staging Phase 1 V2 future operator state machine", () => {
       "control:post-advisors",
       "control:final",
       "database:final",
-      "receipt:persist"
+      "receipt:stage"
     ]);
     assert.equal(result.receipt.status, "committed");
     assert.equal(result.receipt.projectRef, STAGING_PHASE1_V2_TARGET.projectRef);
@@ -69,12 +73,32 @@ describe("staging Phase 1 V2 future operator state machine", () => {
       result.receipt.phaseEvidence.map(({ ordinal }) => ordinal),
       [1, 2, 3, 4, 5, 6, 7, 8, 9]
     );
-    assert.equal(result.persistence.ordinal, 10);
-    assert.equal(result.persistence.receiptDigest, result.receiptDigest);
-    assert.equal(result.persistence.receiptBytes, result.receiptBytes);
+    assert.equal(result.staging.ordinal, 10);
+    assert.equal(result.staging.receiptDigest, result.receiptDigest);
+    assert.equal(result.staging.receiptBytes, result.receiptBytes);
     assert.equal(result.receipt.featureFlagCount, 13);
     assert.equal(result.receipt.featureFlagsAllFalse, true);
     assert.equal(result.receipt.protectedProjectMutationCount, 0);
+  });
+
+  it("evaluates control-plane freshness after the asynchronous inspection", async () => {
+    const events = [];
+    const dependencies = fixture(events);
+    const inspectPre = dependencies.controlPlane.inspectPre.bind(
+      dependencies.controlPlane
+    );
+    let inspectionCompleted = false;
+    dependencies.controlPlane.inspectPre = async (...arguments_) => {
+      const snapshot = await inspectPre(...arguments_);
+      inspectionCompleted = true;
+      return snapshot;
+    };
+    dependencies.now = () => inspectionCompleted
+      ? new Date(now)
+      : new Date(now.getTime() - 1);
+
+    const result = await runStagingPhase1V2Operator(dependencies);
+    assert.equal(result.receipt.status, "committed");
   });
 
   for (const [name, mutate, error] of [
@@ -125,9 +149,9 @@ describe("staging Phase 1 V2 future operator state machine", () => {
   it("requires an independently supplied exact restore-plan digest", async () => {
     for (const approval of [
       {},
-      { providerAclRestorePlanDigest: "e".repeat(64) },
+      buildApproval({ providerAclRestorePlanDigest: "e".repeat(64) }),
       {
-        providerAclRestorePlanDigest: restorePlanDigest,
+        ...buildApproval(),
         restorePlanDigest: restorePlanDigest
       }
     ]) {
@@ -258,7 +282,7 @@ function fixture(events) {
   const databaseSnapshot = databasePreSnapshot();
   const state = {
     now: () => new Date(now),
-    approval: { providerAclRestorePlanDigest: restorePlanDigest },
+    approval: buildApproval(),
     failAt: undefined,
     controlPlane: {
       preSnapshot: controlSnapshot,
@@ -326,7 +350,7 @@ function fixture(events) {
           stdoutBytes: 0
         }, "6"),
         post: phase("v2-post-step", 7, "committed", {
-          ledgerMigrationCount: 8,
+          ledgerMigrationCount: SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.length,
           runtimeFunctionCount: 5
         }, "7")
       },
@@ -349,7 +373,8 @@ function fixture(events) {
         ) throw new Error("fixture");
         if (runKind === "apply") {
           state.database.failureSnapshot.applicationLedgerExists = true;
-          state.database.failureSnapshot.applicationMigrationCount = 8;
+          state.database.failureSnapshot.applicationMigrationCount =
+            SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.length;
           state.database.failureSnapshot.applicationFoundationExists = true;
         }
         return runKind === "apply" ? this.results.first : this.results.second;
@@ -393,10 +418,10 @@ function fixture(events) {
       }
     },
     receiptStore: {
-      async persist({ receiptDigest, receiptBytes }) {
-        events.push("receipt:persist");
+      async stage({ receiptDigest, receiptBytes }) {
+        events.push("receipt:stage");
         if (state.failAt === "receipt") throw new Error("fixture");
-        return phase("sanitized-durable-receipt", 10, "persisted", {
+        return phase("sanitized-terminal-receipt-staging", 10, "staged", {
           receiptDigest,
           receiptBytes
         }, "c");
@@ -404,6 +429,18 @@ function fixture(events) {
     }
   };
   return state;
+}
+
+function buildApproval(overrides = {}) {
+  return {
+    authorizationBindingDigest,
+    candidateCommit,
+    candidateTree,
+    operatorDigestsDigest,
+    providerAclRestorePlanDigest: restorePlanDigest,
+    runId: "11111111-1111-4111-8111-111111111111",
+    ...overrides
+  };
 }
 
 function controlPlaneSnapshot() {
@@ -477,7 +514,14 @@ function databasePreSnapshot() {
     providerAclRestorePlanDigest: restorePlanDigest,
     databaseAclDigest: aclDigest,
     stateDigest: "a".repeat(64),
-    dataApiExposedSchemas: ["public", "graphql_public"]
+    dataApiExposedSchemas: ["public", "graphql_public"],
+    recoveryState: "pristine",
+    recoveryAuthorizationBindingDigest: null,
+    recoveryCandidateCommit: null,
+    recoveryCandidateTree: null,
+    recoveryOperatorDigestsDigest: null,
+    recoveryProviderAclRestorePlanDigest: null,
+    recoveryRunId: null
   };
 }
 
@@ -492,9 +536,13 @@ function finalDatabaseSnapshot() {
     policyId: "supabase-postgis-isolation-v2",
     ledger: [...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2],
     roleContractDigest: "1".repeat(64),
+    roleContractValid: true,
     aclDigest: "2".repeat(64),
     dataApiExposedSchemas: ["public", "graphql_public"],
     applicationSchemasExposed: false,
+    regionalImportNoDatabaseCreate: true,
+    importSchemaOwnerBoundedDatabaseCreate: true,
+    boundedImportProvisioningContract: true,
     postgisSchema: "trailmind_gis",
     postgisOwnerTopology: "postgres-schema/postgres-extension-members",
     gisUnexpectedCreatePrincipalCount: 0,
