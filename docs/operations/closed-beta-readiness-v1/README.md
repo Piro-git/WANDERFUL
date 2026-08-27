@@ -2,11 +2,11 @@
 
 Status: **NO-GO**
 
-Current-source audit: **2026-08-23**
+Current-source audit: **2026-08-27**
 
-Reviewed backend source: `76f6552a1cd525a38a3840a0204cd81aede94406`
+Reviewed backend source: `52849b4c75cd6e5ddf00473adf8a3265160d750d`
 
-Parent main at source checkpoint: `5647bbea6d25eca9b03e9fa1a47e5dfca7ffb658`
+Parent main at source checkpoint: `a12ac1f1e8937690a3e1c0c406935a12a04a3d03`
 
 ## Executive verdict
 

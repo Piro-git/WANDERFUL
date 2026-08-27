@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "manifestVersion": "trailmind-backend-closed-beta-source-evidence-v1",
   "generatedOn": "2026-08-27",
-  "sourceCommit": "a12ac1f1e8937690a3e1c0c406935a12a04a3d03",
+  "sourceCommit": "52849b4c75cd6e5ddf00473adf8a3265160d750d",
   "currentDecision": "NO_GO",
   "currentEvidenceNote": "Source and deterministic local tests are current at sourceCommit. Historical receipts and missing external evidence do not prove deployment or closed-beta readiness.",
   "packageFiles": [
@@ -20,6 +20,15 @@
     "V4_PROOF_RUN_IDENTITY_CONTRACT.md",
     "feature-flag-state-matrix-v1.json",
     "go-no-go-checklist-v1.json"
+  ],
+  "sourceBaselineDocuments": [
+    "CLOSED_BETA_ROLLOUT_V1.md",
+    "OBSERVABILITY_AND_PRIVACY_V1.md",
+    "PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md",
+    "README.md",
+    "ROLLBACK_AND_INCIDENT_RESPONSE_V1.md",
+    "STAGING_PROVISIONING_RUNBOOK_V1.md",
+    "V4_OPERATIONAL_PROTOCOL.md"
   ],
   "featureFlagBlockerIds": [
     "flag-blocker-intent-provider-review-and-deployment",

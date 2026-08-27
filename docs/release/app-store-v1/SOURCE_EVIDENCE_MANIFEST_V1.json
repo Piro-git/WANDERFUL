@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
   "generated_at": "2026-08-26",
-  "source_baseline": "79d3f981c58c9da9653a5f058493763558065efc",
+  "source_baseline": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
   "algorithm": "SHA-256",
   "scope": "tracked source blobs at source_baseline; ignored credentials and environment files excluded; historical Stage B runtime evidence retained separately",
   "stage_b_rehash_required": false,
@@ -131,16 +131,25 @@
     "cleanup": "The exact task-owned DerivedData path had no open handle and was removed; the Simulator was shut down but not erased/deleted; no pre-existing cache, worktree, archive, receipt or user artifact was removed."
   },
   "current_stage_c_evidence": {
-    "selected_commit": "79d3f981c58c9da9653a5f058493763558065efc",
+    "selected_commit": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
     "executed_at": "2026-08-26",
     "builds": {
       "debug_generic_simulator": "passed",
       "staging_generic_simulator": "passed",
       "release_generic_simulator": "passed",
-      "unsigned_release_generic_iphoneos": "passed",
+      "generic_iphoneos_release_build_diagnostic": "passed",
+      "signed_distribution_archive": "not_run_no_signing_identity",
       "complete_test_bundle_compilation": "passed",
       "test_execution": "not_run_no_booted_simulator"
     },
+    "archive_artifacts": [],
+    "non_archive_diagnostics": [
+      {
+        "artifact_kind": "generic_iphoneos_app_bundle",
+        "binary_sha256": "dcd4df0b9a8590fe957612fed10b1625c414fff529036e625ea75814f87a6589",
+        "archive_evidence": false
+      }
+    ],
     "release_verifier": {
       "built_artifact_checks_passed": 41,
       "built_artifact_checks_failed": 0,
@@ -647,8 +656,8 @@
   "notes": [
     "A hash proves only the exact tracked source blob at source_baseline.",
     "Built, signed, runtime, deployed, physical-device and account claims require separate evidence.",
-    "All listed files were rehashed at selected source commit 79d3f981c58c9da9653a5f058493763558065efc.",
+    "All listed files were rehashed at selected source commit 009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd.",
     "Historical Stage B executed test/runtime evidence is preserved and is not relabeled as current Stage C execution.",
-    "Stage C generic builds and artifact inspection do not prove signed distribution, physical-device App Attest, a live backend or App Store approval."
+    "Stage C generic builds and non-archive diagnostics do not prove an archive, signed distribution, physical-device App Attest, a live backend or App Store approval."
   ]
 }

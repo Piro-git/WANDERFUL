@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "checklistVersion": "wanderful-closed-beta-go-no-go-v1",
-  "sourceCommit": "a12ac1f1e8937690a3e1c0c406935a12a04a3d03",
+  "sourceCommit": "52849b4c75cd6e5ddf00473adf8a3265160d750d",
   "evaluatedOn": "2026-08-27",
   "currentDecision": "NO_GO",
   "currentProductClassification": "research_guided_closed_beta_not_ready",
