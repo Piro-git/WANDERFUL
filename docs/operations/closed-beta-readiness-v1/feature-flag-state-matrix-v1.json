@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractVersion": "closed-beta-feature-flags-v1",
-  "sourceCommit": "a12ac1f1e8937690a3e1c0c406935a12a04a3d03",
+  "sourceCommit": "52849b4c75cd6e5ddf00473adf8a3265160d750d",
   "currentClassification": "production_off",
   "currentDecision": "NO_GO",
   "defaultPolicy": {

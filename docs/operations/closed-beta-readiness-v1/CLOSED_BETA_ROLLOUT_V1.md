@@ -3,7 +3,7 @@
 Status: **NO-GO — NO COHORT CREATED**
 
 Current backend source boundary:
-`76f6552a1cd525a38a3840a0204cd81aede94406`. The stage sizes and observation
+`52849b4c75cd6e5ddf00473adf8a3265160d750d`. The stage sizes and observation
 windows below are conservative proposals only; no cohort, duration, territory,
 budget, SLA, or expansion target is owner-approved.
 

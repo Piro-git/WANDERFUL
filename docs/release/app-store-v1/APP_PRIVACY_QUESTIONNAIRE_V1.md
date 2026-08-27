@@ -1,7 +1,7 @@
 # App Privacy Questionnaire V1
 
 Status: **iOS onboarding and Release SDK-manifest delta reconciled; backend/legal answers remain provisional; do not publish in App Store Connect**
-Source baseline: `79d3f981c58c9da9653a5f058493763558065efc`
+Source baseline: `009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd`
 Assessment date: 2026-08-26
 
 Apple requires answers to cover the app and third-party partners, remain accurate for the current version, and be backed by a public privacy-policy URL. Source: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/). This draft deliberately does not convert unknown backend/App Attest retention or owner-unapproved SDK use into a “Data Not Collected” answer.

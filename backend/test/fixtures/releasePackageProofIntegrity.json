@@ -1,0 +1,66 @@
+{
+  "staleHumanDocumentBaseline": {
+    "path": "README.md",
+    "embeddedCommit": "76f6552a1cd525a38a3840a0204cd81aede94406",
+    "expectedErrorCode": "unreconciled_document_source_commit"
+  },
+  "unreachableSiblingCommit": {
+    "commit": "79d3f981c58c9da9653a5f058493763558065efc",
+    "expectedErrorCode": "unreachable_apple_source_baseline"
+  },
+  "genericBuildAsArchive": {
+    "gateId": "G-044",
+    "genericArtifactKind": "generic_iphoneos_app_bundle",
+    "signedArchiveState": "not_run_no_signing_identity",
+    "expectedErrorCode": "archive_gate_without_archive_evidence"
+  },
+  "closedBetaInventoryAttacks": {
+    "omittedBaselineDocument": "README.md",
+    "reorderedInventoryErrorCode": "unsafe_package_inventory",
+    "omittedDocumentErrorCode": "invalid_source_baseline_documents",
+    "duplicateEvidenceErrorCode": "invalid_requirement_evidence"
+  },
+  "appleSourceInventoryAttacks": {
+    "recordIndex": 0,
+    "mutatedSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "inventoryErrorCode": "invalid_apple_source_inventory",
+    "hashErrorCode": "apple_source_hash_mismatch"
+  },
+  "appleGateInventoryAttacks": {
+    "missingGateId": "G-002",
+    "replacementGateId": "G-051",
+    "reorderedGateIds": ["G-002", "G-003"],
+    "expectedErrorCode": "invalid_apple_gate_inventory"
+  },
+  "appleFalseGreenReadme": {
+    "currentStatus": "Status: **NO-GO for public App Store release**",
+    "mutatedStatus": "Status: **GO for public App Store release**",
+    "expectedErrorCode": "false_green_apple_decision"
+  },
+  "appleResolvedReferencedBlocker": {
+    "blockerId": "ASV1-002",
+    "expectedErrorCode": "unreconciled_apple_blockers"
+  },
+  "selfConsistentArchiveForgery": {
+    "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "expectedErrorCode": "archive_gate_without_archive_evidence"
+  },
+  "reachableUnexpectedBaselines": {
+    "closedBeta": "a12ac1f1e8937690a3e1c0c406935a12a04a3d03",
+    "apple": "52849b4c75cd6e5ddf00473adf8a3265160d750d",
+    "closedBetaErrorCode": "unexpected_source_commit",
+    "appleErrorCode": "unexpected_apple_source_baseline"
+  },
+  "appleOperationalBoundaryAttacks": {
+    "externalActivityField": "graphhopper",
+    "secretBoundaryField": "local_xcconfig_inspected",
+    "externalActivityErrorCode": "unexpected_apple_external_activity",
+    "secretBoundaryErrorCode": "apple_secret_boundary_violation"
+  },
+  "malformedContainers": {
+    "closedBetaDomainsErrorCode": "invalid_checklist_domains",
+    "closedBetaBlockersErrorCode": "invalid_feature_blockers",
+    "appleBlockersErrorCode": "invalid_apple_blocker_inventory",
+    "appleNotesErrorCode": "unreconciled_apple_hash_provenance"
+  }
+}

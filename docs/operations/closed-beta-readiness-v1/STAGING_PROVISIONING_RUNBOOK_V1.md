@@ -2,7 +2,7 @@
 
 Status: **PLAN ONLY — NO STAGING, POSTGIS, BACKUP, OR DEPLOYMENT ACTION EXECUTED**
 
-Current source boundary: `76f6552a1cd525a38a3840a0204cd81aede94406`.
+Current source boundary: `52849b4c75cd6e5ddf00473adf8a3265160d750d`.
 Local tests prove the standalone admission/lifecycle seams only. Every command
 below requires separate operator authorization and an isolated non-production
 target.

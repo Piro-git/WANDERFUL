@@ -2,9 +2,9 @@
   "schema_version": 1,
   "package": "Wanderful Apple Release Readiness V1",
   "assessed_at": "2026-08-26",
-  "source_baseline": "79d3f981c58c9da9653a5f058493763558065efc",
+  "source_baseline": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
   "decision": "no_go",
-  "scope": "local read-only Apple state plus source, generic Simulator, unsigned generic iPhoneOS and compiled-test-bundle evidence",
+  "scope": "local read-only Apple state plus source, generic Simulator, non-archive generic iPhoneOS and compiled-test-bundle evidence",
   "duplicate_work": {
     "result": "extended_existing_package",
     "prior_branches_already_in_baseline": [
@@ -16,7 +16,7 @@
     "debug_generic_simulator": "passed",
     "staging_generic_simulator": "passed",
     "release_generic_simulator": "passed",
-    "unsigned_release_generic_iphoneos": "passed",
+    "generic_iphoneos_release_build_diagnostic": "passed",
     "signed_distribution_archive": "not_run_no_signing_identity",
     "complete_test_bundle_compilation": "passed",
     "test_execution": "not_run_no_booted_simulator"
@@ -48,8 +48,10 @@
         "status": "passed"
       }
     },
-    "unsigned_release_iphoneos": {
+    "generic_iphoneos_release_build_diagnostic": {
+      "artifact_kind": "generic_iphoneos_app_bundle",
       "binary_sha256": "dcd4df0b9a8590fe957612fed10b1625c414fff529036e625ea75814f87a6589",
+      "archive_evidence": false,
       "distribution_claim": false
     }
   },

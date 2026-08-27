@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
   "assessed_at": "2026-08-26",
-  "source_baseline": "79d3f981c58c9da9653a5f058493763558065efc",
+  "source_baseline": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
   "public_release_decision": "NO-GO",
   "status_vocabulary": [
     "open",
@@ -203,7 +203,7 @@
       "severity": "P2",
       "title": "Release verifier matches Wanderful and accepts embedded SDK manifests",
       "owner": "iOS release tooling owner",
-      "dependency": "none; current verifier correction at 79d3f981c58c9da9653a5f058493763558065efc",
+      "dependency": "none; current verifier correction at 009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
       "evidence": ["contract preserves CFBundleName TrailMind while expecting Wanderful display/permission text", "root-manifest validation permits embedded SDK manifests", "verifier enforces production environment identity, nine false flags, four empty services, attribution, compiled icon opacity and exact public Superwall certificate resources", "38 isolated adversarial cases plus stale-report recovery pass", "large Release binary marker checks are PIPE_FAIL-safe", "final Release passes 41 of 41 checks"],
       "acceptance_criterion": "Artifact verifier accepts the truthful Wanderful identity without weakening other checks; any mismatch is corrected with a focused tooling test.",
       "status": "resolved",

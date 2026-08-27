@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  validateAppleReleasePackageFromDisk,
   validateReleasePackageFromDisk
 } from "./releasePackage.js";
 
@@ -8,7 +9,8 @@ export function runReleasePackageValidation(options = {}) {
   const write = options.write ?? process.stdout.write.bind(process.stdout);
   try {
     const result = validateReleasePackageFromDisk(options);
-    write(`${JSON.stringify(result)}\n`);
+    const appStore = validateAppleReleasePackageFromDisk(options);
+    write(`${JSON.stringify({ ...result, appStore })}\n`);
     return 0;
   } catch (error) {
     write(`${JSON.stringify({

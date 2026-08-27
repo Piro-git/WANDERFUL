@@ -1,6 +1,6 @@
 # Release Gate Matrix V1
 
-Baseline: `79d3f981c58c9da9653a5f058493763558065efc`
+Baseline: `009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd`
 Assessment date: 2026-08-26
 Public-release decision: **NO-GO**
 
@@ -16,11 +16,11 @@ Public-release decision: **NO-GO**
 
 ## Completion
 
-Exactly 25 of 50 applicable gates are proved: **50.0%**. A grouped row counts as one gate. Simulator or unsigned-device evidence does not complete a physical-device, signed-distribution or external gate.
+Exactly 24 of 50 applicable gates are proved: **48.0%**. A grouped row counts as one gate. Simulator or generic-device-build evidence does not complete an archive, physical-device, signed-distribution or external gate.
 
 | Gate | Requirement | Classification | Current evidence or acceptance criterion | Blocker |
 | --- | --- | --- | --- | --- |
-| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Clean isolated worktree selected exact `origin/main` `90c874f…`; scoped verifier baseline is `79d3f98…`; shared checkout preserved | — |
+| G-001 | Baseline, clean shared checkout and duplicate gate | proved | Reviewed integrated verifier source is exact reachable commit `009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd`; shared checkout was preserved | — |
 | G-002 | Shipping display name | proved | `Configuration/TrailMind-Info.plist`: `CFBundleDisplayName = Wanderful` | — |
 | G-003 | Bundle ID and version/build source settings | proved | `project.pbxproj`: `com.trailmind.app`, `1.0`, `1` | — |
 | G-004 | Platform source settings | proved | iPhone family `1`, minimum iOS `26.0`, portrait, Catalyst disabled | — |
@@ -63,13 +63,13 @@ Exactly 25 of 50 applicable gates are proved: **50.0%**. A grouped row counts as
 | G-041 | Built identity, flags, permissions and secret absence | proved | Debug/Staging/Release processed Info products prove exact lane identities, all nine false flags, empty services, expected purpose strings, valid signatures/manifests and no prohibited first-party release marker | — |
 | G-042 | Focused and practical complete non-live test suites | proved | Historical Stage B: focused 395/395, unit 672/672, UI 18/18; current Stage C complete unit/UI bundle compilation passes. Stage C did not execute tests without a booted Simulator | — |
 | G-043 | Debug, Staging and Release Simulator builds | proved | All three generic Simulator configurations passed on the current baseline using one bounded DerivedData path | — |
-| G-044 | Optional unsigned/local archive-equivalent inspection | proved | Unsigned generic iPhoneOS Release build passed and was inspected; zero valid signing identities prevented a signed archive. This proves no distribution state | — |
+| G-044 | Archive-specific local artifact inspection | blocked | Not run: no `.xcarchive` exists. The passed generic iPhoneOS Release build is recorded separately as a non-archive diagnostic | ASV1-020 |
 | G-045 | Signed distribution archive validation | Apple-account | Archive with App Store profile, inspect signing/privacy report and validate in Organizer | ASV1-020 |
 | G-046 | TestFlight processing and tester proof | Apple-account | Upload/process build, export compliance, internal QA, then external beta review if used | ASV1-020 |
 | G-047 | App Review submission and resolution | Apple-account | Complete required metadata/privacy/build/review declarations and submit with authority | ASV1-020 |
 | G-048 | App Store Connect record, SKU and name availability | Apple-account | Owner creates/verifies record; no ID or name availability is inferred | ASV1-007 |
 | G-049 | Geographic availability/coverage decision | public-URL/legal | Owner selects launch storefronts and confirms whether Navigation-category coverage-file rules apply | ASV1-008 |
-| G-050 | Final evidence manifest on integrated source | proved | Listed tracked source blobs were rehashed at `79d3f98…`; Stage B executed evidence and current Stage C build/artifact evidence are explicitly separated | — |
+| G-050 | Final evidence manifest on integrated source | proved | Listed tracked source blobs were rehashed at exact reachable commit `009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd`; Stage B executed evidence and current Stage C build/artifact evidence are explicitly separated | — |
 
 ## Primary evidence paths
 
