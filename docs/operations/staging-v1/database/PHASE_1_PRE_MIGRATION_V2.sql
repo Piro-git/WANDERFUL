@@ -1,7 +1,8 @@
 -- TrailMind Outdoor Staging V1 Phase 1 Supabase PostGIS-isolation V2 candidate.
 -- LOCAL REVIEW CANDIDATE ONLY: this turn did not authorize remote execution.
 -- If independently approved later, run only on the exact authorized empty staging
--- project, inside one transaction, before the V2 migration policy 001-007 + 009.
+-- project, inside one transaction, before the V2 migration policy
+-- 001-007 + 009 + 010.
 -- Never run this file after the historical blocked V1 operator path.
 
 BEGIN;
@@ -37,6 +38,7 @@ BEGIN
   FOREACH role_name IN ARRAY ARRAY[
     'trailmind_app_owner',
     'trailmind_control_owner',
+    'trailmind_import_schema_owner',
     'platform_provisioner',
     'migration_role',
     'regional_import_role',
@@ -84,11 +86,13 @@ CREATE ROLE trailmind_app_owner
   NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE trailmind_control_owner
   NOLOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE trailmind_import_schema_owner
+  NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 
 CREATE ROLE platform_provisioner
   NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE migration_role
-  LOGIN PASSWORD NULL NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+  NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE regional_import_role
   LOGIN PASSWORD NULL NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE projection_role
@@ -105,25 +109,22 @@ CREATE ROLE pruner_role
 CREATE ROLE readonly_auditor_role
   LOGIN PASSWORD NULL NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 
--- PostgreSQL 17 gives a non-superuser CREATEROLE creator ADMIN but SET FALSE
--- on new roles. Supabase's managed postgres role therefore needs an explicit,
--- auditable SET grant before it can create schemas or transfer function
--- ownership to the two NOLOGIN owners.
-DO $foundation$
-BEGIN
-  EXECUTE pg_catalog.format(
-    'GRANT trailmind_app_owner TO %I WITH INHERIT FALSE, SET TRUE, ADMIN TRUE',
-    CURRENT_USER
-  );
-  EXECUTE pg_catalog.format(
-    'GRANT trailmind_control_owner TO %I WITH INHERIT FALSE, SET TRUE, ADMIN TRUE',
-    CURRENT_USER
-  );
-END
-$foundation$;
+-- PostgreSQL 17 gives a non-superuser CREATEROLE creator an immutable,
+-- bootstrap-granted ADMIN membership with INHERIT FALSE and SET FALSE.
+-- Trying to rewrite that row with ADMIN TRUE fails with SQLSTATE 0LP01.
+-- Keep it intact and add separate, explicitly self-granted SET-only rows for
+-- the three bounded identities that this one-session operator may assume.
+GRANT trailmind_app_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
+GRANT trailmind_control_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
+GRANT trailmind_import_schema_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
+GRANT migration_role TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
 
 GRANT trailmind_app_owner TO migration_role
-  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
 GRANT pg_signal_backend TO trailmind_control_owner
   WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
 
@@ -159,6 +160,48 @@ COMMENT ON TABLE trailmind_phase1_guard.shared_acl_principal_snapshot IS
   'trailmind:mbvzwsrtqcrwhvykugcd:phase1-v2:acl-principals';
 REVOKE ALL ON TABLE
   trailmind_phase1_guard.shared_acl_principal_snapshot FROM PUBLIC;
+CREATE TABLE trailmind_phase1_guard.recovery_binding (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  run_id uuid NOT NULL,
+  authorization_binding_digest text NOT NULL CHECK (
+    authorization_binding_digest ~ '^[0-9a-f]{64}$'
+  ),
+  candidate_commit text NOT NULL CHECK (
+    candidate_commit ~ '^[0-9a-f]{40}$'
+  ),
+  candidate_tree text NOT NULL CHECK (
+    candidate_tree ~ '^[0-9a-f]{40}$'
+  ),
+  operator_digests_digest text NOT NULL CHECK (
+    operator_digests_digest ~ '^[0-9a-f]{64}$'
+  ),
+  provider_acl_restore_plan_digest text NOT NULL CHECK (
+    provider_acl_restore_plan_digest ~ '^[0-9a-f]{64}$'
+  ),
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.clock_timestamp()
+);
+COMMENT ON TABLE trailmind_phase1_guard.recovery_binding IS
+  'trailmind:mbvzwsrtqcrwhvykugcd:phase1-v2:recovery-binding';
+REVOKE ALL ON TABLE trailmind_phase1_guard.recovery_binding FROM PUBLIC;
+INSERT INTO trailmind_phase1_guard.recovery_binding (
+  run_id,
+  authorization_binding_digest,
+  candidate_commit,
+  candidate_tree,
+  operator_digests_digest,
+  provider_acl_restore_plan_digest
+) VALUES (
+  pg_catalog.current_setting('trailmind.phase1_v2_run_id')::uuid,
+  pg_catalog.current_setting(
+    'trailmind.phase1_v2_authorization_binding_digest'
+  ),
+  pg_catalog.current_setting('trailmind.phase1_v2_candidate_commit'),
+  pg_catalog.current_setting('trailmind.phase1_v2_candidate_tree'),
+  pg_catalog.current_setting('trailmind.phase1_v2_operator_digests_digest'),
+  pg_catalog.current_setting(
+    'trailmind.phase1_v2_provider_acl_restore_plan_digest'
+  )
+);
 
 WITH shared_object AS (
   SELECT 'database'::text AS object_kind,
@@ -220,6 +263,7 @@ WITH preserved_principal AS (
    WHERE role_record.rolname <> ALL(ARRAY[
      'trailmind_app_owner',
      'trailmind_control_owner',
+     'trailmind_import_schema_owner',
      'platform_provisioner',
      'migration_role',
      'regional_import_role',
@@ -290,6 +334,7 @@ RESET ROLE;
 REVOKE ALL ON SCHEMA trailmind_gis FROM
   platform_provisioner,
   migration_role,
+  trailmind_import_schema_owner,
   app_security_runtime_role,
   outdoor_research_runtime_role,
   outdoor_research_cancellation_control_role,
@@ -419,6 +464,8 @@ $foundation$;
 
 ALTER ROLE migration_role
   SET search_path = trailmind_app, pg_catalog, trailmind_gis, pg_temp;
+ALTER ROLE trailmind_import_schema_owner
+  SET search_path = pg_catalog, pg_temp;
 ALTER ROLE regional_import_role
   SET search_path = pg_catalog, trailmind_app, trailmind_gis, pg_temp;
 ALTER ROLE projection_role

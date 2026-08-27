@@ -81,24 +81,29 @@ export async function runStagingPhase1V2Operator({
   requireDependency(executor, "commitPostStep", "post_step");
   requireDependency(executor, "compensatePreLedger", "compensation");
   requireDependency(containment, "securePostCommitFailure", "containment");
-  requireDependency(receiptStore, "persist", "receipt_store");
+  requireDependency(receiptStore, "stage", "receipt_store");
   assertApproval(approval);
 
-  const observedAt = exactDate(now());
   const controlSnapshot = await controlPlane.inspectPre({
     projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
     readOnly: true
   });
-  assertControlPlaneSnapshot(controlSnapshot, observedAt);
+  assertControlPlaneSnapshot(controlSnapshot, exactDate(now()));
   const unlockedDatabaseSnapshot = await database.inspectPre({
     stage: "unlocked",
     readOnly: true
   });
-  assertDatabaseSnapshot(
-    controlSnapshot,
-    unlockedDatabaseSnapshot,
-    approval
-  );
+  const recoveringPreLedger = unlockedDatabaseSnapshot.recoveryState ===
+    "pre-step-committed-no-ledger";
+  if (recoveringPreLedger) {
+    assertRecoverableDatabaseSnapshot(
+      controlSnapshot, unlockedDatabaseSnapshot, approval
+    );
+  } else {
+    assertDatabaseSnapshot(
+      controlSnapshot, unlockedDatabaseSnapshot, approval
+    );
+  }
   const phaseEvidence = [derivedPhaseEvidence(
     "initial-unlocked-admission",
     1,
@@ -125,12 +130,27 @@ export async function runStagingPhase1V2Operator({
       readOnly: true,
       lock
     });
-    assertDatabaseSnapshot(controlSnapshot, lockedDatabaseSnapshot, approval);
+    if (recoveringPreLedger) {
+      assertRecoverableDatabaseSnapshot(
+        controlSnapshot, lockedDatabaseSnapshot, approval
+      );
+    } else {
+      assertDatabaseSnapshot(
+        controlSnapshot, lockedDatabaseSnapshot, approval
+      );
+    }
     if (
       lockedDatabaseSnapshot.stateDigest !==
         unlockedDatabaseSnapshot.stateDigest ||
       lockedDatabaseSnapshot.providerAclRestorePlanDigest !==
-        unlockedDatabaseSnapshot.providerAclRestorePlanDigest
+        unlockedDatabaseSnapshot.providerAclRestorePlanDigest ||
+      (recoveringPreLedger && [
+        "recoveryRunId", "recoveryAuthorizationBindingDigest",
+        "recoveryCandidateCommit", "recoveryCandidateTree",
+        "recoveryOperatorDigestsDigest",
+        "recoveryProviderAclRestorePlanDigest"
+      ].some((field) =>
+        lockedDatabaseSnapshot[field] !== unlockedDatabaseSnapshot[field]))
     ) throw operatorError("prestate_changed_before_lock");
     phaseEvidence.push(derivedPhaseEvidence(
       "locked-state-reinspection",
@@ -138,6 +158,28 @@ export async function runStagingPhase1V2Operator({
       "admitted",
       { databaseSnapshot: lockedDatabaseSnapshot }
     ));
+
+    if (recoveringPreLedger) {
+      const compensation = await executor.compensatePreLedger({
+        lock,
+        classification: "restart-pre-ledger",
+        recoveryRunId: lockedDatabaseSnapshot.recoveryRunId,
+        recoveryAuthorizationBindingDigest:
+          lockedDatabaseSnapshot.recoveryAuthorizationBindingDigest
+      });
+      assertPhaseEvidence(compensation, {
+        phase: "v2-pre-ledger-compensation",
+        ordinal: 0,
+        status: "compensated",
+        fields: {
+          exactAclRestored: true,
+          providerFixturePreserved: true,
+          applicationLedgerExists: false,
+          applicationFoundationExists: false
+        }
+      });
+      throw classifiedError("restart-pre-ledger-compensated");
+    }
 
     let attemptedPhase = "before-pre-step";
     try {
@@ -209,7 +251,7 @@ export async function runStagingPhase1V2Operator({
         ordinal: 7,
         status: "committed",
         fields: {
-          ledgerMigrationCount: 8,
+          ledgerMigrationCount: SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.length,
           runtimeFunctionCount: 5
         }
       });
@@ -247,15 +289,20 @@ export async function runStagingPhase1V2Operator({
       );
       phaseEvidence.push(finalEvidence);
 
-      attemptedPhase = "durable-receipt";
+      attemptedPhase = "terminal-receipt-staging";
       assertUniquePhaseEvidence(phaseEvidence);
       const receiptPayload = deepFreeze({
         schemaVersion: 1,
         status: "committed",
+        authorizationBindingDigest: approval.authorizationBindingDigest,
+        candidateCommit: approval.candidateCommit,
+        candidateTree: approval.candidateTree,
+        operatorDigestsDigest: approval.operatorDigestsDigest,
         projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
         organizationId: STAGING_PHASE1_V2_TARGET.organizationId,
         region: STAGING_PHASE1_V2_TARGET.region,
         policyId: STAGING_PHASE1_V2_POLICY_ID,
+        runId: approval.runId,
         migrations: [...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2],
         providerAclRestorePlanDigest:
           approval.providerAclRestorePlanDigest,
@@ -275,23 +322,23 @@ export async function runStagingPhase1V2Operator({
         throw operatorError("durable_receipt_oversized");
       }
       const receiptDigest = canonicalAclDigest(receiptPayload);
-      const persisted = await receiptStore.persist({
+      const staged = await receiptStore.stage({
         receipt: receiptPayload,
         receiptDigest,
         receiptBytes
       });
-      assertPhaseEvidence(persisted, {
-        phase: "sanitized-durable-receipt",
+      assertPhaseEvidence(staged, {
+        phase: "sanitized-terminal-receipt-staging",
         ordinal: 10,
-        status: "persisted",
+        status: "staged",
         fields: { receiptDigest, receiptBytes }
       });
-      assertUniquePhaseEvidence([...phaseEvidence, persisted]);
+      assertUniquePhaseEvidence([...phaseEvidence, staged]);
       return deepFreeze({
         receipt: receiptPayload,
         receiptDigest,
         receiptBytes,
-        persistence: persisted
+        staging: staged
       });
     } catch (error) {
       return handleFailure({
@@ -300,7 +347,8 @@ export async function runStagingPhase1V2Operator({
         lock,
         database,
         executor,
-        containment
+        containment,
+        approval
       });
     }
   });
@@ -312,7 +360,8 @@ async function handleFailure({
   lock,
   database,
   executor,
-  containment
+  containment,
+  approval
 }) {
   let failureState;
   try {
@@ -328,7 +377,7 @@ async function handleFailure({
     throw classifiedError("unknown-after-pre-step-attempt");
   }
 
-  if (!failureState.preStepCommitted) {
+  if (!failureState.preStepCommitted && !failureState.postStepCommitted) {
     if (attemptedPhase !== "pre-step") {
       await requireContainment(
         containment,
@@ -361,7 +410,9 @@ async function handleFailure({
       : "pre-step-committed-no-ledger";
     const compensation = await executor.compensatePreLedger({
       lock,
-      classification
+      classification,
+      recoveryRunId: approval.runId,
+      recoveryAuthorizationBindingDigest: approval.authorizationBindingDigest
     });
     assertPhaseEvidence(compensation, {
       phase: "v2-pre-ledger-compensation",
@@ -475,7 +526,11 @@ export function assertDatabaseSnapshot(controlSnapshot, snapshot, approval) {
     "sharedAclMutationAuthorized", "extensionsSchemaExists",
     "extensionsPublicUsage", "extensionsPublicCreate",
     "providerAclPrincipalCount", "providerAclRestorePlanDigest",
-    "databaseAclDigest", "stateDigest", "dataApiExposedSchemas"
+    "databaseAclDigest", "stateDigest", "dataApiExposedSchemas",
+    "recoveryState", "recoveryAuthorizationBindingDigest",
+    "recoveryCandidateCommit", "recoveryCandidateTree",
+    "recoveryOperatorDigestsDigest",
+    "recoveryProviderAclRestorePlanDigest", "recoveryRunId"
   ], "database_prestate");
   if (
     snapshot.projectRef !== STAGING_PHASE1_V2_TARGET.projectRef ||
@@ -495,6 +550,13 @@ export function assertDatabaseSnapshot(controlSnapshot, snapshot, approval) {
     snapshot.extensionsSchemaExists !== true ||
     snapshot.extensionsPublicUsage !== true ||
     snapshot.extensionsPublicCreate !== false ||
+    snapshot.recoveryState !== "pristine" ||
+    snapshot.recoveryAuthorizationBindingDigest !== null ||
+    snapshot.recoveryCandidateCommit !== null ||
+    snapshot.recoveryCandidateTree !== null ||
+    snapshot.recoveryOperatorDigestsDigest !== null ||
+    snapshot.recoveryProviderAclRestorePlanDigest !== null ||
+    snapshot.recoveryRunId !== null ||
     !Number.isInteger(snapshot.providerAclPrincipalCount) ||
     snapshot.providerAclPrincipalCount < 1 ||
     !isDigest(snapshot.providerAclRestorePlanDigest) ||
@@ -506,6 +568,63 @@ export function assertDatabaseSnapshot(controlSnapshot, snapshot, approval) {
     snapshot.dataApiExposedSchemas.some((schema) => RESERVED_SCHEMAS.has(schema))
   ) invalid("database_prestate");
   assertBoundedObject(snapshot, "database_prestate");
+}
+
+function assertRecoverableDatabaseSnapshot(
+  controlSnapshot, snapshot, approval
+) {
+  assertExactKeys(snapshot, [
+    "projectRef", "databaseName", "trailmindRoleCount",
+    "trailmindSchemaCount", "trailmindObjectCount", "postgisInstalled",
+    "publicPostgisRoutineCount", "siblingWriterSessionCount", "sessionUser",
+    "currentUser", "databaseOwner", "extensionsSchemaOwner",
+    "sharedAclMutationAuthorized", "extensionsSchemaExists",
+    "extensionsPublicUsage", "extensionsPublicCreate",
+    "providerAclPrincipalCount", "providerAclRestorePlanDigest",
+    "databaseAclDigest", "stateDigest", "dataApiExposedSchemas",
+    "recoveryState", "recoveryAuthorizationBindingDigest",
+    "recoveryCandidateCommit", "recoveryCandidateTree",
+    "recoveryOperatorDigestsDigest",
+    "recoveryProviderAclRestorePlanDigest", "recoveryRunId"
+  ], "database_recovery_prestate");
+  if (
+    snapshot.projectRef !== STAGING_PHASE1_V2_TARGET.projectRef ||
+    DENIED_PROJECT_REFS.has(snapshot.projectRef) ||
+    snapshot.databaseName !== "postgres" ||
+    snapshot.trailmindRoleCount !== 12 ||
+    snapshot.trailmindSchemaCount !== 4 ||
+    !Number.isInteger(snapshot.trailmindObjectCount) ||
+    snapshot.trailmindObjectCount < 3 ||
+    snapshot.postgisInstalled !== true ||
+    snapshot.publicPostgisRoutineCount !== 0 ||
+    snapshot.siblingWriterSessionCount !== 0 ||
+    snapshot.sessionUser !== "postgres" ||
+    snapshot.currentUser !== "postgres" ||
+    snapshot.databaseOwner !== "postgres" ||
+    snapshot.extensionsSchemaOwner !== "postgres" ||
+    snapshot.sharedAclMutationAuthorized !== true ||
+    snapshot.extensionsSchemaExists !== true ||
+    snapshot.extensionsPublicUsage !== true ||
+    snapshot.extensionsPublicCreate !== false ||
+    !Number.isInteger(snapshot.providerAclPrincipalCount) ||
+    snapshot.providerAclPrincipalCount < 1 ||
+    snapshot.providerAclRestorePlanDigest !==
+      approval.providerAclRestorePlanDigest ||
+    snapshot.databaseAclDigest !== controlSnapshot.expectedDatabaseAclDigest ||
+    !isDigest(snapshot.stateDigest) ||
+    !Array.isArray(snapshot.dataApiExposedSchemas) ||
+    snapshot.dataApiExposedSchemas.some((schema) => RESERVED_SCHEMAS.has(schema)) ||
+    snapshot.recoveryState !== "pre-step-committed-no-ledger" ||
+    !isDigest(snapshot.recoveryAuthorizationBindingDigest) ||
+    snapshot.recoveryCandidateCommit !== approval.candidateCommit ||
+    snapshot.recoveryCandidateTree !== approval.candidateTree ||
+    snapshot.recoveryOperatorDigestsDigest !== approval.operatorDigestsDigest ||
+    snapshot.recoveryProviderAclRestorePlanDigest !==
+      approval.providerAclRestorePlanDigest ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(snapshot.recoveryRunId)
+  ) invalid("database_recovery_prestate");
+  assertBoundedObject(snapshot, "database_recovery_prestate");
 }
 
 function assertPostAdvisorEvidence(evidence, now) {
@@ -535,8 +654,12 @@ function assertFinalDatabaseSnapshot(snapshot) {
   assertExactKeys(snapshot, [
     "projectRef", "databaseName", "sessionUser", "currentUser",
     "databaseOwner", "stateDigest", "policyId", "ledger",
-    "roleContractDigest", "aclDigest", "dataApiExposedSchemas",
+    "roleContractDigest", "roleContractValid", "aclDigest",
+    "dataApiExposedSchemas",
     "applicationSchemasExposed", "postgisSchema", "postgisOwnerTopology",
+    "regionalImportNoDatabaseCreate",
+    "importSchemaOwnerBoundedDatabaseCreate",
+    "boundedImportProvisioningContract",
     "gisUnexpectedCreatePrincipalCount", "publicPostgisRoutineCount",
     "runtimeExecutableFunctions", "runtimeDirectTablePrivilegeCount",
     "runtimeDirectPostgisRoutineCount", "runtimeDirectSharedRoutineCount",
@@ -553,10 +676,14 @@ function assertFinalDatabaseSnapshot(snapshot) {
     snapshot.policyId !== STAGING_PHASE1_V2_POLICY_ID ||
     !exactArray(snapshot.ledger, SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2) ||
     !isDigest(snapshot.roleContractDigest) ||
+    snapshot.roleContractValid !== true ||
     !isDigest(snapshot.aclDigest) ||
     !Array.isArray(snapshot.dataApiExposedSchemas) ||
     snapshot.dataApiExposedSchemas.some((schema) => RESERVED_SCHEMAS.has(schema)) ||
     snapshot.applicationSchemasExposed !== false ||
+    snapshot.regionalImportNoDatabaseCreate !== true ||
+    snapshot.importSchemaOwnerBoundedDatabaseCreate !== true ||
+    snapshot.boundedImportProvisioningContract !== true ||
     snapshot.postgisSchema !== "trailmind_gis" ||
     ![
       "postgres-schema/postgres-extension-members",
@@ -595,10 +722,13 @@ function assertFailureState(state) {
   ]) if (typeof state[key] !== "boolean") invalid("failure_state");
   if (!Number.isInteger(state.applicationMigrationCount) ||
       state.applicationMigrationCount < 0 ||
-      state.applicationMigrationCount > 8) invalid("failure_state");
+      state.applicationMigrationCount >
+        SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.length
+    ) invalid("failure_state");
   if (
     (state.applicationMigrationCount > 0 && !state.applicationLedgerExists) ||
-    (state.postStepCommitted && state.applicationMigrationCount !== 8)
+    (state.postStepCommitted && state.applicationMigrationCount !==
+      SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.length)
   ) invalid("failure_state");
 }
 
@@ -669,8 +799,21 @@ function assertUniquePhaseEvidence(phases) {
 }
 
 function assertApproval(approval) {
-  assertExactKeys(approval, ["providerAclRestorePlanDigest"], "approval");
-  if (!isDigest(approval.providerAclRestorePlanDigest)) {
+  assertExactKeys(approval, [
+    "authorizationBindingDigest", "candidateCommit",
+    "candidateTree", "operatorDigestsDigest", "providerAclRestorePlanDigest",
+    "runId"
+  ], "approval");
+  if (
+    !isDigest(approval.providerAclRestorePlanDigest) ||
+    !isDigest(approval.authorizationBindingDigest) ||
+    !isDigest(approval.operatorDigestsDigest) ||
+    typeof approval.candidateCommit !== "string" ||
+    !/^[a-f0-9]{40}$/.test(approval.candidateCommit) ||
+    !/^[a-f0-9]{40}$/.test(approval.candidateTree) ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(approval.runId)
+  ) {
     invalid("approval_restore_plan_digest");
   }
 }

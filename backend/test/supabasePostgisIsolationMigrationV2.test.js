@@ -35,7 +35,8 @@ describe("Supabase PostGIS isolation migration policy V2", () => {
       "005_outdoor_research_projection_geometry.sql",
       "006_outdoor_route_membership_point_index.sql",
       "007_routable_highlight_access_geography_index.sql",
-      "009_supabase_postgis_isolated_runtime_read_contract.sql"
+      "009_supabase_postgis_isolated_runtime_read_contract.sql",
+      "010_bounded_outdoor_import_schema_provisioning.sql"
     ]);
     assert.equal(
       createHash("sha256").update(await readFile(historicalMigrationURL)).digest("hex"),
@@ -105,6 +106,7 @@ describe("Supabase PostGIS isolation migration policy V2", () => {
       import.meta.url
     ), "utf8");
     assert.match(post, /009_supabase_postgis_isolated_runtime_read_contract\.sql/);
+    assert.match(post, /010_bounded_outdoor_import_schema_provisioning\.sql/);
     assert.doesNotMatch(post, /008_outdoor_research_runtime_read_contract\.sql/);
     assert.match(post, /session_user <> 'postgres' OR current_user <> 'postgres'/);
     assert.match(post, /REVOKE USAGE, CREATE ON SCHEMA extensions FROM PUBLIC/);
@@ -112,6 +114,11 @@ describe("Supabase PostGIS isolation migration policy V2", () => {
     assert.match(post, /V2 PostGIS isolation, ownership, or GIS write boundary is invalid/);
     assertBoundedLock(post);
     assert.match(rollback, /trailmind\.phase_1_v2_rollback_confirmation/);
+    assert.match(rollback, /trailmind\.phase_1_v2_recovery_run_id/);
+    assert.match(
+      rollback,
+      /trailmind\.phase_1_v2_recovery_authorization_binding_digest/
+    );
     assert.match(rollback, /namespace\.nspname = 'trailmind_app'/);
     assert.match(rollback, /application object or migration ledger/);
     assert.match(rollback, /WITH RECURSIVE postgis_objects/);

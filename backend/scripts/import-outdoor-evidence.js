@@ -43,6 +43,7 @@ await toolVersion("osmium", ["--version"], /osmium version (\d+)\.(\d+)/i, 1, 0)
 await runTool("osmium", ["fileinfo", "--no-progress", pbfPath], { discardOutput: true });
 
 const importId = randomUUID();
+const schemaLeaseId = randomUUID();
 const stagingSchema = `outdoor_import_${importId.replaceAll("-", "_")}`;
 const pool = new Pool({
   connectionString,
@@ -50,6 +51,10 @@ const pool = new Pool({
   connectionTimeoutMillis: 10_000,
   allowExitOnIdle: true
 });
+let completedCounts;
+let importCompleted = false;
+let schemaProvisioned = false;
+let cleanupFailed = false;
 
 try {
   await ensureSchemaAvailable(pool);
@@ -68,7 +73,19 @@ try {
       sourceChecksumVerifiedAt, inputFileSha256
     ]
   );
-  await pool.query(`CREATE SCHEMA ${quotedIdentifier(stagingSchema)}`);
+  const provisioned = await pool.query(
+    `SELECT trailmind_app.provision_outdoor_import_schema_v1(
+       $1::uuid, $2::uuid
+     ) AS schema_name`,
+    [importId, schemaLeaseId]
+  );
+  schemaProvisioned = true;
+  if (
+    provisioned.rowCount !== 1 ||
+    provisioned.rows[0]?.schema_name !== stagingSchema
+  ) {
+    fail("The bounded import schema contract returned an invalid schema.");
+  }
   process.stdout.write(`Outdoor evidence import ${importId} started for ${region.regionId}.\n`);
   await runTool("osm2pgsql", [
     "--create", "--slim", "--output=flex", "--drop",
@@ -84,10 +101,8 @@ try {
     },
     discardOutput: true
   });
-  const counts = await promoteImport(pool, { importId, region, stagingSchema });
-  process.stdout.write(
-    `Outdoor evidence import ${importId} is active: ${counts.pois} POIs, ${counts.trails} trail segments, ${counts.relations} mapped hiking relations.\n`
-  );
+  completedCounts = await promoteImport(pool, { importId, region, stagingSchema });
+  importCompleted = true;
 } catch (error) {
   try {
     await pool.query(
@@ -100,8 +115,34 @@ try {
   process.stderr.write(`Outdoor evidence import ${importId} failed safely.\n`);
   process.exitCode = 1;
 } finally {
-  try { await pool.query(`DROP SCHEMA IF EXISTS ${quotedIdentifier(stagingSchema)} CASCADE`); } catch {}
-  await pool.end();
+  if (schemaProvisioned) {
+    try {
+      const released = await pool.query(
+        `SELECT trailmind_app.release_outdoor_import_schema_v1(
+           $1::uuid, $2::uuid
+         ) AS released`,
+        [importId, schemaLeaseId]
+      );
+      if (released.rowCount !== 1 || released.rows[0]?.released !== true) {
+        cleanupFailed = true;
+      }
+    } catch {
+      cleanupFailed = true;
+    }
+  }
+  try { await pool.end(); } catch { cleanupFailed = true; }
+}
+if (importCompleted && !cleanupFailed) {
+  process.stdout.write(
+    `Outdoor evidence import ${importId} is active: ${completedCounts.pois} POIs, ` +
+    `${completedCounts.trails} trail segments, ${completedCounts.relations} ` +
+    "mapped hiking relations.\n"
+  );
+} else if (cleanupFailed) {
+  process.stderr.write(
+    `Outdoor evidence import ${importId} cleanup could not be proved.\n`
+  );
+  process.exitCode = 1;
 }
 } catch {
   process.stderr.write("Outdoor evidence import preflight failed safely.\n");
@@ -323,20 +364,24 @@ async function ensureRegion(pool, region) {
 
 async function ensureSchemaAvailable(pool) {
   const result = await pool.query(
-    `SELECT to_regclass('outdoor_evidence_regions') IS NOT NULL AS regions,
-            to_regclass('outdoor_evidence_imports') IS NOT NULL AS imports,
+    `SELECT pg_catalog.to_regclass(
+              'trailmind_app.outdoor_evidence_regions'
+            ) IS NOT NULL AS regions,
+            pg_catalog.to_regclass(
+              'trailmind_app.outdoor_evidence_imports'
+            ) IS NOT NULL AS imports,
             (
-              SELECT count(*) = 5
-                FROM information_schema.columns
-               WHERE table_schema = current_schema()
-                 AND table_name = 'outdoor_evidence_imports'
-                 AND column_name IN (
+              SELECT pg_catalog.count(*) = 5
+                FROM information_schema.columns column_record
+               WHERE column_record.table_schema = 'trailmind_app'
+                 AND column_record.table_name = 'outdoor_evidence_imports'
+                 AND column_record.column_name IN (
                    'acquisition_channel', 'source_checksum_algorithm',
                    'source_checksum', 'source_checksum_verified_at',
                    'input_file_sha256'
                  )
             ) AS acquisition_provenance,
-            postgis_lib_version() AS postgis_version`
+            trailmind_gis.postgis_lib_version() AS postgis_version`
   );
   if (!result.rows[0]?.regions || !result.rows[0]?.imports ||
       !result.rows[0]?.acquisition_provenance ||
@@ -477,7 +522,9 @@ function optionalDate(value, label) {
 }
 
 function quotedIdentifier(value) {
-  if (!/^outdoor_import_[a-f0-9_]+$/.test(value)) fail("Invalid staging schema name.");
+  if (!/^outdoor_import_[0-9a-f]{8}(?:_[0-9a-f]{4}){3}_[0-9a-f]{12}$/.test(value)) {
+    fail("Invalid staging schema name.");
+  }
   return `"${value}"`;
 }
 

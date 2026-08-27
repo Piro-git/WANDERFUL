@@ -1,6 +1,6 @@
 -- TrailMind Outdoor Staging V1 Phase 1 Supabase PostGIS-isolation V2 post-step.
 -- LOCAL REVIEW CANDIDATE ONLY: this turn did not authorize remote execution.
--- Run only after the exact V2 policy 001-007 + 009 has committed in
+-- Run only after the exact V2 policy 001-007 + 009 + 010 has committed in
 -- trailmind_app as trailmind_app_owner. Never pair this with historical 008.
 
 BEGIN;
@@ -29,12 +29,28 @@ BEGIN
          JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
         WHERE member.rolname = current_user
           AND target.rolname IN (
-            'trailmind_app_owner', 'trailmind_control_owner'
+            'trailmind_app_owner', 'trailmind_control_owner',
+            'trailmind_import_schema_owner'
+          )
+          AND NOT membership.inherit_option
+          AND NOT membership.set_option
+          AND membership.admin_option
+     ) <> 3 OR (
+       SELECT pg_catalog.count(*)
+         FROM pg_catalog.pg_auth_members membership
+         JOIN pg_catalog.pg_roles member ON member.oid = membership.member
+         JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
+        WHERE member.rolname = current_user
+          AND target.rolname IN (
+            'trailmind_app_owner', 'trailmind_control_owner',
+            'trailmind_import_schema_owner'
           )
           AND NOT membership.inherit_option
           AND membership.set_option
-          AND membership.admin_option
-     ) <> 2 OR NOT EXISTS (
+          AND NOT membership.admin_option
+     ) <> 3 OR NOT pg_catalog.pg_has_role(
+       current_user, 'migration_role', 'SET'
+     ) OR NOT EXISTS (
        SELECT 1
          FROM pg_catalog.pg_namespace namespace
          JOIN pg_catalog.pg_roles owner ON owner.oid = namespace.nspowner
@@ -86,7 +102,8 @@ BEGIN
     '005_outdoor_research_projection_geometry.sql',
     '006_outdoor_route_membership_point_index.sql',
     '007_routable_highlight_access_geography_index.sql',
-    '009_supabase_postgis_isolated_runtime_read_contract.sql'
+    '009_supabase_postgis_isolated_runtime_read_contract.sql',
+    '010_bounded_outdoor_import_schema_provisioning.sql'
   ]::text[] THEN
     RAISE EXCEPTION USING
       ERRCODE = '55000',
@@ -166,6 +183,8 @@ BEGIN
   END IF;
 END
 $foundation$;
+
+RESET ROLE;
 
 DO $foundation$
 BEGIN
@@ -316,7 +335,7 @@ BEGIN
   END LOOP;
 
   EXECUTE pg_catalog.format(
-    'GRANT CREATE ON DATABASE %I TO regional_import_role',
+    'GRANT CREATE ON DATABASE %I TO trailmind_import_schema_owner',
     pg_catalog.current_database()
   );
 END
@@ -325,6 +344,7 @@ $foundation$;
 REVOKE USAGE, CREATE ON SCHEMA public FROM
   platform_provisioner,
   migration_role,
+  trailmind_import_schema_owner,
   regional_import_role,
   projection_role,
   app_security_runtime_role,
@@ -335,6 +355,7 @@ REVOKE USAGE, CREATE ON SCHEMA public FROM
 REVOKE USAGE, CREATE ON SCHEMA extensions FROM
   platform_provisioner,
   migration_role,
+  trailmind_import_schema_owner,
   regional_import_role,
   projection_role,
   app_security_runtime_role,
@@ -347,6 +368,7 @@ REVOKE USAGE, CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE USAGE, CREATE ON SCHEMA public FROM
   platform_provisioner,
   migration_role,
+  trailmind_import_schema_owner,
   regional_import_role,
   projection_role,
   app_security_runtime_role,
@@ -360,6 +382,7 @@ REVOKE ALL ON SCHEMA trailmind_gis
 REVOKE ALL ON SCHEMA trailmind_gis FROM
   platform_provisioner,
   migration_role,
+  trailmind_import_schema_owner,
   app_security_runtime_role,
   outdoor_research_runtime_role,
   outdoor_research_cancellation_control_role,
@@ -381,36 +404,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA trailmind_app
   REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 REVOKE ALL ON SCHEMA trailmind_app FROM PUBLIC, anon, authenticated, service_role;
-REVOKE ALL ON ALL TABLES IN SCHEMA trailmind_app
-  FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA trailmind_app
   FROM PUBLIC, anon, authenticated, service_role;
-REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA trailmind_app
-  FROM PUBLIC, anon, authenticated, service_role;
-
-REVOKE ALL ON ALL TABLES IN SCHEMA trailmind_app FROM
-  platform_provisioner,
-  migration_role,
-  regional_import_role,
-  projection_role,
-  app_security_runtime_role,
-  outdoor_research_runtime_role,
-  outdoor_research_cancellation_control_role,
-  pruner_role,
-  readonly_auditor_role;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA trailmind_app FROM
   platform_provisioner,
   migration_role,
-  regional_import_role,
-  projection_role,
-  app_security_runtime_role,
-  outdoor_research_runtime_role,
-  outdoor_research_cancellation_control_role,
-  pruner_role,
-  readonly_auditor_role;
-REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA trailmind_app FROM
-  platform_provisioner,
-  migration_role,
+  trailmind_import_schema_owner,
   regional_import_role,
   projection_role,
   app_security_runtime_role,
@@ -419,7 +418,59 @@ REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA trailmind_app FROM
   pruner_role,
   readonly_auditor_role;
 
+-- Migration 010 deliberately owns its lease table and SECURITY DEFINER
+-- functions with a separate NOLOGIN role. The application owner must never
+-- issue ACL commands against another owner's objects, so close only the ACLs
+-- on objects it owns here. Migration 010 and the owner-scoped block below
+-- close the provisioner's objects independently.
+DO $foundation$
+DECLARE
+  owned_relation regclass;
+  owned_function regprocedure;
+BEGIN
+  FOR owned_relation IN
+    SELECT relation.oid::regclass
+      FROM pg_catalog.pg_class relation
+      JOIN pg_catalog.pg_namespace namespace
+        ON namespace.oid = relation.relnamespace
+     WHERE namespace.nspname = 'trailmind_app'
+       AND relation.relowner = (
+         SELECT role_record.oid
+           FROM pg_catalog.pg_roles role_record
+          WHERE role_record.rolname = current_user
+       )
+       AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+     ORDER BY relation.oid
+  LOOP
+    EXECUTE pg_catalog.format(
+      'REVOKE ALL ON TABLE %s FROM PUBLIC, anon, authenticated, service_role, platform_provisioner, migration_role, trailmind_import_schema_owner, regional_import_role, projection_role, app_security_runtime_role, outdoor_research_runtime_role, outdoor_research_cancellation_control_role, pruner_role, readonly_auditor_role',
+      owned_relation
+    );
+  END LOOP;
+
+  FOR owned_function IN
+    SELECT procedure.oid::regprocedure
+      FROM pg_catalog.pg_proc procedure
+      JOIN pg_catalog.pg_namespace namespace
+        ON namespace.oid = procedure.pronamespace
+     WHERE namespace.nspname = 'trailmind_app'
+       AND procedure.proowner = (
+         SELECT role_record.oid
+           FROM pg_catalog.pg_roles role_record
+          WHERE role_record.rolname = current_user
+       )
+     ORDER BY procedure.oid
+  LOOP
+    EXECUTE pg_catalog.format(
+      'REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon, authenticated, service_role, platform_provisioner, migration_role, trailmind_import_schema_owner, regional_import_role, projection_role, app_security_runtime_role, outdoor_research_runtime_role, outdoor_research_cancellation_control_role, pruner_role, readonly_auditor_role',
+      owned_function
+    );
+  END LOOP;
+END
+$foundation$;
+
 GRANT USAGE ON SCHEMA trailmind_app TO
+  trailmind_import_schema_owner,
   regional_import_role,
   projection_role,
   app_security_runtime_role,
@@ -449,6 +500,9 @@ GRANT SELECT, INSERT ON
   trailmind_app.outdoor_evidence_hiking_relations,
   trailmind_app.outdoor_evidence_hiking_relation_members
   TO regional_import_role;
+
+GRANT SELECT ON trailmind_app.outdoor_evidence_imports
+  TO trailmind_import_schema_owner;
 GRANT SELECT, INSERT, UPDATE ON
   trailmind_app.outdoor_evidence_imports,
   trailmind_app.outdoor_evidence_regions
@@ -570,6 +624,11 @@ CREATE POLICY pruner_delete
   ON trailmind_app.app_attest_challenges FOR DELETE
   TO pruner_role USING (true);
 
+CREATE POLICY import_schema_owner_loading_read
+  ON trailmind_app.outdoor_evidence_imports FOR SELECT
+  TO trailmind_import_schema_owner
+  USING (status = 'loading');
+
 CREATE POLICY app_security_runtime_select
   ON trailmind_app.app_attest_keys FOR SELECT
   TO app_security_runtime_role USING (true);
@@ -676,6 +735,7 @@ REVOKE CREATE ON SCHEMA trailmind_app FROM PUBLIC, anon, authenticated, service_
 REVOKE CREATE ON SCHEMA trailmind_app FROM
   platform_provisioner,
   migration_role,
+  trailmind_import_schema_owner,
   regional_import_role,
   projection_role,
   app_security_runtime_role,
@@ -683,6 +743,20 @@ REVOKE CREATE ON SCHEMA trailmind_app FROM
   outdoor_research_cancellation_control_role,
   pruner_role,
   readonly_auditor_role;
+
+RESET ROLE;
+
+SET LOCAL ROLE trailmind_import_schema_owner;
+SET LOCAL search_path = pg_catalog, pg_temp;
+
+REVOKE ALL ON FUNCTION
+  trailmind_app.provision_outdoor_import_schema_v1(uuid, uuid),
+  trailmind_app.release_outdoor_import_schema_v1(uuid, uuid)
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION
+  trailmind_app.provision_outdoor_import_schema_v1(uuid, uuid),
+  trailmind_app.release_outdoor_import_schema_v1(uuid, uuid)
+  TO regional_import_role;
 
 RESET ROLE;
 
@@ -730,6 +804,7 @@ BEGIN
     'anon',
     'authenticated',
     'service_role',
+    'trailmind_import_schema_owner',
     'platform_provisioner',
     'migration_role',
     'app_security_runtime_role',
@@ -752,6 +827,7 @@ BEGIN
     'public',
     'platform_provisioner',
     'migration_role',
+    'trailmind_import_schema_owner',
     'regional_import_role',
     'projection_role',
     'app_security_runtime_role',
@@ -795,6 +871,19 @@ BEGIN
     END IF;
   END LOOP;
 
+  IF pg_catalog.has_database_privilege(
+       'regional_import_role', pg_catalog.current_database(), 'CREATE'
+     ) OR NOT pg_catalog.has_database_privilege(
+       'trailmind_import_schema_owner', pg_catalog.current_database(), 'CREATE'
+     ) OR pg_catalog.has_database_privilege(
+       'trailmind_import_schema_owner', pg_catalog.current_database(),
+       'CREATE WITH GRANT OPTION'
+     ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'bounded outdoor import database CREATE boundary is invalid';
+  END IF;
+
 END
 $foundation$;
 
@@ -835,6 +924,77 @@ BEGIN
         MESSAGE = 'outdoor runtime function boundary is invalid';
     END IF;
   END LOOP;
+END
+$foundation$;
+
+DO $foundation$
+DECLARE
+  expected_function regprocedure;
+BEGIN
+  FOREACH expected_function IN ARRAY ARRAY[
+    'trailmind_app.provision_outdoor_import_schema_v1(uuid,uuid)'::regprocedure,
+    'trailmind_app.release_outdoor_import_schema_v1(uuid,uuid)'::regprocedure
+  ]
+  LOOP
+    IF NOT EXISTS (
+      SELECT 1
+        FROM pg_catalog.pg_proc procedure
+        JOIN pg_catalog.pg_roles owner ON owner.oid = procedure.proowner
+       WHERE procedure.oid = expected_function
+         AND owner.rolname = 'trailmind_import_schema_owner'
+         AND procedure.prosecdef
+         AND procedure.proisstrict
+         AND procedure.provolatile = 'v'
+         AND EXISTS (
+           SELECT 1
+             FROM pg_catalog.unnest(procedure.proconfig) configuration
+            WHERE pg_catalog.replace(configuration, ' ', '') =
+                  'search_path=pg_catalog,pg_temp'
+         )
+         AND pg_catalog.has_function_privilege(
+           'regional_import_role', procedure.oid, 'EXECUTE'
+         )
+         AND NOT pg_catalog.has_function_privilege(
+           'regional_import_role', procedure.oid, 'EXECUTE WITH GRANT OPTION'
+         )
+         AND NOT pg_catalog.has_function_privilege(
+           'public', procedure.oid, 'EXECUTE'
+         )
+    ) THEN
+      RAISE EXCEPTION USING
+        ERRCODE = '42501',
+        MESSAGE = 'bounded outdoor import function boundary is invalid';
+    END IF;
+  END LOOP;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_class relation
+      JOIN pg_catalog.pg_namespace namespace
+        ON namespace.oid = relation.relnamespace
+      JOIN pg_catalog.pg_roles owner ON owner.oid = relation.relowner
+     WHERE namespace.nspname = 'trailmind_app'
+       AND relation.relname = 'outdoor_import_schema_leases'
+       AND relation.relkind = 'r'
+       AND owner.rolname = 'trailmind_import_schema_owner'
+       AND relation.relrowsecurity
+  ) OR pg_catalog.has_table_privilege(
+    'regional_import_role',
+    'trailmind_app.outdoor_import_schema_leases', 'SELECT'
+  ) OR pg_catalog.has_table_privilege(
+    'regional_import_role',
+    'trailmind_app.outdoor_import_schema_leases', 'INSERT'
+  ) OR pg_catalog.has_table_privilege(
+    'regional_import_role',
+    'trailmind_app.outdoor_import_schema_leases', 'UPDATE'
+  ) OR pg_catalog.has_table_privilege(
+    'regional_import_role',
+    'trailmind_app.outdoor_import_schema_leases', 'DELETE'
+  ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'bounded outdoor import lease ledger boundary is invalid';
+  END IF;
 END
 $foundation$;
 
@@ -880,12 +1040,13 @@ $foundation$;
 
 DROP TABLE trailmind_phase1_guard.shared_acl_principal_snapshot;
 DROP TABLE trailmind_phase1_guard.shared_acl_snapshot;
+DROP TABLE trailmind_phase1_guard.recovery_binding;
 DROP SCHEMA trailmind_phase1_guard;
 
 -- Retain the exact PostgreSQL 17 managed CREATEROLE creator memberships.
--- The two NOLOGIN owners require SET for bounded owner transitions. All nine
--- operational roles retain only the automatic ADMIN bookkeeping grant with
--- INHERIT FALSE and SET FALSE, so postgres cannot assume those identities.
+-- Bootstrap ADMIN rows remain unchanged. Separate self-granted SET-only rows
+-- permit bounded transitions to the three owners and migration_role; postgres
+-- cannot assume any other operational identity.
 DO $foundation$
 BEGIN
   IF (
@@ -895,12 +1056,26 @@ BEGIN
       JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
      WHERE member.rolname = 'postgres'
        AND target.rolname IN (
-         'trailmind_app_owner', 'trailmind_control_owner'
+         'trailmind_app_owner', 'trailmind_control_owner',
+         'trailmind_import_schema_owner'
+       )
+       AND NOT membership.inherit_option
+       AND NOT membership.set_option
+       AND membership.admin_option
+  ) <> 3 OR (
+    SELECT pg_catalog.count(*)
+      FROM pg_catalog.pg_auth_members membership
+      JOIN pg_catalog.pg_roles member ON member.oid = membership.member
+      JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
+     WHERE member.rolname = 'postgres'
+       AND target.rolname IN (
+         'trailmind_app_owner', 'trailmind_control_owner',
+         'trailmind_import_schema_owner'
        )
        AND NOT membership.inherit_option
        AND membership.set_option
-       AND membership.admin_option
-  ) <> 2 OR (
+       AND NOT membership.admin_option
+  ) <> 3 OR (
     SELECT pg_catalog.count(*)
       FROM pg_catalog.pg_auth_members membership
       JOIN pg_catalog.pg_roles member ON member.oid = membership.member
@@ -916,7 +1091,17 @@ BEGIN
        AND NOT membership.inherit_option
        AND NOT membership.set_option
        AND membership.admin_option
-  ) <> 9 OR EXISTS (
+  ) <> 9 OR (
+    SELECT pg_catalog.count(*)
+      FROM pg_catalog.pg_auth_members membership
+      JOIN pg_catalog.pg_roles member ON member.oid = membership.member
+      JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
+     WHERE member.rolname = 'postgres'
+       AND target.rolname = 'migration_role'
+       AND NOT membership.inherit_option
+       AND membership.set_option
+       AND NOT membership.admin_option
+  ) <> 1 OR EXISTS (
     SELECT 1
       FROM pg_catalog.pg_auth_members membership
       JOIN pg_catalog.pg_roles member ON member.oid = membership.member
@@ -924,6 +1109,7 @@ BEGIN
      WHERE member.rolname = 'postgres'
        AND target.rolname = ANY(ARRAY[
          'trailmind_app_owner', 'trailmind_control_owner',
+         'trailmind_import_schema_owner',
          'platform_provisioner', 'migration_role', 'regional_import_role',
          'projection_role', 'app_security_runtime_role',
          'outdoor_research_runtime_role',
@@ -932,10 +1118,12 @@ BEGIN
        ]::text[])
        AND NOT (
          (target.rolname IN (
-           'trailmind_app_owner', 'trailmind_control_owner'
-         ) AND NOT membership.inherit_option
-           AND membership.set_option
-           AND membership.admin_option)
+           'trailmind_app_owner', 'trailmind_control_owner',
+           'trailmind_import_schema_owner'
+         ) AND NOT membership.inherit_option AND (
+           (NOT membership.set_option AND membership.admin_option) OR
+           (membership.set_option AND NOT membership.admin_option)
+         ))
          OR
          (target.rolname = ANY(ARRAY[
            'platform_provisioner', 'migration_role', 'regional_import_role',
@@ -943,9 +1131,11 @@ BEGIN
            'outdoor_research_runtime_role',
            'outdoor_research_cancellation_control_role', 'pruner_role',
            'readonly_auditor_role'
-         ]::text[]) AND NOT membership.inherit_option
-           AND NOT membership.set_option
-           AND membership.admin_option)
+         ]::text[]) AND NOT membership.inherit_option AND (
+           (NOT membership.set_option AND membership.admin_option) OR
+           (target.rolname = 'migration_role'
+             AND membership.set_option AND NOT membership.admin_option)
+         ))
        )
   ) THEN
     RAISE EXCEPTION USING

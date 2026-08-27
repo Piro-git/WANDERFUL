@@ -32,7 +32,13 @@ describe("outdoor evidence importer contract", () => {
     assert.match(source, /pg_advisory_xact_lock/);
     assert.match(source, /await client\.query\("BEGIN"\)/);
     assert.match(source, /await client\.query\("COMMIT"\)/);
-    assert.match(source, /DROP SCHEMA IF EXISTS/);
+    assert.match(source, /provision_outdoor_import_schema_v1/);
+    assert.match(source, /release_outdoor_import_schema_v1/);
+    assert.doesNotMatch(source, /(?:CREATE|DROP) SCHEMA/i);
+    assert.ok(
+      source.indexOf("release_outdoor_import_schema_v1") <
+        source.indexOf("is active:")
+    );
     assert.match(source, /counts\?\.trails/);
     assert.match(source, /activation\.rowCount !== 1/);
     assert.match(source, /pointerUpdate\.rowCount !== 1/);
@@ -61,7 +67,9 @@ describe("outdoor evidence importer contract", () => {
       source,
       /const suppliedSourceTimestamp = requiredDate\(args\.sourceTimestamp/
     );
-    assert.match(source, /SELECT count\(\*\) = 5/);
+    assert.match(source, /SELECT pg_catalog\.count\(\*\) = 5/);
+    assert.match(source, /column_record\.table_schema = 'trailmind_app'/);
+    assert.match(source, /trailmind_gis\.postgis_lib_version\(\)/);
     assert.doesNotMatch(source, /left\(trim\(raw\.(?:name|operator)/);
   });
 

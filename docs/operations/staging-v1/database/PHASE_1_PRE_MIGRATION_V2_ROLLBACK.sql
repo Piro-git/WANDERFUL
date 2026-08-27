@@ -28,6 +28,7 @@ BEGIN
   FOREACH role_name IN ARRAY ARRAY[
     'trailmind_app_owner',
     'trailmind_control_owner',
+    'trailmind_import_schema_owner',
     'platform_provisioner',
     'migration_role',
     'regional_import_role',
@@ -53,6 +54,7 @@ BEGIN
       JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
      WHERE member.rolname = ANY(ARRAY[
        'trailmind_app_owner', 'trailmind_control_owner',
+       'trailmind_import_schema_owner',
        'platform_provisioner', 'migration_role', 'regional_import_role',
        'projection_role', 'app_security_runtime_role',
        'outdoor_research_runtime_role',
@@ -61,19 +63,21 @@ BEGIN
      ]::text[])
         OR target.rolname = ANY(ARRAY[
        'trailmind_app_owner', 'trailmind_control_owner',
+       'trailmind_import_schema_owner',
        'platform_provisioner', 'migration_role', 'regional_import_role',
        'projection_role', 'app_security_runtime_role',
        'outdoor_research_runtime_role',
        'outdoor_research_cancellation_control_role', 'pruner_role',
        'readonly_auditor_role'
      ]::text[])
-  ) <> 13 OR EXISTS (
+  ) <> 18 OR EXISTS (
     SELECT 1
       FROM pg_catalog.pg_auth_members membership
       JOIN pg_catalog.pg_roles member ON member.oid = membership.member
       JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
      WHERE (member.rolname = ANY(ARRAY[
               'trailmind_app_owner', 'trailmind_control_owner',
+              'trailmind_import_schema_owner',
               'platform_provisioner', 'migration_role',
               'regional_import_role', 'projection_role',
               'app_security_runtime_role', 'outdoor_research_runtime_role',
@@ -82,6 +86,7 @@ BEGIN
             ]::text[])
          OR target.rolname = ANY(ARRAY[
               'trailmind_app_owner', 'trailmind_control_owner',
+              'trailmind_import_schema_owner',
               'platform_provisioner', 'migration_role',
               'regional_import_role', 'projection_role',
               'app_security_runtime_role', 'outdoor_research_runtime_role',
@@ -93,10 +98,15 @@ BEGIN
             membership.admin_option) NOT IN (
          ('migration_role', 'trailmind_app_owner', false, true, false),
          ('trailmind_control_owner', 'pg_signal_backend', true, false, false),
-         ('postgres', 'trailmind_app_owner', false, true, true),
-         ('postgres', 'trailmind_control_owner', false, true, true),
+         ('postgres', 'trailmind_app_owner', false, false, true),
+         ('postgres', 'trailmind_app_owner', false, true, false),
+         ('postgres', 'trailmind_control_owner', false, false, true),
+         ('postgres', 'trailmind_control_owner', false, true, false),
+         ('postgres', 'trailmind_import_schema_owner', false, false, true),
+         ('postgres', 'trailmind_import_schema_owner', false, true, false),
          ('postgres', 'platform_provisioner', false, false, true),
          ('postgres', 'migration_role', false, false, true),
+         ('postgres', 'migration_role', false, true, false),
          ('postgres', 'regional_import_role', false, false, true),
          ('postgres', 'projection_role', false, false, true),
          ('postgres', 'app_security_runtime_role', false, false, true),
@@ -199,6 +209,36 @@ BEGIN
        'pg_class'
      ) IS DISTINCT FROM
        'trailmind:mbvzwsrtqcrwhvykugcd:phase1-v2:acl-principals' OR
+     pg_catalog.obj_description(
+       'trailmind_phase1_guard.recovery_binding'::pg_catalog.regclass,
+       'pg_class'
+     ) IS DISTINCT FROM
+       'trailmind:mbvzwsrtqcrwhvykugcd:phase1-v2:recovery-binding' OR
+     (
+       SELECT pg_catalog.count(*)
+         FROM trailmind_phase1_guard.recovery_binding binding
+        WHERE binding.singleton
+          AND binding.run_id = pg_catalog.current_setting(
+            'trailmind.phase_1_v2_recovery_run_id'
+          )::uuid
+          AND binding.authorization_binding_digest =
+            pg_catalog.current_setting(
+              'trailmind.phase_1_v2_recovery_authorization_binding_digest'
+            )
+          AND binding.candidate_commit = pg_catalog.current_setting(
+            'trailmind.phase_1_v2_recovery_candidate_commit'
+          )
+          AND binding.candidate_tree = pg_catalog.current_setting(
+            'trailmind.phase_1_v2_recovery_candidate_tree'
+          )
+          AND binding.operator_digests_digest = pg_catalog.current_setting(
+            'trailmind.phase_1_v2_recovery_operator_digests_digest'
+          )
+          AND binding.provider_acl_restore_plan_digest =
+            pg_catalog.current_setting(
+              'trailmind.phase_1_v2_recovery_provider_acl_digest'
+            )
+     ) <> 1 OR
      (
        SELECT pg_catalog.count(*)
          FROM trailmind_phase1_guard.shared_acl_snapshot
@@ -363,7 +403,7 @@ BEGIN
      WHERE namespace.nspname = 'trailmind_phase1_guard'
        AND relation.relkind IN ('r', 'p')
   ) IS DISTINCT FROM ARRAY[
-    'shared_acl_principal_snapshot', 'shared_acl_snapshot'
+    'recovery_binding', 'shared_acl_principal_snapshot', 'shared_acl_snapshot'
   ]::text[] OR EXISTS (
     SELECT 1
       FROM pg_catalog.pg_class relation
@@ -374,7 +414,9 @@ BEGIN
          ('shared_acl_principal_snapshot', 'r'),
          ('shared_acl_principal_snapshot_pkey', 'i'),
          ('shared_acl_snapshot', 'r'),
-         ('shared_acl_snapshot_pkey', 'i')
+         ('shared_acl_snapshot_pkey', 'i'),
+         ('recovery_binding', 'r'),
+         ('recovery_binding_pkey', 'i')
        )
   ) OR EXISTS (
     SELECT 1
@@ -393,7 +435,8 @@ BEGIN
            FROM pg_catalog.pg_class expected_relation
           WHERE expected_relation.relnamespace = namespace.oid
             AND expected_relation.relname IN (
-              'shared_acl_principal_snapshot', 'shared_acl_snapshot'
+              'recovery_binding', 'shared_acl_principal_snapshot',
+              'shared_acl_snapshot'
             )
             AND (
               expected_relation.reltype = data_type.oid OR
@@ -525,11 +568,14 @@ DROP SCHEMA trailmind_gis;
 
 DROP TABLE trailmind_phase1_guard.shared_acl_principal_snapshot;
 DROP TABLE trailmind_phase1_guard.shared_acl_snapshot;
+DROP TABLE trailmind_phase1_guard.recovery_binding;
 DROP SCHEMA trailmind_phase1_guard;
 
-REVOKE trailmind_app_owner FROM migration_role;
-REVOKE trailmind_app_owner FROM CURRENT_USER;
-REVOKE trailmind_control_owner FROM CURRENT_USER;
+REVOKE trailmind_app_owner FROM migration_role GRANTED BY CURRENT_USER;
+REVOKE trailmind_app_owner FROM CURRENT_USER GRANTED BY CURRENT_USER;
+REVOKE trailmind_control_owner FROM CURRENT_USER GRANTED BY CURRENT_USER;
+REVOKE trailmind_import_schema_owner FROM CURRENT_USER GRANTED BY CURRENT_USER;
+REVOKE migration_role FROM CURRENT_USER GRANTED BY CURRENT_USER;
 DROP ROLE
   platform_provisioner,
   migration_role,
@@ -541,6 +587,7 @@ DROP ROLE
   pruner_role,
   readonly_auditor_role,
   trailmind_app_owner,
-  trailmind_control_owner;
+  trailmind_control_owner,
+  trailmind_import_schema_owner;
 
 COMMIT;
