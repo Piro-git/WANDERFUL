@@ -57,7 +57,7 @@ struct SuperwallOnboardingHost: View {
     private var localRecoveryView: some View {
         ZStack {
             LinearGradient(
-                colors: [theme.forest, Color(red: 0.04, green: 0.30, blue: 0.21)],
+                colors: [theme.brandFill, theme.brandFillBright],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -66,18 +66,18 @@ struct SuperwallOnboardingHost: View {
             VStack(spacing: 18) {
                 Image(systemName: "externaldrive.badge.exclamationmark")
                     .font(.system(size: 42, weight: .semibold))
-                    .foregroundStyle(theme.sand)
+                    .foregroundStyle(theme.onBrandAccent)
                     .accessibilityHidden(true)
 
                 Text("Your local Trail Profile needs a fresh start")
                     .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onBrandPrimary)
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
 
                 Text("The saved record can’t be read safely. Discard it to begin again. No account or network connection is required.")
                     .font(.body)
-                    .foregroundStyle(.white.opacity(0.78))
+                    .foregroundStyle(theme.onBrandSecondary)
                     .multilineTextAlignment(.center)
 
                 Button("Discard unreadable record") {
@@ -87,8 +87,8 @@ struct SuperwallOnboardingHost: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(theme.mossSoft)
-                .foregroundStyle(theme.forest)
+                .tint(theme.onBrandAccent)
+                .foregroundStyle(theme.onBrandAccentForeground)
                 .accessibilityIdentifier("onboarding.recovery.discard")
             }
             .padding(28)
@@ -175,13 +175,13 @@ struct SuperwallOnboardingHost: View {
     }
 }
 
-private struct SuperwallOnboardingLoadingView: View {
+struct SuperwallOnboardingLoadingView: View {
     @Environment(TrailTheme.self) private var theme
 
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [theme.forest, Color(red: 0.04, green: 0.30, blue: 0.21)],
+                colors: [theme.brandFill, theme.brandFillBright],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -194,25 +194,25 @@ private struct SuperwallOnboardingLoadingView: View {
             VStack(spacing: 20) {
                 ZStack {
                     Circle()
-                        .fill(theme.mossSoft.opacity(0.16))
+                        .fill(theme.onBrandAccent.opacity(0.18))
                         .frame(width: 112, height: 112)
                     Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
                         .font(.system(size: 42, weight: .semibold))
-                        .foregroundStyle(theme.sand)
+                        .foregroundStyle(theme.onBrandAccent)
                 }
 
                 VStack(spacing: 8) {
                     Text("Preparing your route setup")
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.onBrandPrimary)
                     Text("Opening local setup…")
                         .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.66))
+                        .foregroundStyle(theme.onBrandSecondary)
                         .multilineTextAlignment(.center)
                 }
 
                 ProgressView()
-                    .tint(theme.mossSoft)
+                    .tint(theme.onBrandProgress)
             }
             .padding(28)
         }

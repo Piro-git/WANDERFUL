@@ -50,6 +50,10 @@
 	<string>$(TRAILMIND_APP_ATTEST_ENVIRONMENT)</string>
 	<key>TRAILMIND_APP_ENVIRONMENT</key>
 	<string>$(TRAILMIND_APP_ENVIRONMENT)</string>
+	<key>WANDERFUL_PRIVACY_POLICY_URL</key>
+	<string>$(WANDERFUL_PRIVACY_POLICY_URL)</string>
+	<key>WANDERFUL_SUPPORT_URL</key>
+	<string>$(WANDERFUL_SUPPORT_URL)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
 	<key>NSMicrophoneUsageDescription</key>

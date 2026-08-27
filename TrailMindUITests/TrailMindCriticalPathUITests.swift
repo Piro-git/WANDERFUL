@@ -3,6 +3,7 @@ import XCTest
 final class TrailMindCriticalPathUITests: XCTestCase {
     private enum Scenario: String {
         case onboarding
+        case onboardingLoading = "onboarding-loading"
         case core
         case failOnce = "fail-once"
         case noRoutes = "no-routes"
@@ -13,6 +14,14 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     }
 
     private let pointToPointRouteID = "11111111-1111-4111-8111-111111111111"
+    private let accessibilityStressArguments = [
+        "--trailmind-ui-accessibility-xxxl",
+        "--trailmind-ui-dark-mode",
+        "-UIAccessibilityDarkerSystemColorsEnabled",
+        "YES",
+        "-UIAccessibilityReduceMotionEnabled",
+        "YES"
+    ]
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -274,9 +283,162 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             in: app,
             until: element("planning.suggestions", in: app)
         )
-        XCTAssertTrue(app.staticTexts["Ilsenburg North Loop"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Ilsenburg South Loop"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Ilsenburg Ridge Loop"].waitForExistence(timeout: 5))
+        for title in [
+            "Ilsenburg North Loop",
+            "Ilsenburg South Loop",
+            "Ilsenburg Ridge Loop"
+        ] {
+            XCTAssertTrue(routeAction(titled: title, in: app).waitForExistence(timeout: 5))
+        }
+    }
+
+    @MainActor
+    func testRouteComparisonRemainsReadableAndReachableAtAccessibilityXXXL() {
+        let app = launch(
+            .core,
+            extraArguments: [
+                "--trailmind-ui-accessibility-xxxl"
+            ]
+        )
+
+        tapHomeExample(
+            "home.example.loop",
+            in: app,
+            until: element("planning.suggestions", in: app)
+        )
+
+        let requestSummary = app.staticTexts[
+            "Built around “15 km Rundwanderung um Ilsenburg”"
+        ]
+        XCTAssertTrue(requestSummary.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            requestSummary.identifier,
+            "planning.requestSummary"
+        )
+        let routeButton = routeAction(titled: "Ilsenburg North Loop", in: app)
+        XCTAssertTrue(routeButton.waitForExistence(timeout: 5))
+        for expectedPart in [
+            "Ilsenburg North Loop",
+            "Comparison:",
+            "Hiking, Moderate physical effort estimate",
+            "330 m climb",
+            "time",
+            "Important limitation:"
+        ] {
+            XCTAssertTrue(
+                routeButton.label.contains(expectedPart),
+                "The single route action should include \(expectedPart). Actual label: \(routeButton.label)"
+            )
+        }
+        XCTAssertTrue(
+            routeButton.label.contains("14.8 km distance")
+                || routeButton.label.contains("14,8 km distance"),
+            "The route action should preserve the measured distance using the active locale. Actual label: \(routeButton.label)"
+        )
+        XCTAssertEqual(
+            app.buttons
+                .matching(NSPredicate(format: "identifier == %@", routeButton.identifier))
+                .count,
+            1
+        )
+        XCTAssertEqual(routeButton.descendants(matching: .button).count, 0)
+        for measuredTerm in ["distance", "climb", "time"] {
+            XCTAssertEqual(
+                routeButton.label.components(separatedBy: measuredTerm).count - 1,
+                1,
+                "The single route action should announce \(measuredTerm) exactly once. Actual label: \(routeButton.label)"
+            )
+        }
+
+        let startOver = app.buttons["planning.startOver"]
+        XCTAssertTrue(waitUntilHittable(startOver, in: app, maximumSwipes: 24))
+    }
+
+    @MainActor
+    func testNativePrivacyAndHelpRemainReachableWithoutConfiguredWebLinks() {
+        let app = launch(.core)
+        let profile = app.tabBars.buttons["Profile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        profile.tap()
+
+        let privacy = element("about.destination.privacyAndData", in: app)
+        XCTAssertTrue(waitUntilHittable(privacy, in: app, maximumSwipes: 16))
+        privacy.tap()
+        XCTAssertTrue(app.navigationBars["Privacy & data"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("about.link.privacyPolicy", in: app).exists)
+
+        app.navigationBars.buttons["Profile"].tap()
+        let help = element("about.destination.helpAndSafety", in: app)
+        XCTAssertTrue(waitUntilHittable(help, in: app, maximumSwipes: 16))
+        help.tap()
+        XCTAssertTrue(app.navigationBars["Help & safety"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("about.link.supportWebsite", in: app).exists)
+    }
+
+    @MainActor
+    func testAppStoreVisualQAAtStandardSizeInLight() {
+        exerciseAppStoreVisualPath(
+            label: "standard-light",
+            extraArguments: ["--trailmind-ui-light-mode"]
+        )
+    }
+
+    @MainActor
+    func testAppStoreVisualQAAtStandardSizeInDark() {
+        exerciseAppStoreVisualPath(
+            label: "standard-dark",
+            extraArguments: ["--trailmind-ui-dark-mode"]
+        )
+    }
+
+    @MainActor
+    func testAppStoreVisualQAAtAccessibilityXXXLInLight() {
+        exerciseAppStoreVisualPath(
+            label: "accessibility-xxxl-light",
+            extraArguments: [
+                "--trailmind-ui-accessibility-xxxl",
+                "--trailmind-ui-light-mode"
+            ]
+        )
+    }
+
+    @MainActor
+    func testAppStoreVisualQAAtAccessibilityXXXLInDarkIncreasedContrastReducedMotion() {
+        exerciseAppStoreVisualPath(
+            label: "accessibility-xxxl-dark-increased-contrast-reduced-motion",
+            extraArguments: accessibilityStressArguments
+        )
+    }
+
+    @MainActor
+    func testOnboardingAndSuperwallLoadingVisualQAUnderAccessibilityStress() {
+        let loadingApp = launch(
+            .onboardingLoading,
+            extraArguments: accessibilityStressArguments
+        )
+        let loading = loadingApp.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "Preparing onboarding"))
+            .firstMatch
+        XCTAssertTrue(loading.waitForExistence(timeout: 5))
+        captureScreen(named: "superwall-loading-accessibility-stress")
+
+        let onboardingApp = launch(
+            .onboarding,
+            extraArguments: accessibilityStressArguments
+        )
+        let welcome = onboardingApp.staticTexts["Your perfect day, mapped."]
+        XCTAssertTrue(welcome.waitForExistence(timeout: 5))
+        captureScreen(named: "native-onboarding-accessibility-stress")
+
+        let continueButton = onboardingApp.buttons["onboarding.continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            tap(
+                continueButton,
+                until: onboardingApp.staticTexts["How do you want to move outside?"]
+            )
+        )
+        captureScreen(named: "native-onboarding-choice-accessibility-stress")
     }
 
     @MainActor
@@ -453,7 +615,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(
             tap(continueButton, until: element("planning.suggestions", in: app), timeout: 8)
         )
-        XCTAssertTrue(app.staticTexts["Ilsenburg North Loop"].exists)
+        XCTAssertTrue(routeAction(titled: "Ilsenburg North Loop", in: app).exists)
     }
 
     @MainActor
@@ -471,7 +633,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(
             tap(retry, until: element("planning.suggestions", in: app), timeout: 8)
         )
-        XCTAssertTrue(app.staticTexts["Ilsenburg to Schierke Route"].exists)
+        XCTAssertTrue(routeAction(titled: "Ilsenburg to Schierke Route", in: app).exists)
     }
 
     @MainActor
@@ -554,6 +716,56 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     }
 
     @MainActor
+    private func exerciseAppStoreVisualPath(
+        label: String,
+        extraArguments: [String]
+    ) {
+        let app = launch(.core, extraArguments: extraArguments)
+        XCTAssertTrue(app.buttons["home.example.loop"].waitForExistence(timeout: 5))
+        captureScreen(named: "\(label)-home")
+
+        tapHomeExample(
+            "home.example.loop",
+            in: app,
+            until: element("planning.suggestions", in: app)
+        )
+        XCTAssertTrue(
+            routeAction(titled: "Ilsenburg North Loop", in: app)
+                .waitForExistence(timeout: 5)
+        )
+        captureScreen(named: "\(label)-route-suggestions")
+
+        openRoute(titled: "Ilsenburg North Loop", in: app)
+        captureScreen(named: "\(label)-route-detail")
+
+        let profile = app.tabBars.buttons["Profile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        profile.tap()
+        captureScreen(named: "\(label)-profile")
+
+        let privacy = element("about.destination.privacyAndData", in: app)
+        XCTAssertTrue(waitUntilHittable(privacy, in: app, maximumSwipes: 20))
+        privacy.tap()
+        XCTAssertTrue(app.navigationBars["Privacy & data"].waitForExistence(timeout: 5))
+        captureScreen(named: "\(label)-privacy-and-data")
+
+        app.navigationBars.buttons["Profile"].tap()
+        let help = element("about.destination.helpAndSafety", in: app)
+        XCTAssertTrue(waitUntilHittable(help, in: app, maximumSwipes: 20))
+        help.tap()
+        XCTAssertTrue(app.navigationBars["Help & safety"].waitForExistence(timeout: 5))
+        captureScreen(named: "\(label)-help-and-safety")
+    }
+
+    @MainActor
+    private func captureScreen(named name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
     private func tapHomeExample(
         _ identifier: String,
         in app: XCUIApplication,
@@ -590,9 +802,10 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             until: element("planning.suggestions", in: app)
         )
 
-        let routeTitle = app.staticTexts["Ilsenburg to Schierke Route"]
-        XCTAssertTrue(routeTitle.waitForExistence(timeout: 5))
-        let routeLink = app.buttons.containing(.staticText, identifier: "Ilsenburg to Schierke Route").firstMatch
+        let routeLink = routeAction(
+            titled: "Ilsenburg to Schierke Route",
+            in: app
+        )
         XCTAssertTrue(routeLink.waitForExistence(timeout: 5))
         XCTAssertTrue(
             tap(routeLink, until: element("route.detail", in: app), timeout: 8),
@@ -607,9 +820,11 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             in: app,
             until: element("planning.suggestions", in: app)
         )
+        let routeLink = routeAction(titled: "Ilsenburg North Loop", in: app)
+        XCTAssertTrue(routeLink.waitForExistence(timeout: 5))
         XCTAssertTrue(
-            element("research.card.summary", in: app)
-                .waitForExistence(timeout: 5)
+            routeLink.label.contains("Verified evidence:")
+                || routeLink.label.contains("Important limitation:")
         )
         openRoute(titled: "Ilsenburg North Loop", in: app)
     }
@@ -619,11 +834,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         titled title: String,
         in app: XCUIApplication
     ) {
-        let routeTitle = app.staticTexts[title]
-        XCTAssertTrue(routeTitle.waitForExistence(timeout: 5))
-        let routeLink = app.buttons
-            .containing(.staticText, identifier: title)
-            .firstMatch
+        let routeLink = routeAction(titled: title, in: app)
         XCTAssertTrue(routeLink.waitForExistence(timeout: 5))
         XCTAssertTrue(
             tap(
@@ -633,6 +844,22 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             ),
             "The research route card should open its route detail."
         )
+    }
+
+    @MainActor
+    private func routeAction(
+        titled title: String,
+        in app: XCUIApplication
+    ) -> XCUIElement {
+        app.buttons
+            .matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "route.open."
+                )
+            )
+            .matching(NSPredicate(format: "label BEGINSWITH %@", title))
+            .firstMatch
     }
 
     @MainActor

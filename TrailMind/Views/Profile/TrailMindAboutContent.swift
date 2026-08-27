@@ -30,6 +30,10 @@ enum TrailMindAboutAccessibilityID {
     static let dataFlowSection = "about.section.dataFlow"
     static let planningBoundarySection = "about.section.planningBoundary"
     static let creditsSection = "about.section.credits"
+    static let privacyAndData = "about.destination.privacyAndData"
+    static let helpAndSafety = "about.destination.helpAndSafety"
+    static let privacyPolicy = "about.link.privacyPolicy"
+    static let supportWebsite = "about.link.supportWebsite"
 }
 
 enum TrailMindAboutContent {
@@ -124,6 +128,42 @@ enum TrailMindAboutContent {
             title: "Preferences are requests",
             detail: "Requested features are shown separately unless mapped route data verifies them.",
             symbol: "slider.horizontal.3"
+        )
+    ]
+
+    static let privacyControlItems = [
+        TrailMindAboutItem(
+            id: "about.privacyControl.routes",
+            title: "Delete saved routes",
+            detail: "Open Saved and use the trash button to delete all routes stored by Wanderful on this iPhone.",
+            symbol: "trash.fill"
+        ),
+        TrailMindAboutItem(
+            id: "about.privacyControl.profile",
+            title: "Manage your Trail Profile",
+            detail: "Return to Profile to edit, reset or delete the planning preferences stored on this iPhone.",
+            symbol: "person.crop.circle.badge.checkmark"
+        )
+    ]
+
+    static let helpItems = [
+        TrailMindAboutItem(
+            id: "about.help.location",
+            title: "Name a specific start",
+            detail: "Use a town, trailhead or landmark. Wanderful asks you to clarify broad or ambiguous regions before routing.",
+            symbol: "mappin.and.ellipse"
+        ),
+        TrailMindAboutItem(
+            id: "about.help.retry",
+            title: "If a route cannot finish",
+            detail: "Try the request again, or edit it to use a clearer place, distance, duration or route type.",
+            symbol: "arrow.clockwise"
+        ),
+        TrailMindAboutItem(
+            id: "about.help.verify",
+            title: "Review the route",
+            detail: "Compare the mapped geometry and verified route statistics. Requested preferences remain labeled separately when they are not verified.",
+            symbol: "checkmark.circle.fill"
         )
     ]
 
