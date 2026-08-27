@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "manifestVersion": "trailmind-backend-closed-beta-source-evidence-v1",
-  "generatedOn": "2026-08-23",
-  "sourceCommit": "76f6552a1cd525a38a3840a0204cd81aede94406",
+  "generatedOn": "2026-08-27",
+  "sourceCommit": "a12ac1f1e8937690a3e1c0c406935a12a04a3d03",
   "currentDecision": "NO_GO",
   "currentEvidenceNote": "Source and deterministic local tests are current at sourceCommit. Historical receipts and missing external evidence do not prove deployment or closed-beta readiness.",
   "packageFiles": [
@@ -12,6 +12,8 @@
     "README.md",
     "ROLLBACK_AND_INCIDENT_RESPONSE_V1.md",
     "SOURCE_EVIDENCE_MANIFEST_V1.json",
+    "SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_CANDIDATE.json",
+    "SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_DIFF_CHECK_CORRECTION_001.json",
     "STAGING_PROVISIONING_RUNBOOK_V1.md",
     "V4_OPERATIONAL_PROTOCOL.md",
     "V4_PROOF_RUN_CLOCK_CONTRACT.md",
@@ -59,15 +61,15 @@
     },
     {
       "id": "database-staging-postgis",
-      "status": "blocked",
-      "classifications": ["verified_from_current_source", "requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
-      "sourceEvidence": ["backend/package.json", "backend/migrations/001_app_attest.sql"]
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_staging_or_deployment", "requires_owner_or_cloud_decision"],
+      "sourceEvidence": ["backend/package.json", "backend/migrations/001_app_attest.sql", "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js", "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.md"]
     },
     {
       "id": "database-least-privilege-roles",
-      "status": "blocked",
-      "classifications": ["verified_from_current_source", "requires_disposable_postgis", "requires_staging_or_deployment"],
-      "sourceEvidence": ["backend/migrations/008_outdoor_research_runtime_read_contract.sql", "backend/src/operations/productionConfiguration.js"]
+      "status": "partial",
+      "classifications": ["proved_by_current_automated_test", "requires_disposable_postgis", "requires_staging_or_deployment"],
+      "sourceEvidence": ["backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql", "backend/src/operations/productionConfiguration.js", "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js", "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.md"]
     },
     {
       "id": "database-migrations-repeatable",
