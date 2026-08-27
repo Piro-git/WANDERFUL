@@ -93,9 +93,9 @@ struct RouteEditAIView: View {
             } label: {
                 Image(systemName: "arrow.up")
                     .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onBrandPrimary)
                     .frame(width: 38, height: 38)
-                    .background(theme.forest, in: Circle())
+                    .background(theme.brandFill, in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isWorking)
@@ -153,11 +153,11 @@ struct ChatBubble: View {
                 }
                 Text(message.text)
                     .font(.body)
-                    .foregroundStyle(message.kind == .user ? .white : theme.graphite)
+                    .foregroundStyle(message.kind == .user ? theme.onBrandPrimary : theme.graphite)
             }
             .padding(15)
             .background(
-                message.kind == .user ? theme.forest : theme.surface,
+                message.kind == .user ? theme.brandFill : theme.surface,
                 in: RoundedRectangle(cornerRadius: 20, style: .continuous)
             )
             .shadow(color: theme.forest.opacity(message.kind == .user ? 0 : 0.06), radius: 10, y: 5)

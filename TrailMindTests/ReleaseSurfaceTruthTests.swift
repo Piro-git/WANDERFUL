@@ -127,6 +127,87 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         }
     }
 
+    func testReleaseUsesAdaptiveAppearanceAndEmptyPublicLinkDefaults() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let appSource = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind/App/TrailMindApp.swift"
+            ),
+            encoding: .utf8
+        )
+        let sharedConfiguration = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "Configuration/Shared.xcconfig"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(appSource.contains(".preferredColorScheme(.light)"))
+        for emptySetting in [
+            "LOCAL_PRIVACY_POLICY_URL =",
+            "LOCAL_SUPPORT_URL =",
+            "STAGING_PRIVACY_POLICY_URL =",
+            "STAGING_SUPPORT_URL =",
+            "PRODUCTION_PRIVACY_POLICY_URL =",
+            "PRODUCTION_SUPPORT_URL ="
+        ] {
+            XCTAssertTrue(
+                sharedConfiguration.contains(emptySetting),
+                "Missing empty-by-default public-link setting: \(emptySetting)"
+            )
+        }
+    }
+
+    func testPublicLinkXCConfigDocumentsEscapedHTTPSWithoutDestinations() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let localExample = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "Configuration/Local.xcconfig.example"
+            ),
+            encoding: .utf8
+        )
+        let sharedConfiguration = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "Configuration/Shared.xcconfig"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(localExample.contains("https:/$()/…"))
+        XCTAssertTrue(sharedConfiguration.contains("https:/$()/…"))
+        XCTAssertFalse(localExample.contains("LOCAL_PRIVACY_POLICY_URL = https:"))
+        XCTAssertFalse(localExample.contains("LOCAL_SUPPORT_URL = https:"))
+    }
+
+    func testRouteSuggestionsExposeOneCompleteOuterAccessibilityAction() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind/Views/Planning/PlanningViews.swift"
+            ),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("RouteComparisonAccessibilitySummary("))
+        XCTAssertTrue(source.contains(".accessibilityElement(children: .ignore)"))
+        XCTAssertTrue(source.contains(".accessibilityLabel(accessibilitySummary.label)"))
+        XCTAssertTrue(source.contains(".accessibilityHint(accessibilitySummary.hint)"))
+        XCTAssertFalse(source.contains(".accessibilityLabel(\"Open "))
+    }
+
+    func testNativePrivacyAndHelpDestinationsRemainAvailableWithoutWebLinks() {
+        XCTAssertFalse(TrailMindAboutContent.dataFlowItems.isEmpty)
+        XCTAssertFalse(TrailMindAboutContent.privacyControlItems.isEmpty)
+        XCTAssertFalse(TrailMindAboutContent.helpItems.isEmpty)
+        XCTAssertFalse(TrailMindAboutContent.planningBoundaryItems.isEmpty)
+    }
+
     func testOnboardingMovesAccessibilityFocusToEveryNewHeading() throws {
         let repositoryURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

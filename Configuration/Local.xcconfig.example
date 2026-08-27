@@ -11,3 +11,10 @@
 // Superwall uses a public SDK key, but its flag remains protected false and
 // onboarding remains native in V1.
 // LOCAL_SUPERWALL_PUBLIC_SDK_KEY = pk_public_placeholder
+
+// Optional public web pages. The app accepts only canonical public HTTPS URLs
+// and always keeps native Privacy & data and Help & safety pages available.
+// Leave these unset until the product owner supplies reviewed public URLs.
+// In xcconfig, // begins a comment. Preserve the second HTTPS slash with the
+// empty-substitution form https:/$()/… when a reviewed value is supplied.
+// Do not add placeholder destinations.

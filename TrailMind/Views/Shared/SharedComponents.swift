@@ -15,11 +15,11 @@ struct PrimaryButton: View {
                 Text(title)
             }
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(theme.onBrandPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .frame(minHeight: 56)
-            .background(theme.forest, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(theme.brandFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -47,7 +47,7 @@ struct SecondaryButton: View {
             .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(theme.forest.opacity(0.12), lineWidth: 1)
+                    .stroke(theme.separator, lineWidth: 1)
             }
         }
         .buttonStyle(.plain)

@@ -359,7 +359,7 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [theme.forest, Color(red: 0.01, green: 0.27, blue: 0.21)],
+                colors: [theme.brandFill, theme.brandFillBright],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -404,7 +404,7 @@ struct OnboardingView: View {
                 TrailMindMark()
                 Spacer(minLength: 12)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(theme.onBrandPrimary)
             .padding(.horizontal, 22)
             .padding(.top, 8)
             .padding(.bottom, 2)
@@ -415,7 +415,7 @@ struct OnboardingView: View {
                         Image(systemName: "chevron.left")
                             .font(.headline.weight(.bold))
                             .frame(width: 48, height: 48)
-                            .background(.white.opacity(0.12), in: Circle())
+                            .background(theme.onBrandSecondary.opacity(0.55), in: Circle())
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
@@ -426,10 +426,10 @@ struct OnboardingView: View {
 
                     Text("\(selectedPage + 1) of \(Self.pages.count)")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white.opacity(0.76))
+                        .foregroundStyle(theme.onBrandSecondary)
                         .contentTransition(.numericText())
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.onBrandPrimary)
 
                 OnboardingProgressRoute(
                     stepCount: Self.pages.count,
@@ -599,7 +599,7 @@ struct OnboardingView: View {
                 Text("OR REQUEST UP TO THREE")
                     .font(.caption2.weight(.bold))
                     .tracking(1.1)
-                    .foregroundStyle(.white.opacity(0.68))
+                    .foregroundStyle(theme.onBrandSecondary)
 
                 LazyVGrid(
                     columns: experienceColumns,
@@ -621,7 +621,7 @@ struct OnboardingView: View {
 
                 Text("\(draft.requestedExperiences?.count ?? 0) of 3 requested")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(theme.onBrandSecondary)
                     .contentTransition(.numericText())
 
                 OnboardingUnknownNote()

@@ -126,6 +126,9 @@
     "Wanderful is a planning aid, not live navigation."
   ],
   "forbidden_binary_markers": [
+    "--trailmind-ui-accessibility-xxxl",
+    "--trailmind-ui-dark-mode",
+    "--trailmind-ui-light-mode",
     "--trailmind-ui-testing",
     "--trailmind-ui-scenario",
     "UITestLaunchComposition",

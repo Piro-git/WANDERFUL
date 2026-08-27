@@ -14,6 +14,7 @@ enum PlanningAccessibilityID {
     static let noRoutes = "planning.noRoutes"
     static let cancelled = "planning.cancelled"
     static let suggestions = "planning.suggestions"
+    static let requestSummary = "planning.requestSummary"
     static let startOver = "planning.startOver"
 }
 
@@ -28,7 +29,7 @@ struct GeneratingRouteView: View {
 
             ZStack {
                 Circle()
-                    .stroke(theme.mossSoft.opacity(0.5), lineWidth: 20)
+                    .stroke(theme.moss.opacity(0.72), lineWidth: 20)
                     .frame(width: 170, height: 170)
 
                 Circle()
@@ -570,6 +571,7 @@ struct PlanningRecoveryView: View {
 
 struct RouteSuggestionsView: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let prompt: String
     let suggestions: [RouteSuggestion]
     let notice: String?
@@ -606,7 +608,15 @@ struct RouteSuggestionsView: View {
                     Text("Built around “\(prompt)”")
                         .font(.body)
                         .foregroundStyle(theme.secondaryText)
-                        .lineLimit(3)
+                        .lineLimit(
+                            RouteSuggestionsHeaderLayoutPolicy.lineLimit(
+                                for: dynamicTypeSize
+                            )
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier(
+                            PlanningAccessibilityID.requestSummary
+                        )
                 }
 
                 if let notice {
@@ -623,6 +633,12 @@ struct RouteSuggestionsView: View {
                 ForEach(suggestions) { suggestion in
                     let researchPresentation =
                         researchPresentations[suggestion.id]
+                    let accessibilitySummary =
+                        RouteComparisonAccessibilitySummary(
+                            route: suggestion.route,
+                            comparisonLabel: suggestion.explanation,
+                            researchPresentation: researchPresentation
+                        )
                     NavigationLink {
                         RouteDetailView(
                             route: suggestion.route,
@@ -639,8 +655,12 @@ struct RouteSuggestionsView: View {
                             ),
                             researchPresentation: researchPresentation
                         )
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(accessibilitySummary.label)
+                        .accessibilityHint(accessibilitySummary.hint)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("route.open.\(suggestion.route.id.uuidString)")
                 }
 
                 Button(action: onStartOver) {
@@ -694,6 +714,12 @@ struct RouteSuggestionsView: View {
     }
 }
 
+enum RouteSuggestionsHeaderLayoutPolicy {
+    static func lineLimit(for size: DynamicTypeSize) -> Int? {
+        size.isAccessibilitySize ? nil : 3
+    }
+}
+
 private struct PlanningNoticeView: View {
     @Environment(TrailTheme.self) private var theme
     let message: String
@@ -703,6 +729,7 @@ private struct PlanningNoticeView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
                 .foregroundStyle(theme.moss)
+                .accessibilityHidden(true)
             Text(message)
                 .font(.footnote)
                 .foregroundStyle(theme.graphite)
@@ -710,5 +737,7 @@ private struct PlanningNoticeView: View {
         }
         .padding(14)
         .background(theme.sand.opacity(0.62), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(message)
     }
 }

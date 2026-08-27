@@ -260,19 +260,19 @@ struct HomeView: View {
                         .fontWeight(.bold)
                 }
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundStyle(theme.onBrandSecondary)
             }
 
             Spacer(minLength: 36)
 
             Text("Where should\nwe go next?")
                 .font(.trailHero)
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.onBrandPrimary)
                 .tracking(-1.1)
 
             Text("Describe a route. Wanderful calculates it on mapped paths.")
                 .font(.body)
-                .foregroundStyle(.white.opacity(0.68))
+                .foregroundStyle(theme.onBrandSecondary)
                 .padding(.top, 12)
                 .frame(maxWidth: 270, alignment: .leading)
 
@@ -286,10 +286,10 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Text("Tell me the route")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.onBrandPrimary)
                     Text("Start, destination or loop, plus distance or time.")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(theme.onBrandSecondary)
                 }
             }
 
@@ -298,7 +298,7 @@ struct HomeView: View {
             } label: {
                 Label("Type instead", systemImage: "keyboard")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onBrandPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 13)
                     .frame(minHeight: 48)
@@ -312,7 +312,7 @@ struct HomeView: View {
         .frame(minHeight: 505)
         .background {
             LinearGradient(
-                colors: [theme.forest, Color(red: 0.04, green: 0.31, blue: 0.22)],
+                colors: [theme.brandFill, theme.brandFillBright],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -322,7 +322,7 @@ struct HomeView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-        .shadow(color: theme.forest.opacity(0.22), radius: 30, y: 15)
+        .shadow(color: theme.cardShadow, radius: 30, y: 15)
         .padding(.top, 10)
     }
 
@@ -341,14 +341,14 @@ struct VoiceInputOrb: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(theme.mossSoft.opacity(0.18))
+                    .fill(theme.onBrandAccent.opacity(0.18))
                     .frame(width: 92, height: 92)
                 Circle()
-                    .fill(theme.sand)
+                    .fill(theme.onBrandAccent)
                     .frame(width: 72, height: 72)
                 Image(systemName: "waveform")
                     .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(theme.forest)
+                    .foregroundStyle(theme.onBrandAccentForeground)
             }
         }
         .buttonStyle(.plain)

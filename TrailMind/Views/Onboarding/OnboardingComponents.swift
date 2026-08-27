@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct OnboardingPageContainer<Content: View>: View {
+    @Environment(TrailTheme.self) private var theme
     let page: OnboardingView.Page
     let title: String
     private let bodyText: String
@@ -29,19 +30,19 @@ struct OnboardingPageContainer<Content: View>: View {
                         Text(page.eyebrow)
                             .font(.caption.weight(.bold))
                             .tracking(1.5)
-                            .foregroundStyle(Color.white.opacity(0.72))
+                            .foregroundStyle(theme.onBrandSecondary)
 
                         Text(title)
                             .font(.system(.largeTitle, design: .rounded, weight: .bold))
                             .tracking(-0.7)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.onBrandPrimary)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
                             .accessibilityFocused($isHeadingFocused)
 
                         Text(bodyText)
                             .font(.body)
-                            .foregroundStyle(.white.opacity(0.78))
+                            .foregroundStyle(theme.onBrandSecondary)
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -79,12 +80,12 @@ struct OnboardingProgressRoute: View {
 
             ZStack {
                 Capsule()
-                    .fill(.white.opacity(0.12))
+                    .fill(theme.onBrandSecondary.opacity(0.55))
                     .frame(height: 4)
 
                 HStack(spacing: 0) {
                     Capsule()
-                        .fill(theme.mossSoft)
+                        .fill(theme.onBrandProgress)
                         .frame(width: proxy.size.width * normalized, height: 4)
                     Spacer(minLength: 0)
                 }
@@ -93,7 +94,11 @@ struct OnboardingProgressRoute: View {
                     ForEach(0..<stepCount, id: \.self) { index in
                         ZStack {
                             Circle()
-                                .fill(index <= currentIndex ? theme.mossSoft : Color(red: 0.04, green: 0.24, blue: 0.19))
+                                .fill(
+                                    index <= currentIndex
+                                        ? theme.onBrandProgress
+                                        : theme.onBrandSecondary.opacity(0.55)
+                                )
                                 .frame(
                                     width: index == currentIndex ? 18 : 14,
                                     height: index == currentIndex ? 18 : 14
@@ -101,7 +106,9 @@ struct OnboardingProgressRoute: View {
                                 .overlay {
                                     Circle()
                                         .stroke(
-                                            index == currentIndex ? .white : .white.opacity(0.2),
+                                            index == currentIndex
+                                                ? theme.onBrandPrimary
+                                                : theme.onBrandSecondary.opacity(0.55),
                                             lineWidth: index == currentIndex ? 3 : 2
                                         )
                                 }
@@ -109,7 +116,7 @@ struct OnboardingProgressRoute: View {
                             if index < currentIndex {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 7, weight: .black))
-                                    .foregroundStyle(theme.forest)
+                                    .foregroundStyle(theme.onBrandProgressGlyph)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -142,6 +149,7 @@ struct OnboardingJourneyIllustration: View {
 }
 
 struct OnboardingWelcomePage: View {
+    @Environment(TrailTheme.self) private var theme
     let page: OnboardingView.Page
     @AccessibilityFocusState private var isHeadingFocused: Bool
 
@@ -163,12 +171,12 @@ struct OnboardingWelcomePage: View {
                         Text(page.eyebrow)
                             .font(.caption.weight(.bold))
                             .tracking(1.5)
-                            .foregroundStyle(Color.white.opacity(0.72))
+                            .foregroundStyle(theme.onBrandSecondary)
 
                         Text(page.title)
                             .font(.system(.largeTitle, design: .rounded, weight: .bold))
                             .tracking(-0.7)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.onBrandPrimary)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
@@ -176,7 +184,7 @@ struct OnboardingWelcomePage: View {
 
                         Text(page.body)
                             .font(.body)
-                            .foregroundStyle(.white.opacity(0.78))
+                            .foregroundStyle(theme.onBrandSecondary)
                             .multilineTextAlignment(.center)
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
@@ -339,7 +347,11 @@ struct OnboardingUnitPicker: View {
                 } label: {
                     Text(unit.title)
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(selection == unit ? theme.forest : .white.opacity(0.78))
+                        .foregroundStyle(
+                            selection == unit
+                                ? theme.forest
+                                : theme.onBrandSecondary
+                        )
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(
                             selection == unit ? theme.warmWhite : Color.clear,
@@ -368,10 +380,10 @@ struct OnboardingUnknownNote: View {
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
             Image(systemName: "leaf")
-                .foregroundStyle(theme.mossSoft)
+                .foregroundStyle(theme.onBrandAccent)
         }
         .font(.subheadline.weight(.medium))
-        .foregroundStyle(.white.opacity(0.76))
+        .foregroundStyle(theme.onBrandSecondary)
         .padding(.horizontal, 8)
     }
 }
@@ -384,14 +396,17 @@ struct OnboardingSoFarCard: View {
         HStack(alignment: .top, spacing: 13) {
             Image(systemName: "sparkles")
                 .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.onBrandPrimary)
                 .frame(width: 44, height: 44)
-                .background(theme.moss.opacity(0.58), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(
+                    theme.onBrandAccent.opacity(0.18),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
                 .accessibilityHidden(true)
 
             Text(summary)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(theme.mossSoft)
+                .foregroundStyle(theme.onBrandSecondary)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -587,6 +602,8 @@ private struct OnboardingProfileRow: View {
 }
 
 struct TrailMindMark: View {
+    @Environment(TrailTheme.self) private var theme
+
     var body: some View {
         HStack(spacing: 9) {
             Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
@@ -594,7 +611,7 @@ struct TrailMindMark: View {
             Text("Wanderful")
                 .font(.headline.weight(.bold))
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(theme.onBrandPrimary)
         .accessibilityElement(children: .combine)
     }
 }

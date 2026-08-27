@@ -12,6 +12,8 @@ INTENT_BACKEND_BASE_URL = $(LOCAL_BACKEND_BASE_URL)
 SUPABASE_PROJECT_URL =
 SUPABASE_PUBLISHABLE_KEY =
 SUPERWALL_API_KEY = $(LOCAL_SUPERWALL_PUBLIC_SDK_KEY)
+WANDERFUL_PRIVACY_POLICY_URL = $(LOCAL_PRIVACY_POLICY_URL)
+WANDERFUL_SUPPORT_URL = $(LOCAL_SUPPORT_URL)
 
 // Local.xcconfig cannot activate provider/research capabilities. An explicit
 // command-line build-setting override is required for a separately reviewed run.

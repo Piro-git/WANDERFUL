@@ -16,16 +16,24 @@ SUPERWALL_ENABLED = false
 // accepts HTTP only for exact loopback hosts in a local build.
 LOCAL_BACKEND_BASE_URL =
 LOCAL_SUPERWALL_PUBLIC_SDK_KEY =
+LOCAL_PRIVACY_POLICY_URL =
+LOCAL_SUPPORT_URL =
 
 // CI/release automation may supply these environment-scoped public values.
 // Keeping staging and production variable names separate prevents one lane's
 // values from being selected by the other lane's checked-in configuration.
+// Direct xcconfig assignments must spell HTTPS as https:/$()/… because //
+// starts a comment. Keep every tracked value empty until owner review.
 STAGING_BACKEND_BASE_URL =
 STAGING_SUPABASE_PROJECT_URL =
 STAGING_SUPABASE_PUBLISHABLE_KEY =
 STAGING_SUPERWALL_PUBLIC_SDK_KEY =
+STAGING_PRIVACY_POLICY_URL =
+STAGING_SUPPORT_URL =
 
 PRODUCTION_BACKEND_BASE_URL =
 PRODUCTION_SUPABASE_PROJECT_URL =
 PRODUCTION_SUPABASE_PUBLISHABLE_KEY =
 PRODUCTION_SUPERWALL_PUBLIC_SDK_KEY =
+PRODUCTION_PRIVACY_POLICY_URL =
+PRODUCTION_SUPPORT_URL =

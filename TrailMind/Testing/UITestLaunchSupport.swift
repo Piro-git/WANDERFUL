@@ -1,15 +1,18 @@
 #if DEBUG && targetEnvironment(simulator)
 import Foundation
+import SwiftUI
 
 @MainActor
 struct UITestLaunchComposition {
     enum StartDestination {
         case onboarding
+        case onboardingLoading
         case appShell
     }
 
     private enum Scenario: String {
         case onboarding
+        case onboardingLoading = "onboarding-loading"
         case core
         case failOnce = "fail-once"
         case noRoutes = "no-routes"
@@ -22,6 +25,8 @@ struct UITestLaunchComposition {
     let startDestination: StartDestination
     let appModel: AppModel
     let planner: PlannerViewModel
+    let dynamicTypeSize: DynamicTypeSize
+    let colorScheme: ColorScheme?
 
     static func resolve(arguments: [String] = ProcessInfo.processInfo.arguments) -> UITestLaunchComposition? {
         let marker = "--trailmind-ui-testing"
@@ -46,7 +51,7 @@ struct UITestLaunchComposition {
         }
 
         let routingBehavior: UITestRoutingCoordinator.Behavior = switch scenario {
-        case .onboarding, .core, .researchComplete, .researchPartial,
+        case .onboarding, .onboardingLoading, .core, .researchComplete, .researchPartial,
              .researchFallback, .researchClarification:
             .success
         case .failOnce:
@@ -65,14 +70,14 @@ struct UITestLaunchComposition {
             .fallback
         case .researchClarification:
             .clarification
-        case .onboarding, .core, .failOnce, .noRoutes:
+        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes:
             .complete
         }
         let researchEnabled: Bool = switch scenario {
         case .researchComplete, .researchPartial, .researchFallback,
              .researchClarification:
             true
-        case .onboarding, .core, .failOnce, .noRoutes:
+        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes:
             false
         }
         let savedRoutes = SavedRoutesModel(store: InMemorySavedRouteStore())
@@ -89,10 +94,28 @@ struct UITestLaunchComposition {
             operationTimeouts: .init(parserSeconds: 2, geocodingSeconds: 2, routingSeconds: 2)
         )
 
+        let startDestination: StartDestination = switch scenario {
+        case .onboarding: .onboarding
+        case .onboardingLoading: .onboardingLoading
+        case .core, .failOnce, .noRoutes, .researchComplete,
+             .researchPartial, .researchFallback, .researchClarification:
+            .appShell
+        }
+        let usesLightMode = arguments.contains("--trailmind-ui-light-mode")
+        let usesDarkMode = arguments.contains("--trailmind-ui-dark-mode")
+        precondition(
+            !(usesLightMode && usesDarkMode),
+            "TrailMind UI testing accepts only one color-scheme override."
+        )
+
         return UITestLaunchComposition(
-            startDestination: scenario == .onboarding ? .onboarding : .appShell,
+            startDestination: startDestination,
             appModel: appModel,
-            planner: planner
+            planner: planner,
+            dynamicTypeSize: arguments.contains("--trailmind-ui-accessibility-xxxl")
+                ? .accessibility5
+                : .large,
+            colorScheme: usesDarkMode ? .dark : (usesLightMode ? .light : nil)
         )
     }
 }

@@ -66,7 +66,6 @@ struct TrailMindApp: App {
             .environment(theme)
             .environment(appModel)
             .tint(theme.forestBright)
-            .preferredColorScheme(.light)
             .task {
                 async let hikingProfileLoad: Void = appModel.loadHikingProfileStateIfNeeded()
                 if sessionStartup.claimGPXRecovery() {
@@ -91,21 +90,27 @@ struct TrailMindApp: App {
         } else {
             #if targetEnvironment(simulator)
             if let uiTestComposition {
-                switch uiTestComposition.startDestination {
-                case .onboarding:
-                    if hasCompletedUITestOnboarding {
-                        AppShellView(
-                            planner: uiTestComposition.planner
-                        )
-                    } else {
-                        OnboardingView(
-                            isComplete:
-                                $hasCompletedUITestOnboarding
-                        )
+                Group {
+                    switch uiTestComposition.startDestination {
+                    case .onboarding:
+                        if hasCompletedUITestOnboarding {
+                            AppShellView(
+                                planner: uiTestComposition.planner
+                            )
+                        } else {
+                            OnboardingView(
+                                isComplete:
+                                    $hasCompletedUITestOnboarding
+                            )
+                        }
+                    case .onboardingLoading:
+                        SuperwallOnboardingLoadingView()
+                    case .appShell:
+                        AppShellView(planner: uiTestComposition.planner)
                     }
-                case .appShell:
-                    AppShellView(planner: uiTestComposition.planner)
                 }
+                .environment(\.dynamicTypeSize, uiTestComposition.dynamicTypeSize)
+                .preferredColorScheme(uiTestComposition.colorScheme)
             } else {
                 productionRootView
             }
@@ -138,14 +143,14 @@ private struct HikingProfileLaunchLoadingView: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [theme.forest, Color(red: 0.04, green: 0.30, blue: 0.21)],
+                colors: [theme.brandFill, theme.brandFillBright],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             ProgressView()
-                .tint(theme.mossSoft)
+                .tint(theme.onBrandProgress)
                 .accessibilityLabel("Loading your Trail Profile")
         }
     }

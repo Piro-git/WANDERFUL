@@ -1,8 +1,65 @@
 import MapKit
 import SwiftUI
 
+struct RouteComparisonAccessibilitySummary: Equatable {
+    let label: String
+    let hint = "Opens this route’s details."
+
+    init(
+        route: TrailRoute,
+        comparisonLabel: String?,
+        researchPresentation: ResearchRoutePresentation? = nil
+    ) {
+        var parts = [route.title]
+        if let comparison = RouteAlternativeQuality.displayLabel(
+            candidate: comparisonLabel,
+            for: route
+        ) {
+            parts.append("Comparison: \(comparison)")
+        }
+        parts.append(
+            "\(route.activity.rawValue), \(route.difficulty.rawValue) physical effort estimate"
+        )
+        parts.append(
+            "\(route.distanceLabel) distance, \(route.elevationLabel) climb, \(route.durationLabel) time"
+        )
+        parts.append(
+            Self.importantEvidence(
+                for: route,
+                researchPresentation: researchPresentation
+            )
+        )
+        label = parts.joined(separator: ". ")
+    }
+
+    private static func importantEvidence(
+        for route: TrailRoute,
+        researchPresentation: ResearchRoutePresentation?
+    ) -> String {
+        if let limitation = researchPresentation?.limitations.first {
+            return "Important limitation: \(limitation.title)"
+        }
+        if let fact = researchPresentation?.cardFacts.first {
+            return "Verified evidence: \(fact.title)"
+        }
+
+        let quality = HikingRouteQualityEngine().presentation(for: route)
+        if let limitation = quality.limitations.first {
+            return "Important limitation: \(limitation.title)"
+        }
+        if let evidence = quality.verifiedCharacteristics.first {
+            return "Verified evidence: \(evidence.title)"
+        }
+        if let fit = quality.primaryFit {
+            return "Measured fit: \(fit.title)"
+        }
+        return "Important limitation: No additional mapped path evidence is available"
+    }
+}
+
 struct RouteCard: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let route: TrailRoute
     let comparisonLabel: String?
     let qualityExplanations: [RouteQualityExplanation]
@@ -29,51 +86,30 @@ struct RouteCard: View {
                     .frame(height: 154)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .accessibilityHidden(true)
 
-                if let badgeLabel {
-                    Label(badgeLabel, systemImage: badgeSymbol)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(theme.forest)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 8)
-                        .background(
-                            .white.opacity(0.88),
-                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        )
+                if !usesExpandedLayout, badgeLabel != nil {
+                    comparisonBadge
                         .padding(12)
-                        .accessibilityLabel("Route comparison. \(badgeLabel)")
                 }
             }
 
+            if usesExpandedLayout, badgeLabel != nil {
+                comparisonBadge
+            }
+
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    if let locationLabel {
-                        Text(locationLabel.uppercased())
-                            .font(.caption.weight(.bold))
-                            .tracking(0.8)
-                            .foregroundStyle(theme.moss)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("ESTIMATED EFFORT")
-                            .font(.caption2.weight(.semibold))
-                            .tracking(0.45)
-                            .foregroundStyle(theme.secondaryText)
-                        DifficultyBadge(difficulty: route.difficulty)
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Physical effort estimate: \(route.difficulty.rawValue)")
-                }
+                locationAndEffort
 
                 Text(route.title)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(theme.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(route.summary)
                     .font(.subheadline)
                     .foregroundStyle(theme.secondaryText)
-                    .lineLimit(2)
+                    .lineLimit(usesExpandedLayout ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 #if DEBUG
@@ -89,13 +125,7 @@ struct RouteCard: View {
                 )
             }
 
-            HStack(spacing: 0) {
-                cardStat(route.distanceLabel, label: "Distance")
-                Divider().frame(height: 32)
-                cardStat(route.elevationLabel, label: "Climb")
-                Divider().frame(height: 32)
-                cardStat(route.durationLabel, label: "Time")
-            }
+            routeStats
 
             if !cardEvidenceItems.isEmpty {
                 RouteCardEvidenceRow(items: cardEvidenceItems)
@@ -104,16 +134,116 @@ struct RouteCard: View {
         .trailCard()
     }
 
-    private func cardStat(_ value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(value)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(theme.graphite)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(theme.secondaryText)
+    @ViewBuilder
+    private var comparisonBadge: some View {
+        if let badgeLabel {
+            Label(badgeLabel, systemImage: badgeSymbol)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(theme.forest)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 8)
+                .background(
+                    theme.surface.opacity(0.94),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Route comparison: \(badgeLabel)")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var locationAndEffort: some View {
+        if usesExpandedLayout {
+            VStack(alignment: .leading, spacing: 9) {
+                locationText
+                effortEstimate(alignment: .leading)
+            }
+        } else {
+            HStack(alignment: .top, spacing: 12) {
+                locationText
+                Spacer(minLength: 8)
+                effortEstimate(alignment: .trailing)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var locationText: some View {
+        if let locationLabel {
+            Text(locationLabel.uppercased())
+                .font(.caption.weight(.bold))
+                .tracking(0.8)
+                .foregroundStyle(theme.moss)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func effortEstimate(alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            Text("ESTIMATED EFFORT")
+                .font(.caption2.weight(.semibold))
+                .tracking(0.45)
+                .foregroundStyle(theme.secondaryText)
+            DifficultyBadge(difficulty: route.difficulty)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Physical effort estimate: \(route.difficulty.rawValue)")
+    }
+
+    @ViewBuilder
+    private var routeStats: some View {
+        if usesExpandedLayout {
+            VStack(alignment: .leading, spacing: 12) {
+                cardStat(route.distanceLabel, label: "Distance", expanded: true)
+                Divider()
+                cardStat(route.elevationLabel, label: "Climb", expanded: true)
+                Divider()
+                cardStat(route.durationLabel, label: "Time", expanded: true)
+            }
+        } else {
+            HStack(spacing: 0) {
+                cardStat(route.distanceLabel, label: "Distance", expanded: false)
+                Divider().frame(height: 32)
+                cardStat(route.elevationLabel, label: "Climb", expanded: false)
+                Divider().frame(height: 32)
+                cardStat(route.durationLabel, label: "Time", expanded: false)
+            }
+        }
+    }
+
+    private func cardStat(_ value: String, label: String, expanded: Bool) -> some View {
+        Group {
+            if expanded {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(theme.secondaryText)
+                    Spacer(minLength: 8)
+                    Text(value)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(theme.graphite)
+                        .multilineTextAlignment(.trailing)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(value)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(theme.graphite)
+                    Text(label)
+                        .font(.caption2)
+                        .foregroundStyle(theme.secondaryText)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value)")
+    }
+
+    private var usesExpandedLayout: Bool {
+        RouteCardLayoutPolicy.usesExpandedLayout(for: dynamicTypeSize)
     }
 
     private var badgeLabel: String? {
@@ -137,6 +267,12 @@ struct RouteCard: View {
         route.routeType == .loop
             ? "arrow.trianglehead.2.clockwise.rotate.90"
             : "point.bottomleft.forward.to.point.topright.scurvepath"
+    }
+}
+
+enum RouteCardLayoutPolicy {
+    static func usesExpandedLayout(for size: DynamicTypeSize) -> Bool {
+        size.isAccessibilitySize
     }
 }
 
@@ -305,11 +441,11 @@ struct RouteThumbnailView: View {
 
         if !isLoop, let end = points.last {
             Circle()
-                .fill(theme.forest)
+                .fill(theme.brandFill)
                 .frame(width: 14, height: 14)
                 .overlay {
                     Circle()
-                        .stroke(.white.opacity(0.85), lineWidth: 2)
+                        .stroke(theme.onBrandPrimary.opacity(0.85), lineWidth: 2)
                 }
                 .position(end.cgPoint(in: size))
         }
@@ -339,7 +475,7 @@ private struct RouteThumbnailPlaceholder: View {
                 .foregroundStyle(theme.forest.opacity(0.8))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
-                .background(.white.opacity(0.62), in: Capsule())
+                .background(theme.surface.opacity(0.78), in: Capsule())
         }
     }
 }
@@ -374,7 +510,7 @@ struct MapPreviewView: View {
 
                 if let start = coordinates.first {
                     Marker("Start", systemImage: "figure.hiking", coordinate: start)
-                        .tint(theme.forest)
+                        .tint(theme.brandFill)
                 }
 
                 if let end = coordinates.last {
@@ -386,9 +522,9 @@ struct MapPreviewView: View {
                     Annotation(waypoint.name, coordinate: coordinate(for: waypoint), anchor: .bottom) {
                         Image(systemName: waypoint.kind.symbol)
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.onBrandPrimary)
                             .padding(8)
-                            .background(theme.forestBright, in: Circle())
+                            .background(theme.brandFillBright, in: Circle())
                             .shadow(radius: 5, y: 3)
                     }
                 }
@@ -524,11 +660,15 @@ struct WaypointTimelineView: View {
                     VStack(spacing: 0) {
                         ZStack {
                             Circle()
-                                .fill(waypoint.kind == .start || waypoint.kind == .finish ? theme.forest : theme.mossSoft)
+                                .fill(waypoint.kind == .start || waypoint.kind == .finish ? theme.brandFill : theme.mossSoft)
                                 .frame(width: 34, height: 34)
                             Image(systemName: waypoint.kind.symbol)
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(waypoint.kind == .start || waypoint.kind == .finish ? .white : theme.forest)
+                                .foregroundStyle(
+                                    waypoint.kind == .start || waypoint.kind == .finish
+                                        ? theme.onBrandPrimary
+                                        : theme.forest
+                                )
                         }
                         if index < waypoints.count - 1 {
                             Rectangle()

@@ -6,6 +6,11 @@ struct ProfilePreferencesView: View {
     @State private var isEditingTrailProfile = false
     @State private var isConfirmingReset = false
     @State private var isConfirmingDelete = false
+    private let publicLinks: WanderfulPublicLinks
+
+    init(publicLinks: WanderfulPublicLinks = .current) {
+        self.publicLinks = publicLinks
+    }
 
     var body: some View {
         NavigationStack {
@@ -100,6 +105,80 @@ struct ProfilePreferencesView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        AboutInformationDestinationView(
+                            title: "Privacy & data",
+                            introduction: "What Wanderful handles today, and which controls stay with you.",
+                            sections: [
+                                AboutDestinationSection(
+                                    title: "Data use",
+                                    items: TrailMindAboutContent.dataFlowItems,
+                                    footer: TrailMindAboutContent.dataFlowFooter
+                                ),
+                                AboutDestinationSection(
+                                    title: "Your controls",
+                                    items: TrailMindAboutContent.privacyControlItems,
+                                    footer: nil
+                                )
+                            ],
+                            externalLink: publicLinks.privacyPolicy.url.map {
+                                AboutExternalLink(
+                                    title: "Public privacy policy",
+                                    detail: "Read Wanderful's published privacy policy.",
+                                    destination: $0,
+                                    accessibilityIdentifier: TrailMindAboutAccessibilityID.privacyPolicy
+                                )
+                            }
+                        )
+                    } label: {
+                        destinationRow(
+                            title: "Privacy & data",
+                            detail: "Review current data use and local controls.",
+                            symbol: "hand.raised.fill"
+                        )
+                    }
+                    .accessibilityIdentifier(TrailMindAboutAccessibilityID.privacyAndData)
+
+                    NavigationLink {
+                        AboutInformationDestinationView(
+                            title: "Help & safety",
+                            introduction: "Planning help and the boundaries to review before every outdoor activity.",
+                            sections: [
+                                AboutDestinationSection(
+                                    title: "Planning help",
+                                    items: TrailMindAboutContent.helpItems,
+                                    footer: nil
+                                ),
+                                AboutDestinationSection(
+                                    title: "Safety boundary",
+                                    items: TrailMindAboutContent.planningBoundaryItems,
+                                    footer: nil
+                                )
+                            ],
+                            externalLink: publicLinks.support.url.map {
+                                AboutExternalLink(
+                                    title: "Support website",
+                                    detail: "Open Wanderful's public support page.",
+                                    destination: $0,
+                                    accessibilityIdentifier: TrailMindAboutAccessibilityID.supportWebsite
+                                )
+                            }
+                        )
+                    } label: {
+                        destinationRow(
+                            title: "Help & safety",
+                            detail: "Get planning help and review outdoor safety guidance.",
+                            symbol: "lifepreserver.fill"
+                        )
+                    }
+                    .accessibilityIdentifier(TrailMindAboutAccessibilityID.helpAndSafety)
+                } header: {
+                    Text("Help & legal")
+                } footer: {
+                    Text("Public web links appear only after reviewed HTTPS destinations are configured.")
+                }
+
+                Section {
                     ForEach(TrailMindAboutContent.planningBoundaryItems) { item in
                         informationRow(item)
                     }
@@ -159,14 +238,14 @@ struct ProfilePreferencesView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [theme.moss, theme.forestBright],
+                            colors: [theme.brandFillBright, theme.brandFill],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                 Image(systemName: "figure.hiking")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onBrandPrimary)
             }
             .frame(width: 62, height: 62)
 
@@ -201,6 +280,17 @@ struct ProfilePreferencesView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.title). \(item.detail)")
         .accessibilityIdentifier(item.id)
+    }
+
+    private func destinationRow(
+        title: String,
+        detail: String,
+        symbol: String
+    ) -> some View {
+        rowContent(title: title, detail: detail, symbol: symbol)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(title). \(detail)")
+            .accessibilityHint("Opens \(title)")
     }
 
     private func creditRow(_ credit: TrailMindAboutCredit) -> some View {
@@ -252,5 +342,117 @@ struct ProfilePreferencesView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+private struct AboutDestinationSection {
+    let title: String
+    let items: [TrailMindAboutItem]
+    let footer: String?
+}
+
+private struct AboutExternalLink {
+    let title: String
+    let detail: String
+    let destination: URL
+    let accessibilityIdentifier: String
+}
+
+private struct AboutInformationDestinationView: View {
+    @Environment(TrailTheme.self) private var theme
+    let title: String
+    let introduction: String
+    let sections: [AboutDestinationSection]
+    let externalLink: AboutExternalLink?
+
+    var body: some View {
+        Form {
+            Section {
+                Text(introduction)
+                    .font(.body)
+                    .foregroundStyle(theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 4)
+            }
+
+            ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
+                Section {
+                    ForEach(section.items) { item in
+                        informationRow(item)
+                    }
+                } header: {
+                    Text(section.title)
+                } footer: {
+                    if let footer = section.footer {
+                        Text(footer)
+                    }
+                }
+            }
+
+            if let externalLink {
+                Section {
+                    Link(destination: externalLink.destination) {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "safari.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(theme.forest)
+                                .frame(width: 30, height: 30)
+                                .background(theme.mossSoft.opacity(0.58), in: Circle())
+                                .accessibilityHidden(true)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(externalLink.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(theme.graphite)
+                                Text(externalLink.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(theme.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer(minLength: 8)
+                            Image(systemName: "arrow.up.right.square")
+                                .foregroundStyle(theme.forest)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(externalLink.title). \(externalLink.detail)")
+                    .accessibilityHint("Opens in your browser")
+                    .accessibilityIdentifier(externalLink.accessibilityIdentifier)
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(TrailBackground())
+        .tint(theme.forestBright)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func informationRow(_ item: TrailMindAboutItem) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: item.symbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(theme.forest)
+                .frame(width: 30, height: 30)
+                .background(theme.mossSoft.opacity(0.58), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(theme.graphite)
+                Text(item.detail)
+                    .font(.caption)
+                    .foregroundStyle(theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.title). \(item.detail)")
+        .accessibilityIdentifier(item.id)
     }
 }
