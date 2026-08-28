@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "status": "blocked",
+  "observedAt": "2026-08-28T09:54:43Z",
+  "baseline": {
+    "remoteMainCommit": "a36c646815f390b60df734147a78e82c8ef46dd1",
+    "candidateTree": "efd9c0469e031f24e2adfe84fe8bacf021f4c1b3",
+    "branch": "codex/provision-trailmind-supabase-staging-v1",
+    "cleanBeforeWork": true,
+    "equivalentSuccessfulProvisionFound": false,
+    "concurrentProvisioningWriterFound": false
+  },
+  "authorizedTarget": {
+    "projectName": "TrailMind Outdoor Staging V1",
+    "projectRef": "mbvzwsrtqcrwhvykugcd",
+    "organizationName": "Alibra AI",
+    "organizationId": "wbnftkftyamxzvxsftda",
+    "organizationPlan": "free",
+    "region": "eu-central-1",
+    "regionLabel": "Frankfurt",
+    "status": "ACTIVE_HEALTHY",
+    "postgresEngine": "17",
+    "platformVersion": "17.6.1.155",
+    "developmentBranchCount": 0
+  },
+  "remoteCatalogBeforeAndAfter": {
+    "identical": true,
+    "databaseBytes": 11709587,
+    "freePlanDatabaseQuotaLabel": "500 MB",
+    "postgisAvailableVersion": "3.3.7",
+    "postgisInstalled": false,
+    "trailmindRoleCount": 0,
+    "trailmindSchemaCount": 0,
+    "trailmindRelationCount": 0,
+    "trailmindFunctionCount": 0,
+    "applicationMigrationLedgerExists": false,
+    "platformMigrationVersions": [
+      "20260824201634",
+      "20260824202617"
+    ],
+    "publicCreateDeniedFor": [
+      "PUBLIC",
+      "anon",
+      "authenticated",
+      "service_role"
+    ],
+    "securityAdvisorNoticeCount": 0,
+    "performanceAdvisorNoticeCount": 0
+  },
+  "migrationContract": {
+    "policyId": "supabase-postgis-isolation-v2",
+    "historical008Excluded": true,
+    "orderedMigrations": [
+      {
+        "version": "001_app_attest.sql",
+        "sha256": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16"
+      },
+      {
+        "version": "002_outdoor_evidence.sql",
+        "sha256": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d"
+      },
+      {
+        "version": "003_outdoor_research_graph.sql",
+        "sha256": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928"
+      },
+      {
+        "version": "004_osm_outdoor_research_projection.sql",
+        "sha256": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3"
+      },
+      {
+        "version": "005_outdoor_research_projection_geometry.sql",
+        "sha256": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8"
+      },
+      {
+        "version": "006_outdoor_route_membership_point_index.sql",
+        "sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4"
+      },
+      {
+        "version": "007_routable_highlight_access_geography_index.sql",
+        "sha256": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7"
+      },
+      {
+        "version": "009_supabase_postgis_isolated_runtime_read_contract.sql",
+        "sha256": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"
+      },
+      {
+        "version": "010_bounded_outdoor_import_schema_provisioning.sql",
+        "sha256": "62f23c605654fc3e58661646d376bf68cca8e95c0e9354dc9da6d77c765ef467"
+      }
+    ],
+    "firstRun": "not_run",
+    "secondRun": "not_run",
+    "secondRunTrueNoOpProved": false
+  },
+  "capacityGate": {
+    "localMinimumKiB": 10485760,
+    "settledLocalFreeKiBSamples": [11441604, 11441592],
+    "localGatePassed": true,
+    "historicalSizingReferenceOnly": {
+      "boundedSourceTimestamp": "2026-08-19T20:20:48Z",
+      "harzDerivativeBytes": 40394095,
+      "innsbruckDerivativeBytes": 24483101,
+      "harzImportedSegmentReference": 140612,
+      "innsbruckImportedSegmentReference": 74674,
+      "combinedProjectedEntityReference": 221242,
+      "combinedProjectedAssertionReference": 258754,
+      "combinedProjectedRelationshipReference": 37019
+    },
+    "estimatedRemoteFootprint": {
+      "lowerMegabytes": 450,
+      "upperMegabytes": 800,
+      "method": "compressed bounded PBF size plus source geometry expansion, duplicated projected geometry, append-only lineage rows, and GiST/B-tree indexes",
+      "confidence": "risk_band_not_measured_current_volume"
+    },
+    "remoteImportAdmitted": false,
+    "stopReason": "estimated footprint crosses the Free plan database quota and no current-volume local size proof establishes safe headroom"
+  },
+  "execution": {
+    "reviewedOperatorInvoked": false,
+    "remoteMutationCount": 0,
+    "protectedProjectMutationCount": 0,
+    "providerCallCount": 0,
+    "graphHopperCallCount": 0,
+    "aiProviderCallCount": 0,
+    "downloadCount": 0,
+    "importCount": 0,
+    "projectionCount": 0,
+    "backupCount": 0,
+    "restoreCount": 0,
+    "faultInjectionRemoteCount": 0,
+    "blockers": [
+      "missing single-use authorization envelope and durable consumption store",
+      "missing protected CA and database password file-descriptor inputs",
+      "missing live control-plane, cleanup-verifier, containment, and durable-receipt boundaries",
+      "missing direct PostgreSQL identity required for a single-session operator run",
+      "missing official supautils library for a fresh authoritative disposable adapter rerun",
+      "Free-plan capacity risk not resolved by a measured current-volume local footprint"
+    ],
+    "unsafeSubstitutionsRefused": [
+      "independent MCP apply_migration calls",
+      "manual SQL dashboard execution",
+      "MCP SQL requests without a retained session lock and transaction boundary",
+      "enabling temporary database access without a supplied user token and reviewed role mapping"
+    ]
+  },
+  "features": {
+    "allThirteenOperatorFlagsPresentInProcess": false,
+    "allThirteenOperatorFlagsUnsetInProcess": true,
+    "shippingResearchEvidenceFlagsFalseInConfiguration": true,
+    "releaseOrBackendDeploymentPerformed": false
+  },
+  "verification": {
+    "initialDependencyMissingDiagnostic": {
+      "passed": 70,
+      "failed": 6,
+      "classification": "pg dependency absent before npm ci"
+    },
+    "focusedMatrixAfterPinnedInstall": {
+      "passed": 84,
+      "failed": 0,
+      "skipped": 0
+    },
+    "authoritativeDisposableOperatorHarness": {
+      "status": "not_run",
+      "reason": "TRAILMIND_SUPAUTILS_LIBRARY_PATH was not supplied"
+    },
+    "completeBackendSandboxDiagnostic": {
+      "passed": 1041,
+      "failed": 22,
+      "classification": "loopback listen EPERM"
+    },
+    "completeBackendLoopbackRerun": {
+      "passed": 1063,
+      "failed": 0,
+      "skipped": 0
+    },
+    "backendBuild": "passed",
+    "offlineQualityEvaluation": {
+      "configured": 101,
+      "executed": 101,
+      "passed": 101,
+      "failed": 0,
+      "skipped": 0,
+      "violations": 0
+    }
+  },
+  "dataProof": {
+    "harzRows": null,
+    "innsbruckRows": null,
+    "projectionRows": null,
+    "quarantineRows": null,
+    "indexPlans": "not_run",
+    "performanceP95": "not_run",
+    "lineageAndProvenance": "not_run",
+    "deterministicUnchangedReimport": "not_run",
+    "reason": "foundation and capacity gates did not admit remote data work"
+  },
+  "backupRecovery": {
+    "logicalBackup": "not_run",
+    "localRestore": "not_run",
+    "reason": "no admitted direct database session and no provisioned application foundation"
+  },
+  "cleanup": {
+    "pbfFilesCreated": 0,
+    "dumpFilesCreated": 0,
+    "rawLogsCommitted": 0,
+    "installedDependencyTreeRemoved": true,
+    "credentialsRetained": false,
+    "connectionMaterialRetained": false,
+    "remoteStatePreserved": true
+  },
+  "nextAction": "Supply the reviewed protected live-operator inputs and a measured current-volume local footprint with Free-plan headroom; then issue a fresh single-use authorization bound to the current clean candidate."
+}
