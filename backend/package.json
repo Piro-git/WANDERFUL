@@ -20,6 +20,7 @@
     "ops:prune-app-attest": "node src/appAttest/pruneExpired.js",
     "ops:validate-release-package": "node src/operations/validateReleasePackage.js",
     "outdoor-evidence:import": "node scripts/import-outdoor-evidence.js",
+    "outdoor-evidence:retire-generation": "node scripts/retire-outdoor-evidence-generation.js",
     "outdoor-research:configure-osm-policy": "node scripts/configure-osm-outdoor-research-policy.js",
     "outdoor-research:project-osm": "node scripts/project-osm-outdoor-research.js"
   },

@@ -1,4 +1,8 @@
 import pg from "pg";
+import {
+  OutdoorCapacityAdmissionError,
+  redactedOutdoorCapacityFailure
+} from "../src/outdoorEvidence/outdoorCapacityAdmission.js";
 import { PostgresOsmEvidenceGraphProjector } from
   "../src/outdoorResearch/postgresOsmEvidenceGraphProjector.js";
 import {
@@ -26,27 +30,38 @@ try {
       importId: args.importId,
       policyVersion: args.policyVersion,
       operatorConfirmation: args.operatorConfirmation,
-      dryRun: args.dryRun
+      dryRun: args.dryRun,
+      ...(args.stagingProfile ? { stagingProfile: args.stagingProfile } : {})
     });
     process.stdout.write(`${JSON.stringify(summary)}\n`);
   } finally {
     await pool.end();
   }
 } catch (error) {
-  const code = error instanceof OsmProjectionError ? error.code : "projection_failed";
-  process.stderr.write(`${JSON.stringify({
-    schemaVersion: 1,
-    status: "failed",
-    error: { code }
-  })}\n`);
-  process.exitCode = 1;
+  if (error instanceof OutdoorCapacityAdmissionError) {
+    process.stderr.write(
+      `${JSON.stringify(redactedOutdoorCapacityFailure(error))}\n`
+    );
+    process.exitCode = 1;
+  } else {
+    const code = error instanceof OsmProjectionError
+      ? error.code
+      : "projection_failed";
+    process.stderr.write(`${JSON.stringify({
+      schemaVersion: 1,
+      status: "failed",
+      error: { code }
+    })}\n`);
+    process.exitCode = 1;
+  }
 }
 
 function parseArguments(values) {
   if (values.length % 2 !== 0) throw new OsmProjectionError("invalid_arguments");
   const parsed = {};
   const allowed = new Set([
-    "region", "import-id", "policy-version", "operator-confirmation", "dry-run"
+    "region", "import-id", "policy-version", "operator-confirmation", "dry-run",
+    "staging-profile"
   ]);
   for (let index = 0; index < values.length; index += 2) {
     const key = values[index];
@@ -75,7 +90,8 @@ function parseArguments(values) {
     importId: parsed["import-id"],
     policyVersion: parsed["policy-version"],
     operatorConfirmation: parsed["operator-confirmation"],
-    dryRun: parsed["dry-run"] === "true"
+    dryRun: parsed["dry-run"] === "true",
+    stagingProfile: parsed["staging-profile"]
   });
 }
 

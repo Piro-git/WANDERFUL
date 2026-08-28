@@ -15,6 +15,16 @@ const postMigration = join(
   repositoryRoot,
   "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql"
 );
+const capacityProfileDirectory = join(
+  backendRoot,
+  "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1"
+);
+const capacityTemporaryWorkspace = join(
+  capacityProfileDirectory, "projection-temporary-workspace.sql"
+);
+const capacityGenerationLifecycle = join(
+  capacityProfileDirectory, "capacity-generation-lifecycle.sql"
+);
 const port = 55_347;
 const recoveryFixture = Object.freeze({
   runId: "00000000-0000-4000-8000-000000000010",
@@ -103,10 +113,13 @@ await withCluster("foundation", async (cluster) => {
   }
 
   executePsqlFile(cluster, postMigration, "postgres");
+  executePsqlFile(cluster, capacityTemporaryWorkspace, "postgres");
+  executePsqlFile(cluster, capacityGenerationLifecycle, "postgres");
 
   runNodeTests(cluster, [
     "test/supabasePostgisIsolationV2PostgresIntegration.test.js"
   ]);
+  await runCapacityLifecycleWorkflow(cluster);
   await runRealImporterWorkflow(cluster);
 
   executePsql(cluster, `
@@ -231,6 +244,433 @@ function runNodeTests(cluster, tests, extraEnvironment = {}) {
   ], { env: environment(cluster, extraEnvironment) });
 }
 
+async function runCapacityLifecycleWorkflow(cluster) {
+  const osm = join(cluster.root, "capacity-lifecycle.osm");
+  const pbf = join(cluster.root, "capacity-lifecycle.osm.pbf");
+  await writeFile(osm, `<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="TrailMind capacity lifecycle proof">
+  <node id="101" lat="47.2800" lon="11.4000" version="1" timestamp="2026-08-28T00:00:00Z">
+    <tag k="tourism" v="viewpoint"/><tag k="name" v="Disposable Nordkette view"/>
+  </node>
+  <node id="102" lat="47.2810" lon="11.4010" version="1" timestamp="2026-08-28T00:00:00Z"/>
+  <way id="110" version="1" timestamp="2026-08-28T00:00:00Z">
+    <nd ref="101"/><nd ref="102"/><tag k="highway" v="path"/>
+    <tag k="surface" v="ground"/><tag k="sac_scale" v="hiking"/>
+    <tag k="name" v="Disposable Nordkette trail"/>
+  </way>
+  <relation id="120" version="1" timestamp="2026-08-28T00:00:00Z">
+    <member type="way" ref="110" role=""/>
+    <tag k="type" v="route"/><tag k="route" v="hiking"/>
+    <tag k="name" v="Disposable Nordkette route"/>
+  </relation>
+</osm>
+`, { mode: 0o600 });
+  run("osmium", ["cat", osm, "-o", pbf, "--overwrite"], {
+    cwd: backendRoot,
+    capture: true
+  });
+
+  const projectionEnvironment = environment(cluster, {
+    PGUSER: "projection_role",
+    DATABASE_URL: roleUrl(cluster, "projection_role")
+  });
+  const configured = run(process.execPath, [
+    "scripts/configure-osm-outdoor-research-policy.js",
+    "--mode", "activate",
+    "--policy-version", "osm-foundational-mapped-v1",
+    "--operator-confirmation", "activate-reviewed-osm-mapped-policy",
+    "--review-reference", "urn:trailmind:disposable-capacity-review",
+    "--reviewed-at", "2026-08-28T00:30:00Z"
+  ], { env: projectionEnvironment, capture: true });
+  if (configured.stderr !== "" ||
+      JSON.parse(configured.stdout).lifecycleState !== "active") {
+    throw new Error("capacity policy activation failed");
+  }
+
+  assertActualDatabaseCapacityRefusal(cluster, pbf);
+  const beforeFirstImportBytes = Number(executePsqlScalar(
+    cluster, "SELECT pg_catalog.pg_database_size(pg_catalog.current_database())",
+    "postgres"
+  ));
+  const firstImport = runCapacityImport(cluster, pbf, 1);
+  if (firstImport.admission.measurements.currentDatabaseBytes !==
+      beforeFirstImportBytes) {
+    throw new Error("capacity admission did not use actual pg_database_size");
+  }
+  assertCapacityDirectMutationDenial(cluster, firstImport.importId);
+  const firstProjection = runCapacityProjection(
+    cluster, firstImport.importId, false
+  );
+  if (firstProjection.status !== "active" ||
+      firstProjection.capacityAdmission?.decision !== "ADMITTED" ||
+      firstProjection.counts?.quarantined !== 0) {
+    throw new Error("first capacity projection failed");
+  }
+  const repeatedProjection = runCapacityProjection(
+    cluster, firstImport.importId, false
+  );
+  if (repeatedProjection.status !== "unchanged") {
+    throw new Error("repeated capacity projection was not a true no-op");
+  }
+
+  const secondImport = runCapacityImport(cluster, pbf, 2);
+  const secondProjection = runCapacityProjection(
+    cluster, secondImport.importId, false
+  );
+  if (secondProjection.status !== "active" ||
+      secondProjection.counts?.quarantined !== 0) {
+    throw new Error("second capacity projection failed");
+  }
+
+  const rejectedThird = run(process.execPath, capacityImportArguments(pbf, 3), {
+    env: capacityImportEnvironment(cluster),
+    capture: true,
+    tolerateFailure: true
+  });
+  const refusal = JSON.parse(rejectedThird.stderr.trim());
+  if (rejectedThird.status === 0 || refusal.decision !== "GENERATION_LIMIT") {
+    throw new Error("third retained generation was not refused before mutation");
+  }
+  assertCapacityGenerationCounts(cluster, 2, 2, firstImport.importId,
+    firstProjection.projectionRunId, secondImport.importId,
+    secondProjection.projectionRunId);
+
+  assertCapacityCrossRegionAndActiveDenial(
+    cluster,
+    firstImport.importId,
+    firstProjection.projectionRunId,
+    secondImport.importId,
+    secondProjection.projectionRunId
+  );
+
+  const rollback = runCapacityRetirement(cluster, {
+    importId: firstImport.importId,
+    projectionRunId: firstProjection.projectionRunId,
+    commit: false
+  });
+  if (rollback.status !== "rolled_back" ||
+      rollback.retirement?.activeGenerationPreserved !== true) {
+    throw new Error("capacity retirement rollback proof failed");
+  }
+  assertCapacityGenerationCounts(cluster, 2, 2, firstImport.importId,
+    firstProjection.projectionRunId, secondImport.importId,
+    secondProjection.projectionRunId);
+
+  const committed = runCapacityRetirement(cluster, {
+    importId: firstImport.importId,
+    projectionRunId: firstProjection.projectionRunId,
+    commit: true
+  });
+  if (committed.status !== "committed" ||
+      committed.retirement?.retainedGenerationsAfter !== 1) {
+    throw new Error("capacity retirement commit proof failed");
+  }
+  assertCapacityGenerationCounts(cluster, 1, 1, null, null,
+    secondImport.importId, secondProjection.projectionRunId);
+
+  const thirdImport = runCapacityImport(cluster, pbf, 3);
+  const thirdProjection = runCapacityProjection(
+    cluster, thirdImport.importId, false
+  );
+  if (thirdProjection.status !== "active" ||
+      thirdProjection.counts?.quarantined !== 0) {
+    throw new Error("post-retirement refresh failed");
+  }
+  assertCapacityGenerationCounts(cluster, 2, 2,
+    secondImport.importId, secondProjection.projectionRunId,
+    thirdImport.importId, thirdProjection.projectionRunId);
+}
+
+function assertCapacityDirectMutationDenial(cluster, importId) {
+  const rejectedImportId = "00000000-0000-4000-8000-000000000099";
+  executePsql(cluster, `
+    DO $proof$
+    BEGIN
+      BEGIN
+        INSERT INTO trailmind_app.outdoor_evidence_imports
+          (import_id, region_id, source_dataset_name, source_identifier,
+           source_data_at, retrieved_at, imported_at, tool_version,
+           import_schema_version, status, aggregate_counts,
+           acquisition_channel, source_checksum_algorithm, source_checksum,
+           source_checksum_verified_at, input_file_sha256)
+        SELECT '${rejectedImportId}'::uuid, region_id,
+               'Rejected direct capacity mutation',
+               'urn:trailmind:rejected-direct-capacity-mutation',
+               source_data_at, retrieved_at, imported_at, tool_version,
+               import_schema_version, 'loading', '{}'::jsonb,
+               acquisition_channel, source_checksum_algorithm, source_checksum,
+               source_checksum_verified_at, input_file_sha256
+          FROM trailmind_app.outdoor_evidence_imports
+         WHERE import_id = '${importId}'::uuid;
+        RAISE EXCEPTION 'direct capacity mutation was accepted';
+      EXCEPTION WHEN SQLSTATE '55000' THEN
+        IF SQLERRM <> 'Capacity generation mutation lacks an admitted lease' THEN
+          RAISE;
+        END IF;
+      END;
+      IF EXISTS (
+        SELECT 1 FROM trailmind_app.outdoor_evidence_imports
+         WHERE import_id = '${rejectedImportId}'::uuid
+      ) THEN
+        RAISE EXCEPTION 'direct capacity denial mutated imports';
+      END IF;
+    END
+    $proof$;
+  `, "regional_import_role");
+}
+
+function assertActualDatabaseCapacityRefusal(cluster, pbf) {
+  const refusalThreshold = 500_000_000 - 40_000_000 - 43_794_432;
+  executePsql(cluster, `
+    SET ROLE trailmind_app_owner;
+    CREATE TABLE trailmind_app.outdoor_capacity_refusal_padding_v1 (
+      ordinal bigint NOT NULL,
+      payload text NOT NULL
+    );
+    RESET ROLE;
+  `, "postgres");
+  let rows = 0;
+  let measuredBytes = Number(executePsqlScalar(
+    cluster, "SELECT pg_catalog.pg_database_size(pg_catalog.current_database())",
+    "postgres"
+  ));
+  while (measuredBytes <= refusalThreshold && rows < 2_100_000) {
+    const start = rows + 1;
+    rows += 300_000;
+    executePsql(cluster, `
+      SET ROLE trailmind_app_owner;
+      INSERT INTO trailmind_app.outdoor_capacity_refusal_padding_v1
+        (ordinal, payload)
+      SELECT value,
+             md5(value::text || ':1') || md5(value::text || ':2') ||
+             md5(value::text || ':3') || md5(value::text || ':4') ||
+             md5(value::text || ':5') || md5(value::text || ':6') ||
+             md5(value::text || ':7') || md5(value::text || ':8')
+        FROM pg_catalog.generate_series(${start}, ${rows}) value;
+      RESET ROLE;
+    `, "postgres");
+    measuredBytes = Number(executePsqlScalar(
+      cluster, "SELECT pg_catalog.pg_database_size(pg_catalog.current_database())",
+      "postgres"
+    ));
+  }
+  if (measuredBytes <= refusalThreshold) {
+    throw new Error("actual pg_database_size refusal fixture was too small");
+  }
+
+  const rejected = run(process.execPath, capacityImportArguments(pbf, 0), {
+    env: capacityImportEnvironment(cluster),
+    capture: true,
+    tolerateFailure: true
+  });
+  const refusal = JSON.parse(rejected.stderr.trim());
+  if (rejected.status === 0 || refusal.decision !== "PLATFORM_LIMIT" ||
+      refusal.measurements?.currentDatabaseBytes !== measuredBytes) {
+    throw new Error("actual pg_database_size capacity refusal was not fail-closed");
+  }
+  executePsql(cluster, `
+    SET ROLE trailmind_app_owner;
+    DO $proof$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM trailmind_app.outdoor_evidence_imports
+         WHERE region_id = 'innsbruck-alps-v1'
+      ) THEN
+        RAISE EXCEPTION 'capacity refusal mutated imports';
+      END IF;
+    END
+    $proof$;
+    DROP TABLE trailmind_app.outdoor_capacity_refusal_padding_v1;
+    RESET ROLE;
+  `, "postgres");
+  const afterDropBytes = Number(executePsqlScalar(
+    cluster, "SELECT pg_catalog.pg_database_size(pg_catalog.current_database())",
+    "postgres"
+  ));
+  if (afterDropBytes >= measuredBytes) {
+    throw new Error("capacity refusal padding cleanup was not observed");
+  }
+}
+
+function runCapacityImport(cluster, pbf, generation) {
+  const result = run(process.execPath, capacityImportArguments(pbf, generation), {
+    env: capacityImportEnvironment(cluster),
+    capture: true
+  });
+  if (result.stderr !== "") throw new Error("capacity import wrote stderr");
+  const lines = result.stdout.trim().split("\n");
+  const admission = JSON.parse(lines[0]);
+  const match = result.stdout.match(
+    /Outdoor evidence import ([0-9a-f-]+) is active:/
+  );
+  if (admission.decision !== "ADMITTED" || !match) {
+    throw new Error("capacity import output was invalid");
+  }
+  return Object.freeze({ admission, importId: match[1] });
+}
+
+function capacityImportArguments(pbf, generation) {
+  return [
+    "scripts/import-outdoor-evidence.js",
+    "--region", "innsbruck-alps-v1",
+    "--pbf", pbf,
+    "--dataset-name", `Disposable capacity generation ${generation}`,
+    "--source-id", `urn:trailmind:capacity-generation:${generation}`,
+    "--retrieved-at", `2026-08-28T0${generation}:00:00Z`,
+    "--source-timestamp", "2026-08-28T00:00:00Z",
+    "--acquisition-channel", "operator_supplied_local",
+    "--staging-profile", "supabase-free-bounded-two-core-v1"
+  ];
+}
+
+function capacityImportEnvironment(cluster) {
+  return environment(cluster, {
+    PGUSER: "regional_import_role",
+    DATABASE_URL: roleUrl(cluster, "regional_import_role")
+  });
+}
+
+function runCapacityProjection(cluster, importId, dryRun) {
+  const result = run(process.execPath, [
+    "scripts/project-osm-outdoor-research.js",
+    "--region", "innsbruck-alps-v1",
+    "--import-id", importId,
+    "--policy-version", "osm-foundational-mapped-v1",
+    "--operator-confirmation", "project-reviewed-osm-mapped-facts",
+    "--dry-run", String(dryRun),
+    "--staging-profile", "supabase-free-bounded-two-core-v1"
+  ], {
+    env: environment(cluster, {
+      PGUSER: "projection_role",
+      DATABASE_URL: roleUrl(cluster, "projection_role")
+    }),
+    capture: true
+  });
+  if (result.stderr !== "") throw new Error("capacity projection wrote stderr");
+  return JSON.parse(result.stdout);
+}
+
+function runCapacityRetirement(cluster, { importId, projectionRunId, commit }) {
+  const result = run(process.execPath, [
+    "scripts/retire-outdoor-evidence-generation.js",
+    "--profile", "supabase-free-bounded-two-core-v1",
+    "--region", "innsbruck-alps-v1",
+    "--import-id", importId,
+    "--projection-run-id", projectionRunId,
+    "--operator-confirmation",
+    "RETIRE_SUPERSEDED_OUTDOOR_EVIDENCE_GENERATION_V1",
+    "--commit", String(commit)
+  ], {
+    env: environment(cluster, {
+      PGUSER: "postgres",
+      DATABASE_URL: roleUrl(cluster, "postgres")
+    }),
+    capture: true,
+    tolerateFailure: true
+  });
+  if (result.status !== 0) {
+    throw new Error(`capacity retirement failed: ${result.stderr.trim()}`);
+  }
+  if (result.stderr !== "") throw new Error("capacity retirement wrote stderr");
+  return JSON.parse(result.stdout);
+}
+
+function assertCapacityCrossRegionAndActiveDenial(
+  cluster,
+  oldestImportId,
+  oldestRunId,
+  activeImportId,
+  activeRunId
+) {
+  executePsql(cluster, `
+    SET ROLE trailmind_app_owner;
+    DO $proof$
+    BEGIN
+      BEGIN
+        PERFORM trailmind_app.retire_superseded_outdoor_generation_v1(
+          'supabase-free-bounded-two-core-v1',
+          'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc',
+          'harz-v1', '${oldestImportId}'::uuid, '${oldestRunId}'::uuid,
+          'RETIRE_SUPERSEDED_OUTDOOR_EVIDENCE_GENERATION_V1'
+        );
+        RAISE EXCEPTION 'cross-region retirement was accepted';
+      EXCEPTION WHEN SQLSTATE '55000' THEN NULL;
+      END;
+      BEGIN
+        PERFORM trailmind_app.retire_superseded_outdoor_generation_v1(
+          'supabase-free-bounded-two-core-v1',
+          'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc',
+          'innsbruck-alps-v1', '${activeImportId}'::uuid, '${activeRunId}'::uuid,
+          'RETIRE_SUPERSEDED_OUTDOOR_EVIDENCE_GENERATION_V1'
+        );
+        RAISE EXCEPTION 'active-generation retirement was accepted';
+      EXCEPTION WHEN SQLSTATE '55000' THEN NULL;
+      END;
+    END
+    $proof$;
+    RESET ROLE;
+  `, "postgres");
+}
+
+function assertCapacityGenerationCounts(
+  cluster,
+  imports,
+  runs,
+  oldestImportId,
+  oldestRunId,
+  activeImportId,
+  activeRunId
+) {
+  executePsql(cluster, `
+    SET ROLE trailmind_app_owner;
+    DO $proof$
+    BEGIN
+      IF (SELECT pg_catalog.count(*)
+            FROM trailmind_app.outdoor_evidence_imports
+           WHERE region_id = 'innsbruck-alps-v1'
+             AND status IN ('active', 'superseded')) <> ${imports} OR
+         (SELECT pg_catalog.count(*)
+            FROM trailmind_app.outdoor_research_projection_runs
+           WHERE region_id = 'innsbruck-alps-v1'
+             AND status IN ('active', 'superseded')) <> ${runs} OR
+         (SELECT active_import_id
+            FROM trailmind_app.outdoor_evidence_regions
+           WHERE region_id = 'innsbruck-alps-v1') <>
+             '${activeImportId}'::uuid OR
+         NOT EXISTS (
+           SELECT 1
+             FROM trailmind_app.outdoor_research_projection_runs
+            WHERE projection_run_id = '${activeRunId}'::uuid
+              AND input_import_id = '${activeImportId}'::uuid
+              AND status = 'active'
+         ) OR
+         (SELECT pg_catalog.count(*)
+            FROM trailmind_app.outdoor_research_projection_quarantines
+           WHERE projection_run_id IN (
+             SELECT projection_run_id
+               FROM trailmind_app.outdoor_research_projection_runs
+              WHERE region_id = 'innsbruck-alps-v1'
+           )) <> 0 OR
+         ${oldestImportId === null ? "false" : `NOT EXISTS (
+           SELECT 1 FROM trailmind_app.outdoor_evidence_imports
+            WHERE import_id = '${oldestImportId}'::uuid
+         )`} OR
+         ${oldestRunId === null ? "false" : `NOT EXISTS (
+           SELECT 1 FROM trailmind_app.outdoor_research_projection_runs
+            WHERE projection_run_id = '${oldestRunId}'::uuid
+         )`} THEN
+        RAISE EXCEPTION 'capacity generation lifecycle state mismatch';
+      END IF;
+    END
+    $proof$;
+    RESET ROLE;
+  `, "postgres");
+}
+
+function roleUrl(cluster, role) {
+  return `postgresql://${role}@127.0.0.1:${cluster.port}/postgres?sslmode=disable`;
+}
+
 async function runRealImporterWorkflow(cluster) {
   const osm = join(cluster.root, "bounded-import.osm");
   const pbf = join(cluster.root, "bounded-import.osm.pbf");
@@ -256,7 +696,8 @@ async function runRealImporterWorkflow(cluster) {
     "--source-id", "urn:trailmind:disposable-bounded-import",
     "--retrieved-at", "2026-08-28T00:00:00Z",
     "--source-timestamp", "2026-08-28T00:00:00Z",
-    "--acquisition-channel", "operator_supplied_local"
+    "--acquisition-channel", "operator_supplied_local",
+    "--staging-profile", "supabase-free-bounded-two-core-v1"
   ], {
     env: environment(cluster, {
       PGUSER: "regional_import_role",
@@ -275,8 +716,10 @@ async function runRealImporterWorkflow(cluster) {
     DO $proof$
     BEGIN
       IF (SELECT pg_catalog.count(*) FROM trailmind_app.outdoor_evidence_imports
-           WHERE status = 'active') <> 1 OR
-         (SELECT pg_catalog.count(*) FROM trailmind_app.outdoor_evidence_trail_segments) <> 1 OR
+           WHERE region_id = 'harz-v1' AND status = 'active') <> 1 OR
+         (SELECT pg_catalog.count(*)
+            FROM trailmind_app.outdoor_evidence_trail_segments
+           WHERE region_id = 'harz-v1') <> 1 OR
          EXISTS (SELECT 1 FROM pg_catalog.pg_namespace
                   WHERE nspname LIKE 'outdoor_import\\_%' ESCAPE '\\') OR
          EXISTS (SELECT 1 FROM trailmind_app.outdoor_import_schema_leases
@@ -329,6 +772,28 @@ function executePsql(cluster, sql, user, database = "postgres") {
     process.stderr.write(result.stderr ?? "");
     throw new Error(`psql fixture failed with status ${result.status}`);
   }
+}
+
+function executePsqlScalar(cluster, sql, user, database = "postgres") {
+  const result = spawnSync("psql", [
+    "-X", "-A", "-t",
+    "-v", "ON_ERROR_STOP=1",
+    "-h", cluster.socket,
+    "-p", String(cluster.port),
+    "-U", user,
+    "-d", database,
+    "-c", sql
+  ], {
+    cwd: backendRoot,
+    env: environment(cluster),
+    encoding: "utf8",
+    maxBuffer: 8 * 1024 * 1024
+  });
+  if (result.status !== 0) {
+    process.stderr.write(result.stderr ?? "");
+    throw new Error(`psql scalar failed with status ${result.status}`);
+  }
+  return result.stdout.trim();
 }
 
 function environment(cluster, extra = {}) {

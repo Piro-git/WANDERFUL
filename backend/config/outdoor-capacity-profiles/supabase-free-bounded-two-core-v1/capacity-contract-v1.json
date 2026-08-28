@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "contractId": "supabase-free-bounded-two-core-capacity-v1",
+  "profileId": "supabase-free-bounded-two-core-v1",
+  "profileIdentitySha256": "c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc",
+  "deploymentClass": "staging-only-capacity-profile",
+  "coverageContract": {
+    "harz-v1": "Ilsenburg–Brocken–Schierke core only",
+    "innsbruck-alps-v1": "Innsbruck–Nordkette core only",
+    "prohibitedClaims": [
+      "full Harz",
+      "full Innsbruck",
+      "the Alps"
+    ]
+  },
+  "officialLimit": {
+    "source": "https://supabase.com/docs/guides/platform/database-size",
+    "checkedAt": "2026-08-28",
+    "hardLimitBytes": 500000000,
+    "readOnlyAboveLimit": true
+  },
+  "settledOperatingLimitBytes": 400000000,
+  "safetyReserveBytes": 40000000,
+  "maximumRetainedGenerationsPerRegion": 2,
+  "operationTransientGrowthBytes": {
+    "import": 43794432,
+    "project": 213712896,
+    "retire": 0
+  },
+  "admissionFormula": "currentDatabaseBytes + operationTransientGrowthBytes + safetyReserveBytes <= hardLimitBytes",
+  "measuredManagedEquivalentBytes": {
+    "firstActiveGeneration": 224274176,
+    "activePlusSupersededSettled": 355657472,
+    "retainedRefreshTransientPeak": 453060352,
+    "retainedRefreshPeakHeadroom": 46939648
+  },
+  "migrationPolicy": {
+    "policyId": "supabase-postgis-isolation-v2",
+    "orderedVersions": [
+      "001_app_attest.sql",
+      "002_outdoor_evidence.sql",
+      "003_outdoor_research_graph.sql",
+      "004_osm_outdoor_research_projection.sql",
+      "005_outdoor_research_projection_geometry.sql",
+      "006_outdoor_route_membership_point_index.sql",
+      "007_routable_highlight_access_geography_index.sql",
+      "009_supabase_postgis_isolated_runtime_read_contract.sql",
+      "010_bounded_outdoor_import_schema_provisioning.sql"
+    ]
+  },
+  "identityFiles": [
+    {
+      "path": "migrations/001_app_attest.sql",
+      "sha256": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16"
+    },
+    {
+      "path": "migrations/002_outdoor_evidence.sql",
+      "sha256": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d"
+    },
+    {
+      "path": "migrations/003_outdoor_research_graph.sql",
+      "sha256": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928"
+    },
+    {
+      "path": "migrations/004_osm_outdoor_research_projection.sql",
+      "sha256": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3"
+    },
+    {
+      "path": "migrations/005_outdoor_research_projection_geometry.sql",
+      "sha256": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8"
+    },
+    {
+      "path": "migrations/006_outdoor_route_membership_point_index.sql",
+      "sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4"
+    },
+    {
+      "path": "migrations/007_routable_highlight_access_geography_index.sql",
+      "sha256": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7"
+    },
+    {
+      "path": "migrations/009_supabase_postgis_isolated_runtime_read_contract.sql",
+      "sha256": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"
+    },
+    {
+      "path": "migrations/010_bounded_outdoor_import_schema_provisioning.sql",
+      "sha256": "62f23c605654fc3e58661646d376bf68cca8e95c0e9354dc9da6d77c765ef467"
+    },
+    {
+      "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/profile.json",
+      "sha256": "ea3f612b46e8d70bf3b5a76da96c8ec2ee7aac3b5a581e2e2790ceadc37c241e"
+    },
+    {
+      "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/harz-v1.json",
+      "sha256": "769dc6a3129a4c383906057cd847a9eab7995851008d57c9fc76d959b7ca4e2d"
+    },
+    {
+      "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/harz-v1.geojson",
+      "sha256": "c46667a05623c1a17b7d8e357f299341109de20b3dbb83c612eb7ecf53319e64"
+    },
+    {
+      "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/innsbruck-alps-v1.json",
+      "sha256": "46d7d909f3a953a63fee8e3105d5c7828908d9fef306f631af3aebb54fca604e"
+    },
+    {
+      "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/innsbruck-alps-v1.geojson",
+      "sha256": "54ac412f3cae5ad27a0376996eeb8742cda8d12fa92edf473df13d41a2f6ebe0"
+    },
+    {
+      "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/projection-temporary-workspace.sql",
+      "sha256": "e83dc88b029024eb5a00d2377b9a90c79cbf87a9de81ba741750486c49ea8841"
+    }
+  ],
+  "operationalFiles": [
+    {
+      "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/capacity-generation-lifecycle.sql",
+      "sha256": "64ea36e96238b8605bd3357d4d5250e3f9d221a172786a098d6eeb374e2bdef7"
+    }
+  ]
+}

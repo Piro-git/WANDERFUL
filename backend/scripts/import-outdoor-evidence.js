@@ -5,6 +5,11 @@ import { stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import {
+  acquireOutdoorCapacityAdmission,
+  OutdoorCapacityAdmissionError,
+  redactedOutdoorCapacityFailure
+} from "../src/outdoorEvidence/outdoorCapacityAdmission.js";
 import { outdoorRegionDefinition } from "../src/outdoorEvidence/regions.js";
 
 const { Pool } = pg;
@@ -58,11 +63,23 @@ let completedCounts;
 let importCompleted = false;
 let schemaProvisioned = false;
 let cleanupFailed = false;
+let capacityLease;
+let databaseClient = pool;
 
 try {
-  await ensureSchemaAvailable(pool);
-  await ensureRegion(pool, region);
-  await pool.query(
+  if (args.stagingProfile) {
+    capacityLease = await acquireOutdoorCapacityAdmission({
+      pool,
+      profileId: args.stagingProfile,
+      regionId: region.regionId,
+      operation: "import"
+    });
+    databaseClient = capacityLease.client;
+    process.stdout.write(`${JSON.stringify(capacityLease.summary)}\n`);
+  }
+  await ensureSchemaAvailable(databaseClient);
+  await ensureRegion(databaseClient, region);
+  await databaseClient.query(
     `INSERT INTO outdoor_evidence_imports
        (import_id, region_id, source_dataset_name, source_identifier, source_data_at,
         retrieved_at, tool_version, import_schema_version, status,
@@ -76,7 +93,7 @@ try {
       sourceChecksumVerifiedAt, inputFileSha256
     ]
   );
-  const provisioned = await pool.query(
+  const provisioned = await databaseClient.query(
     `SELECT trailmind_app.provision_outdoor_import_schema_v1(
        $1::uuid, $2::uuid
      ) AS schema_name`,
@@ -104,23 +121,33 @@ try {
     },
     discardOutput: true
   });
-  completedCounts = await promoteImport(pool, { importId, region, stagingSchema });
+  completedCounts = await promoteImport(
+    pool,
+    { importId, region, stagingSchema },
+    capacityLease?.client
+  );
   importCompleted = true;
 } catch (error) {
-  try {
-    await pool.query(
-      `UPDATE outdoor_evidence_imports
-          SET status = 'failed', failure_code = 'import_failed', updated_at = clock_timestamp()
-        WHERE import_id = $1 AND status <> 'active'`,
-      [importId]
+  if (!(error instanceof OutdoorCapacityAdmissionError)) {
+    try {
+      await databaseClient.query(
+        `UPDATE outdoor_evidence_imports
+            SET status = 'failed', failure_code = 'import_failed', updated_at = clock_timestamp()
+          WHERE import_id = $1 AND status <> 'active'`,
+        [importId]
+      );
+    } catch {}
+    process.stderr.write(`Outdoor evidence import ${importId} failed safely.\n`);
+  } else {
+    process.stderr.write(
+      `${JSON.stringify(redactedOutdoorCapacityFailure(error))}\n`
     );
-  } catch {}
-  process.stderr.write(`Outdoor evidence import ${importId} failed safely.\n`);
+  }
   process.exitCode = 1;
 } finally {
   if (schemaProvisioned) {
     try {
-      const released = await pool.query(
+      const released = await databaseClient.query(
         `SELECT trailmind_app.release_outdoor_import_schema_v1(
            $1::uuid, $2::uuid
          ) AS released`,
@@ -132,6 +159,9 @@ try {
     } catch {
       cleanupFailed = true;
     }
+  }
+  if (capacityLease) {
+    try { await capacityLease.release(); } catch { cleanupFailed = true; }
   }
   try { await pool.end(); } catch { cleanupFailed = true; }
 }
@@ -152,8 +182,8 @@ if (importCompleted && !cleanupFailed) {
   process.exitCode = 1;
 }
 
-async function promoteImport(pool, input) {
-  const client = await pool.connect();
+async function promoteImport(pool, input, leasedClient) {
+  const client = leasedClient ?? await pool.connect();
   try {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
@@ -308,7 +338,7 @@ async function promoteImport(pool, input) {
     try { await client.query("ROLLBACK"); } catch {}
     throw error;
   } finally {
-    client.release();
+    if (!leasedClient) client.release();
   }
 }
 

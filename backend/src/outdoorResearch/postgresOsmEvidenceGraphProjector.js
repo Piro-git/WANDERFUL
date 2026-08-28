@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
+  acquireOutdoorCapacityAdmission,
+  loadOutdoorCapacityContract,
+  OutdoorCapacityAdmissionError
+} from "../outdoorEvidence/outdoorCapacityAdmission.js";
+import {
   exactRelationshipScopeSetMatches,
   exactScopeSetMatches,
   OSM_ALLOWED_ASSERTION_PREDICATES,
@@ -39,8 +44,55 @@ export class PostgresOsmEvidenceGraphProjector {
     let selected;
     let runId;
     let key;
-    const client = await this.pool.connect();
+    let client;
+    let capacityLease;
     try {
+      if (request.stagingProfile) {
+        await loadOutdoorCapacityContract(request.stagingProfile);
+        if (!request.dryRun) {
+          const readClient = await this.pool.connect();
+          try {
+            selected = await this.preflight(readClient, request, startedAt);
+            key = projectionKey({
+              regionId: request.regionId,
+              importId: selected.importId,
+              policyVersion: request.policyVersion
+            });
+            const existing = await readClient.query(
+              `SELECT projection_run_id, aggregate_counts, completed_at,
+                      duration_milliseconds
+                 FROM outdoor_research_projection_runs
+                WHERE projection_key = $1 AND status = 'active'`,
+              [key]
+            );
+            if (existing.rowCount === 1) {
+              return freezeSummary({
+                status: "unchanged",
+                projectionRunId: existing.rows[0].projection_run_id,
+                regionId: request.regionId,
+                importId: selected.importId,
+                policyVersion: request.policyVersion,
+                counts: existing.rows[0].aggregate_counts,
+                durationMilliseconds:
+                  existing.rows[0].duration_milliseconds ?? 0
+              });
+            }
+          } finally {
+            readClient.release();
+          }
+        }
+        capacityLease = await acquireOutdoorCapacityAdmission({
+          pool: this.pool,
+          profileId: request.stagingProfile,
+          regionId: request.regionId,
+          operation: "project",
+          importId: selected?.importId ?? request.importId,
+          willRetainGeneration: !request.dryRun
+        });
+        client = capacityLease.client;
+      } else {
+        client = await this.pool.connect();
+      }
       selected = await this.preflight(client, request, startedAt);
       key = projectionKey({
         regionId: request.regionId,
@@ -61,7 +113,8 @@ export class PostgresOsmEvidenceGraphProjector {
           importId: selected.importId,
           policyVersion: request.policyVersion,
           counts: activeDuplicate.rows[0].aggregate_counts,
-          durationMilliseconds: activeDuplicate.rows[0].duration_milliseconds ?? 0
+          durationMilliseconds: activeDuplicate.rows[0].duration_milliseconds ?? 0,
+          ...(capacityLease ? { capacityAdmission: capacityLease.summary } : {})
         });
       }
 
@@ -125,7 +178,8 @@ export class PostgresOsmEvidenceGraphProjector {
           importId: selected.importId,
           policyVersion: request.policyVersion,
           counts,
-          durationMilliseconds
+          durationMilliseconds,
+          ...(capacityLease ? { capacityAdmission: capacityLease.summary } : {})
         });
       }
 
@@ -203,12 +257,13 @@ export class PostgresOsmEvidenceGraphProjector {
         importId: selected.importId,
         policyVersion: request.policyVersion,
         counts,
-        durationMilliseconds
+        durationMilliseconds,
+        ...(capacityLease ? { capacityAdmission: capacityLease.summary } : {})
       });
     } catch (error) {
-      try { await client.query("ROLLBACK"); } catch {}
+      try { await client?.query("ROLLBACK"); } catch {}
       const safeError = normalizeProjectionError(error);
-      if (!request.dryRun && selected && runId && key) {
+      if (client && !request.dryRun && selected && runId && key) {
         try {
           await insertFailedProjectionRun(client, {
             runId,
@@ -223,7 +278,8 @@ export class PostgresOsmEvidenceGraphProjector {
       }
       throw safeError;
     } finally {
-      client.release();
+      if (capacityLease) await capacityLease.release();
+      else client?.release();
     }
   }
 
@@ -1517,7 +1573,8 @@ function validateProjectionRequest(input) {
     throw new OsmProjectionError("invalid_projection_request");
   }
   const allowed = new Set([
-    "regionId", "importId", "policyVersion", "operatorConfirmation", "dryRun"
+    "regionId", "importId", "policyVersion", "operatorConfirmation", "dryRun",
+    "stagingProfile"
   ]);
   if (Object.keys(input).some((key) => !allowed.has(key))) {
     throw new OsmProjectionError("invalid_projection_request");
@@ -1542,10 +1599,15 @@ function validateProjectionRequest(input) {
   if (typeof input.dryRun !== "boolean") {
     throw new OsmProjectionError("invalid_dry_run");
   }
+  if (input.stagingProfile !== undefined &&
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9]\d*$/.test(input.stagingProfile)) {
+    throw new OsmProjectionError("invalid_staging_profile");
+  }
   return Object.freeze({ ...input });
 }
 
 function normalizeProjectionError(error) {
+  if (error instanceof OutdoorCapacityAdmissionError) return error;
   if (error instanceof OsmProjectionError) return error;
   if (error?.code === "57014") {
     return new OsmProjectionError("projection_timed_out", { cause: error });
