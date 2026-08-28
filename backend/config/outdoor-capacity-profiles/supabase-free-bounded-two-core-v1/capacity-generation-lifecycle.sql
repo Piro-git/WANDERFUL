@@ -3,9 +3,10 @@
 -- reviewed Phase 1 V2 post-step. This file is not a migration and is never
 -- applied implicitly by the importer or projector.
 --
--- Rollback (only before the profile contains data): drop the two functions and
--- contract table created below, then restore outdoor_research_reject_audit_mutation
--- from migration 003. Never run that rollback against a populated profile.
+-- Rollback (only before the profile contains data): drop the five functions,
+-- two triggers, and two tables created below, then restore
+-- outdoor_research_reject_audit_mutation from migration 003. Never run that
+-- rollback against a populated profile.
 
 BEGIN;
 
@@ -82,6 +83,35 @@ REVOKE ALL ON TABLE trailmind_app.outdoor_capacity_profile_contracts
   FROM PUBLIC, anon, authenticated, service_role, regional_import_role,
        projection_role, outdoor_research_runtime_role;
 
+CREATE TABLE IF NOT EXISTS trailmind_app.outdoor_capacity_admission_secrets (
+  profile_id text PRIMARY KEY CHECK (
+    profile_id = 'supabase-free-bounded-two-core-v1'
+  ),
+  lease_secret uuid NOT NULL,
+  profile_identity_sha256 text NOT NULL CHECK (
+    profile_identity_sha256 =
+      'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc'
+  ),
+  installed_at timestamptz NOT NULL DEFAULT pg_catalog.clock_timestamp()
+);
+
+ALTER TABLE trailmind_app.outdoor_capacity_admission_secrets
+  ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE trailmind_app.outdoor_capacity_admission_secrets
+  FROM PUBLIC, anon, authenticated, service_role, regional_import_role,
+       projection_role, outdoor_research_runtime_role;
+
+INSERT INTO trailmind_app.outdoor_capacity_admission_secrets (
+  profile_id,
+  lease_secret,
+  profile_identity_sha256
+) VALUES (
+  'supabase-free-bounded-two-core-v1',
+  pg_catalog.gen_random_uuid(),
+  'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc'
+)
+ON CONFLICT (profile_id) DO NOTHING;
+
 INSERT INTO trailmind_app.outdoor_capacity_profile_contracts (
   profile_id,
   profile_identity_sha256,
@@ -107,6 +137,13 @@ BEGIN
        AND contract.maximum_retained_generations = 2
        AND contract.hard_limit_bytes = 500000000
        AND contract.safety_reserve_bytes = 40000000
+  ) OR NOT EXISTS (
+    SELECT 1
+      FROM trailmind_app.outdoor_capacity_admission_secrets secret
+     WHERE secret.profile_id = 'supabase-free-bounded-two-core-v1'
+       AND secret.profile_identity_sha256 =
+         'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc'
+       AND secret.lease_secret IS NOT NULL
   ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '55000',
@@ -131,8 +168,10 @@ DECLARE
   capacity_lock_id bigint := pg_catalog.hashtextextended(
     'trailmind-capacity-profile:supabase-free-bounded-two-core-v1', 0
   );
-  operation text;
+  generation_operation text;
   other_generations integer;
+  admission_context text;
+  admission_secret uuid;
   expected_context text;
 BEGIN
   IF TG_OP NOT IN ('INSERT', 'UPDATE') OR TG_TABLE_SCHEMA <> 'trailmind_app' OR
@@ -161,7 +200,7 @@ BEGIN
   END IF;
 
   IF TG_TABLE_NAME = 'outdoor_evidence_imports' THEN
-    operation := 'import';
+    generation_operation := 'import';
     IF session_user <> 'regional_import_role' THEN
       RAISE EXCEPTION USING
         ERRCODE = '42501',
@@ -174,7 +213,7 @@ BEGIN
        AND import_record.status <> 'failed'
        AND import_record.import_id <> NEW.import_id;
   ELSE
-    operation := 'project';
+    generation_operation := 'project';
     IF session_user <> 'projection_role' THEN
       RAISE EXCEPTION USING
         ERRCODE = '42501',
@@ -188,11 +227,29 @@ BEGIN
        AND run.projection_run_id <> NEW.projection_run_id;
   END IF;
 
-  expected_context := contract.profile_identity_sha256 || ':' ||
-    NEW.region_id || ':' || operation;
-  IF pg_catalog.current_setting(
-       'trailmind.capacity_admission_v1', true
-     ) IS DISTINCT FROM expected_context OR NOT EXISTS (
+  admission_context := pg_catalog.current_setting(
+    'trailmind.capacity_admission_v1', true
+  );
+  SELECT secret.lease_secret
+    INTO admission_secret
+    FROM trailmind_app.outdoor_capacity_admission_secrets secret
+   WHERE secret.profile_id = contract.profile_id
+     AND secret.profile_identity_sha256 = contract.profile_identity_sha256;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '55000',
+      MESSAGE = 'Capacity generation profile identity is invalid';
+  END IF;
+  expected_context := pg_catalog.encode(
+    pg_catalog.sha256(pg_catalog.convert_to(
+      admission_secret::text || ':' || pg_catalog.pg_backend_pid()::text ||
+        ':' || contract.profile_identity_sha256 || ':' || NEW.region_id ||
+        ':' || generation_operation,
+      'UTF8'
+    )),
+    'hex'
+  );
+  IF admission_context IS DISTINCT FROM expected_context OR NOT EXISTS (
        SELECT 1
          FROM pg_catalog.pg_locks held_lock
         WHERE held_lock.locktype = 'advisory'
@@ -364,6 +421,189 @@ BEGIN
     )
   ) INTO result;
   RETURN result;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION trailmind_app.outdoor_capacity_activate_admission_v1(
+  requested_profile_id text,
+  requested_region_id text,
+  requested_import_id uuid,
+  requested_operation text,
+  requested_will_retain_generation boolean
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+DECLARE
+  snapshot jsonb;
+  decision text := 'ADMITTED';
+  retained_imports bigint;
+  retained_projections bigint;
+  in_flight_imports bigint;
+  in_flight_projections bigint;
+  quarantines bigint;
+  current_database_bytes bigint;
+  operation_growth_bytes bigint;
+  hard_limit_bytes bigint;
+  safety_reserve_bytes bigint;
+  maximum_retained_generations integer;
+  admission_secret uuid;
+  lease_token text;
+  capacity_lock_id bigint := pg_catalog.hashtextextended(
+    'trailmind-capacity-profile:supabase-free-bounded-two-core-v1', 0
+  );
+BEGIN
+  IF session_user NOT IN (
+       'regional_import_role', 'projection_role', 'postgres'
+     ) OR current_user <> 'trailmind_app_owner' THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'Capacity admission caller is not admitted';
+  END IF;
+  IF requested_profile_id <> 'supabase-free-bounded-two-core-v1' OR
+     requested_region_id NOT IN ('harz-v1', 'innsbruck-alps-v1') OR
+     requested_operation NOT IN ('import', 'project', 'retire') OR
+     requested_will_retain_generation IS NULL THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '22023',
+      MESSAGE = 'Capacity admission request is not bounded';
+  END IF;
+  IF NOT EXISTS (
+       SELECT 1
+         FROM pg_catalog.pg_locks held_lock
+        WHERE held_lock.locktype = 'advisory'
+          AND held_lock.pid = pg_catalog.pg_backend_pid()
+          AND held_lock.mode = 'ExclusiveLock'
+          AND held_lock.granted
+          AND held_lock.classid =
+            ((capacity_lock_id >> 32) & 4294967295)::oid
+          AND held_lock.objid = (capacity_lock_id & 4294967295)::oid
+          AND held_lock.objsubid = 1
+     ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '55000',
+      MESSAGE = 'Capacity admission advisory lock is not held';
+  END IF;
+
+  snapshot := trailmind_app.outdoor_capacity_admission_snapshot_v1(
+    requested_profile_id, requested_region_id, requested_import_id
+  );
+  retained_imports := (snapshot ->> 'retainedImports')::bigint;
+  retained_projections := (snapshot ->> 'retainedProjections')::bigint;
+  in_flight_imports := (snapshot ->> 'inFlightImports')::bigint;
+  in_flight_projections := (snapshot ->> 'inFlightProjections')::bigint;
+  quarantines := (snapshot ->> 'quarantines')::bigint;
+  current_database_bytes := (snapshot ->> 'currentDatabaseBytes')::bigint;
+  hard_limit_bytes := (snapshot ->> 'hardLimitBytes')::bigint;
+  safety_reserve_bytes := (snapshot ->> 'safetyReserveBytes')::bigint;
+
+  SELECT contract.maximum_retained_generations, secret.lease_secret
+    INTO maximum_retained_generations, admission_secret
+    FROM trailmind_app.outdoor_capacity_profile_contracts contract
+    JOIN trailmind_app.outdoor_capacity_admission_secrets secret
+      ON secret.profile_id = contract.profile_id
+     AND secret.profile_identity_sha256 = contract.profile_identity_sha256
+   WHERE contract.profile_id = requested_profile_id
+     AND contract.profile_identity_sha256 =
+       'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc'
+     AND contract.hard_limit_bytes = 500000000
+     AND contract.safety_reserve_bytes = 40000000;
+
+  IF NOT FOUND OR snapshot -> 'migrations' IS DISTINCT FROM pg_catalog.to_jsonb(
+       ARRAY[
+         '001_app_attest.sql',
+         '002_outdoor_evidence.sql',
+         '003_outdoor_research_graph.sql',
+         '004_osm_outdoor_research_projection.sql',
+         '005_outdoor_research_projection_geometry.sql',
+         '006_outdoor_route_membership_point_index.sql',
+         '007_routable_highlight_access_geography_index.sql',
+         '009_supabase_postgis_isolated_runtime_read_contract.sql',
+         '010_bounded_outdoor_import_schema_provisioning.sql'
+       ]::text[]
+     ) THEN
+    decision := 'DATABASE_IDENTITY_MISMATCH';
+  ELSIF in_flight_imports <> 0 OR in_flight_projections <> 0 THEN
+    decision := 'IN_FLIGHT_OPERATION';
+  ELSIF quarantines <> 0 THEN
+    decision := 'QUARANTINE_PRESENT';
+  ELSIF retained_imports > maximum_retained_generations OR
+        retained_projections > maximum_retained_generations OR
+        requested_operation = 'import' AND
+          retained_imports >= maximum_retained_generations OR
+        requested_operation = 'project' AND
+          requested_will_retain_generation AND
+          retained_projections >= maximum_retained_generations THEN
+    decision := 'GENERATION_LIMIT';
+  ELSIF requested_operation = 'retire' AND (
+        retained_imports <> maximum_retained_generations OR
+        retained_projections <> maximum_retained_generations
+      ) THEN
+    decision := 'GENERATION_STATE_INVALID';
+  ELSE
+    operation_growth_bytes := CASE requested_operation
+      WHEN 'import' THEN 43794432
+      WHEN 'project' THEN 213712896
+      ELSE 0
+    END;
+    IF requested_operation <> 'retire' AND
+       current_database_bytes + operation_growth_bytes +
+         safety_reserve_bytes > hard_limit_bytes THEN
+      decision := 'PLATFORM_LIMIT';
+    END IF;
+  END IF;
+
+  IF decision = 'ADMITTED' THEN
+    lease_token := pg_catalog.encode(
+      pg_catalog.sha256(pg_catalog.convert_to(
+        admission_secret::text || ':' || pg_catalog.pg_backend_pid()::text ||
+          ':' ||
+          'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc' ||
+          ':' || requested_region_id || ':' || requested_operation,
+        'UTF8'
+      )),
+      'hex'
+    );
+    PERFORM pg_catalog.set_config(
+      'trailmind.capacity_admission_v1', lease_token, false
+    );
+  END IF;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'schemaVersion', 1,
+    'decision', decision,
+    'snapshot', snapshot
+  );
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION trailmind_app.outdoor_capacity_release_admission_v1()
+RETURNS boolean
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+DECLARE
+  removed boolean;
+BEGIN
+  IF session_user NOT IN (
+       'regional_import_role', 'projection_role', 'postgres'
+     ) OR current_user <> 'trailmind_app_owner' THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '42501',
+      MESSAGE = 'Capacity admission release caller is not admitted';
+  END IF;
+  removed := COALESCE(pg_catalog.current_setting(
+    'trailmind.capacity_admission_v1', true
+  ), '') <> '';
+  PERFORM pg_catalog.set_config(
+    'trailmind.capacity_admission_v1', ''::text, false
+  );
+  RETURN removed;
 END
 $function$;
 
@@ -719,6 +959,10 @@ $function$;
 
 REVOKE ALL ON FUNCTION
   trailmind_app.outdoor_capacity_admission_snapshot_v1(text, text, uuid),
+  trailmind_app.outdoor_capacity_activate_admission_v1(
+    text, text, uuid, text, boolean
+  ),
+  trailmind_app.outdoor_capacity_release_admission_v1(),
   trailmind_app.retire_superseded_outdoor_generation_v1(
     text, text, text, uuid, uuid, text
   )
@@ -729,7 +973,10 @@ REVOKE ALL ON FUNCTION
        regional_import_role, projection_role;
 
 GRANT EXECUTE ON FUNCTION
-  trailmind_app.outdoor_capacity_admission_snapshot_v1(text, text, uuid)
+  trailmind_app.outdoor_capacity_activate_admission_v1(
+    text, text, uuid, text, boolean
+  ),
+  trailmind_app.outdoor_capacity_release_admission_v1()
   TO regional_import_role, projection_role, postgres;
 GRANT EXECUTE ON FUNCTION
   trailmind_app.retire_superseded_outdoor_generation_v1(

@@ -113,7 +113,7 @@
   "operationalFiles": [
     {
       "path": "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/capacity-generation-lifecycle.sql",
-      "sha256": "64ea36e96238b8605bd3357d4d5250e3f9d221a172786a098d6eeb374e2bdef7"
+      "sha256": "5d0b62d8ed18e1bf92ac358d18ebf6c3c7b4f97e8239f185780352260342c444"
     }
   ]
 }

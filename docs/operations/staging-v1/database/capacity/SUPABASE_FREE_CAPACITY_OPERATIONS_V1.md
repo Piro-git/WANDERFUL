@@ -89,22 +89,28 @@ npm run outdoor-research:project-osm -- <normal reviewed arguments> \
   --staging-profile supabase-free-bounded-two-core-v1
 ```
 
-Before mutation, admission takes one session advisory lease, validates local
+Before mutation, admission takes one session advisory lock, validates local
 digests and the database contract/ledger, reads actual `pg_database_size`,
 checks in-flight work and quarantine, counts the regional retained lineage,
-and applies the conservative peak formula. The import retains the lease through
-promotion and cleanup. The projector repeats preflight after the lease and
-under its existing regional transaction lock. An exact already-active
-projection returns `unchanged` before any new mutation.
+and applies the conservative peak formula. Only after those database-side
+checks admit the operation does the owner function derive an unguessable lease
+token from an immutable install-time secret, bound to the current backend,
+profile, region, and operation. The secret row exists before size measurement;
+admission itself adds no database row after measurement. The import retains the
+lock and lease through promotion and cleanup. The projector repeats preflight
+after admission and under its existing regional transaction lock. An exact
+already-active projection returns `unchanged` before any new mutation.
 
 The only admitted lifecycle is one active generation plus at most one
 superseded generation for each bounded region. Import refuses a third source
 generation; projection refuses a third retained projection. No refusal invokes
 retirement implicitly, and a failed admission never writes a failed run/import
-row. Profile-installed database triggers additionally require the exact
-session-level admission context and advisory lease for bounded generation-row
-inserts/updates and enforce the two-generation ceiling under direct SQL as a
-defense in depth.
+row. Profile-installed database triggers additionally require the private
+database-minted backend lease and advisory lock for bounded generation-row
+inserts/updates and enforce the two-generation ceiling under direct SQL. The
+writer roles cannot read, insert, update, or delete the private secret row, and
+a caller cannot derive an accepted lease without passing the same database-side
+admission checks.
 
 ## Reviewed oldest-generation retirement
 

@@ -417,6 +417,98 @@ function assertCapacityDirectMutationDenial(cluster, importId) {
     END
     $proof$;
   `, "regional_import_role");
+
+  executePsql(cluster, `
+    DO $proof$
+    BEGIN
+      BEGIN
+        PERFORM trailmind_app.outdoor_capacity_activate_admission_v1(
+          'supabase-free-bounded-two-core-v1',
+          'innsbruck-alps-v1',
+          NULL,
+          'import',
+          true
+        );
+        RAISE EXCEPTION 'capacity admission activated without its lock';
+      EXCEPTION WHEN SQLSTATE '55000' THEN
+        IF SQLERRM <> 'Capacity admission advisory lock is not held' THEN
+          RAISE;
+        END IF;
+      END;
+      BEGIN
+        PERFORM lease_secret
+          FROM trailmind_app.outdoor_capacity_admission_secrets
+         WHERE profile_id = 'supabase-free-bounded-two-core-v1';
+        RAISE EXCEPTION 'capacity writer read the private lease secret';
+      EXCEPTION WHEN insufficient_privilege THEN
+        NULL;
+      END;
+      BEGIN
+        INSERT INTO trailmind_app.outdoor_capacity_admission_secrets (
+          profile_id, lease_secret, profile_identity_sha256
+        ) VALUES (
+          'supabase-free-bounded-two-core-v1',
+          '00000000-0000-4000-8000-000000000099'::uuid,
+          'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc'
+        );
+        RAISE EXCEPTION 'capacity writer replaced the private lease secret';
+      EXCEPTION WHEN insufficient_privilege THEN
+        NULL;
+      END;
+    END
+    $proof$;
+  `, "regional_import_role");
+
+  executePsql(cluster, `
+    DO $proof$
+    DECLARE
+      forged_import_id uuid :=
+        '00000000-0000-4000-8000-000000000098'::uuid;
+      lock_id bigint := pg_catalog.hashtextextended(
+        'trailmind-capacity-profile:supabase-free-bounded-two-core-v1', 0
+      );
+    BEGIN
+      PERFORM pg_catalog.pg_advisory_lock(lock_id);
+      PERFORM pg_catalog.set_config(
+        'trailmind.capacity_admission_v1',
+        'c5da9580a96eba5d18aeb8f8346926c016b71b8fd2340002529a1cb03c7e2afc' ||
+          ':innsbruck-alps-v1:import',
+        false
+      );
+      BEGIN
+        INSERT INTO trailmind_app.outdoor_evidence_imports
+          (import_id, region_id, source_dataset_name, source_identifier,
+           source_data_at, retrieved_at, imported_at, tool_version,
+           import_schema_version, status, aggregate_counts,
+           acquisition_channel, source_checksum_algorithm, source_checksum,
+           source_checksum_verified_at, input_file_sha256)
+        SELECT forged_import_id, region_id,
+               'Rejected forged capacity lease',
+               'urn:trailmind:rejected-forged-capacity-lease',
+               source_data_at, retrieved_at, imported_at, tool_version,
+               import_schema_version, 'loading', '{}'::jsonb,
+               acquisition_channel, source_checksum_algorithm, source_checksum,
+               source_checksum_verified_at, input_file_sha256
+          FROM trailmind_app.outdoor_evidence_imports
+         WHERE import_id = '${importId}'::uuid;
+      EXCEPTION WHEN SQLSTATE '55000' THEN
+        IF SQLERRM <> 'Capacity generation mutation lacks an admitted lease' THEN
+          RAISE;
+        END IF;
+      END;
+      PERFORM pg_catalog.set_config(
+        'trailmind.capacity_admission_v1', ''::text, false
+      );
+      PERFORM pg_catalog.pg_advisory_unlock(lock_id);
+      IF EXISTS (
+        SELECT 1 FROM trailmind_app.outdoor_evidence_imports
+         WHERE import_id = forged_import_id
+      ) THEN
+        RAISE EXCEPTION 'forged capacity lease mutated imports';
+      END IF;
+    END
+    $proof$;
+  `, "regional_import_role");
 }
 
 function assertActualDatabaseCapacityRefusal(cluster, pbf) {
@@ -495,8 +587,12 @@ function assertActualDatabaseCapacityRefusal(cluster, pbf) {
 function runCapacityImport(cluster, pbf, generation) {
   const result = run(process.execPath, capacityImportArguments(pbf, generation), {
     env: capacityImportEnvironment(cluster),
-    capture: true
+    capture: true,
+    tolerateFailure: true
   });
+  if (result.status !== 0) {
+    throw new Error(`capacity import failed: ${result.stderr.trim()}`);
+  }
   if (result.stderr !== "") throw new Error("capacity import wrote stderr");
   const lines = result.stdout.trim().split("\n");
   const admission = JSON.parse(lines[0]);

@@ -9,7 +9,7 @@ const CONTRACT_RELATIVE_PATH =
   "config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/" +
   "capacity-contract-v1.json";
 const CONTRACT_SHA256 =
-  "9d87b730cbbd16b6206fa0e52071f501acb3db8256f46c57755e62e659b90421";
+  "98deebe62e49b3a23c4cb30da5d1594b55852e0889342d63c9fe8fbf6af8c3c5";
 const DIGEST_PATTERN = /^[a-f0-9]{64}$/;
 const REGION_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const CAPACITY_LOCK_KEY =
@@ -100,30 +100,34 @@ export async function acquireOutdoorCapacityAdmission({
     }
 
     const result = await client.query(
-      `SELECT trailmind_app.outdoor_capacity_admission_snapshot_v1(
-         $1::text, $2::text, $3::uuid
-       ) AS snapshot`,
-      [profileId, regionId, importId ?? null]
+      `SELECT trailmind_app.outdoor_capacity_activate_admission_v1(
+         $1::text, $2::text, $3::uuid, $4::text, $5::boolean
+       ) AS admission`,
+      [
+        profileId, regionId, importId ?? null, operation,
+        willRetainGeneration
+      ]
     );
-    if (result.rowCount !== 1 || !result.rows[0]?.snapshot) {
+    const activation = result.rows[0]?.admission;
+    if (result.rowCount !== 1 || !activation ||
+        activation.schemaVersion !== 1 ||
+        typeof activation.decision !== "string" || !activation.snapshot) {
       throw capacityError("DATABASE_IDENTITY_MISMATCH", {
         profileId, regionId, operation
       });
     }
+    contextInstalled = activation.decision === "ADMITTED";
     const summary = evaluateOutdoorCapacityAdmission({
       contract,
-      snapshot: result.rows[0].snapshot,
+      snapshot: activation.snapshot,
       operation,
       willRetainGeneration
     });
-    await client.query(
-      "SELECT pg_catalog.set_config($1::text, $2::text, false)",
-      [
-        CAPACITY_CONTEXT_SETTING,
-        `${contract.profileIdentitySha256}:${regionId}:${operation}`
-      ]
-    );
-    contextInstalled = true;
+    if (activation.decision !== summary.decision) {
+      throw capacityError("DATABASE_IDENTITY_MISMATCH", {
+        profileId, regionId, operation
+      });
+    }
 
     return Object.freeze({
       client,
@@ -134,10 +138,17 @@ export async function acquireOutdoorCapacityAdmission({
         released = true;
         let releaseError;
         try {
-          if (contextInstalled) await client.query(
-            "SELECT pg_catalog.set_config($1::text, ''::text, false)",
-            [CAPACITY_CONTEXT_SETTING]
-          );
+          if (contextInstalled) {
+            const cleared = await client.query(
+              `SELECT trailmind_app.outdoor_capacity_release_admission_v1()
+                 AS released`
+            );
+            if (cleared.rowCount !== 1 ||
+                cleared.rows[0]?.released !== true) {
+              throw new Error("outdoor_capacity_release_failed");
+            }
+            contextInstalled = false;
+          }
         } catch (error) {
           releaseError = error;
         }
@@ -159,31 +170,43 @@ export async function acquireOutdoorCapacityAdmission({
           } catch (error) {
             releaseError ??= error;
           } finally {
-            client.release();
+            client.release(releaseError);
           }
         }
         if (releaseError) throw releaseError;
       }
     });
   } catch (error) {
+    let cleanupFailed = false;
     try {
-      if (contextInstalled) await client.query(
-        "SELECT pg_catalog.set_config($1::text, ''::text, false)",
-        [CAPACITY_CONTEXT_SETTING]
-      );
-    } catch {}
+      if (contextInstalled) {
+        const cleared = await client.query(
+          `SELECT trailmind_app.outdoor_capacity_release_admission_v1()
+             AS released`
+        );
+        if (cleared.rowCount !== 1 || cleared.rows[0]?.released !== true) {
+          cleanupFailed = true;
+        }
+      }
+    } catch { cleanupFailed = true; }
     try {
       if (lockAcquired) {
-        await client.query(
-          "SELECT pg_advisory_unlock(hashtextextended($1, 0))",
+        const unlocked = await client.query(
+          `SELECT pg_advisory_unlock(hashtextextended($1, 0))
+             AS unlocked`,
           [CAPACITY_LOCK_KEY]
         );
+        if (unlocked.rowCount !== 1 ||
+            unlocked.rows[0]?.unlocked !== true) {
+          cleanupFailed = true;
+        }
       }
-    } catch {}
+    } catch { cleanupFailed = true; }
     try {
       if (ownerRoleAssumed) await client.query("RESET ROLE");
-    } catch {}
-    client.release();
+    } catch { cleanupFailed = true; }
+    client.release(cleanupFailed ?
+      new Error("outdoor_capacity_cleanup_failed") : undefined);
     if (error instanceof OutdoorCapacityAdmissionError) throw error;
     throw capacityError("DATABASE_IDENTITY_MISMATCH", {
       profileId, regionId, operation

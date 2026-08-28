@@ -127,7 +127,7 @@ describe("bounded Supabase Free capacity admission", () => {
     }
   });
 
-  it("holds and releases one session-level admission lock", async () => {
+  it("holds and releases one database-minted admission lease", async () => {
     const contract = await loadOutdoorCapacityContract(PROFILE_ID);
     const calls = [];
     let releases = 0;
@@ -137,11 +137,18 @@ describe("bounded Supabase Free capacity admission", () => {
         if (sql.includes("pg_try_advisory_lock")) {
           return { rowCount: 1, rows: [{ acquired: true }] };
         }
-        if (sql.includes("outdoor_capacity_admission_snapshot_v1")) {
-          return { rowCount: 1, rows: [{ snapshot: snapshot(contract) }] };
+        if (sql.includes("outdoor_capacity_activate_admission_v1")) {
+          return {
+            rowCount: 1,
+            rows: [{ admission: {
+              schemaVersion: 1,
+              decision: "ADMITTED",
+              snapshot: snapshot(contract)
+            } }]
+          };
         }
-        if (sql.includes("set_config")) {
-          return { rowCount: 1, rows: [{ set_config: values?.[1] ?? "" }] };
+        if (sql.includes("outdoor_capacity_release_admission_v1")) {
+          return { rowCount: 1, rows: [{ released: true }] };
         }
         if (sql.includes("pg_advisory_unlock")) {
           return { rowCount: 1, rows: [{ unlocked: true }] };
@@ -161,6 +168,11 @@ describe("bounded Supabase Free capacity admission", () => {
     await lease.release();
     await lease.release();
     assert.equal(releases, 1);
+    assert.equal(calls.filter(({ sql }) =>
+      sql.includes("outdoor_capacity_activate_admission_v1")).length, 1);
+    assert.equal(calls.filter(({ sql }) =>
+      sql.includes("outdoor_capacity_release_admission_v1")).length, 1);
+    assert.equal(calls.filter(({ sql }) => sql.includes("set_config")).length, 0);
     assert.equal(calls.filter(({ sql }) => sql.includes("pg_advisory_unlock")).length, 1);
   });
 
@@ -177,17 +189,21 @@ describe("bounded Supabase Free capacity admission", () => {
         if (sql.includes("pg_try_advisory_lock")) {
           return { rowCount: 1, rows: [{ acquired: true }] };
         }
-        if (sql.includes("outdoor_capacity_admission_snapshot_v1")) {
+        if (sql.includes("outdoor_capacity_activate_admission_v1")) {
           return {
             rowCount: 1,
-            rows: [{ snapshot: snapshot(contract, {
-              retainedImports: 2,
-              retainedProjections: 2
-            }) }]
+            rows: [{ admission: {
+              schemaVersion: 1,
+              decision: "ADMITTED",
+              snapshot: snapshot(contract, {
+                retainedImports: 2,
+                retainedProjections: 2
+              })
+            } }]
           };
         }
-        if (sql.includes("set_config")) {
-          return { rowCount: 1, rows: [{ set_config: values?.[1] ?? "" }] };
+        if (sql.includes("outdoor_capacity_release_admission_v1")) {
+          return { rowCount: 1, rows: [{ released: true }] };
         }
         if (sql.includes("pg_advisory_unlock")) {
           return { rowCount: 1, rows: [{ unlocked: true }] };
@@ -206,6 +222,45 @@ describe("bounded Supabase Free capacity admission", () => {
     assert.equal(calls[0].sql, "SET ROLE trailmind_app_owner");
     assert.equal(calls.at(-1).sql, "RESET ROLE");
     assert.equal(releases, 1);
+  });
+
+  it("destroys a pooled session when private lease cleanup cannot be proved", async () => {
+    const contract = await loadOutdoorCapacityContract(PROFILE_ID);
+    let releasedWith;
+    const client = {
+      async query(sql) {
+        if (sql.includes("pg_try_advisory_lock")) {
+          return { rowCount: 1, rows: [{ acquired: true }] };
+        }
+        if (sql.includes("outdoor_capacity_activate_admission_v1")) {
+          return {
+            rowCount: 1,
+            rows: [{ admission: {
+              schemaVersion: 1,
+              decision: "ADMITTED",
+              snapshot: snapshot(contract)
+            } }]
+          };
+        }
+        if (sql.includes("outdoor_capacity_release_admission_v1")) {
+          throw new Error("lease_cleanup_failed");
+        }
+        if (sql.includes("pg_advisory_unlock")) {
+          return { rowCount: 1, rows: [{ unlocked: true }] };
+        }
+        throw new Error("unexpected query");
+      },
+      release(error) { releasedWith = error; }
+    };
+    const lease = await acquireOutdoorCapacityAdmission({
+      pool: { async connect() { return client; } },
+      profileId: PROFILE_ID,
+      regionId: REGION_ID,
+      operation: "import"
+    });
+    await assert.rejects(lease.release(), /lease_cleanup_failed/);
+    assert(releasedWith instanceof Error);
+    assert.equal(releasedWith.message, "lease_cleanup_failed");
   });
 
   it("publishes bounded refusal fields without database identity or credentials", async () => {
