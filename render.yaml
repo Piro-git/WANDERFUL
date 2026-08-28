@@ -7,7 +7,7 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    branch: codex/free-https-staging-backend-v1
+    branch: codex/integrate-staging-release-wave1
     autoDeployTrigger: off
     renderSubdomainPolicy: enabled
     healthCheckPath: /healthz

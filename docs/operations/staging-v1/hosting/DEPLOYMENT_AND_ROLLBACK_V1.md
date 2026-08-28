@@ -7,7 +7,7 @@ staging identity, least-privilege roles and CA material.
 ## Pre-deployment gates
 
 1. Require a clean reviewed commit on
-   `codex/free-https-staging-backend-v1` containing `render.yaml` and the
+   `codex/integrate-staging-release-wave1` containing `render.yaml` and the
    existing OCI runtime tests. Never deploy or push `main` from this lane.
 2. Confirm the Render workspace has no payment method. Do not accept a trial,
    add billing information or upgrade the `free` instance.
@@ -24,7 +24,9 @@ staging identity, least-privilege roles and CA material.
 ## Create the candidate
 
 1. In Render, create a Blueprint from the reviewed repository and the exact
-   `codex/free-https-staging-backend-v1` commit recorded in the receipt.
+   `codex/integrate-staging-release-wave1` commit approved by review. Preserve
+   the disabled-backend receipt's older source commit as historical provenance;
+   it is not a combined-tree deployment receipt.
 2. Inspect the proposed diff before applying it. It must contain exactly one
    Free web service and no database, disk, worker, cron, custom domain or paid
    resource.

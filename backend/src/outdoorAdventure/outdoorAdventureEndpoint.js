@@ -45,7 +45,7 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
   const env = options.env ?? process.env;
   const logger = options.logger ?? { info() {} };
   const now = options.now ?? Date.now;
-  const provider = options.provider ?? createGraphHopperProvider({ ...options, env });
+  let provider = options.provider;
 
   return async function outdoorAdventurePlanningEndpoint(
     body,
@@ -95,6 +95,7 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
         }
       }
 
+      provider ??= createGraphHopperProvider({ ...options, env });
       const dependencies = resolveDependencies(
         options,
         configuration,

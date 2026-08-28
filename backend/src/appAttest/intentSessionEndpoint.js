@@ -1,7 +1,8 @@
 import { AppAttestError, appAttestErrorResult } from "./appAttestErrors.js";
 import {
   createIntentSessionAuthorizer,
-  intentAuthorizationConfiguration
+  intentAuthorizationConfiguration,
+  providerFlagEnabled
 } from "./routeSessionAuthorizer.js";
 import {
   intentError,
@@ -11,11 +12,7 @@ import {
 
 export function createIntentSessionEndpoint(options = {}) {
   const env = options.env ?? process.env;
-  const authorizer = options.intentAuthorizer ?? createIntentSessionAuthorizer({
-    repository: options.appAttestRepository,
-    env
-  });
-  const configuration = intentAuthorizationConfiguration(env);
+  let authorizer = options.intentAuthorizer;
   const parseIntent = options.parseIntent ?? parseIntentEndpoint;
   const logger = options.logger ?? { warn() {} };
   const insecureLocalParsing =
@@ -26,11 +23,16 @@ export function createIntentSessionEndpoint(options = {}) {
     let access;
     let result;
     try {
-      if (configuration.providerEnabled !== true && !insecureLocalParsing) {
+      if (!providerFlagEnabled(env.INTENT_PROVIDER_ENABLED) && !insecureLocalParsing) {
         throw new AppAttestError("authorization_unavailable");
       }
       if (context.signal?.aborted) throw intentError("request_cancelled");
       if (!insecureLocalParsing) {
+        const configuration = intentAuthorizationConfiguration(env);
+        authorizer ??= createIntentSessionAuthorizer({
+          repository: options.appAttestRepository,
+          env
+        });
         access = await authorizer.authorize({
           headers: context.headers,
           cost: configuration.requestCost,

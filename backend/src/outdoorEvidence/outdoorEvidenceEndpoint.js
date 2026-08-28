@@ -12,12 +12,11 @@ import {
 
 export function createOutdoorEvidenceEndpoint(options = {}) {
   const env = options.env ?? process.env;
-  const authorizer = options.authorizer ?? createDefaultRouteAuthorizer(env, options);
-  const rateLimiter = options.rateLimiter ?? defaultRateLimiter(env, options.rateLimit);
-  const service = options.service ?? createOutdoorEvidenceService(options);
+  let authorizer = options.authorizer;
+  let rateLimiter = options.rateLimiter;
+  let service = options.service;
   const logger = options.logger ?? { info() {} };
   const now = options.now ?? Date.now;
-  const requestCost = integer(env.OUTDOOR_EVIDENCE_REQUEST_COST, 4, 1, 12);
 
   return async function outdoorEvidenceEndpoint(body, context = {}) {
     const requestId = safeRequestId(context) ?? randomUUID();
@@ -41,8 +40,11 @@ export function createOutdoorEvidenceEndpoint(options = {}) {
         distanceBucket: distanceBucket(request.distanceMeters),
         corridorWidthMeters: request.corridorWidthMeters
       };
+      const requestCost = integer(env.OUTDOOR_EVIDENCE_REQUEST_COST, 4, 1, 12);
+      authorizer ??= createDefaultRouteAuthorizer(env, options);
       authorization = await authorizeRouteRequest(authorizer, { ...context, requestId, cost: requestCost });
       if (authorization.limitsConsumed !== true) {
+        rateLimiter ??= defaultRateLimiter(env, options.rateLimit);
         const limit = await rateLimiter.consume({
           key: authorization.rateLimitKey,
           cost: requestCost,
@@ -50,6 +52,7 @@ export function createOutdoorEvidenceEndpoint(options = {}) {
         });
         if (!limit?.allowed) throw outdoorEvidenceError("evidence_rate_limited");
       }
+      service ??= createOutdoorEvidenceService(options);
       const payload = await service.corridor(request, { signal: context.signal, requestId });
       matchedRegions = Array.isArray(payload.regions)
         ? payload.regions.slice(0, 8).map((region) => region.id).join(",") || undefined

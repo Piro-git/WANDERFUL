@@ -5,6 +5,12 @@ import { describe, it } from "node:test";
 import { createIntentSessionEndpoint } from "../src/appAttest/intentSessionEndpoint.js";
 import { InMemoryAppAttestRepository } from "../src/appAttest/appAttestRepository.js";
 import {
+  createOutdoorAdventurePlanningEndpoint
+} from "../src/outdoorAdventure/outdoorAdventureEndpoint.js";
+import {
+  createOutdoorEvidenceEndpoint
+} from "../src/outdoorEvidence/outdoorEvidenceEndpoint.js";
+import {
   createIntentSessionAuthorizer,
   createRouteSessionAuthorizer,
   intentAuthorizationConfiguration,
@@ -220,6 +226,61 @@ describe("fail-closed provider feature flags", () => {
       false
     );
     assert.equal(sessionRecord(repository, token).remainingCost, 12);
+  });
+
+  it("does not construct protected dependencies or parse their limits while features are disabled", async () => {
+    const routeEndpoint = createRouteEndpoint({
+      env: { NODE_ENV: "production", ROUTE_PROVIDER_ENABLED: "false" },
+      fetchImpl: 1
+    });
+    const intentEndpoint = createIntentSessionEndpoint({
+      env: {
+        NODE_ENV: "production",
+        INTENT_PROVIDER_ENABLED: "false",
+        INTENT_REQUEST_COST: "invalid-disabled-limit"
+      }
+    });
+    const outdoorAdventureEndpoint = createOutdoorAdventurePlanningEndpoint({
+      env: {
+        NODE_ENV: "production",
+        OUTDOOR_RESEARCH_PLANNING_ENABLED: "false"
+      },
+      fetchImpl: 1
+    });
+    const outdoorEvidenceEndpoint = createOutdoorEvidenceEndpoint({
+      env: {
+        NODE_ENV: "production",
+        OUTDOOR_EVIDENCE_PROVIDER_ENABLED: "false",
+        OUTDOOR_EVIDENCE_REQUEST_COST: "invalid-disabled-limit"
+      },
+      maximumPois: 0
+    });
+
+    const [route, intent, adventure, evidence] = await Promise.all([
+      routeEndpoint(loopRequest(), {}),
+      intentEndpoint({ prompt: "15 km loop" }, {}),
+      outdoorAdventureEndpoint({}, {}),
+      outdoorEvidenceEndpoint({}, {})
+    ]);
+
+    assert.deepEqual(
+      [route.statusCode, intent.statusCode, adventure.statusCode, evidence.statusCode],
+      [503, 503, 503, 503]
+    );
+    assert.deepEqual(
+      [
+        route.payload.error.code,
+        intent.payload.error.code,
+        adventure.payload.error.code,
+        evidence.payload.error.code
+      ],
+      [
+        "authorization_unavailable",
+        "authorization_unavailable",
+        "feature_unavailable",
+        "evidence_unavailable"
+      ]
+    );
   });
 
   it("returns a safe intent error without provider work or budget consumption when disabled", async () => {

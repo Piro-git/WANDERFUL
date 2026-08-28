@@ -46,7 +46,7 @@ describe("free staging hosting contract", () => {
     assert.match(blueprint, /^\s*region: frankfurt$/m);
     assert.match(
       blueprint,
-      /^\s*branch: codex\/free-https-staging-backend-v1$/m
+      /^\s*branch: codex\/integrate-staging-release-wave1$/m
     );
     assert.match(blueprint, /^\s*autoDeployTrigger: off$/m);
     assert.match(blueprint, /^\s*healthCheckPath: \/healthz$/m);

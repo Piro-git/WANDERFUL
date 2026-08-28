@@ -12,9 +12,9 @@ import { validateRouteRequest } from "./routeValidation.js";
 
 export function createRouteEndpoint(options = {}) {
   const env = options.env ?? process.env;
-  const provider = options.provider ?? createGraphHopperProvider(options);
-  const authorizer = options.authorizer ?? createDefaultRouteAuthorizer(env, options);
-  const rateLimiter = options.rateLimiter ?? defaultRateLimiter(env, options.rateLimit);
+  let provider = options.provider;
+  let authorizer = options.authorizer;
+  let rateLimiter = options.rateLimiter;
   const logger = options.logger ?? { info() {} };
   const now = options.now ?? Date.now;
 
@@ -36,9 +36,11 @@ export function createRouteEndpoint(options = {}) {
       const request = validateRouteRequest(body, { maxDistanceMeters });
       safeRequestMetadata = safeMetadata(request);
       const cost = routeRequestCost(request);
+      authorizer ??= createDefaultRouteAuthorizer(env, options);
       authorization = await authorizeRouteRequest(authorizer, { ...context, requestId, cost });
 
       if (authorization.limitsConsumed !== true) {
+        rateLimiter ??= defaultRateLimiter(env, options.rateLimit);
         const rateLimit = await rateLimiter.consume({
           key: authorization.rateLimitKey,
           cost,
@@ -52,6 +54,7 @@ export function createRouteEndpoint(options = {}) {
         }
       }
 
+      provider ??= createGraphHopperProvider(options);
       const payload = await provider.route(request, { signal: context.signal, requestId });
       statusCode = 200;
       return { statusCode, payload };

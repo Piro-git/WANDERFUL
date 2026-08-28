@@ -18,7 +18,7 @@ existing standalone Node staging runtime:
 
 The machine-readable source is `backend/container/staging-host-contract-v1.json`.
 The infrastructure candidate is `render.yaml`, pinned to the dedicated review
-branch `codex/free-https-staging-backend-v1`. Neither file is a deployment
+branch `codex/integrate-staging-release-wave1`. Neither file is a deployment
 receipt. The base URL remains `null` until a remote deployment has passed the
 gates in `DEPLOYMENT_AND_ROLLBACK_V1.md`. Do not insert the anticipated Render
 hostname, or any placeholder, into iOS configuration.
