@@ -11,7 +11,10 @@ const { Pool } = pg;
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 try {
 const args = parseArguments(process.argv.slice(2));
-const region = outdoorRegionDefinition(args.region);
+const regionOptions = args.stagingProfile
+  ? { directory: stagingProfileRegionDirectory(args.stagingProfile) }
+  : {};
+const region = outdoorRegionDefinition(args.region, regionOptions);
 if (!region) fail("Unknown outdoor region.");
 const pbfPath = resolve(args.pbf);
 if (!pbfPath.endsWith(".osm.pbf")) fail("The input must be a local .osm.pbf file.");
@@ -468,7 +471,8 @@ function parseArguments(values) {
   const parsed = {};
   const allowed = new Set([
     "region", "pbf", "dataset-name", "source-id", "retrieved-at",
-    "source-timestamp", "acquisition-channel", "source-checksum"
+    "source-timestamp", "acquisition-channel", "source-checksum",
+    "staging-profile"
   ]);
   if (values.length % 2 !== 0) fail("Import arguments must be --key value pairs.");
   for (let index = 0; index < values.length; index += 2) {
@@ -504,8 +508,21 @@ function parseArguments(values) {
     retrievedAt: parsed["retrieved-at"],
     sourceTimestamp: parsed["source-timestamp"],
     acquisitionChannel,
-    sourceChecksum: parsed["source-checksum"]
+    sourceChecksum: parsed["source-checksum"],
+    stagingProfile: optionalStagingProfile(parsed["staging-profile"])
   };
+}
+
+function optionalStagingProfile(value) {
+  if (value === undefined) return undefined;
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9]\d*$/.test(value)) {
+    fail("staging-profile is invalid.");
+  }
+  return value;
+}
+
+function stagingProfileRegionDirectory(profileId) {
+  return join(root, "config", "outdoor-capacity-profiles", profileId, "regions");
 }
 
 function requiredDate(value, label) {

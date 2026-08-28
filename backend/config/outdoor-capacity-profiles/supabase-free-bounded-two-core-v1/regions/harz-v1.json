@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "regionId": "harz-v1",
+  "name": "Harz refresh-safe and hut-evidence core v1 (staging only; partial Harz coverage)",
+  "boundaryFile": "harz-v1.geojson",
+  "boundaryKind": "trailmind-operational-polygon",
+  "coordinateReferenceSystem": "EPSG:4326",
+  "metricSRID": 25832,
+  "freshnessThresholdDays": 14,
+  "pathMatchToleranceMeters": 25,
+  "supportedFeatureClasses": [
+    "viewpoint",
+    "peak",
+    "lake",
+    "waterfall",
+    "alpineHut",
+    "wildernessHut",
+    "trailSegment",
+    "hikingRouteRelation"
+  ],
+  "requiredAnchors": [
+    { "name": "Ilsenburg", "latitude": 51.866, "longitude": 10.678 },
+    { "name": "Schierke", "latitude": 51.765, "longitude": 10.665 },
+    { "name": "Brocken", "latitude": 51.800, "longitude": 10.618 }
+  ],
+  "sourceMetadataContract": {
+    "required": [
+      "datasetName",
+      "sourceIdentifier",
+      "sourceDataTimestamp",
+      "retrievedAt",
+      "toolVersion",
+      "importSchemaVersion",
+      "acquisitionChannel",
+      "inputFileSha256"
+    ],
+    "optional": [
+      "sourceChecksum",
+      "sourceChecksumVerifiedAt"
+    ]
+  }
+}

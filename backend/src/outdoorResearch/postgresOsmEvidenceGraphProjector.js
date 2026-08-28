@@ -83,9 +83,7 @@ export class PostgresOsmEvidenceGraphProjector {
         throw new OsmProjectionError("concurrent_projection");
       }
 
-      const lockedSelection = await this.preflight(client, request, startedAt, {
-        lockInput: true
-      });
+      const lockedSelection = await this.preflight(client, request, startedAt);
       if (lockedSelection.importId !== selected.importId) {
         throw new OsmProjectionError("active_import_changed");
       }
@@ -229,7 +227,7 @@ export class PostgresOsmEvidenceGraphProjector {
     }
   }
 
-  async preflight(client, request, now, options = {}) {
+  async preflight(client, request, now) {
     await ensureProjectionSchema(client);
     const policy = recognizedOsmProjectionPolicy(request.policyVersion);
     if (!policy) throw new OsmProjectionError("unrecognized_policy_version");
@@ -237,8 +235,7 @@ export class PostgresOsmEvidenceGraphProjector {
     const regionResult = await client.query(
       `SELECT region_id, active_import_id, enabled, freshness_threshold_days
          FROM outdoor_evidence_regions
-        WHERE region_id = $1
-        ${options.lockInput ? "FOR SHARE" : ""}`,
+        WHERE region_id = $1`,
       [request.regionId]
     );
     if (regionResult.rowCount !== 1) throw new OsmProjectionError("unknown_region");
@@ -253,8 +250,7 @@ export class PostgresOsmEvidenceGraphProjector {
               acquisition_channel, source_checksum_algorithm, source_checksum,
               source_checksum_verified_at, input_file_sha256
          FROM outdoor_evidence_imports
-        WHERE import_id = $1
-        ${options.lockInput ? "FOR SHARE" : ""}`,
+        WHERE import_id = $1`,
       [selectedImportId]
     );
     if (importResult.rowCount !== 1) throw new OsmProjectionError("import_not_found");

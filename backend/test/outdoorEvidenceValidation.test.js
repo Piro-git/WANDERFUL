@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
+import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   loadOutdoorRegionDefinitions,
   outdoorRegionDefinition
 } from "../src/outdoorEvidence/regions.js";
 import { validateOutdoorEvidenceRequest } from "../src/outdoorEvidence/outdoorEvidenceValidation.js";
 import { outdoorEvidenceRequest } from "./outdoorEvidenceTestSupport.js";
+
+const backendRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 describe("outdoor evidence request validation", () => {
   it("encodes PostGIS GeoJSON in longitude-latitude order", () => {
@@ -70,5 +74,31 @@ describe("outdoor evidence request validation", () => {
     );
     assert.match(alpine.boundaryFeature.properties.boundaryNotice, /not a complete or official Alps boundary/);
     assert.equal(outdoorRegionDefinition("the-alps"), undefined);
+  });
+
+  it("loads named Free staging cores only through an explicit profile directory", () => {
+    const directory = join(
+      backendRoot,
+      "config",
+      "outdoor-capacity-profiles",
+      "supabase-free-bounded-two-core-v1",
+      "regions"
+    );
+    const regions = loadOutdoorRegionDefinitions({ directory });
+
+    assert.deepEqual(regions.map((region) => region.regionId), [
+      "harz-v1", "innsbruck-alps-v1"
+    ]);
+    assert.match(regions[0].name, /staging only; partial Harz coverage/);
+    assert.match(regions[1].name, /staging only; partial pilot coverage/);
+    assert.deepEqual(regions[0].boundaryFeature.geometry.coordinates[0][0], [10.583, 51.74]);
+    assert.deepEqual(regions[1].boundaryFeature.geometry.coordinates[0][0], [11.37, 47.335]);
+    assert(regions[0].boundaryFeature.geometry.coordinates[0].some(
+      (coordinate) => coordinate[0] === 10.31 && coordinate[1] === 51.528
+    ));
+    assert(regions[1].boundaryFeature.geometry.coordinates[0].some(
+      (coordinate) => coordinate[0] === 11.338 && coordinate[1] === 47.2355
+    ));
+    assert.equal(outdoorRegionDefinition("harz-v1").name, "Harz v1");
   });
 });

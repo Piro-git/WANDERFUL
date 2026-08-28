@@ -1,0 +1,25 @@
+{
+  "type": "Feature",
+  "properties": {
+    "regionId": "harz-v1",
+    "name": "Harz refresh-safe and hut-evidence core v1 staging coverage",
+    "boundaryNotice": "Partial Ilsenburg–Brocken–Schierke coverage for Supabase Free staging capacity, including a narrow source-backed wilderness-hut verification corridor; excludes Bad Harzburg and Wernigerode and is not full Harz coverage"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [10.583, 51.74],
+        [10.72, 51.74],
+        [10.72, 51.88],
+        [10.58, 51.88],
+        [10.58, 51.74],
+        [10.31, 51.531],
+        [10.31, 51.528],
+        [10.313, 51.528],
+        [10.313, 51.531],
+        [10.583, 51.74]
+      ]
+    ]
+  }
+}
