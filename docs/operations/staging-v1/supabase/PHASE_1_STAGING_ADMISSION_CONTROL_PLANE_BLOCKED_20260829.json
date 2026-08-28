@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "trailmind-phase1-staging-admission-control-plane-blocked-20260829",
+  "status": "CONTROL_PLANE_BLOCKED",
+  "generatedAt": "2026-08-28T22:32:12Z",
+  "remoteMutationBegan": false,
+  "blocker": {
+    "code": "authorized_project_exact_name_missing",
+    "requiredProjectName": "TrailMind outdoor staging v1",
+    "reviewedOperatorProjectName": "TrailMind Outdoor Staging V1",
+    "exactNameMatchCount": 0,
+    "nearMatch": {
+      "name": "TrailMind Outdoor Staging V1",
+      "projectRef": "mbvzwsrtqcrwhvykugcd",
+      "organizationId": "wbnftkftyamxzvxsftda",
+      "region": "eu-central-1",
+      "status": "ACTIVE_HEALTHY",
+      "postgresEngine": "17",
+      "platformVersion": "17.6.1.155"
+    },
+    "decision": "The control-plane project and reviewed operator agree on the title-cased name, but that name is outside this run's exact authorization envelope and was not admitted as the target."
+  },
+  "repository": {
+    "requiredOriginMainCommit": "10dd59adf4b12dec8288e261438331db78fff9b2",
+    "observedFetchHeadCommit": "10dd59adf4b12dec8288e261438331db78fff9b2",
+    "observedOriginMainCommit": "10dd59adf4b12dec8288e261438331db78fff9b2",
+    "candidateCommit": "10dd59adf4b12dec8288e261438331db78fff9b2",
+    "requiredTree": "ae82c3e2e4693ae911587e3fbba2516469c9e4d2",
+    "observedTree": "ae82c3e2e4693ae911587e3fbba2516469c9e4d2",
+    "reviewedOperatorAncestor": "a36c646815f390b60df734147a78e82c8ef46dd1",
+    "archivedDraft": "29fdbef81515c93420517a484f119f0fb555d67b",
+    "archivedDraftIsCandidateAncestor": false,
+    "branch": "codex/secure-supabase-staging-admission-v1",
+    "cleanWorktreeAndIndexAtGate": true
+  },
+  "duplicateGate": {
+    "completedEquivalentAdmissionCount": 0,
+    "otherActiveStagingWriterCount": 0,
+    "priorBlockedOrPreparationTasksObserved": true,
+    "duplicateAdmissionDetected": false
+  },
+  "officialGuidance": {
+    "checkedAt": "2026-08-28T22:32:12Z",
+    "sources": [
+      "https://supabase.com/changelog.md",
+      "https://supabase.com/docs/guides/database/connecting-to-postgres",
+      "https://supabase.com/docs/guides/platform/ssl-enforcement",
+      "https://supabase.com/docs/guides/database/postgres/row-level-security",
+      "https://supabase.com/docs/guides/database/postgres/roles",
+      "https://supabase.com/docs/guides/database/postgres/roles-superuser",
+      "https://supabase.com/docs/guides/platform/database-size"
+    ],
+    "connectionDecision": "direct_tls_verified_or_reviewed_session_pooler_only",
+    "transactionPoolerAdmitted": false,
+    "freeDatabaseSizeLimitBytes": 500000000,
+    "freeDiskSpaceBytes": 1000000000,
+    "extensionVersionPinningDeprecated": true,
+    "candidateExplicitExtensionVersionClauseCount": 0,
+    "reviewedContractWeakenedForPlatformDrift": false
+  },
+  "controlPlane": {
+    "inventoryProjectCount": 8,
+    "exactAuthorizedNameMatchCount": 0,
+    "organization": {
+      "id": "wbnftkftyamxzvxsftda",
+      "name": "Alibra AI",
+      "plan": "free",
+      "recurringProjectCostUsd": 0
+    },
+    "planua": {
+      "projectRef": "cmkvbxppgofteoutfslp",
+      "name": "Planua",
+      "mutationCount": 0
+    },
+    "nonTargetProjectCount": 8,
+    "allNonTargetMutationCount": 0,
+    "controlPlaneReadOperationCount": 3,
+    "databaseReadOperationCount": 0,
+    "databaseMutationOperationCount": 0
+  },
+  "operatorBinding": {
+    "operatorFilesDigest": "3c41abd66538df0e5536bd80de2e58a5ea7d23ded89abb02af2b321928167bf4",
+    "managedMigrationsDigest": "c7f98ad346b1384af8fd186911f09414f7ac9e9a14526f81fb61d9db0625e62f",
+    "files": [
+      {
+        "path": "backend/migrations/001_app_attest.sql",
+        "sha256": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16"
+      },
+      {
+        "path": "backend/migrations/002_outdoor_evidence.sql",
+        "sha256": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d"
+      },
+      {
+        "path": "backend/migrations/003_outdoor_research_graph.sql",
+        "sha256": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928"
+      },
+      {
+        "path": "backend/migrations/004_osm_outdoor_research_projection.sql",
+        "sha256": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3"
+      },
+      {
+        "path": "backend/migrations/005_outdoor_research_projection_geometry.sql",
+        "sha256": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8"
+      },
+      {
+        "path": "backend/migrations/006_outdoor_route_membership_point_index.sql",
+        "sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4"
+      },
+      {
+        "path": "backend/migrations/007_routable_highlight_access_geography_index.sql",
+        "sha256": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7"
+      },
+      {
+        "path": "backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql",
+        "sha256": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"
+      },
+      {
+        "path": "backend/migrations/010_bounded_outdoor_import_schema_provisioning.sql",
+        "sha256": "62f23c605654fc3e58661646d376bf68cca8e95c0e9354dc9da6d77c765ef467"
+      },
+      {
+        "path": "backend/scripts/disposable/run-staging-phase1-v2-single-session-adapter.js",
+        "sha256": "3f5f4b9eda0e2ac792e401fb82fb4ea4b21f744d0f65984dff9cd5d7219a8bd6"
+      },
+      {
+        "path": "backend/scripts/staging/phase1-v2-operator.js",
+        "sha256": "bf6cadb4c22fe9a5c31cb64568e3465ebe609565668cdd6e6655e3cc0d87a631"
+      },
+      {
+        "path": "backend/scripts/staging/runtime/verify-build-context.js",
+        "sha256": "200700b532a88de497750ca3b6f6e6d0f8d69993da5c06ae2ae1e0278ca9bd1d"
+      },
+      {
+        "path": "backend/src/operations/migrationRunner.js",
+        "sha256": "224fedd6f9d90140b7b097ffe2d0d05feaae40459d0993726f7ceee2c64f1408"
+      },
+      {
+        "path": "backend/src/operations/stagingMigrationCapability.js",
+        "sha256": "ce74ae2343a4ba7a8a878fe43029fe6e68d178d831d064bb27a6f740216858c4"
+      },
+      {
+        "path": "backend/src/operations/stagingMigrationPolicy.js",
+        "sha256": "a2795853059f574279bfc8f6b72203ba8907b8d80c1b7859cbbca1b080dd9681"
+      },
+      {
+        "path": "backend/src/operations/stagingPhase1V2Admission.js",
+        "sha256": "6b117e2065bb3ef021b28350ee23d7b637aa3cac2259c61db70265f0e3fe9afe"
+      },
+      {
+        "path": "backend/src/operations/stagingPhase1V2Operator.js",
+        "sha256": "15c2879e5ab681c5716c72b18df4e73c074b1d205f93c4daaf1de30a30b872b5"
+      },
+      {
+        "path": "backend/src/operations/stagingPhase1V2SingleSessionAdapter.js",
+        "sha256": "128d87afe67f69a8350e8c8403575a034710026e7fe42f4e40cc0f11899e41ef"
+      },
+      {
+        "path": "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql",
+        "sha256": "3945c51cf26ca178e2bb2d6bfa7ac49aa6cf1bbcb268bf68272216efce153456"
+      },
+      {
+        "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql",
+        "sha256": "feb13b3f6ea6a538f6cd5223030fecca1cb0195bce3e0eb0204aed704ea0c16b"
+      },
+      {
+        "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2_ROLLBACK.sql",
+        "sha256": "55aefe612d35262948b199fecf00960cb0ee39e88a6e8255dcd7a2f36f800ed2"
+      }
+    ],
+    "capacityAndDependencyFiles": [
+      {
+        "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/capacity-contract-v1.json",
+        "sha256": "98deebe62e49b3a23c4cb30da5d1594b55852e0889342d63c9fe8fbf6af8c3c5"
+      },
+      {
+        "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/capacity-generation-lifecycle.sql",
+        "sha256": "5d0b62d8ed18e1bf92ac358d18ebf6c3c7b4f97e8239f185780352260342c444"
+      },
+      {
+        "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/projection-temporary-workspace.sql",
+        "sha256": "e83dc88b029024eb5a00d2377b9a90c79cbf87a9de81ba741750486c49ea8841"
+      },
+      {
+        "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/profile.json",
+        "sha256": "ea3f612b46e8d70bf3b5a76da96c8ec2ee7aac3b5a581e2e2790ceadc37c241e"
+      },
+      {
+        "path": "backend/src/outdoorEvidence/outdoorCapacityAdmission.js",
+        "sha256": "2af8aa77b27371ed5423f0d3ec6e0aa7b533079259cbdae0cccde8ffe00bd899"
+      },
+      {
+        "path": "backend/package-lock.json",
+        "sha256": "f68d2c233fa98ed7dd57ba1bee8ab560069205b61cf371ca205f26f03f5c2533"
+      }
+    ]
+  },
+  "credentialContainment": {
+    "authorizationEnvelopeCreated": false,
+    "credentialRequiredOrRequested": false,
+    "credentialValueRead": false,
+    "credentialValuePrintedCopiedHashedOrRetained": false,
+    "clipboardRead": false,
+    "protectedCredentialSourcesInspected": false,
+    "reason": "The exact project identity gate failed before the credential stage."
+  },
+  "databasePreflight": {
+    "started": false,
+    "postgresCompatibility": "not_run_control_plane_blocked",
+    "tlsAndChannelBinding": "not_run_control_plane_blocked",
+    "sessionPidAndRoles": "not_run_control_plane_blocked",
+    "advisoryLock": "not_run_control_plane_blocked",
+    "emptyFoundation": "not_run_control_plane_blocked",
+    "databaseSizeAndHeadroom": "not_run_control_plane_blocked"
+  },
+  "initialization": {
+    "operatorInvocations": 0,
+    "migrationStatementsExecuted": 0,
+    "compensationInvocations": 0,
+    "secondRunNoOp": "not_run_control_plane_blocked"
+  },
+  "postInitializationVerification": {
+    "migrationLedger": "not_run",
+    "rolesAclsRlsFunctions": "not_run",
+    "runtimeBoundary": "not_run",
+    "capacityFoundation": "not_run",
+    "advisors": "not_run",
+    "disabledEndpointProbes": "not_run"
+  },
+  "localVerification": {
+    "completedAt": "2026-08-28T22:37:16Z",
+    "candidateBindingCheck": "passed",
+    "operatorInventoryAndDigestCheck": "passed",
+    "explicitExtensionVersionClauseCount": 0,
+    "focusedTests": {
+      "passed": 81,
+      "failed": 0,
+      "skipped": 0
+    },
+    "authoritativePostgres17PostgisSupautils": "not_run_official_supautils_library_not_available",
+    "postgisIntegrationSuites": "not_run_official_supautils_library_not_available",
+    "completeBackendSuite": {
+      "passed": 1084,
+      "failed": 0,
+      "skipped": 0
+    },
+    "backendBuild": "passed",
+    "offlineQualityEvaluation": {
+      "passed": 101,
+      "failed": 0,
+      "skipped": 0
+    },
+    "jsonWhitespaceConflictCredentialAndArtifactScans": "passed",
+    "residualTaskProcessAndListenerScan": "passed",
+    "taskOwnedDependencyCleanup": "passed"
+  },
+  "externalEffects": {
+    "osmDownloadsOrImports": 0,
+    "evidenceProjectionOperations": 0,
+    "graphHopperCalls": 0,
+    "aiProviderCalls": 0,
+    "deployments": 0,
+    "billingOrPlanChanges": 0,
+    "authStorageEdgeFunctionOrDomainChanges": 0,
+    "featureEnableOperations": 0
+  },
+  "git": {
+    "commitCreated": false,
+    "pushAttempted": false,
+    "reason": "The instructions authorize admission-result commits only after a successful remote operation and all verification gates.",
+    "expectedFinalStatus": [
+      "?? docs/operations/staging-v1/supabase/PHASE_1_STAGING_ADMISSION_CONTROL_PLANE_BLOCKED_20260829.json",
+      "?? docs/operations/staging-v1/supabase/PHASE_1_STAGING_ADMISSION_CONTROL_PLANE_BLOCKED_20260829.md"
+    ]
+  },
+  "nextBackupRequirement": "Before any live evidence import or projection, create and verify a bounded logical backup of the admitted empty foundation using the reviewed direct/session-safe PostgreSQL path and prove a disposable restore.",
+  "safeResolution": "Issue a fresh authorization naming TrailMind Outdoor Staging V1 exactly, or separately rename the project and first review, commit, and pin a matching operator identity before authorizing another run.",
+  "nextTasksAfterSuccessfulAdmission": [
+    "Bounded evidence import/projection with backup and restore proof",
+    "Disabled HTTPS backend deployment and operations validation"
+  ]
+}
