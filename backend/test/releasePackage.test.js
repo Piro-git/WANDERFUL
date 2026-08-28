@@ -218,9 +218,9 @@ describe("Apple release evidence proof-integrity validator", () => {
       schemaVersion: 1,
       decision: "valid",
       currentDecision: "NO_GO",
-      sourceBaseline: "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
+      sourceBaseline: "21f8450c976252210edf03389dc1b682d2440450",
       gateCount: 50,
-      provedGateCount: 24
+      provedGateCount: 25
     });
   });
 
@@ -354,6 +354,74 @@ describe("Apple release evidence proof-integrity validator", () => {
     );
   });
 
+  it("rejects fabricated owner decisions and public URLs", () => {
+    const ownerAnswer = applePackageInput();
+    ownerAnswer.ownerInputs.decisions[0].status = "answered";
+    ownerAnswer.ownerInputs.decisions[0].value = "TEAM123456";
+    ownerAnswer.ownerInputs.decisions[0].evidence_reference = "self-asserted";
+    assert.throws(
+      () => validateAppleReleasePackage(ownerAnswer, appleValidatorOptions(ownerAnswer)),
+      (error) => error.code === "false_green_apple_owner_decision"
+    );
+
+    const fabricatedURL = applePackageInput();
+    fabricatedURL.audit.public_links.privacy_policy.tracked_value =
+      "https://example.com/privacy";
+    assert.throws(
+      () => validateAppleReleasePackage(fabricatedURL, appleValidatorOptions(fabricatedURL)),
+      (error) => error.code === "false_green_apple_public_links"
+    );
+  });
+
+  it("rejects contradictory privacy answers and hosted-draft claims", () => {
+    const contradiction = applePackageInput();
+    contradiction.privacyDeclaration.data_not_collected = true;
+    assert.throws(
+      () => validateAppleReleasePackage(
+        contradiction,
+        appleValidatorOptions(contradiction)
+      ),
+      (error) => error.code === "contradictory_apple_privacy_declaration"
+    );
+
+    const fakeHosting = applePackageInput();
+    fakeHosting.privacyPolicyDraft = fakeHosting.privacyPolicyDraft.replace(
+      "**DRAFT — NOT HOSTED**",
+      "**PUBLISHED**"
+    );
+    assert.throws(
+      () => validateAppleReleasePackage(fakeHosting, appleValidatorOptions(fakeHosting)),
+      (error) => error.code === "invalid_unhosted_public_content_draft"
+    );
+  });
+
+  it("rejects stale or unreconciled build hashes and mutated current tooling", () => {
+    const staleBuild = applePackageInput();
+    staleBuild.audit.artifacts.release.source_commit = "0".repeat(40);
+    assert.throws(
+      () => validateAppleReleasePackage(staleBuild, appleValidatorOptions(staleBuild)),
+      (error) => error.code === "stale_apple_build_evidence"
+    );
+
+    const mismatchedBuildHash = applePackageInput();
+    mismatchedBuildHash.audit.artifacts.release.binary_sha256 = "e".repeat(64);
+    assert.throws(
+      () => validateAppleReleasePackage(
+        mismatchedBuildHash,
+        appleValidatorOptions(mismatchedBuildHash)
+      ),
+      (error) => error.code === "unreconciled_apple_build_hash"
+    );
+
+    const staleTooling = applePackageInput();
+    const options = appleValidatorOptions(staleTooling);
+    staleTooling.manifest.package_tooling_files[0].sha256 = "f".repeat(64);
+    assert.throws(
+      () => validateAppleReleasePackage(staleTooling, options),
+      (error) => error.code === "apple_tooling_hash_mismatch"
+    );
+  });
+
   it("returns bounded codes for malformed Apple evidence container types", () => {
     const fixture = proofIntegrityFixtures.malformedContainers;
     const invalidBlockers = applePackageInput();
@@ -411,12 +479,12 @@ describe("Apple release evidence proof-integrity validator", () => {
         "| G-044 |$1| proved |$2| — |"
       )
       .replace(
-        "Exactly 24 of 50 applicable gates are proved: **48.0%**",
-        "Exactly 25 of 50 applicable gates are proved: **50.0%**"
+        "Exactly 25 of 50 applicable gates are proved: **50.0%**",
+        "Exactly 26 of 50 applicable gates are proved: **52.0%**"
       );
     input.readme = input.readme.replace(
-      "proves **24 of 50 applicable release gates (48.0%)**",
-      "proves **25 of 50 applicable release gates (50.0%)**"
+      "proves **25 of 50 applicable release gates (50.0%)**",
+      "proves **26 of 50 applicable release gates (52.0%)**"
     );
     assert.throws(
       () => validateAppleReleasePackage(input, appleValidatorOptions(input)),
@@ -502,16 +570,26 @@ function applePackageInput() {
     manifest: readJson("SOURCE_EVIDENCE_MANIFEST_V1.json"),
     matrix: readText("RELEASE_GATE_MATRIX.md"),
     privacyQuestionnaire: readText("APP_PRIVACY_QUESTIONNAIRE_V1.md"),
-    readme: readText("README.md")
+    ownerInputs: readJson("OWNER_INPUTS_V1.json"),
+    privacyDeclaration: readJson("APP_PRIVACY_DECLARATION_DRAFT_V1.json"),
+    privacyPolicyDraft: readText("PRIVACY_POLICY_CONTENT_DRAFT_V1.md"),
+    readme: readText("README.md"),
+    supportPageDraft: readText("SUPPORT_PAGE_CONTENT_DRAFT_V1.md")
   };
 }
 
 function appleValidatorOptions(input, reachable = true) {
   const sourceHashes = new Map(input.manifest.files.map((file) => [file.path, file.sha256]));
+  const toolingHashes = new Map(
+    input.manifest.package_tooling_files.map((file) => [file.path, file.sha256])
+  );
   return {
     isSourceCommit() { return reachable; },
     sourceBlobSha256(_commit, path) {
       return sourceHashes.get(path) ?? null;
+    },
+    workingFileSha256(path) {
+      return toolingHashes.get(path) ?? null;
     }
   };
 }

@@ -1,12 +1,16 @@
 {
   "schema_version": 1,
   "package": "Wanderful Apple Release Readiness V1",
-  "assessed_at": "2026-08-26",
-  "source_baseline": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
+  "assessed_at": "2026-08-28",
+  "source_baseline": "21f8450c976252210edf03389dc1b682d2440450",
   "decision": "no_go",
-  "scope": "local read-only Apple state plus source, generic Simulator, non-archive generic iPhoneOS and compiled-test-bundle evidence",
+  "scope": "local read-only Apple state plus source, executed deterministic Simulator tests, generic Simulator artifacts and one unsigned non-archive generic iPhoneOS diagnostic",
   "duplicate_work": {
     "result": "extended_existing_package",
+    "origin_main_initial_fetch": "21f8450c976252210edf03389dc1b682d2440450",
+    "origin_main_final_fetch": "a36c646815f390b60df734147a78e82c8ef46dd1",
+    "final_advancement_scope": "non_overlapping_supabase_migration_operator",
+    "overlapping_upstream_advancement": false,
     "prior_branches_already_in_baseline": [
       "codex/app-store-release-v1",
       "codex/app-store-release-v1-stage-b"
@@ -17,43 +21,76 @@
     "staging_generic_simulator": "passed",
     "release_generic_simulator": "passed",
     "generic_iphoneos_release_build_diagnostic": "passed",
-    "signed_distribution_archive": "not_run_no_signing_identity",
+    "signed_distribution_archive": "not_run_no_signing_identity_or_profile",
     "complete_test_bundle_compilation": "passed",
-    "test_execution": "not_run_no_booted_simulator"
+    "test_execution": "passed_deterministic_non_live"
   },
   "artifacts": {
     "debug": {
+      "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
       "display_name": "Wanderful Local",
       "bundle_identifier": "com.trailmind.app.local",
       "environment": "local",
       "app_attest_environment": "development",
-      "binary_sha256": "a12e0f2c5ecb6db9fb8ad6e043e6990ea7a692c4542758ed61147fb01a5e4f66"
+      "binary_sha256": "d128706475111b62cea088dd8178e922cacc94eaaddc48342ea514b5a66fef83"
     },
     "staging": {
+      "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
       "display_name": "Wanderful Staging",
       "bundle_identifier": "com.trailmind.app.staging",
       "environment": "staging",
       "app_attest_environment": "production",
-      "binary_sha256": "0ced0808c21bf06e4b418d0e7045f40fe97dd0bd21ed04654d42e8e40b4ec2dc"
+      "binary_sha256": "94cfbf21fb6e2e2f0e4dcd64ba25a1267c3139eeb9f1e83a2c2fb875f0c1e8b4"
     },
     "release": {
+      "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
       "display_name": "Wanderful",
       "bundle_identifier": "com.trailmind.app",
       "environment": "production",
       "app_attest_environment": "production",
-      "binary_sha256": "400ac916accb544291e53b2c6bbeaf64abd9912d8e3f0ed0813d90660d42a86d",
+      "binary_sha256": "d4fc0b065444db5372cc2f0a0beccf776a49d52a22a96f6c226d2dc1d1a91103",
       "verifier": {
-        "passed": 41,
+        "passed": 43,
         "failed": 0,
         "status": "passed"
       }
     },
     "generic_iphoneos_release_build_diagnostic": {
       "artifact_kind": "generic_iphoneos_app_bundle",
-      "binary_sha256": "dcd4df0b9a8590fe957612fed10b1625c414fff529036e625ea75814f87a6589",
+      "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
+      "binary_sha256": "e4c3dca93001e83179f245bc5d5065ed7fa4bd73407f03f7e5c86a6e964b0489",
+      "code_signing_state": "unsigned",
       "archive_evidence": false,
       "distribution_claim": false
     }
+  },
+  "test_results": {
+    "focused_release_privacy_public_link_accessibility": {
+      "passed": 60,
+      "failed": 0,
+      "skipped": 0
+    },
+    "complete_deterministic_non_live_unit": {
+      "passed": 708,
+      "failed": 0,
+      "skipped": 0,
+      "excluded_live_methods": 2
+    },
+    "relevant_ui_matrix": {
+      "completed_methods_passed": 7,
+      "completed_methods_failed": 0,
+      "infrastructure_interrupted_attempts_rerun": 3,
+      "bounded_batch_timeout_before_completion": 1
+    },
+    "complete_backend": {
+      "passed": 1044,
+      "failed": 0,
+      "skipped": 0
+    },
+    "backend_static_build": "passed",
+    "release_package_validation": "passed_no_go_25_of_50",
+    "compiler_warnings": 9,
+    "compiler_warning_scope": "pre-existing Swift concurrency warnings in protected TrailMindStagingProofUITests.swift"
   },
   "protected_feature_flags": {
     "DIRECT_GRAPHHOPPER_ENABLED": false,
@@ -72,32 +109,43 @@
     "SUPABASE_PUBLISHABLE_KEY": "empty",
     "SUPERWALL_API_KEY": "empty"
   },
+  "public_links": {
+    "privacy_policy": {
+      "tracked_value": "empty",
+      "reachability": "not_run_no_owner_url",
+      "in_app_surface": "implemented_fail_closed"
+    },
+    "support": {
+      "tracked_value": "empty",
+      "reachability": "not_run_no_owner_url",
+      "in_app_surface": "implemented_fail_closed"
+    }
+  },
   "verifier_regression": {
-    "isolated_cases_passed": 38,
+    "isolated_cases_passed": 46,
     "stale_report_recovery": "passed",
     "large_binary_pipefail_regression": "passed"
   },
   "apple_external_state": {
     "valid_code_signing_identities": 0,
+    "provisioning_profile_directory_present": false,
     "connected_physical_iphone": false,
     "developer_program_membership": "unknown",
     "app_store_connect_record": "unknown",
     "explicit_app_ids_and_capabilities": "unknown",
-    "provisioning_profiles": "unknown",
     "testflight": "not_run",
     "physical_app_attest": "not_run"
   },
   "owner_actions": [
-    "confirm Apple legal entity, team and authorized release operator",
-    "register staging and production explicit App IDs with App Attest",
-    "create distribution certificate and separate App Store profiles",
-    "create or verify the Wanderful App Store Connect record and SKU",
-    "publish real privacy-policy and support HTTPS pages and add working in-app links",
-    "approve age rating, export compliance, content rights, category, storefronts and support contact",
-    "approve Superwall exclusion for V1 or perform a separate purchase/privacy review",
+    "answer the bounded legal entity, Apple account/team, App Store record/SKU, category, age-rating, export, content-rights, pricing/territory and release-strategy decisions",
+    "supply owner-approved support contact details and canonical public HTTPS privacy-policy and support URLs after the draft content is legally reviewed and hosted",
+    "approve the final App Privacy answers after production backend, SDK logging, deletion and retention behavior are fixed and evidenced",
+    "confirm Superwall exclusion for V1 or authorize a separate purchase and privacy review before enabling it",
+    "register or verify staging and production explicit App IDs with App Attest and provide non-secret Team ID evidence",
+    "provide a valid distribution certificate and matching App Store profile to an authorized release operator",
     "supply the reviewed canonical staging HTTPS backend and complete physical-iPhone App Attest proof",
-    "correct and re-verify forced-light and accessibility-XXXL route-card findings",
-    "produce, validate and install a signed archive before TestFlight"
+    "approve final metadata, real screenshots, review contact/notes and release strategy",
+    "produce and validate the exact signed archive before TestFlight"
   ],
   "external_calls": {
     "backend": 0,
@@ -114,11 +162,11 @@
     "secret_values_inspected": false
   },
   "no_go_reasons": [
-    "no signed distribution identity/profile/archive",
+    "no valid distribution identity, matching profile or signed xcarchive",
     "no connected physical iPhone or production App Attest proof",
     "no live reviewed staging or production backend URL",
-    "privacy policy and support URLs plus in-app links are unresolved",
-    "Apple account, legal and App Store Connect owner decisions are unproved",
-    "forced-light and accessibility-XXXL findings remain open"
+    "privacy-policy and support URLs remain empty and no hosted pages were claimed",
+    "final App Privacy answers, retention and deletion obligations are owner/backend/legal dependent",
+    "Apple account, legal, App Store Connect, metadata and release decisions are unproved"
   ]
 }

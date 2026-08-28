@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "package": "Wanderful App Store Release Package V1",
+  "source_baseline": "21f8450c976252210edf03389dc1b682d2440450",
+  "publication_state": "blocked_unanswered_owner_inputs",
+  "repository_policy": "This is a bounded unanswered template. Record decisions and evidence in the authorized release system; do not place credentials, private account data, tax records or signing material in git.",
+  "decisions": [
+    {
+      "id": "OD-001",
+      "topic": "apple_legal_entity_and_team",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Active Apple Developer Program legal entity, Team ID, Account Holder, authorized release operator, current agreements and any applicable paid-app tax/banking prerequisites, verified in the authorized release system.",
+      "blocks_gates": ["G-008", "G-009", "G-010"]
+    },
+    {
+      "id": "OD-002",
+      "topic": "app_store_connect_record_and_sku",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Verified App Store Connect record, approved Wanderful name and rights, primary language, immutable SKU and exact com.trailmind.app mapping.",
+      "blocks_gates": ["G-048"]
+    },
+    {
+      "id": "OD-003",
+      "topic": "privacy_policy_controller_domain_and_url",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Approved legal controller and policy content plus a reachable canonical public HTTPS URL matching the in-app URL and App Store Connect value.",
+      "blocks_gates": ["G-018", "G-019"]
+    },
+    {
+      "id": "OD-004",
+      "topic": "support_operator_contact_and_url",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Monitored support contact, responsible operator/legal details and a reachable canonical public HTTPS support page.",
+      "blocks_gates": ["G-020"]
+    },
+    {
+      "id": "OD-005",
+      "topic": "app_privacy_answers",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Owner-approved answers reconciled with the selected archive, embedded SDK manifests, production backend linkage, logging, retention and live policy.",
+      "blocks_gates": ["G-018"]
+    },
+    {
+      "id": "OD-006",
+      "topic": "age_rating_answers",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Completed current App Store Connect age-rating questionnaire with owner or counsel approval; no inferred rating is accepted.",
+      "blocks_gates": ["G-030"]
+    },
+    {
+      "id": "OD-007",
+      "topic": "encryption_and_export_compliance",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Legal or security classification of the final binary and recorded App Store Connect export answers and documentation, if required.",
+      "blocks_gates": ["G-024"]
+    },
+    {
+      "id": "OD-008",
+      "topic": "content_and_asset_rights",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Rights inventory for product name, icon, onboarding art, code and exact map, routing, elevation and data sources plus the App Store declaration.",
+      "blocks_gates": ["G-029"]
+    },
+    {
+      "id": "OD-009",
+      "topic": "categories",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Owner-approved primary and optional secondary categories matching the selected build and any regulated-device declarations.",
+      "blocks_gates": ["G-031"]
+    },
+    {
+      "id": "OD-010",
+      "topic": "pricing_and_territories",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Approved price or free availability, storefront territories and truthful route/backend coverage boundary.",
+      "blocks_gates": ["G-049"]
+    },
+    {
+      "id": "OD-011",
+      "topic": "release_strategy",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Authorized TestFlight groups and manual, automatic or phased release strategy, selected only after prerequisite gates pass.",
+      "blocks_gates": ["G-046", "G-047"]
+    },
+    {
+      "id": "OD-012",
+      "topic": "superwall_and_monetization_scope",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Explicit V1 exclusion approval or separately proved products, purchase flow, disclosures, privacy answers and App Review configuration.",
+      "blocks_gates": ["G-026"]
+    },
+    {
+      "id": "OD-013",
+      "topic": "production_backend_and_retention_owner",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Approved backend owner, canonical HTTPS endpoint, retention and deletion rules, logging, rate limits, deployed flags, provider authority and App Attest enforcement.",
+      "blocks_gates": ["G-013", "G-015", "G-018", "G-034"]
+    },
+    {
+      "id": "OD-014",
+      "topic": "screenshots_metadata_and_voice_scope",
+      "status": "unanswered",
+      "value": null,
+      "evidence_reference": null,
+      "required_evidence": "Owner-approved metadata, screenshot localization/device set and voice-marketing scope reconciled to the exact selected build and physical-device proof.",
+      "blocks_gates": ["G-032", "G-033"]
+    }
+  ]
+}

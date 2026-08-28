@@ -169,11 +169,20 @@ contract_is_valid() {
     (.feature_flags | all(to_entries[]; .value == "false")) and
     (.service_configuration | type == "object" and length == 4) and
     (.service_configuration | all(to_entries[]; .value == "")) and
+    (.public_link_configuration | type == "object" and length == 2) and
+    (.public_link_configuration | keys | sort) == ([
+      "WANDERFUL_PRIVACY_POLICY_URL",
+      "WANDERFUL_SUPPORT_URL"
+    ] | sort) and
+    (.public_link_configuration | all(to_entries[]; .value == "")) and
+    (.distribution.expected_team_identifier_environment_variable ==
+      "TRAILMIND_EXPECTED_TEAM_IDENTIFIER") and
     (.platforms["simulator-app"].allowed_architectures | type == "array" and length > 0) and
     (.platforms["distribution-signed-archive"].allowed_architectures | type == "array" and length > 0) and
     (.platforms["distribution-signed-archive"].requires_beta_reports_active == true) and
     (.privacy_manifest.filename == "PrivacyInfo.xcprivacy") and
     (.privacy_manifest.expected | type == "object") and
+    (.privacy_manifest.embedded_expected | type == "object" and length == 2) and
     (.forbidden_info_keys | type == "array") and
     (.forbidden_info_value_markers | type == "array" and length > 0) and
     (.required_binary_markers | type == "array" and length > 0) and
@@ -209,7 +218,7 @@ validate_info_contract() {
   local expected
   local actual_usage expected_usage forbidden_keys
   local expected_name_key expected_attest_key expected_name expected_attest
-  local expected_flags expected_services forbidden_value_markers
+  local expected_flags expected_services expected_public_links forbidden_value_markers
 
   expected="$(jq -r '.product.bundle_identifier' "$RELEASE_VERIFIER_CONTRACT")"
   json_matches_string "$info_json" '.CFBundleIdentifier' "$expected" &&
@@ -308,6 +317,16 @@ validate_info_contract() {
     record_failure "service_configuration_contract"
   fi
 
+  expected_public_links="$(jq -cS '.public_link_configuration' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || expected_public_links='{}'
+  if print -r -- "$info_json" | jq -e \
+      --argjson expected "$expected_public_links" --argjson info "$info_json" '
+      all($expected | to_entries[]; . as $entry | $info[$entry.key] == $entry.value)
+    ' >/dev/null 2>&1; then
+    record_pass "public_link_configuration_contract"
+  else
+    record_failure "public_link_configuration_contract"
+  fi
+
   forbidden_value_markers="$(jq -c '.forbidden_info_value_markers' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || forbidden_value_markers='[]'
   if print -r -- "$info_json" | jq -e --argjson forbidden "$forbidden_value_markers" '
       ([.. | strings | ascii_downcase] as $values |
@@ -346,6 +365,7 @@ validate_info_contract() {
 validate_privacy_manifest() {
   local app_path="$1"
   local manifest_name manifest_path manifest_count manifest_json actual expected
+  local embedded_actual embedded_expected embedded_manifest relative_path embedded_valid=true
 
   manifest_name="$(jq -r '.privacy_manifest.filename' "$RELEASE_VERIFIER_CONTRACT")"
   manifest_path="${app_path}/${manifest_name}"
@@ -367,6 +387,33 @@ validate_privacy_manifest() {
     record_pass "privacy_manifest_contract"
   else
     record_failure "privacy_manifest_contract"
+  fi
+
+  embedded_actual="$(find "$app_path" -mindepth 2 -type f -name "$manifest_name" -print 2>/dev/null |
+    sed "s#^${app_path}/##" | sort)"
+  embedded_expected="$(jq -r '.privacy_manifest.embedded_expected | keys[]' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null | sort)"
+  if [[ -z "$embedded_expected" || "$embedded_actual" != "$embedded_expected" ]]; then
+    embedded_valid=false
+  else
+    while IFS= read -r relative_path; do
+      [[ -z "$relative_path" ]] && continue
+      embedded_manifest="${app_path}/${relative_path}"
+      if [[ ! -f "$embedded_manifest" || -L "$embedded_manifest" ]]; then
+        embedded_valid=false
+        break
+      fi
+      actual="$(plist_json "$embedded_manifest" | jq -cS '.' 2>/dev/null)" || actual="invalid"
+      expected="$(jq -cS --arg path "$relative_path" '.privacy_manifest.embedded_expected[$path]' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || expected="invalid"
+      if [[ "$actual" != "$expected" ]]; then
+        embedded_valid=false
+        break
+      fi
+    done <<< "$embedded_expected"
+  fi
+  if [[ "$embedded_valid" == true ]]; then
+    record_pass "embedded_privacy_manifests"
+  else
+    record_failure "embedded_privacy_manifests"
   fi
 }
 
@@ -528,6 +575,7 @@ validate_code_signature() {
   local temporary_directory="$3"
   local entitlements_plist="${temporary_directory}/code-entitlements.plist"
   local entitlements_json signature_details expected_identifier expected_environment code_team
+  local expected_team="${TRAILMIND_EXPECTED_TEAM_IDENTIFIER:-}"
 
   if codesign --verify --deep --strict "$app_path" >/dev/null 2>&1; then
     record_pass "code_signature_integrity"
@@ -536,6 +584,7 @@ validate_code_signature() {
   fi
 
   signature_details="$(codesign -dv --verbose=4 "$app_path" 2>&1)" || signature_details=""
+  code_team="$(print -r -- "$signature_details" | sed -n 's/^TeamIdentifier=//p' | sed -n '1p')"
   expected_identifier="$(jq -r '.product.bundle_identifier' "$RELEASE_VERIFIER_CONTRACT")"
   if ! print -r -- "$signature_details" | grep -Fxq -- "Identifier=${expected_identifier}"; then
     record_failure "signing_identity_contract"
@@ -543,7 +592,9 @@ validate_code_signature() {
     record_pass "signing_identity_contract"
   elif print -r -- "$signature_details" | grep -Fq 'Signature=adhoc' ||
        print -r -- "$signature_details" | grep -Fq 'TeamIdentifier=not set' ||
-       ! print -r -- "$signature_details" | grep -Fq 'Authority=Apple Distribution'; then
+       ! print -r -- "$signature_details" | grep -Fq 'Authority=Apple Distribution' ||
+       [[ ${#expected_team} -ne 10 || "$expected_team" == *[^A-Z0-9]* ||
+          "$code_team" != "$expected_team" ]]; then
     record_failure "signing_identity_contract"
   else
     record_pass "signing_identity_contract"
@@ -565,8 +616,7 @@ validate_code_signature() {
   fi
 
   expected_environment="$(jq -r '.platforms["distribution-signed-archive"].app_attest_environment' "$RELEASE_VERIFIER_CONTRACT")"
-  code_team="$(print -r -- "$signature_details" | sed -n 's/^TeamIdentifier=//p' | sed -n '1p')"
-  if [[ -n "$code_team" ]] && print -r -- "$entitlements_json" | jq -e \
+  if [[ -n "$code_team" && "$code_team" == "$expected_team" ]] && print -r -- "$entitlements_json" | jq -e \
       --arg environment "$expected_environment" \
       --arg team "$code_team" \
       --arg identifier "$expected_identifier" \
@@ -656,6 +706,7 @@ validate_provisioning_profile() {
   local profile_app_attest profile_get_task_allow
   local profile_beta_reports_active required_beta_reports_active
   local code_entitlements_json code_app_identifier identifier_suffix
+  local expected_team="${TRAILMIND_EXPECTED_TEAM_IDENTIFIER:-}"
   local profile_has_provisioned_devices=false
   local profile_has_provisions_all_devices=false
 
@@ -697,7 +748,8 @@ validate_provisioning_profile() {
     profile_prefix=""
   fi
 
-  if [[ -n "$code_team" ]] && profile_expiration_is_future "$decoded_profile" &&
+  if [[ -n "$code_team" && "$code_team" == "$expected_team" ]] &&
+     profile_expiration_is_future "$decoded_profile" &&
      signing_certificate_matches_profile "$app_path" "$decoded_profile" "$temporary_directory" &&
      print -r -- "$profile_teams" | jq -e --arg team "$code_team" \
        'type == "array" and index($team) != null' >/dev/null 2>&1 &&

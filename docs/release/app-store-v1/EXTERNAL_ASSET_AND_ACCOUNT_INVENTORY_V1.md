@@ -1,7 +1,7 @@
 # External Asset and Account Inventory V1
 
 Status: **UNKNOWN values are intentional; no external account or public asset was inspected or mutated**
-Assessment date: 2026-08-23
+Assessment date: 2026-08-28
 
 | Item | Current evidence | Owner | Required acceptance evidence | Blocker |
 | --- | --- | --- | --- | --- |
@@ -9,12 +9,12 @@ Assessment date: 2026-08-23
 | Apple legal entity/developer name | UNKNOWN | Account Holder/legal | Active Program membership and exact public developer identity | ASV1-006 |
 | Apple team ID | UNKNOWN | Account Holder | Verified team record; never infer from local artifacts | ASV1-006 |
 | Explicit App ID | Bundle source is `com.trailmind.app`; portal state UNKNOWN | Apple release owner | Matching explicit ID with App Attest enabled | ASV1-006 |
-| Distribution certificate/profile | UNKNOWN | Apple release owner | Current Apple Distribution identity and App Store profile | ASV1-006 |
+| Distribution certificate/profile | Read-only local preflight found zero valid signing identities and no provisioning-profile directory; Apple-account state remains UNKNOWN | Apple release owner | Current Apple Distribution identity and matching App Store profile | ASV1-006 |
 | App Store Connect app/Apple ID | UNKNOWN | Product/App Store owner | Real app record linked to exact bundle ID | ASV1-007 |
 | SKU | UNKNOWN | Product/App Store owner | Owner-selected immutable SKU | ASV1-007 |
 | Version/build | Source `1.0` / `1` | Release owner | Unique selected upload build and approval | ASV1-020 |
-| Privacy policy URL | UNKNOWN | Legal/privacy/web | Public reachable HTTPS page plus in-app accessible link | ASV1-004 |
-| Support URL | UNKNOWN | Support/web | Public reachable HTTPS page with working contact | ASV1-005 |
+| Privacy policy URL | Tracked and built Release values are empty; native destination and fail-closed URL slot exist; draft is not hosted | Legal/privacy/web | Canonical public reachable HTTPS page plus configured in-app external link | ASV1-004 |
+| Support URL | Tracked and built Release values are empty; native destination and fail-closed URL slot exist; draft is not hosted | Support/web | Canonical public reachable HTTPS page with working contact plus configured in-app external link | ASV1-005 |
 | Support email/contact | UNKNOWN | Support/legal | Monitored public contact and applicable legal details | ASV1-005 |
 | Marketing URL | Omitted by draft | Product/marketing | Optional real page with build-matching claims | ASV1-024 |
 | Legal terms/EULA | Apple standard EULA or custom choice UNKNOWN | Legal | Owner decision and published custom terms if chosen | ASV1-008 |

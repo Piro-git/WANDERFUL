@@ -3,6 +3,11 @@
 Status: **all unchecked decisions remain UNKNOWN and block any dependent submission field**
 
 This checklist contains product/legal/account decisions an engineer must not fabricate.
+`OWNER_INPUTS_V1.json` is the machine-validated, deliberately unanswered companion template. A checkbox in this Markdown file is never sufficient evidence by itself. Record the decision maker, date, exact answer and independently reviewable evidence in the authorized release system; keep credentials, tax/banking records and private account material out of git.
+
+## Minimum closure record
+
+For every checked item, the external record must contain: decision ID, accountable owner, UTC decision date, exact approved value, rationale, evidence reference, affected gate IDs, selected app version/build and reviewer. If any field is absent, keep the item unchecked and the gate blocked.
 
 ## Apple and commercial identity
 
@@ -11,6 +16,7 @@ This checklist contains product/legal/account decisions an engineer must not fab
 - [ ] Confirm that `com.trailmind.app` remains the V1 bundle identifier despite the Wanderful shipping name; any change requires an explicit migration decision.
 - [ ] Approve `com.trailmind.app.staging` as the separate internal staging App ID and enable App Attest on both staging and production identifiers.
 - [ ] Approve copyright owner/year and applicable trader/business disclosures.
+- [ ] Confirm current agreements and any tax/banking prerequisites required for paid distribution; do not copy those records into this repository.
 
 ## Product scope and positioning
 
@@ -44,6 +50,7 @@ This checklist contains product/legal/account decisions an engineer must not fab
 - [ ] Approve the physical-iPhone App Attest proof window and reviewer (`ASV1-010`).
 - [ ] Approve screenshot device/localization set after Stage B (`ASV1-015`).
 - [ ] Approve internal/external TestFlight groups, review account if required, pricing and release mode (manual/automatic/phased) only after all gates pass.
+- [ ] Approve storefront territories separately from technical backend coverage; record any territory exclusions and the customer-facing coverage wording.
 - [ ] Provide explicit authority before signing distribution, upload, TestFlight mutation or App Review submission.
 
 Record decisions in an access-controlled release system with decision maker, date, rationale and evidence. Do not insert private account data or credentials in this repository.

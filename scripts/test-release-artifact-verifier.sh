@@ -83,7 +83,7 @@ stub_codesign() {
       else
         print -u2 -r -- 'Authority=Apple Distribution: Deterministic Fixture'
       fi
-      print -u2 -r -- 'TeamIdentifier=TEAMTEST123'
+        print -u2 -r -- 'TeamIdentifier=TEAMTEST12'
       print -u2 -r -- 'Signature size=4782'
     else
       print -u2 -r -- 'Signature=adhoc'
@@ -178,16 +178,16 @@ jq -n '{}' > "$simulator_entitlements"
 plutil -convert xml1 "$simulator_entitlements"
 
 jq -n '{
-  "application-identifier": "TEAMTEST123.com.trailmind.app",
-  "com.apple.developer.team-identifier": "TEAMTEST123",
+  "application-identifier": "TEAMTEST12.com.trailmind.app",
+  "com.apple.developer.team-identifier": "TEAMTEST12",
   "com.apple.developer.devicecheck.appattest-environment": "production",
   "get-task-allow": false
 }' > "$archive_entitlements"
 plutil -convert xml1 "$archive_entitlements"
 
 jq -n '{
-  "application-identifier": "TEAMTEST123.com.trailmind.app",
-  "com.apple.developer.team-identifier": "TEAMTEST123",
+  "application-identifier": "TEAMTEST12.com.trailmind.app",
+  "com.apple.developer.team-identifier": "TEAMTEST12",
   "com.apple.developer.devicecheck.appattest-environment": "development",
   "get-task-allow": false
 }' > "$development_entitlements"
@@ -195,19 +195,19 @@ plutil -convert xml1 "$development_entitlements"
 
 jq -n '{
   "application-identifier": "LEGACYPREFIX.com.trailmind.app",
-  "com.apple.developer.team-identifier": "TEAMTEST123",
+  "com.apple.developer.team-identifier": "TEAMTEST12",
   "com.apple.developer.devicecheck.appattest-environment": "production",
   "get-task-allow": false
 }' > "$legacy_prefix_entitlements"
 plutil -convert xml1 "$legacy_prefix_entitlements"
 
 jq -n '{
-  TeamIdentifier: ["TEAMTEST123"],
-  ApplicationIdentifierPrefix: ["TEAMTEST123"],
+  TeamIdentifier: ["TEAMTEST12"],
+  ApplicationIdentifierPrefix: ["TEAMTEST12"],
   ExpirationDate: "temporary-string",
   Entitlements: {
-    "application-identifier": "TEAMTEST123.com.trailmind.app",
-    "com.apple.developer.team-identifier": "TEAMTEST123",
+    "application-identifier": "TEAMTEST12.com.trailmind.app",
+    "com.apple.developer.team-identifier": "TEAMTEST12",
     "com.apple.developer.devicecheck.appattest-environment": "production",
     "get-task-allow": false,
     "beta-reports-active": true
@@ -237,6 +237,7 @@ plutil -replace 'Entitlements.application-identifier' -string 'LEGACYPREFIX.com.
 export TRAILMIND_RELEASE_STUB_SIMULATOR_ENTITLEMENTS="$simulator_entitlements"
 export TRAILMIND_RELEASE_STUB_ARCHIVE_ENTITLEMENTS="$archive_entitlements"
 export TRAILMIND_RELEASE_STUB_PROFILE="$decoded_profile"
+export TRAILMIND_EXPECTED_TEAM_IDENTIFIER="TEAMTEST12"
 
 make_info_plist() {
   local output_path="$1"
@@ -273,6 +274,7 @@ make_info_plist() {
     }
     + $c.feature_flags
     + $c.service_configuration
+    + $c.public_link_configuration
   ' > "$output_path"
   plutil -convert xml1 "$output_path"
 }
@@ -290,8 +292,15 @@ make_app_fixture() {
   mkdir -p -- "$app_path/_CodeSignature"
   make_info_plist "$app_path/Info.plist" "$mode"
   make_privacy_manifest "$app_path/PrivacyInfo.xcprivacy"
-  mkdir -p -- "$app_path/EmbeddedSDK.bundle"
-  make_privacy_manifest "$app_path/EmbeddedSDK.bundle/PrivacyInfo.xcprivacy"
+  mkdir -p -- \
+    "$app_path/SuperwallKit_SuperwallKit.bundle" \
+    "$app_path/swift-crypto_Crypto.bundle"
+  jq '.privacy_manifest.embedded_expected["SuperwallKit_SuperwallKit.bundle/PrivacyInfo.xcprivacy"]' \
+    "$CONTRACT" > "$app_path/SuperwallKit_SuperwallKit.bundle/PrivacyInfo.xcprivacy"
+  plutil -convert xml1 "$app_path/SuperwallKit_SuperwallKit.bundle/PrivacyInfo.xcprivacy"
+  jq '.privacy_manifest.embedded_expected["swift-crypto_Crypto.bundle/PrivacyInfo.xcprivacy"]' \
+    "$CONTRACT" > "$app_path/swift-crypto_Crypto.bundle/PrivacyInfo.xcprivacy"
+  plutil -convert xml1 "$app_path/swift-crypto_Crypto.bundle/PrivacyInfo.xcprivacy"
   print -r -- 'SYNTHETIC WANDERFUL RELEASE EXECUTABLE' > "$app_path/TrailMind"
   jq -r '.required_binary_markers[]' "$CONTRACT" >> "$app_path/TrailMind"
   chmod +x "$app_path/TrailMind"
@@ -431,6 +440,16 @@ wrong_bundle_identifier_app="$(clone_simulator_fixture wrong-bundle-identifier)"
 expect_status 1 "$VERIFIER" simulator-app "$wrong_bundle_identifier_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("bundle_identity") != null)'
 
+wrong_marketing_version_app="$(clone_simulator_fixture wrong-marketing-version)"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.0-stale' "$wrong_marketing_version_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$wrong_marketing_version_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("version_contract") != null)'
+
+wrong_build_number_app="$(clone_simulator_fixture wrong-build-number)"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 0' "$wrong_build_number_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$wrong_build_number_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("version_contract") != null)'
+
 wrong_environment_app="$(clone_simulator_fixture wrong-environment)"
 /usr/libexec/PlistBuddy -c 'Set :TRAILMIND_APP_ENVIRONMENT staging' "$wrong_environment_app/Info.plist"
 expect_status 1 "$VERIFIER" simulator-app "$wrong_environment_app"
@@ -462,9 +481,23 @@ expect_status 1 "$VERIFIER" simulator-app "$missing_flag_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
 
 placeholder_url_app="$(clone_simulator_fixture placeholder-url)"
-/usr/libexec/PlistBuddy -c 'Add :PRIVACY_POLICY_URL string https://example.com/privacy' "$placeholder_url_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_PRIVACY_POLICY_URL https://example.com/privacy' "$placeholder_url_app/Info.plist"
 expect_status 1 "$VERIFIER" simulator-app "$placeholder_url_app"
-assert_report '.final_status == "failed" and (.failed_check_ids | index("forbidden_info_values") != null)'
+assert_report '
+  .final_status == "failed" and
+  (.failed_check_ids | index("public_link_configuration_contract") != null) and
+  (.failed_check_ids | index("forbidden_info_values") != null)
+'
+
+fabricated_public_url_app="$(clone_simulator_fixture fabricated-public-url)"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_SUPPORT_URL https://support.wanderful.app/help' "$fabricated_public_url_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$fabricated_public_url_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("public_link_configuration_contract") != null)'
+
+missing_public_url_key_app="$(clone_simulator_fixture missing-public-url-key)"
+/usr/libexec/PlistBuddy -c 'Delete :WANDERFUL_SUPPORT_URL' "$missing_public_url_key_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$missing_public_url_key_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("public_link_configuration_contract") != null)'
 
 extra_permission_app="$(clone_simulator_fixture extra-permission)"
 /usr/libexec/PlistBuddy -c 'Add :NSLocationWhenInUseUsageDescription string Unexpected' "$extra_permission_app/Info.plist"
@@ -485,6 +518,17 @@ missing_privacy_app="$(clone_simulator_fixture missing-privacy)"
 rm -f -- "$missing_privacy_app/PrivacyInfo.xcprivacy"
 expect_status 1 "$VERIFIER" simulator-app "$missing_privacy_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("privacy_manifest_presence") != null)'
+
+missing_embedded_privacy_app="$(clone_simulator_fixture missing-embedded-privacy)"
+rm -f -- "$missing_embedded_privacy_app/swift-crypto_Crypto.bundle/PrivacyInfo.xcprivacy"
+expect_status 1 "$VERIFIER" simulator-app "$missing_embedded_privacy_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("embedded_privacy_manifests") != null)'
+
+contradictory_embedded_privacy_app="$(clone_simulator_fixture contradictory-embedded-privacy)"
+/usr/libexec/PlistBuddy -c 'Set :NSPrivacyTracking true' \
+  "$contradictory_embedded_privacy_app/SuperwallKit_SuperwallKit.bundle/PrivacyInfo.xcprivacy"
+expect_status 1 "$VERIFIER" simulator-app "$contradictory_embedded_privacy_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("embedded_privacy_manifests") != null)'
 
 alpha_icon_app="$(clone_simulator_fixture alpha-icon)"
 print -rn -- 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDWQAAAABJRU5ErkJggg==' |
@@ -546,6 +590,11 @@ expect_status 1 env TRAILMIND_RELEASE_STUB_SCENARIO=uuid_mismatch \
   "$VERIFIER" simulator-app "$simulator_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("dsym_contract") != null)'
 
+missing_dsym_app="$(clone_simulator_fixture missing-dsym)"
+rm -rf -- "${missing_dsym_app}.dSYM"
+expect_status 1 "$VERIFIER" simulator-app "$missing_dsym_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("dsym_contract") != null)'
+
 expect_status 1 env \
   TRAILMIND_RELEASE_STUB_ARCHIVE_ENTITLEMENTS="$development_entitlements" \
   "$VERIFIER" distribution-signed-archive "$archive_path"
@@ -559,6 +608,15 @@ assert_report '.final_status == "failed" and (.failed_check_ids | index("entitle
 expect_status 1 env TRAILMIND_RELEASE_STUB_SCENARIO=development_identity \
   "$VERIFIER" distribution-signed-archive "$archive_path"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("signing_identity_contract") != null)'
+
+expect_status 1 env TRAILMIND_EXPECTED_TEAM_IDENTIFIER=WRONGTEAM1 \
+  "$VERIFIER" distribution-signed-archive "$archive_path"
+assert_report '
+  .final_status == "failed" and
+  (.failed_check_ids | index("signing_identity_contract") != null) and
+  (.failed_check_ids | index("entitlement_contract") != null) and
+  (.failed_check_ids | index("provisioning_profile_contract") != null)
+'
 
 sensitive_marker='sk''-proj-THIS_IS_A_DETERMINISTIC_REDACTION_MARKER_1234567890'
 sensitive_app="$(clone_simulator_fixture sensitive-marker)"

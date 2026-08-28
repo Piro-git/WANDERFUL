@@ -2,25 +2,24 @@
 
 Status: **NO-GO for public App Store release**
 Stage: **Stage C three-environment artifact verification complete; external distribution, legal, backend and physical-device gates open**
-Source baseline: `009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd`
-Audit date: 2026-08-26
+Source baseline: `21f8450c976252210edf03389dc1b682d2440450`
+Audit date: 2026-08-28
 Shipping name: **Wanderful**
 Bundle identifier: `com.trailmind.app`
 
 ## Executive decision
 
-Wanderful is not ready for TestFlight or public submission. Local Stage B evidence now proves the complete non-live unit/UI suites, standalone Debug and Release Simulator builds, deterministic onboarding/planning/save/export/error paths, built identity/flags/privacy manifests/signatures/icon opacity, and exclusion of fake voice code and overclaimed provider copy from Release. It also found two release-visible accessibility gaps: the app forces light appearance, and route cards do not remain acceptably legible at accessibility XXXL. Physical-device App Attest, production-backend rehearsal, public legal/support assets, owner decisions, signing and App Store Connect configuration remain unproved.
+Wanderful is not ready for TestFlight or public submission. Current local evidence proves all three Simulator configurations, the complete deterministic non-live unit suite, the bounded relevant UI matrix, adaptive appearance/accessibility source contracts, exact lane identity and flags, built privacy manifests and fail-closed public-link slots. Physical-device App Attest, a live reviewed backend, hosted public legal/support pages, owner decisions, distribution signing and App Store Connect configuration remain unproved.
 
-The integrated matrix proves **24 of 50 applicable release gates (48.0%)**. This percentage measures independently evidenced gates, not files created. Simulator and generic-device-build proof never substitute for an archive, physical-device or distribution proof.
+The integrated matrix proves **25 of 50 applicable release gates (50.0%)**. This percentage measures independently evidenced gates, not files created. Simulator and generic-device-build proof never substitute for an archive, physical-device or distribution proof.
 
 ## Dependency order
 
-1. **Fix the verified accessibility defects:** remove the forced-light override only after UI-wide Dark Mode review, and make suggestion cards robust at accessibility XXXL; then rerun focused visual/accessibility regression.
-2. **Owner/legal decisions:** decide Apple legal entity/team, V1 Superwall exclusion, launch geography, categories, content rights, age-rating answers, encryption/export answers, and public contacts.
-3. **Public assets:** publish reachable HTTPS privacy and support pages; add an easily accessible in-app privacy-policy link through a separately owned source change.
-4. **Backend and privacy proof:** prove the selected production backend contract, App Attest enforcement, retention/logging and deployed flags; reconcile the final App Privacy answers.
-5. **Physical-device proof:** verify production App Attest with a real iPhone and a TestFlight/App Store-distributed build. Simulator evidence is invalid for this gate.
-6. **Apple distribution:** configure the explicit App ID/capability, team, certificate and App Store profile; produce and validate a signed archive, upload, process in TestFlight, and complete App Store Connect configuration.
+1. **Owner/legal decisions:** complete `OWNER_INPUTS_V1.json` only in the authorized release record: legal entity/team, record/SKU, V1 Superwall state, storefronts/pricing, categories, content rights, age rating, encryption/export, release strategy and public contacts.
+2. **Public assets:** legally review the repository drafts, publish real canonical HTTPS privacy and support pages, then configure their exact URLs. The native destinations and fail-closed external-link slots already exist; empty values must remain the default until hosting is real.
+3. **Backend and privacy proof:** prove the selected backend contract, App Attest enforcement, retention/logging/deletion and deployed flags; then reconcile the final App Privacy answers.
+4. **Physical-device proof:** verify production App Attest with a real iPhone and a TestFlight/App Store-distributed build. Simulator evidence is invalid for this gate.
+5. **Apple distribution:** configure the explicit App ID/capability, team, certificate and App Store profile; produce and validate a signed archive, then separately authorize upload, TestFlight and App Store Connect work.
 
 ## Truthful V1 product boundary
 
@@ -44,12 +43,16 @@ Research-guided planning, outdoor evidence, routable-highlight access and Supaba
 - `RELEASE_GATE_MATRIX.md` — 50-gate authoritative matrix and completion calculation.
 - `APP_STORE_METADATA_V1.md` — constrained, truthful metadata draft.
 - `APP_PRIVACY_QUESTIONNAIRE_V1.md` — current answers and explicit onboarding/Supabase/Superwall deltas.
+- `APP_PRIVACY_DECLARATION_DRAFT_V1.json` — machine-readable provisional App Privacy answers that cannot be published yet.
+- `PRIVACY_POLICY_CONTENT_DRAFT_V1.md` — truthful unhosted policy-page content, separated into current and future/disabled behavior.
+- `SUPPORT_PAGE_CONTENT_DRAFT_V1.md` — truthful unhosted support-page content and safety boundaries.
 - `APP_REVIEW_NOTES_V1.md` — reviewer path and unavailable-feature disclosure.
 - `SCREENSHOT_CAPTURE_PLAN_V1.md` — real-device-size capture plan; no screenshots are generated here.
 - `PRIVACY_SUPPORT_URL_REQUIREMENTS_V1.md` — public URL, legal, contact, retention and deletion requirements.
 - `SIGNING_TESTFLIGHT_ARCHIVE_RUNBOOK_V1.md` — stop-gated path from team setup to review.
 - `APP_ATTEST_PHYSICAL_DEVICE_PROOF_V1.md` — bounded real-iPhone proof protocol.
 - `OWNER_DECISIONS_V1.md` — decisions an engineer must not fabricate.
+- `OWNER_INPUTS_V1.json` — bounded machine-readable owner checklist; every value remains unanswered by default.
 - `EXTERNAL_ASSET_AND_ACCOUNT_INVENTORY_V1.md` — known/unknown external dependencies.
 - `RELEASE_BLOCKERS_V1.json` — machine-readable blockers.
 - `SOURCE_EVIDENCE_MANIFEST_V1.json` — exact source hashes and official references.
@@ -60,7 +63,18 @@ Research-guided planning, outdoor evidence, routable-highlight access and Supaba
 - A source-backed gate and its built-product counterpart are separate gates.
 - `Configuration/Local.xcconfig` and `backend/.env` are excluded from every inspection, hash, scan and artifact.
 - Unknown values remain `UNKNOWN`; no sample URL, email, Apple identifier, team, product, screenshot or approval state is valid production evidence.
-- The original source inventory was retrieved on 2026-08-23. Apple App Review, privacy, App Information, App Attest, App ID, upload and TestFlight requirements were rechecked against official Apple pages on 2026-08-26.
+- The original source inventory was retrieved on 2026-08-23. Apple App Review, App Attest, App ID, upload and TestFlight requirements were rechecked on 2026-08-26; privacy, platform-version metadata, submission workflow and third-party SDK requirements were rechecked against official Apple pages on 2026-08-28.
+
+## Owner/archive prerequisite refresh — 2026-08-28
+
+- The dedicated worktree started clean at exact commit `21f8450c976252210edf03389dc1b682d2440450`. The initial fetch showed no advancement. A final fetch found `origin/main` at `a36c646…`; its changes are confined to the Supabase migration operator lane and do not overlap this App Store package/tooling scope, so this branch remains based on the audited application commit.
+- Focused release, privacy, public-link and accessibility tests passed **60/60**. The complete deterministic non-live unit suite passed **708/708** with only the two explicitly named live-provider methods excluded. All **7/7** completed methods in the relevant UI matrix passed; three CoreSimulator-interrupted attempts were rerun and no completed method failed.
+- The complete backend suite passed **1044/1044** with no skips; backend static validation and both release-package validators pass.
+- Debug, Staging and Release Simulator builds passed. The current Release artifact passes the hardened verifier **43/43**; its isolated regression suite passes **46 cases plus stale-report recovery**.
+- The verifier now binds Release public-link defaults, exact first- and third-party privacy manifests, version/build, dSYM, team, signing/profile/entitlements and source/tooling provenance. Fabricated owner answers, hosted-page claims, URLs, stale hashes and generic-build-as-archive claims are rejected.
+- A read-only signing preflight found zero valid identities, no provisioning-profile directory and no physical iPhone. The unsigned generic iPhoneOS build is retained only as a diagnostic; no `.xcarchive` was created and G-044 remains blocked.
+- Draft privacy-policy and support-page content is intentionally unhosted. The two configured URL values remain empty, and no owner, legal, App Store Connect, TestFlight or public-hosting fact was invented.
+- Historical Stage B and earlier Stage C evidence below remains immutable context and is not relabeled as this refresh's execution.
 
 ## Stage B execution record
 
