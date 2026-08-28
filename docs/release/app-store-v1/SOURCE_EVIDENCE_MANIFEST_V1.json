@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
-  "generated_at": "2026-08-26",
-  "source_baseline": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
+  "generated_at": "2026-08-28",
+  "source_baseline": "21f8450c976252210edf03389dc1b682d2440450",
   "algorithm": "SHA-256",
-  "scope": "tracked source blobs at source_baseline; ignored credentials and environment files excluded; historical Stage B runtime evidence retained separately",
+  "scope": "tracked application/configuration blobs at source_baseline plus current package-tooling hashes; ignored credentials and environment files excluded; historical runtime evidence retained separately",
   "stage_b_rehash_required": false,
   "built_artifact_evidence_required": true,
   "local_stage_b_evidence": {
@@ -131,41 +131,65 @@
     "cleanup": "The exact task-owned DerivedData path had no open handle and was removed; the Simulator was shut down but not erased/deleted; no pre-existing cache, worktree, archive, receipt or user artifact was removed."
   },
   "current_stage_c_evidence": {
-    "selected_commit": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
-    "executed_at": "2026-08-26",
+    "selected_commit": "21f8450c976252210edf03389dc1b682d2440450",
+    "executed_at": "2026-08-28",
     "builds": {
       "debug_generic_simulator": "passed",
       "staging_generic_simulator": "passed",
       "release_generic_simulator": "passed",
       "generic_iphoneos_release_build_diagnostic": "passed",
-      "signed_distribution_archive": "not_run_no_signing_identity",
+      "signed_distribution_archive": "not_run_no_signing_identity_or_profile",
       "complete_test_bundle_compilation": "passed",
-      "test_execution": "not_run_no_booted_simulator"
+      "test_execution": "passed_deterministic_non_live"
     },
     "archive_artifacts": [],
+    "artifacts": {
+      "debug": {
+        "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
+        "binary_sha256": "d128706475111b62cea088dd8178e922cacc94eaaddc48342ea514b5a66fef83"
+      },
+      "staging": {
+        "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
+        "binary_sha256": "94cfbf21fb6e2e2f0e4dcd64ba25a1267c3139eeb9f1e83a2c2fb875f0c1e8b4"
+      },
+      "release": {
+        "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
+        "binary_sha256": "d4fc0b065444db5372cc2f0a0beccf776a49d52a22a96f6c226d2dc1d1a91103"
+      }
+    },
     "non_archive_diagnostics": [
       {
         "artifact_kind": "generic_iphoneos_app_bundle",
-        "binary_sha256": "dcd4df0b9a8590fe957612fed10b1625c414fff529036e625ea75814f87a6589",
+        "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
+        "binary_sha256": "e4c3dca93001e83179f245bc5d5065ed7fa4bd73407f03f7e5c86a6e964b0489",
+        "code_signing_state": "unsigned",
         "archive_evidence": false
       }
     ],
     "release_verifier": {
-      "built_artifact_checks_passed": 41,
+      "built_artifact_checks_passed": 43,
       "built_artifact_checks_failed": 0,
-      "isolated_adversarial_cases_passed": 38,
+      "isolated_adversarial_cases_passed": 46,
       "stale_report_recovery": "passed"
     },
+    "test_results": {
+      "focused_release_privacy_public_link_accessibility": "60 passed, 0 failed, 0 skipped",
+      "complete_deterministic_non_live_unit": "708 passed, 0 failed, 0 skipped; two named live methods excluded",
+      "relevant_ui_matrix": "7 completed methods passed; 3 infrastructure-interrupted attempts rerun; 0 completed method failures",
+      "complete_backend": "1044 passed, 0 failed, 0 skipped; static build and package validation passed",
+      "compiler_warnings": "9 pre-existing Swift concurrency warnings in protected TrailMindStagingProofUITests.swift"
+    },
     "lane_contract": "local uses com.trailmind.app.local and development App Attest; staging uses com.trailmind.app.staging and production App Attest; production uses com.trailmind.app and production App Attest",
-    "flags_and_services": "all nine protected flags false and all four service configurations empty in Debug, Staging and Release",
-    "apple_state": "zero valid code-signing identities and no connected physical iPhone; signed archive, TestFlight and physical App Attest not run",
+    "flags_and_services": "all nine protected flags false in Debug, Staging and Release; tracked service configuration is empty and Release/Staging built service values are empty",
+    "public_links": "tracked privacy-policy and support URLs are empty; built Release values are empty; strict canonical public HTTPS parser and fail-closed in-app surfaces are present",
+    "apple_state": "zero valid code-signing identities, no provisioning-profile directory and no connected physical iPhone; signed archive, TestFlight and physical App Attest not run",
     "machine_record": "docs/release/app-store-v1/APPLE_RELEASE_READINESS_AUDIT_V1.json",
     "external_mutation": "none"
   },
   "files": [
     {
       "path": "Configuration/Shared.xcconfig",
-      "sha256": "073dfd2ee74b1c857ea4707d073e2de4d930b26a3e9b0fd90da8e994b763040c",
+      "sha256": "dccfdc7c32e65ade495ca578cf75cbfc1594a8937aa1ec572caa99c26c8daa54",
       "claims": [
         "shared secret-free defaults",
         "all protected features and services fail closed before lane overrides"
@@ -173,7 +197,7 @@
     },
     {
       "path": "Configuration/TrailMind-Info.plist",
-      "sha256": "c3013f222f8f801a3a915183a02b34ea83797654077f876abb616ac00da2ff7d",
+      "sha256": "06f0370a63cf7c8a3006568d290a06b09bf33db4b80c892d7423f220fe4dea7a",
       "claims": [
         "Wanderful display name",
         "permission purpose strings",
@@ -229,7 +253,7 @@
     },
     {
       "path": "TrailMind/App/TrailMindApp.swift",
-      "sha256": "5dfcc66b44a56bd4cdcfffd01b07411ecfeae4dcbfa671d2663cf43970fdb0d8",
+      "sha256": "5d9f0fa69f8443cbc818132e23cbbf9027bc696a8610ba9ac9bc974f92836e65",
       "claims": [
         "Release composition",
         "first-launch native onboarding host",
@@ -239,7 +263,7 @@
     },
     {
       "path": "TrailMind/Views/Home/HomeView.swift",
-      "sha256": "15c4ba180ec2759238b12fb1b8d52314dfdffbcddfe2ccc9b302f198e7a8df6c",
+      "sha256": "3d333626a6f55e59ef589b3c2e03b92f81be7bad3009cf0625da2adbb4880c6d",
       "claims": [
         "voice-composer fake preview is DEBUG-only",
         "shipping Home route-planning surface"
@@ -298,7 +322,7 @@
     },
     {
       "path": "TrailMind/Views/Route/RouteComponents.swift",
-      "sha256": "afa5a82e5275d146eccf151db4a1de5e6bd7353a10e9d32816376551c318faaa",
+      "sha256": "0affdeace145f31cc107083749eab32a831369025f197d06a07af3b72e2f19b5",
       "claims": [
         "route suggestion thumbnails use SwiftUI Path rather than interactive Map",
         "thumbnail request cancellation and cache integration"
@@ -327,7 +351,7 @@
     },
     {
       "path": "TrailMind/Views/Onboarding/SuperwallOnboardingHost.swift",
-      "sha256": "423ac5a622669f432de92bd5a249890d39480ca2fd90553ade8a8029fff36830",
+      "sha256": "44af67bdb2cac1b8840894cb3cd051ee6b114b76acd4557befb96fcfe40ecef2",
       "claims": [
         "native onboarding only",
         "local profile persistence and recovery",
@@ -336,7 +360,7 @@
     },
     {
       "path": "TrailMind/Views/Onboarding/OnboardingView.swift",
-      "sha256": "f1f3b99cd1bf0c01c5503d74403eedd6ea07838b8689e7a5328a065784144b72",
+      "sha256": "063e42f363a3729502c03d122789d569634ce084150ab5ba7170700334769f89",
       "claims": [
         "integrated first-run questions and optional local defaults",
         "onboarding accessibility structure"
@@ -344,11 +368,11 @@
     },
     {
       "path": "TrailMind/Views/Profile/ProfilePreferencesView.swift",
-      "sha256": "a3b1782762486d6d004d89f5a490c4f86e6b405545d28bc204e55cad9d27dc40",
+      "sha256": "18f9776f046ad345883530ccc7d3f4e38321dd52589b9e4d6c5c7466050c7253",
       "claims": [
         "profile edit/reset/delete UI",
         "local-only/no-sync disclosure",
-        "no privacy-policy link"
+        "fail-closed privacy and support destinations"
       ]
     },
     {
@@ -376,7 +400,7 @@
     },
     {
       "path": "TrailMind/Views/Profile/TrailMindAboutContent.swift",
-      "sha256": "e27ee3c818433133115cadfe6badde354f11955578272df008ab25d26aaa247b",
+      "sha256": "0a5bea7a7a73528cacd1f911e10b7c9df7772458cd570af6630db8762af18f50",
       "claims": [
         "privacy/safety/attribution disclosures",
         "no live-navigation boundary",
@@ -420,7 +444,7 @@
     },
     {
       "path": "TrailMindTests/ReleaseSurfaceTruthTests.swift",
-      "sha256": "86a883a3dd3371e023e220a67de0f345ad0badbc107e46dba68bb48ea8c9f4b7",
+      "sha256": "9cb205a91608fde572123efb42d13696fc109d1844221b93dda4e41500106735",
       "claims": [
         "release-surface truth forbids fake voice service in Release source",
         "complete and focused regression tests passed"
@@ -442,7 +466,7 @@
     },
     {
       "path": "scripts/release-contract.json",
-      "sha256": "fd1f1cca695a10d7bb3315f66b6d6cea0ada49186527d5c76f09d0752dafc2c0",
+      "sha256": "d8062589dcb2eaa1cbfa332de5dd83ec3311bc7d43771a4859cd226e51fe6d11",
       "claims": [
         "Wanderful production identity",
         "nine protected flags false",
@@ -476,21 +500,21 @@
     },
     {
       "path": "Configuration/Development.xcconfig",
-      "sha256": "c82a7b2bd43dba5949b48a2d06d951330ddb3906555535fcecbc352a491f81b6",
+      "sha256": "bf7f738a36ba6c97a13acb5c00505735a3db2f3492eca2511fd08a470c351693",
       "claims": [
         "local identity and App Attest development lane"
       ]
     },
     {
       "path": "Configuration/Staging.xcconfig",
-      "sha256": "531e45cd1764375e4b19eedb8acc8cb172eea28da75d4bf1bf82cb6343a022ae",
+      "sha256": "60e534215d241223e24dc2558bd957b13c7653049e714b384146001586bb45b7",
       "claims": [
         "staging identity, production App Attest and fail-closed service defaults"
       ]
     },
     {
       "path": "Configuration/Production.xcconfig",
-      "sha256": "7da27eface6efd6c8be44bcfe5ef693d050d9eeef2b5f5e91451a31aac658e7a",
+      "sha256": "3aad41e56f8c61565aaa65728925f00e6b3e2fc31d9bcf1ae0695ecf230deb8b",
       "claims": [
         "production identity, production App Attest and unavailable service defaults"
       ]
@@ -515,6 +539,83 @@
       "claims": [
         "shared staging scheme binding"
       ]
+    },
+    {
+      "path": "TrailMind/Services/PublicAppLinks.swift",
+      "sha256": "288acfeef23a33c37062bec525fbcaeb1b43e9f2732fc082accbbffe9e93bb96",
+      "claims": [
+        "strict canonical public HTTPS URL validation",
+        "empty defaults remain unavailable and malformed or placeholder destinations fail closed"
+      ]
+    },
+    {
+      "path": "TrailMindTests/PublicAppLinksTests.swift",
+      "sha256": "3eb63a060920250d1a5ce26edfb5a50cccfa426b083300b46f2d6eba2eb557c1",
+      "claims": [
+        "public-link validation regression coverage"
+      ]
+    },
+    {
+      "path": "TrailMindTests/RouteComparisonAccessibilityTests.swift",
+      "sha256": "f9ab210bce5e72e59985c45ebc1e4ad9f758defec56550ae79ccc3cfabc8241f",
+      "claims": [
+        "bounded route-card accessibility semantics"
+      ]
+    },
+    {
+      "path": "TrailMindTests/TrailThemeAccessibilityTests.swift",
+      "sha256": "577749ed164cd2750c5f7413f271d32cd50172cce73745e1e4ae714925eef495",
+      "claims": [
+        "light, dark and increased-contrast color-role checks",
+        "accessibility-size layout policy checks"
+      ]
+    },
+    {
+      "path": "TrailMind/Theme/TrailTheme.swift",
+      "sha256": "d1427f0dc1f09312eccaeb7fc83aba126c62f4730330a8b2ab8f7146894becb8",
+      "claims": [
+        "adaptive appearance and contrast-aware theme roles"
+      ]
+    },
+    {
+      "path": "TrailMind/Testing/UITestLaunchSupport.swift",
+      "sha256": "1470d045a9a79b72c7793785d146c9a8d5932c72f2b00ceb4f907065667f4e5e",
+      "claims": [
+        "Debug-only light, dark, Larger Text, increased-contrast and Reduce Motion test seams"
+      ]
+    },
+    {
+      "path": "TrailMindUITests/TrailMindCriticalPathUITests.swift",
+      "sha256": "21e3a768ff67f66f2129b3a78908dbe0043be64b451b7fea5f1eeb608d9f0580",
+      "claims": [
+        "current App Store visual/accessibility matrix and empty-public-link runtime path"
+      ]
+    }
+  ],
+  "package_tooling_files": [
+    {
+      "path": "backend/src/operations/releasePackage.js",
+      "sha256": "b3dbd5a1cd0eb8ffcec4c21102ffad384fb18178f5bd16ffe25292964931f683"
+    },
+    {
+      "path": "backend/test/releasePackage.test.js",
+      "sha256": "d675367be528c56b08245ca90cb29956892f99d5cc5906cfcd2e3c854f65bc8a"
+    },
+    {
+      "path": "backend/test/fixtures/releasePackageProofIntegrity.json",
+      "sha256": "4c05dabbc7012a9ead2c6423dad9b2fa33d4d357544c505cc91b69e4d1ca8f38"
+    },
+    {
+      "path": "scripts/release-contract.json",
+      "sha256": "73defe20d944f1d24374a4c561ab9f13b27ad2f34b9a33aad453231f65982921"
+    },
+    {
+      "path": "scripts/test-release-artifact-verifier.sh",
+      "sha256": "9f959467ce39e3c2878b4ed000a74c6403ee47d9bb5c1d685734a9c4ea2f78e9"
+    },
+    {
+      "path": "scripts/verify-release-artifact.sh",
+      "sha256": "b9f79f4dd0aba5d261f6d003eb381e12a2d2faf40fc3d3139e6cccde629549fa"
     }
   ],
   "official_sources": [
@@ -531,7 +632,7 @@
     {
       "title": "Apple Manage App Privacy",
       "url": "https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/",
-      "retrieved_at": "2026-08-26"
+      "retrieved_at": "2026-08-28"
     },
     {
       "title": "Apple App Information",
@@ -541,7 +642,7 @@
     {
       "title": "Apple Platform Version Information",
       "url": "https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/",
-      "retrieved_at": "2026-08-23"
+      "retrieved_at": "2026-08-28"
     },
     {
       "title": "Apple Screenshot Specifications",
@@ -571,7 +672,17 @@
     {
       "title": "Apple Third-Party SDK Requirements",
       "url": "https://developer.apple.com/support/third-party-SDK-requirements/",
-      "retrieved_at": "2026-08-23"
+      "retrieved_at": "2026-08-28"
+    },
+    {
+      "title": "Apple App Store Connect Workflow",
+      "url": "https://developer.apple.com/help/app-store-connect/get-started/app-store-connect-workflow/",
+      "retrieved_at": "2026-08-28"
+    },
+    {
+      "title": "Apple Submit an App",
+      "url": "https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-app/",
+      "retrieved_at": "2026-08-28"
     },
     {
       "title": "Apple Account Deletion Requirement",
@@ -656,7 +767,8 @@
   "notes": [
     "A hash proves only the exact tracked source blob at source_baseline.",
     "Built, signed, runtime, deployed, physical-device and account claims require separate evidence.",
-    "All listed files were rehashed at selected source commit 009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd.",
+    "All listed application and configuration files were rehashed at selected source commit 21f8450c976252210edf03389dc1b682d2440450.",
+    "Package tooling is hashed separately from the audited application baseline and is revalidated from the current checkout.",
     "Historical Stage B executed test/runtime evidence is preserved and is not relabeled as current Stage C execution.",
     "Stage C generic builds and non-archive diagnostics do not prove an archive, signed distribution, physical-device App Attest, a live backend or App Store approval."
   ]

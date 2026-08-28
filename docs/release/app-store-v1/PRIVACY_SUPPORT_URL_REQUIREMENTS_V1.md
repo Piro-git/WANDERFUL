@@ -1,9 +1,9 @@
 # Privacy and Support URL Requirements V1
 
-Status: **both production URLs UNKNOWN; public release blocked**
+Status: **both production URLs empty/UNKNOWN; native link surfaces implemented; public release blocked**
 Placeholders are forbidden in App Store Connect and shipping UI.
 
-Apple requires an iOS privacy-policy URL and requires the privacy policy to be easily accessible inside the app. A Support URL is required and must lead to actual contact information. Core requirements rechecked 2026-08-26: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/), [App Review Guidelines 5.1.1](https://developer.apple.com/app-store/review/guidelines/), [platform version information](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/).
+Apple requires an iOS privacy-policy URL and requires the privacy policy to be easily accessible inside the app. A Support URL is required and must lead to actual contact information. Privacy and platform-version requirements rechecked 2026-08-28; App Review Guidelines rechecked 2026-08-26: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/), [App Review Guidelines 5.1.1](https://developer.apple.com/app-store/review/guidelines/), [platform version information](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/).
 
 ## Privacy policy page
 
@@ -23,7 +23,9 @@ The published page must:
 - distinguish local-only data from data transmitted off-device and user-directed GPX sharing;
 - match the final App Privacy questionnaire and remain available without login or geoblocking in review regions.
 
-The app must expose this URL from an obvious in-app location (for example About/Privacy) using an accessible control. Current source has no proved in-app policy link. That source change belongs to a separately coordinated owner after the real URL exists.
+The app now exposes a native Privacy & data destination and conditionally shows an accessible external policy link only when `PublicAppLinks` accepts a canonical public HTTPS destination. Missing, placeholder, local, malformed, credential-bearing, query/fragment and non-canonical values fail closed. The tracked Production value remains empty, so there is no public policy link to claim or test yet.
+
+Source-derived, explicitly unhosted copy is in `PRIVACY_POLICY_CONTENT_DRAFT_V1.md`. It distinguishes the current empty-backend/disabled-feature state from future configured behavior and leaves legal controller, contact, jurisdiction, processors and retention as owner-required fields.
 
 ## Support page
 
@@ -41,6 +43,8 @@ The page must:
 - give a separate privacy/deletion request path and describe identity verification safely;
 - include applicable legal address/trader information and consumer disclosures selected by counsel;
 - remain reachable over valid HTTPS without authentication, redirects to unrelated products or broken contact controls.
+
+The app now exposes a native Help & safety destination and conditionally shows an accessible external support link through the same strict `PublicAppLinks` boundary. The tracked Production value remains empty. Source-derived, explicitly unhosted copy is in `SUPPORT_PAGE_CONTENT_DRAFT_V1.md`; it does not invent a contact, domain, operator or service level.
 
 ## Optional marketing URL
 

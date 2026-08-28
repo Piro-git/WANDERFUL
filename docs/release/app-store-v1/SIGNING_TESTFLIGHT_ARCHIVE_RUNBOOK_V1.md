@@ -13,7 +13,7 @@ Current source identity: `Wanderful`, `com.trailmind.app`, version `1.0`, build 
 
 The owner must register distinct explicit App IDs for staging and production and enable App Attest on each. Do not reuse the production bundle identity for staging, silently change a bundle ID, or point either lane at an unreviewed host. Local does not need distribution configuration.
 
-Current read-only state on 2026-08-26: zero valid code-signing identities and no connected physical iPhone. Debug/Staging/Release Simulator builds and an unsigned generic iPhoneOS Release build pass. Those facts do not prove Apple team membership, profiles, device installation, TestFlight processing or App Attest.
+Current read-only state on 2026-08-28: zero valid code-signing identities, no provisioning-profile directory and no connected physical iPhone. Debug/Staging/Release Simulator builds and an unsigned generic iPhoneOS Release build pass. No `.xcarchive` was created. Those facts do not prove Apple team membership, profiles, device installation, TestFlight processing or App Attest.
 
 Apple's current submission requirement is Xcode 26 or later with the iOS 26 SDK for uploads beginning April 28, 2026. Source retrieved 2026-08-23: [Upcoming requirements](https://developer.apple.com/news/upcoming-requirements/).
 
@@ -68,9 +68,10 @@ Only after explicit distribution authority:
 
 1. Select the approved team, App Store profile, Release configuration and generic iOS device destination in Xcode 26+.
 2. Archive the exact clean commit. Preserve the commit, Xcode build/SDK, build setting export and archive SHA-256 in the release evidence store.
-3. In Organizer, inspect signing identity/profile, entitlements, embedded frameworks, privacy manifests/report, Info.plist, icons, dSYMs and absence of local configuration/secrets.
-4. Run **Validate App** for App Store Connect. Stop on every error and every unexplained warning; do not upload a different unreviewed archive.
-5. Reconcile the validated archive with `SOURCE_EVIDENCE_MANIFEST_V1.json` and the final App Privacy questionnaire.
+3. Set `TRAILMIND_EXPECTED_TEAM_IDENTIFIER` to the owner-approved ten-character Team ID in the authorized shell environment, then run `scripts/verify-release-artifact.sh` against the `.xcarchive`. Never add that value to git or log it as package evidence.
+4. In Organizer, inspect signing identity/profile, entitlements, embedded frameworks, privacy manifests/report, Info.plist, icons, dSYMs and absence of local configuration/secrets.
+5. Run **Validate App** for App Store Connect. Stop on every error and every unexplained warning; do not upload a different unreviewed archive.
+6. Reconcile the validated archive with `SOURCE_EVIDENCE_MANIFEST_V1.json` and the final App Privacy questionnaire. G-044 may become proved only when the exact archive hash, binary hash, source commit, team/bundle/version/build and independent verifier checks are recorded.
 
 Apple requires certain listed SDKs to include privacy manifests/signatures and Xcode can generate a combined privacy report. Source: [Third-party SDK requirements](https://developer.apple.com/support/third-party-SDK-requirements/).
 

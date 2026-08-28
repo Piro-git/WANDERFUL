@@ -44,6 +44,13 @@
     "SUPABASE_PUBLISHABLE_KEY": "",
     "SUPERWALL_API_KEY": ""
   },
+  "public_link_configuration": {
+    "WANDERFUL_PRIVACY_POLICY_URL": "",
+    "WANDERFUL_SUPPORT_URL": ""
+  },
+  "distribution": {
+    "expected_team_identifier_environment_variable": "TRAILMIND_EXPECTED_TEAM_IDENTIFIER"
+  },
   "platforms": {
     "simulator-app": {
       "dt_platform_name": "iphonesimulator",
@@ -96,6 +103,35 @@
         }
       ],
       "NSPrivacyTracking": false
+    },
+    "embedded_expected": {
+      "SuperwallKit_SuperwallKit.bundle/PrivacyInfo.xcprivacy": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
+          }
+        ],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePurchaseHistory",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ],
+            "NSPrivacyCollectedDataTypeTracking": false
+          }
+        ],
+        "NSPrivacyTracking": false
+      },
+      "swift-crypto_Crypto.bundle/PrivacyInfo.xcprivacy": {
+        "NSPrivacyAccessedAPITypes": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": []
+      }
     }
   },
   "forbidden_info_keys": [

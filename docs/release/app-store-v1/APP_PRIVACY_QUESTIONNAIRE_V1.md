@@ -1,8 +1,8 @@
 # App Privacy Questionnaire V1
 
 Status: **iOS onboarding and Release SDK-manifest delta reconciled; backend/legal answers remain provisional; do not publish in App Store Connect**
-Source baseline: `009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd`
-Assessment date: 2026-08-26
+Source baseline: `21f8450c976252210edf03389dc1b682d2440450`
+Assessment date: 2026-08-28
 
 Apple requires answers to cover the app and third-party partners, remain accurate for the current version, and be backed by a public privacy-policy URL. Source: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/). This draft deliberately does not convert unknown backend/App Attest retention or owner-unapproved SDK use into a “Data Not Collected” answer.
 
@@ -10,18 +10,19 @@ Apple requires answers to cover the app and third-party partners, remain accurat
 
 | Surface | Current source evidence | Questionnaire consequence |
 | --- | --- | --- |
-| Route prompt | Release uses the local parser; About states the full prompt is not sent to a remote AI service | No remote-AI disclosure is supported; Stage B must prove the Release path |
+| Route prompt | Release uses the local parser; About states the full prompt is not sent to a remote AI service; current source and built-artifact checks pass | No remote-AI disclosure is supported; re-review if the selected build or flags change |
 | Place resolution | User-entered place names are sent to Apple geocoding | Disclose Apple processing in the privacy policy; determine whether this is reportable collection after legal review |
-| Route calculation | Coordinates and selected route constraints go through the configured Wanderful backend to GraphHopper | Precise Location and Other User Content remain provisional until retention/linkage is proved |
+| Route calculation | Tracked Production has no backend URL, so live remote routing is unavailable by default. If the owner later configures a reviewed backend, resolved coordinates and selected route constraints go to that backend and then GraphHopper | Precise Location and Other User Content remain provisional until the actual production payload, linkage and retention are proved |
 | Device location | No location usage key; About says Wanderful does not read device location | Do not claim device-GPS collection; verify built Info.plist and runtime |
 | Voice | Microphone audio is used for transcription; Speech purpose text says Apple servers process speech and Wanderful does not retain raw audio or send it to its backend | Audio Data is not asserted as developer collection; legal/privacy owner must confirm Apple-service treatment and actual runtime |
-| App Attest | First-party privacy manifest declares Device ID, linked to identity, for App Functionality, not tracking | Draft answer includes Identifiers → Device ID, linked, App Functionality, not tracking |
+| App Attest | The client and production entitlement are present, but no distributed physical-iPhone/backend proof exists. The first-party privacy manifest declares Device ID, linked to identity, for App Functionality, not tracking | Draft answer includes Identifiers → Device ID, linked, App Functionality, not tracking; collection/retention wording remains backend-dependent |
 | Saved routes | Protected local file store; excluded from backup | Local-only data is not App Privacy “collection”; integrated sync could change this |
 | GPX export | Protected temporary file, user-initiated system share, cleanup | User-directed transfer is not claimed as developer collection; Stage B verifies cleanup |
 | Research/evidence | Tracked Release flags are false | No research-guided/evidence data claim while disabled; built flags must confirm |
 | Trail Profile/onboarding | Optional activity, distance or duration range, route shape, requested experiences and soft avoidances are stored locally in versioned protected app storage | Local-only data is not App Privacy collection; no account, Auth session or remote sync is composed in V1 |
 | Supabase | SDK and dormant remote client are compiled, but `HikingPreferenceProfileSyncFactoryV1` unconditionally returns a no-op client and tracked sync/URL/key values are disabled/empty | No Supabase data transfer or anonymous account is Release-reachable in V1; built dependency/manifests still require inspection |
 | Purchases/Superwall | SDK exists, tracked key is empty, production native onboarding neither constructs nor presents `SuperwallOnboardingClient`; its Debug embedded manifest declares unlinked Purchase History for App Functionality | No V1 purchase path is source-reachable, but the embedded declaration must be reconciled with the selected Release and owner exclusion before answering Purchases |
+| Public legal/support links | Native Privacy & data and Help & safety destinations are reachable; external links appear only for strictly validated canonical HTTPS values. Tracked Production values are empty | Do not claim that a public policy/support page is hosted; G-019/G-020 remain blocked |
 
 ## Draft App Store Connect answers
 
@@ -41,7 +42,7 @@ Apple requires answers to cover the app and third-party partners, remain accurat
 | Other User Content | Provisional | App Functionality | Structured route constraints may leave the device; exact payload/retention UNKNOWN |
 | User ID | No for V1 iOS onboarding | — | Production composition creates no account/Auth/session; reassess if the dormant Supabase client is ever activated |
 | Name, Email Address, Other Contact Info | No for V1 iOS onboarding | — | Onboarding collects no contact field and creates no account |
-| Purchases | Provisional | App Functionality if applicable | Native onboarding has no purchase/paywall path, but the embedded Superwall Debug manifest declares unlinked Purchase History; owner exclusion and selected Release must reconcile this |
+| Purchases | Provisional | App Functionality if applicable | Native onboarding has no purchase/paywall path, but the embedded Superwall Release manifest declares unlinked Purchase History; owner exclusion must reconcile this before publication |
 | Product Interaction | No first-party onboarding collection | — | Typed onboarding event vocabulary has no recorder composed; embedded SDK and backend behavior still require inspection |
 | Crash Data, Performance Data, Other Diagnostic Data | Provisional | App Functionality/Analytics | No first-party analytics found; embedded SDK and backend logging UNKNOWN |
 
@@ -49,7 +50,7 @@ No advertising, developer marketing, third-party advertising, or tracking purpos
 
 ### Data not linked to the user
 
-No category is classified here yet. Backend pseudonymization, aggregation or prompt/coordinate de-identification has not been evidenced. “Not linked” must not be selected merely because the app has no visible sign-in screen.
+No category is classified here yet. Backend pseudonymization, aggregation or prompt/coordinate de-identification has not been evidenced. “Not linked” must not be selected merely because the app has no visible sign-in screen. The machine-readable companion `APP_PRIVACY_DECLARATION_DRAFT_V1.json` deliberately keeps unresolved categories provisional and forbids a false-green no-collection answer.
 
 ## Integrated onboarding / Supabase / Superwall delta
 
@@ -84,4 +85,4 @@ The public policy and questionnaire must agree on:
 
 ## Finalization stop gate
 
-Do not enter or publish these answers until backend/App Attest retention and linkage are owner-proved, the built Superwall Purchase History declaration and V1 exclusion are reconciled, and the public policy is live. The standalone Release manifests are locally reconciled; any dependency change or activation of Supabase, Superwall, analytics, accounts or AI requires a new review before release.
+Do not enter or publish these answers until backend/App Attest retention and linkage are owner-proved, the built Superwall Purchase History declaration and V1 exclusion are reconciled, and the public policy is live. The standalone Release manifests are locally reconciled; current unhosted policy copy is only drafting material. Any dependency change or activation of Supabase, Superwall, analytics, accounts or AI requires a new review before release.

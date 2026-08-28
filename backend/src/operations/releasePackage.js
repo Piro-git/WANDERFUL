@@ -25,7 +25,7 @@ const GATE_STATUS = Object.freeze({
 const PACKAGE_DIRECTORY = "docs/operations/closed-beta-readiness-v1";
 const APPLE_PACKAGE_DIRECTORY = "docs/release/app-store-v1";
 const CLOSED_BETA_SOURCE_COMMIT = "52849b4c75cd6e5ddf00473adf8a3265160d750d";
-const APPLE_SOURCE_BASELINE = "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd";
+const APPLE_SOURCE_BASELINE = "21f8450c976252210edf03389dc1b682d2440450";
 const CLOSED_BETA_SOURCE_BASELINE_DOCUMENTS = Object.freeze([
   "CLOSED_BETA_ROLLOUT_V1.md",
   "OBSERVABILITY_AND_PRIVACY_V1.md",
@@ -49,7 +49,7 @@ const APPLE_GATE_CLASSIFICATIONS = new Set([
   "blocked"
 ]);
 const APPLE_PROVED_GATE_IDS = Object.freeze([
-  "G-001", "G-002", "G-003", "G-004", "G-006", "G-007", "G-011", "G-014",
+  "G-001", "G-002", "G-003", "G-004", "G-005", "G-006", "G-007", "G-011", "G-014",
   "G-016", "G-017", "G-022", "G-023", "G-025", "G-027", "G-028", "G-036",
   "G-037", "G-038", "G-039", "G-040", "G-041", "G-042", "G-043", "G-050"
 ]);
@@ -102,7 +102,26 @@ const APPLE_SOURCE_PATHS = Object.freeze([
   "Configuration/Production.xcconfig",
   "TrailMind/Services/AppEnvironment.swift",
   "TrailMindTests/AppEnvironmentTests.swift",
-  "TrailMind.xcodeproj/xcshareddata/xcschemes/TrailMind Staging.xcscheme"
+  "TrailMind.xcodeproj/xcshareddata/xcschemes/TrailMind Staging.xcscheme",
+  "TrailMind/Services/PublicAppLinks.swift",
+  "TrailMindTests/PublicAppLinksTests.swift",
+  "TrailMindTests/RouteComparisonAccessibilityTests.swift",
+  "TrailMindTests/TrailThemeAccessibilityTests.swift",
+  "TrailMind/Theme/TrailTheme.swift",
+  "TrailMind/Testing/UITestLaunchSupport.swift",
+  "TrailMindUITests/TrailMindCriticalPathUITests.swift"
+]);
+const APPLE_PACKAGE_TOOLING_PATHS = Object.freeze([
+  "backend/src/operations/releasePackage.js",
+  "backend/test/releasePackage.test.js",
+  "backend/test/fixtures/releasePackageProofIntegrity.json",
+  "scripts/release-contract.json",
+  "scripts/test-release-artifact-verifier.sh",
+  "scripts/verify-release-artifact.sh"
+]);
+const APPLE_OWNER_DECISION_IDS = Object.freeze([
+  "OD-001", "OD-002", "OD-003", "OD-004", "OD-005", "OD-006", "OD-007",
+  "OD-008", "OD-009", "OD-010", "OD-011", "OD-012", "OD-013", "OD-014"
 ]);
 const APPLE_EXTERNAL_ACTIVITY_FIELDS = Object.freeze([
   "backend", "supabase", "graphhopper", "ai", "superwall", "apple_mutations"
@@ -302,12 +321,26 @@ export function validateReleasePackageFromDisk(options = {}) {
 }
 
 export function validateAppleReleasePackage(input, options = {}) {
-  const { audit, blockers, manifest, matrix, privacyQuestionnaire, readme } = input ?? {};
+  const {
+    audit,
+    blockers,
+    manifest,
+    matrix,
+    ownerInputs,
+    privacyDeclaration,
+    privacyPolicyDraft,
+    privacyQuestionnaire,
+    readme,
+    supportPageDraft
+  } = input ?? {};
   object(audit, "invalid_apple_audit");
   object(blockers, "invalid_apple_blockers");
   object(manifest, "invalid_apple_manifest");
-  if (typeof matrix !== "string" || typeof privacyQuestionnaire !== "string" ||
-      typeof readme !== "string") {
+  object(ownerInputs, "invalid_apple_owner_inputs");
+  object(privacyDeclaration, "invalid_apple_privacy_declaration");
+  if (typeof matrix !== "string" || typeof privacyPolicyDraft !== "string" ||
+      typeof privacyQuestionnaire !== "string" || typeof readme !== "string" ||
+      typeof supportPageDraft !== "string") {
     invalid("invalid_apple_documents");
   }
   if (audit.decision !== "no_go" || blockers.public_release_decision !== "NO-GO" ||
@@ -337,7 +370,11 @@ export function validateAppleReleasePackage(input, options = {}) {
     manifest.current_stage_c_evidence?.selected_commit,
     extractMarkdownCommit(readme, "Source baseline"),
     extractMarkdownCommit(matrix, "Baseline"),
-    extractMarkdownCommit(privacyQuestionnaire, "Source baseline")
+    extractMarkdownCommit(privacyQuestionnaire, "Source baseline"),
+    ownerInputs.source_baseline,
+    privacyDeclaration.source_baseline,
+    extractMarkdownCommit(privacyPolicyDraft, "Source baseline"),
+    extractMarkdownCommit(supportPageDraft, "Source baseline")
   ];
   if (embeddedBaselines.some((commit) => commit !== sourceBaseline)) {
     invalid("unreconciled_apple_source_baseline");
@@ -389,6 +426,29 @@ export function validateAppleReleasePackage(input, options = {}) {
     }
   }
 
+  if (typeof options.workingFileSha256 !== "function" ||
+      !Array.isArray(manifest.package_tooling_files) ||
+      !sameOrderedStrings(
+        manifest.package_tooling_files.map((file) => file?.path),
+        APPLE_PACKAGE_TOOLING_PATHS
+      )) {
+    invalid("invalid_apple_tooling_inventory");
+  }
+  for (const file of manifest.package_tooling_files) {
+    if (!safeRepositoryPath(file?.path) ||
+        !/^[0-9a-f]{64}$/.test(file.sha256 ?? "") ||
+        options.workingFileSha256(file.path) !== file.sha256) {
+      invalid("apple_tooling_hash_mismatch");
+    }
+  }
+
+  validateAppleOwnerInputs(ownerInputs);
+  validateApplePrivacyDrafts({
+    privacyDeclaration,
+    privacyPolicyDraft,
+    privacyQuestionnaire,
+    supportPageDraft
+  });
   validateAppleOperationalBoundary({ audit, manifest });
   const archiveProved = validateAppleArchiveGate({
     audit, manifest, matrix, matrixRows, options, readme
@@ -419,7 +479,11 @@ export function validateAppleReleasePackageFromDisk(options = {}) {
     manifest: readJson("SOURCE_EVIDENCE_MANIFEST_V1.json"),
     matrix: readText("RELEASE_GATE_MATRIX.md"),
     privacyQuestionnaire: readText("APP_PRIVACY_QUESTIONNAIRE_V1.md"),
-    readme: readText("README.md")
+    ownerInputs: readJson("OWNER_INPUTS_V1.json"),
+    privacyDeclaration: readJson("APP_PRIVACY_DECLARATION_DRAFT_V1.json"),
+    privacyPolicyDraft: readText("PRIVACY_POLICY_CONTENT_DRAFT_V1.md"),
+    readme: readText("README.md"),
+    supportPageDraft: readText("SUPPORT_PAGE_CONTENT_DRAFT_V1.md")
   }, {
     isSourceCommit(commit) {
       return gitSucceeds(repoRoot, ["cat-file", "-e", `${commit}^{commit}`]) &&
@@ -428,8 +492,76 @@ export function validateAppleReleasePackageFromDisk(options = {}) {
     },
     sourceBlobSha256(commit, path) {
       return gitBlobSha256(repoRoot, commit, path);
+    },
+    workingFileSha256(path) {
+      return fileSha256(resolve(repoRoot, path));
     }
   });
+}
+
+function validateAppleOwnerInputs(ownerInputs) {
+  if (ownerInputs.publication_state !== "blocked_unanswered_owner_inputs" ||
+      !Array.isArray(ownerInputs.decisions) ||
+      !sameOrderedStrings(ownerInputs.decisions.map((item) => item?.id), APPLE_OWNER_DECISION_IDS)) {
+    invalid("invalid_apple_owner_decision_inventory");
+  }
+  for (const decision of ownerInputs.decisions) {
+    if (decision.status !== "unanswered" || decision.value !== null ||
+        decision.evidence_reference !== null ||
+        typeof decision.required_evidence !== "string" ||
+        decision.required_evidence.length < 8 ||
+        !Array.isArray(decision.blocks_gates) || decision.blocks_gates.length === 0 ||
+        !uniqueStrings(decision.blocks_gates)) {
+      invalid("false_green_apple_owner_decision");
+    }
+  }
+}
+
+function validateApplePrivacyDrafts({
+  privacyDeclaration,
+  privacyPolicyDraft,
+  privacyQuestionnaire,
+  supportPageDraft
+}) {
+  if (privacyDeclaration.publication_state !== "blocked_do_not_publish" ||
+      privacyDeclaration.tracking !== "draft_no_owner_and_backend_review_required" ||
+      privacyDeclaration.data_not_collected === true ||
+      !Array.isArray(privacyDeclaration.categories) ||
+      !sameOrderedStrings(
+        privacyDeclaration.categories.map((item) => item?.id),
+        [
+          "device_id",
+          "precise_location",
+          "other_user_content",
+          "purchase_history",
+          "diagnostics"
+        ]
+      )) {
+    invalid("contradictory_apple_privacy_declaration");
+  }
+  const expectedStates = new Map([
+    ["device_id", "draft_yes_manifest_backend_retention_unproved"],
+    ["precise_location", "provisional_backend_linkage_retention_unproved"],
+    ["other_user_content", "provisional_backend_payload_retention_unproved"],
+    ["purchase_history", "embedded_sdk_declaration_feature_disabled_owner_decision_required"],
+    ["diagnostics", "provisional_backend_and_sdk_logging_unproved"]
+  ]);
+  for (const category of privacyDeclaration.categories) {
+    if (category.state !== expectedStates.get(category.id)) {
+      invalid("contradictory_apple_privacy_declaration");
+    }
+  }
+  for (const draft of [privacyPolicyDraft, supportPageDraft]) {
+    if (extractMarkdownValue(draft, "Status") !== "**DRAFT — NOT HOSTED**" ||
+        !draft.includes("OWNER REQUIRED") ||
+        !draft.includes("## Current default behavior") ||
+        !draft.includes("## Future or disabled behavior")) {
+      invalid("invalid_unhosted_public_content_draft");
+    }
+  }
+  if (!privacyQuestionnaire.includes("do not publish in App Store Connect")) {
+    invalid("contradictory_apple_privacy_declaration");
+  }
 }
 
 function validateAppleOperationalBoundary({ audit, manifest }) {
@@ -457,6 +589,27 @@ function validateAppleOperationalBoundary({ audit, manifest }) {
   if (!Array.isArray(audit.no_go_reasons) || audit.no_go_reasons.length === 0 ||
       !uniqueStrings(audit.no_go_reasons)) {
     invalid("missing_apple_no_go_reasons");
+  }
+  const publicLinks = audit.public_links;
+  if (publicLinks?.privacy_policy?.tracked_value !== "empty" ||
+      publicLinks?.support?.tracked_value !== "empty" ||
+      publicLinks?.privacy_policy?.reachability !== "not_run_no_owner_url" ||
+      publicLinks?.support?.reachability !== "not_run_no_owner_url" ||
+      publicLinks?.privacy_policy?.in_app_surface !== "implemented_fail_closed" ||
+      publicLinks?.support?.in_app_surface !== "implemented_fail_closed") {
+    invalid("false_green_apple_public_links");
+  }
+  for (const key of ["debug", "staging", "release"]) {
+    const artifact = audit.artifacts?.[key];
+    const manifestArtifact = stageEvidence.artifacts?.[key];
+    if (artifact?.source_commit !== manifest.source_baseline ||
+        !/^[0-9a-f]{64}$/.test(artifact.binary_sha256 ?? "")) {
+      invalid("stale_apple_build_evidence");
+    }
+    if (manifestArtifact?.source_commit !== artifact.source_commit ||
+        manifestArtifact?.binary_sha256 !== artifact.binary_sha256) {
+      invalid("unreconciled_apple_build_hash");
+    }
   }
   const auditVerifier = audit.artifacts?.release?.verifier;
   const manifestVerifier = stageEvidence.release_verifier;
@@ -491,9 +644,28 @@ function validateAppleArchiveGate({ audit, manifest, matrix, matrixRows, options
   if (!Array.isArray(manifestArchives)) invalid("invalid_archive_evidence_inventory");
   const hasArchiveEvidence = auditArchiveState === "passed" &&
     auditArchive?.artifact_kind === "xcarchive" &&
+    auditArchive?.source_commit === manifest.source_baseline &&
+    auditArchive?.bundle_identifier === "com.trailmind.app" &&
+    auditArchive?.marketing_version === "1.0" &&
+    auditArchive?.build_number === "1" &&
+    /^[A-Z0-9]{10}$/.test(auditArchive?.team_identifier ?? "") &&
     /^[0-9a-f]{64}$/.test(auditArchive.sha256 ?? "") &&
+    /^[0-9a-f]{64}$/.test(auditArchive.binary_sha256 ?? "") &&
+    Array.isArray(auditArchive.verified_check_ids) &&
+    [
+      "archive_metadata_contract",
+      "signing_identity_contract",
+      "entitlement_contract",
+      "dsym_contract",
+      "privacy_manifest_contract",
+      "embedded_privacy_manifests",
+      "provisioning_profile_contract"
+    ].every((id) => auditArchive.verified_check_ids.includes(id)) &&
     manifestArchives.some((item) =>
-      item?.artifact_kind === "xcarchive" && item.sha256 === auditArchive.sha256
+      item?.artifact_kind === "xcarchive" &&
+      item.source_commit === auditArchive.source_commit &&
+      item.sha256 === auditArchive.sha256 &&
+      item.binary_sha256 === auditArchive.binary_sha256
     );
   if (gate.classification === "proved" && !hasArchiveEvidence) {
     invalid("archive_gate_without_archive_evidence");
@@ -511,6 +683,8 @@ function validateAppleArchiveGate({ audit, manifest, matrix, matrixRows, options
   const genericDiagnostic = audit.artifacts?.generic_iphoneos_release_build_diagnostic;
   if (audit.builds?.generic_iphoneos_release_build_diagnostic === "passed" &&
       (genericDiagnostic?.artifact_kind !== "generic_iphoneos_app_bundle" ||
+       genericDiagnostic?.source_commit !== manifest.source_baseline ||
+       !/^[0-9a-f]{64}$/.test(genericDiagnostic?.binary_sha256 ?? "") ||
        genericDiagnostic?.archive_evidence !== false)) {
     invalid("generic_build_mislabeled_as_archive");
   }
@@ -755,6 +929,14 @@ function gitBlobSha256(cwd, commit, path) {
       env: { ...process.env, GIT_NO_LAZY_FETCH: "1" }
     });
     return createHash("sha256").update(blob).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+function fileSha256(path) {
+  try {
+    return createHash("sha256").update(readFileSync(path)).digest("hex");
   } catch {
     return null;
   }

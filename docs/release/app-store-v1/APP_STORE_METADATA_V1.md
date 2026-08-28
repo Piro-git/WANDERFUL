@@ -1,6 +1,6 @@
 # App Store Metadata V1
 
-Status: **draft; owner approval and Stage B runtime verification required**
+Status: **draft; local runtime boundaries verified, owner/backend/publication approval still required**
 Localization: English draft only
 Retrieved Apple requirements: 2026-08-23
 

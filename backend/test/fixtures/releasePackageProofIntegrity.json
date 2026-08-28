@@ -11,7 +11,7 @@
   "genericBuildAsArchive": {
     "gateId": "G-044",
     "genericArtifactKind": "generic_iphoneos_app_bundle",
-    "signedArchiveState": "not_run_no_signing_identity",
+    "signedArchiveState": "not_run_no_signing_identity_or_profile",
     "expectedErrorCode": "archive_gate_without_archive_evidence"
   },
   "closedBetaInventoryAttacks": {

@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "package": "Wanderful App Store Release Package V1",
-  "assessed_at": "2026-08-26",
-  "source_baseline": "009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
+  "assessed_at": "2026-08-28",
+  "source_baseline": "21f8450c976252210edf03389dc1b682d2440450",
   "public_release_decision": "NO-GO",
   "status_vocabulary": [
     "open",
@@ -47,10 +47,10 @@
     {
       "id": "ASV1-004",
       "severity": "P1",
-      "title": "Public privacy policy and in-app policy link are missing",
+      "title": "Public privacy policy URL and approved hosted content are missing",
       "owner": "legal, privacy and app owners",
-      "dependency": "real approved HTTPS policy URL and coordinated source owner",
-      "evidence": ["no current source-backed in-app privacy-policy link", "production privacy URL is UNKNOWN"],
+      "dependency": "real approved HTTPS policy URL and legal owner",
+      "evidence": ["native Privacy & data destination and strict optional external-link slot are implemented", "tracked production privacy URL is empty", "draft policy content is explicitly not hosted"],
       "acceptance_criterion": "Reachable app-specific policy matches final data flows, is entered in App Store Connect and is easily accessible inside the selected build.",
       "status": "open",
       "blocking_public_release": true
@@ -61,7 +61,7 @@
       "title": "Public support URL and contact are missing",
       "owner": "support, legal and web owners",
       "dependency": "real monitored contact and HTTPS page",
-      "evidence": ["production support URL and contact are UNKNOWN"],
+      "evidence": ["native Help & safety destination and strict optional external-link slot are implemented", "tracked production support URL is empty", "support contact and hosted page remain UNKNOWN"],
       "acceptance_criterion": "Reachable support page identifies Wanderful, provides a working monitored contact and meets legal/support content requirements.",
       "status": "open",
       "blocking_public_release": true
@@ -72,7 +72,7 @@
       "title": "Apple team, explicit App ID, certificate and profile are unproved",
       "owner": "Apple Account Holder or Admin",
       "dependency": "paid Apple Developer Program and account authority",
-      "evidence": ["DEVELOPMENT_TEAM is empty in source", "portal/certificate/profile state was not inspected"],
+      "evidence": ["DEVELOPMENT_TEAM is empty in source", "read-only local preflight found zero valid code-signing identities and no provisioning-profile directory", "Apple portal state was not inspected"],
       "acceptance_criterion": "Active team/legal entity, explicit com.trailmind.app ID with App Attest, Apple Distribution identity and matching App Store profile are verified.",
       "status": "open",
       "blocking_public_release": true
@@ -182,7 +182,7 @@
       "title": "Accessibility common-task evidence is pending",
       "owner": "iOS accessibility and release owners",
       "dependency": "integrated runtime and representative devices/settings",
-      "evidence": ["focused accessibility identifier/focus/Reduce Motion tests passed", "Computer Use accessibility state exposed meaningful headings, button labels, values and route-preview descriptions", "Reduce Motion route planning and rapid list reuse remained responsive", "actual runtime VoiceOver focus handoff and Voice Control remain unproved", "forced-light and accessibility XXXL defects are tracked separately as ASV1-027 and ASV1-028"],
+      "evidence": ["focused accessibility identifier/focus/Reduce Motion/contrast/layout tests passed", "deterministic light, dark, increased-contrast and accessibility XXXL UI matrix passed", "route comparison exposes one bounded accessible action", "actual runtime VoiceOver focus handoff and Voice Control remain unproved"],
       "acceptance_criterion": "All common tasks pass the applicable accessibility criteria; any App Store accessibility claim is limited to proved support.",
       "status": "open",
       "blocking_public_release": true
@@ -203,8 +203,8 @@
       "severity": "P2",
       "title": "Release verifier matches Wanderful and accepts embedded SDK manifests",
       "owner": "iOS release tooling owner",
-      "dependency": "none; current verifier correction at 009c5aa52f7feb386335c7aeb0c2f1e85ec7a7fd",
-      "evidence": ["contract preserves CFBundleName TrailMind while expecting Wanderful display/permission text", "root-manifest validation permits embedded SDK manifests", "verifier enforces production environment identity, nine false flags, four empty services, attribution, compiled icon opacity and exact public Superwall certificate resources", "38 isolated adversarial cases plus stale-report recovery pass", "large Release binary marker checks are PIPE_FAIL-safe", "final Release passes 41 of 41 checks"],
+      "dependency": "none; audited application baseline at 21f8450c976252210edf03389dc1b682d2440450",
+      "evidence": ["contract preserves CFBundleName TrailMind while expecting Wanderful display/permission text", "verifier requires exact first-party, Superwall and swift-crypto privacy manifests", "verifier enforces production identity/version, nine false flags, four empty services, two empty public-link defaults, owner-supplied expected Team ID, dSYM, signing/profile/entitlements, attribution and compiled icon opacity", "46 isolated adversarial cases plus stale-report recovery pass", "large Release binary marker checks are PIPE_FAIL-safe", "current Release Simulator artifact passes 43 of 43 checks"],
       "acceptance_criterion": "Artifact verifier accepts the truthful Wanderful identity without weakening other checks; any mismatch is corrected with a focused tooling test.",
       "status": "resolved",
       "blocking_public_release": false
@@ -226,7 +226,7 @@
       "title": "Signed archive, validation, TestFlight and App Review gates are open",
       "owner": "Apple release owner",
       "dependency": "all local, legal, physical-device and Apple-account gates",
-      "evidence": ["no distribution archive, upload, TestFlight build or submission was authorized/performed"],
+      "evidence": ["no distribution archive, upload, TestFlight build or submission was authorized/performed", "unsigned generic iPhoneOS Release build passed only as an explicitly non-archive diagnostic"],
       "acceptance_criterion": "Approved signed archive validates, selected TestFlight build passes QA, metadata/declarations are complete and owner authorizes submission.",
       "status": "open",
       "blocking_public_release": true
@@ -281,7 +281,7 @@
       "title": "Built identity, flags, permissions, entitlements and secret absence are proved locally",
       "owner": "iOS release and security owners",
       "dependency": "physical-device entitlement proof remains under ASV1-010",
-      "evidence": ["final Debug, Staging and Release Info.plist products prove exact lane identities, 1.0/1, iPhone family 1, iOS 26.0 and truthful purpose strings", "all nine protected feature flags are false", "tracked backend, Supabase and Superwall values are empty and Release parser is local", "bundles contain no forbidden local configuration/API-key Info key or credential-pattern match", "source maps local to development and staging/production to production App Attest; Simulator evidence does not prove physical App Attest", "secret-bearing local files were explicitly excluded"],
+      "evidence": ["final Debug, Staging and Release Info.plist products prove exact lane identities, 1.0/1, iPhone family 1, iOS 26.0 and truthful purpose strings", "all nine protected feature flags are false", "tracked backend, Supabase, Superwall, privacy and support values are empty and Release parser is local", "bundles contain no forbidden local configuration/API-key Info key or credential-pattern match", "source maps local to development and staging/production to production App Attest; Simulator evidence does not prove physical App Attest", "secret-bearing local files were explicitly excluded"],
       "acceptance_criterion": "Built products show exact identity/version/platform, expected purpose strings/entitlements/flags and no key, token, local configuration or forbidden endpoint material.",
       "status": "resolved",
       "blocking_public_release": false
@@ -300,24 +300,24 @@
     {
       "id": "ASV1-027",
       "severity": "P2",
-      "title": "Dark Mode is disabled by a forced light appearance",
+      "title": "Adaptive light and dark appearance is locally corrected",
       "owner": "iOS design and accessibility owners",
-      "dependency": "UI-wide dark appearance review outside the narrow Stage B correction scope",
-      "evidence": ["Simulator system appearance was set to Dark", "Wanderful remained visibly light", "TrailMindApp.swift applies .preferredColorScheme(.light)"],
+      "dependency": "none for current audited baseline; re-open on theme or release-surface change",
+      "evidence": ["production no longer applies a forced color scheme", "adaptive and increased-contrast theme-role tests pass", "standard light and dark deterministic App Store visual paths pass"],
       "acceptance_criterion": "Remove or justify the forced appearance, verify all release surfaces in Dark Mode, and pass contrast/readability regression without redesign drift.",
-      "status": "open",
-      "blocking_public_release": true
+      "status": "resolved",
+      "blocking_public_release": false
     },
     {
       "id": "ASV1-028",
       "severity": "P2",
-      "title": "Route suggestions break at accessibility XXXL",
+      "title": "Route suggestions support accessibility XXXL locally",
       "owner": "iOS design and accessibility owners",
-      "dependency": "bounded route-card layout correction outside the narrow Stage B correction scope",
-      "evidence": ["Simulator content size accessibility-extra-extra-extra-large produced severe label hyphenation and visible card text overlap", "the deterministic suggestion list remained functional but not release-polished"],
+      "dependency": "none for current audited baseline; re-open on route-card or suggestion-header layout change",
+      "evidence": ["route cards switch to an expanded accessibility layout", "header line limits are removed at accessibility sizes", "accessibility XXXL light/dark deterministic route paths pass and remain reachable"],
       "acceptance_criterion": "Route suggestion cards remain legible, non-overlapping and operable at accessibility XXXL, with focused UI and visual regression coverage.",
-      "status": "open",
-      "blocking_public_release": true
+      "status": "resolved",
+      "blocking_public_release": false
     }
   ]
 }
