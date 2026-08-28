@@ -26,6 +26,9 @@ export function createIntentSessionEndpoint(options = {}) {
     let access;
     let result;
     try {
+      if (configuration.providerEnabled !== true && !insecureLocalParsing) {
+        throw new AppAttestError("authorization_unavailable");
+      }
       if (context.signal?.aborted) throw intentError("request_cancelled");
       if (!insecureLocalParsing) {
         access = await authorizer.authorize({

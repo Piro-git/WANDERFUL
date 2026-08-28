@@ -90,7 +90,7 @@ describe("route endpoint", () => {
 
   it("requires an injected production authorizer", async () => {
     const endpoint = createRouteEndpoint({
-      env: { NODE_ENV: "production" },
+      env: { NODE_ENV: "production", ROUTE_PROVIDER_ENABLED: "true" },
       provider: { async route() { assert.fail("provider called"); } }
     });
     const result = await endpoint(pointToPointRequest());
@@ -100,7 +100,10 @@ describe("route endpoint", () => {
 
   it("does not silently enable development authorization when NODE_ENV is absent", async () => {
     const endpoint = createRouteEndpoint({
-      env: { GRAPHHOPPER_API_KEY: "unused" },
+      env: {
+        GRAPHHOPPER_API_KEY: "unused",
+        ROUTE_PROVIDER_ENABLED: "true"
+      },
       provider: { async route() { assert.fail("provider called"); } }
     });
     const result = await endpoint(pointToPointRequest());
@@ -110,7 +113,7 @@ describe("route endpoint", () => {
 
   it("requires an explicit opt-in for unauthenticated local routing", async () => {
     const endpoint = createRouteEndpoint({
-      env: { NODE_ENV: "development" },
+      env: { NODE_ENV: "development", ROUTE_PROVIDER_ENABLED: "true" },
       provider: { async route() { assert.fail("provider called"); } }
     });
     const result = await endpoint(pointToPointRequest());
@@ -120,7 +123,7 @@ describe("route endpoint", () => {
 
   it("requires an injected production rate limiter", async () => {
     const endpoint = createRouteEndpoint({
-      env: { NODE_ENV: "production" },
+      env: { NODE_ENV: "production", ROUTE_PROVIDER_ENABLED: "true" },
       authorizer: {
         async authorize() {
           return { authorized: true, rateLimitKey: "attested-installation" };
@@ -136,7 +139,7 @@ describe("route endpoint", () => {
   it("uses an injected production authorizer without passing location data", async () => {
     let authorizationContext;
     const endpoint = createRouteEndpoint({
-      env: { NODE_ENV: "production" },
+      env: { NODE_ENV: "production", ROUTE_PROVIDER_ENABLED: "true" },
       authorizer: {
         async authorize(context) {
           authorizationContext = context;
@@ -176,6 +179,7 @@ describe("route endpoint", () => {
 function developmentEnv(overrides = {}) {
   return {
     NODE_ENV: "development",
+    ROUTE_PROVIDER_ENABLED: "true",
     ROUTE_ALLOW_INSECURE_LOCAL_ROUTING: "true",
     ...overrides
   };

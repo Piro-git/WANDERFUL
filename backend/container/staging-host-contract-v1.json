@@ -16,8 +16,8 @@
     "source": "validated_remote_deployment_receipt"
   },
   "lifecycle": {
-    "healthCheckPath": "/health/live",
-    "readinessPath": "/health/ready",
+    "healthCheckPath": "/healthz",
+    "readinessPath": "/readyz",
     "maximumShutdownDelaySeconds": 30,
     "applicationDrainDeadlineSeconds": 10,
     "automaticDeploys": false

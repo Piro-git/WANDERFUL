@@ -18,7 +18,7 @@ export async function checkBoundedLiveness(options = {}) {
     const client = requestImpl({
       host: "127.0.0.1",
       port,
-      path: "/health/live",
+      path: "/healthz",
       method: "GET",
       headers: { Accept: "application/json", Connection: "close" }
     }, (response) => {

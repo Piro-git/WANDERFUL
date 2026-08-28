@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { appAttestErrorResult, AppAttestError } from "../appAttest/appAttestErrors.js";
-import { createDefaultRouteAuthorizer, authorizeRouteRequest } from "./routeAuthorization.js";
+import {
+  createDefaultRouteAuthorizer,
+  authorizeRouteRequest
+} from "./routeAuthorization.js";
+import { providerFlagEnabled } from "../appAttest/routeSessionAuthorizer.js";
 import { routeError, routeErrorResult } from "./routeErrors.js";
 import { createGraphHopperProvider } from "./graphHopperProvider.js";
 import { InMemoryRouteRateLimiter, routeRequestCost } from "./routeRateLimiter.js";
@@ -23,6 +27,9 @@ export function createRouteEndpoint(options = {}) {
     let errorCode;
 
     try {
+      if (!providerFlagEnabled(env.ROUTE_PROVIDER_ENABLED)) {
+        throw new AppAttestError("authorization_unavailable");
+      }
       const maxDistanceMeters = integerEnvironmentValue(
         env.ROUTE_MAX_DISTANCE_METERS, 200_000, 1_000, 200_000
       );

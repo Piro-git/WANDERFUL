@@ -141,6 +141,53 @@ describe("fail-closed provider feature flags", () => {
     assert.equal(JSON.stringify(result).includes(malformedValue), false);
   });
 
+  it("returns before route or intent authorization when provider features are disabled", async () => {
+    let routeAuthorizationCalls = 0;
+    let routeProviderCalls = 0;
+    const routeEndpoint = createRouteEndpoint({
+      env: { NODE_ENV: "production", ROUTE_PROVIDER_ENABLED: "false" },
+      authorizer: {
+        async authorize() {
+          routeAuthorizationCalls += 1;
+          return { authorized: true, rateLimitKey: "must-not-run" };
+        }
+      },
+      provider: {
+        async route() {
+          routeProviderCalls += 1;
+          return graphHopperResponse();
+        }
+      }
+    });
+    const routeResult = await routeEndpoint(loopRequest(), {});
+
+    let intentAuthorizationCalls = 0;
+    let intentProviderCalls = 0;
+    const intentEndpoint = createIntentSessionEndpoint({
+      env: { NODE_ENV: "production", INTENT_PROVIDER_ENABLED: "false" },
+      intentAuthorizer: {
+        async authorize() {
+          intentAuthorizationCalls += 1;
+          return { authorized: true };
+        }
+      },
+      parseIntent: async () => {
+        intentProviderCalls += 1;
+        return { ok: true };
+      }
+    });
+    const intentResult = await intentEndpoint({ prompt: "15 km loop" }, {});
+
+    assert.equal(routeResult.statusCode, 503);
+    assert.equal(routeResult.payload.error.code, "authorization_unavailable");
+    assert.equal(routeAuthorizationCalls, 0);
+    assert.equal(routeProviderCalls, 0);
+    assert.equal(intentResult.statusCode, 503);
+    assert.equal(intentResult.payload.error.code, "authorization_unavailable");
+    assert.equal(intentAuthorizationCalls, 0);
+    assert.equal(intentProviderCalls, 0);
+  });
+
   it("performs zero fetch, circuit-clock, or circuit-event work when routing is disabled", async () => {
     const { repository, token } = await sessionRepository();
     let fetchCalls = 0;

@@ -44,9 +44,12 @@ describe("free staging hosting contract", () => {
     assert.match(blueprint, /^\s*runtime: docker$/m);
     assert.match(blueprint, /^\s*plan: free$/m);
     assert.match(blueprint, /^\s*region: frankfurt$/m);
-    assert.match(blueprint, /^\s*branch: main$/m);
+    assert.match(
+      blueprint,
+      /^\s*branch: codex\/free-https-staging-backend-v1$/m
+    );
     assert.match(blueprint, /^\s*autoDeployTrigger: off$/m);
-    assert.match(blueprint, /^\s*healthCheckPath: \/health\/live$/m);
+    assert.match(blueprint, /^\s*healthCheckPath: \/healthz$/m);
     assert.match(blueprint, /^\s*maxShutdownDelaySeconds: 30$/m);
     assert.match(blueprint, /^\s*numInstances: 1$/m);
     assert.match(blueprint, /^\s*dockerfilePath: \.\/backend\/Dockerfile$/m);
@@ -107,6 +110,8 @@ describe("free staging hosting contract", () => {
     assert.equal(contract.baseUrl.state, "unassigned");
     assert.equal(contract.baseUrl.value, null);
     assert.equal(contract.baseUrl.requiredScheme, "https");
+    assert.equal(contract.lifecycle.healthCheckPath, "/healthz");
+    assert.equal(contract.lifecycle.readinessPath, "/readyz");
     assert.equal(
       contract.releasePolicy.iosConnection,
       "blocked_until_validated_remote_deployment_receipt"

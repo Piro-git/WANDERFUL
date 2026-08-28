@@ -6,9 +6,9 @@ providers disabled for every drill.
 
 | Drill | Required result |
 | --- | --- |
-| Cold start after more than 15 idle minutes | First request may encounter Render wake behavior; eventually `/health/live` is exact application JSON and `/health/ready` becomes exact ready JSON. Record wake duration. Do not count Render's loading response as health. |
+| Cold start after more than 15 idle minutes | First request may encounter Render wake behavior; eventually `/healthz` is exact application JSON and `/readyz` becomes exact ready JSON. Record wake duration. Do not count Render's loading response as health. |
 | Database unavailable at startup | Process never binds; deploy is unhealthy; constructed pools close; logs contain only bounded startup category. |
-| Database loss while running | `/health/live` remains live, cached `/health/ready` becomes 503, late application work returns bounded 503, and no raw database error is logged. |
+| Database loss while running | `/healthz` remains live, cached `/readyz` becomes 503, late application work returns bounded 503, and no raw database error is logged. |
 | Database recovery | A later bounded probe restores readiness once; no duplicate pools or process restart are required. |
 | Idle restart | Render sends `SIGTERM`; readiness becomes false, the socket stops accepting, pools close and the process exits before the 30-second platform limit. |
 | In-flight restart | New work is rejected, registered work receives cancellation at the 10-second application deadline, sockets and pools close, and late provider work is impossible because flags are false. |
