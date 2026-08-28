@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "receiptType": "staging-backend-deployment-v1",
+  "status": "IMPLEMENTED_NOT_DEPLOYED",
+  "blocker": "BLOCKED_BY_FREE_HOSTING",
+  "baseline": {
+    "originMainCommit": "52849b4c75cd6e5ddf00473adf8a3265160d750d",
+    "worktreeWasClean": true,
+    "indexWasClean": true
+  },
+  "source": {
+    "branch": "codex/free-https-staging-backend-v1",
+    "implementationCommit": "01c2b108cd69cce14f4c01f5d3a0825322c2dcc3",
+    "automaticDeploys": false
+  },
+  "hosting": {
+    "selectedPlatform": "render",
+    "selectedPlan": "free",
+    "selectedRegion": "frankfurt",
+    "intendedServiceName": "wanderful-staging-v1",
+    "deploymentIdentityPresence": "absent",
+    "deploymentUrlPresence": "absent",
+    "remoteHttpsVerification": "not_run"
+  },
+  "configuration": {
+    "remoteConfigurationInspected": false,
+    "sourceDeclaredFixedNames": [
+      "NODE_ENV",
+      "TRAILMIND_RELEASE_STAGE",
+      "APP_ATTEST_ENVIRONMENT"
+    ],
+    "sourceDeclaredOperatorInjectedNames": [
+      "TRAILMIND_STAGING_PROJECT_REF_SHA256",
+      "TRAILMIND_APPLICATION_SCHEMA",
+      "APP_ATTEST_RUNTIME_ROLE",
+      "APP_ATTEST_CONTROL_ROLE",
+      "APP_ATTEST_OPERATOR_ROLE",
+      "APP_ATTEST_DATABASE_URL",
+      "APP_ATTEST_APP_ID_PREFIX",
+      "APP_ATTEST_BUNDLE_ID",
+      "APP_ATTEST_ALLOWED_VALIDATION_CATEGORIES",
+      "APP_ATTEST_ALLOWED_BUNDLE_VERSIONS"
+    ],
+    "operatorInjectedRemotePresence": "not_checked",
+    "sourceForbiddenWebProcessNames": [
+      "APP_ATTEST_CONTROL_DATABASE_URL",
+      "APP_ATTEST_OPERATOR_DATABASE_URL",
+      "APP_ATTEST_PRUNER_DATABASE_URL",
+      "DATABASE_URL",
+      "POSTGRES_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_SECRET_KEY",
+      "GRAPHHOPPER_API_KEY",
+      "GOOGLE_API_KEY",
+      "OPENROUTER_API_KEY",
+      "OUTDOOR_RESEARCH_DATABASE_URL",
+      "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL",
+      "OUTDOOR_EVIDENCE_DATABASE_URL"
+    ],
+    "forbiddenRemotePresence": "not_checked"
+  },
+  "featureFlags": {
+    "ROUTE_PROVIDER_ENABLED": "false",
+    "INTENT_PROVIDER_ENABLED": "false",
+    "OUTDOOR_EVIDENCE_PROVIDER_ENABLED": "false",
+    "OUTDOOR_RESEARCH_PLANNING_ENABLED": "false",
+    "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": "false",
+    "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING": "false",
+    "INTENT_ALLOW_INSECURE_LOCAL_PARSING": "false",
+    "INTENT_ALLOW_DETERMINISTIC_MOCK": "false",
+    "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL": "false",
+    "APP_ATTEST_ALLOW_IN_MEMORY": "false"
+  },
+  "verification": {
+    "localHealthz": {
+      "result": "pass",
+      "expectedStatus": 200,
+      "dependencyWork": 0
+    },
+    "localReadyz": {
+      "readyResult": "pass",
+      "notReadyResult": "pass",
+      "providerWork": 0
+    },
+    "remoteHealthz": "not_run",
+    "remoteReadyz": "not_run",
+    "databaseAdmission": "not_proven",
+    "providerCallCount": 0,
+    "paidResourceCount": 0,
+    "backendTests": {
+      "passed": 1028,
+      "failed": 0
+    },
+    "offlineQualityEvaluation": {
+      "passed": 101,
+      "failed": 0
+    },
+    "backendBuild": "pass",
+    "buildContextValidation": "pass",
+    "credentialDiffScan": "pass",
+    "conflictMarkerScan": "pass",
+    "diffCheck": "pass"
+  },
+  "remoteActivity": {
+    "mutations": [],
+    "readOnlyInspections": [
+      {
+        "platform": "vercel",
+        "result": "existing_production_target_project_excluded"
+      }
+    ]
+  },
+  "rollback": {
+    "sourceProcedure": "revert the implementation commit and this receipt commit on the review branch",
+    "remoteProcedure": "not_applicable_no_deployment_created"
+  },
+  "cleanup": {
+    "taskCreatedRemoteResources": 0,
+    "taskModifiedRemoteResources": 0,
+    "taskCreatedPaidResources": 0,
+    "temporaryRemoteResourcesRemaining": 0
+  },
+  "blockerDetail": [
+    "No unambiguous Render Free workspace or control plane was connected to this task.",
+    "The connected Vercel project was excluded because it has production-target deployments and cannot preserve the reviewed long-running lifecycle.",
+    "Database connection material and remote schema admission proof are intentionally pending the separate staging database lane."
+  ]
+}
