@@ -463,6 +463,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
       const endpoint = createIntentSessionEndpoint({
         env: {
           NODE_ENV: "test",
+          INTENT_PROVIDER_ENABLED: "true",
           ...provider.env,
           ...scenario.env
         },
@@ -480,7 +481,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
 
     let configurationReleases = 0;
     const unconfiguredEndpoint = createIntentSessionEndpoint({
-      env: { NODE_ENV: "test" },
+      env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true" },
       intentAuthorizer: {
         async authorize() {
           return { async release() { configurationReleases += 1; } };
@@ -499,7 +500,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
       const started = deferred();
       let releases = 0;
       const endpoint = createIntentSessionEndpoint({
-        env: { NODE_ENV: "test", ...provider.env },
+        env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true", ...provider.env },
         intentAuthorizer: {
           async authorize() {
             return { async release() { releases += 1; } };
@@ -528,7 +529,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
       let releases = 0;
       let upstreamSignal;
       const endpoint = createIntentSessionEndpoint({
-        env: { NODE_ENV: "test", ...provider.env },
+        env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true", ...provider.env },
         intentAuthorizer: {
           async authorize() {
             return { async release() { releases += 1; } };
@@ -577,7 +578,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
     let authorizeCalled = false;
     let parseCalled = false;
     const endpoint = createIntentSessionEndpoint({
-      env: { NODE_ENV: "test" },
+      env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true" },
       intentAuthorizer: {
         async authorize() {
           authorizeCalled = true;
@@ -606,7 +607,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
     let releases = 0;
     let parseCalled = false;
     const endpoint = createIntentSessionEndpoint({
-      env: { NODE_ENV: "test" },
+      env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true" },
       intentAuthorizer: {
         async authorize() {
           authorizeStarted.resolve();
@@ -634,7 +635,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
     const releaseStarted = deferred();
     const releaseResult = deferred();
     const endpoint = createIntentSessionEndpoint({
-      env: { NODE_ENV: "test" },
+      env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true" },
       intentAuthorizer: {
         async authorize() {
           return {
@@ -659,7 +660,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
   it("attempts lease release without exposing a release failure", async () => {
     const rawReleaseError = "database lease release secret";
     const endpoint = createIntentSessionEndpoint({
-      env: { NODE_ENV: "test" },
+      env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true" },
       intentAuthorizer: {
         async authorize() {
           return {
@@ -687,6 +688,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
     const endpoint = createIntentSessionEndpoint({
       env: {
         NODE_ENV: "test",
+        INTENT_PROVIDER_ENABLED: "true",
         AI_PROVIDER: "openrouter",
         OPENROUTER_API_KEY: sensitive[1]
       },
@@ -744,7 +746,7 @@ describe("safe intent endpoint envelopes and lease release", () => {
     const parseStarted = deferred();
     let releases = 0;
     const intentEndpoint = createIntentSessionEndpoint({
-      env: { NODE_ENV: "test" },
+      env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true" },
       intentAuthorizer: {
         async authorize() {
           return { async release() { releases += 1; } };
@@ -922,7 +924,7 @@ function createEndpointWithLease(options) {
   let releases = 0;
   return {
     handler: createIntentSessionEndpoint({
-      env: { NODE_ENV: "test" },
+      env: { NODE_ENV: "test", INTENT_PROVIDER_ENABLED: "true" },
       intentAuthorizer: {
         async authorize() {
           return {

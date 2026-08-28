@@ -7,10 +7,10 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    branch: main
+    branch: codex/free-https-staging-backend-v1
     autoDeployTrigger: off
     renderSubdomainPolicy: enabled
-    healthCheckPath: /health/live
+    healthCheckPath: /healthz
     maxShutdownDelaySeconds: 30
     numInstances: 1
     dockerfilePath: ./backend/Dockerfile

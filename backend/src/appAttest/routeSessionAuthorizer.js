@@ -94,7 +94,7 @@ export function intentAuthorizationConfiguration(env = process.env) {
   };
 }
 
-function providerFlagEnabled(value) {
+export function providerFlagEnabled(value) {
   return typeof value === "string" &&
     ENABLED_PROVIDER_FLAG_VALUES.has(value.trim().toLowerCase());
 }

@@ -154,6 +154,7 @@ function jsonRequest(body) {
 function developmentEnv(overrides = {}) {
   return {
     NODE_ENV: "development",
+    ROUTE_PROVIDER_ENABLED: "true",
     ROUTE_ALLOW_INSECURE_LOCAL_ROUTING: "true",
     INTENT_ALLOW_INSECURE_LOCAL_PARSING: "true",
     ...overrides

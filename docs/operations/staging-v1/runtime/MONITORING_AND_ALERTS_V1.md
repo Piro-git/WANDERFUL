@@ -14,8 +14,8 @@ operator endpoint is public.
 
 | Signal | Source | Proposed staging interpretation |
 | --- | --- | --- |
-| Process uptime/liveness | HTTPS `GET /health/live` and container healthcheck | Dependency-free process health only |
-| Readiness transition | `GET /health/ready`, `readiness_changed` | Cached required-dependency and drain admission |
+| Process uptime/liveness | HTTPS `GET /healthz` and container healthcheck | Dependency-free process health only |
+| Readiness transition | `GET /readyz`, `readiness_changed` | Cached required-dependency and drain admission |
 | Request rate/status/latency | Platform HTTP metrics plus allowlisted completion events | Group by fixed path class/status and existing buckets only |
 | DB availability/pressure | `database_pool_state_changed`, `database_pool_error` | Fixed available state and pre-probe normal/busy/waiting/saturated/unknown sample; unavailable/unknown on failed probe |
 | Provider state | `runtime_capability_state`, `provider_circuit_state_changed` | Every provider capability must be disabled; circuit events are unexpected |

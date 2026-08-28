@@ -9,8 +9,8 @@ package.
 
 | Signal | Source | Interpretation |
 | --- | --- | --- |
-| Process liveness | Render HTTP health check on `/health/live` | Process only; never database or provider health. |
-| Dependency readiness | External/manual `GET /health/ready` and allowlisted readiness transition | Missing, 503 or stale observation is not ready. |
+| Process liveness | Render HTTP health check on `/healthz` | Process only; never database or provider health. |
+| Dependency readiness | External/manual `GET /readyz` and allowlisted readiness transition | Missing, 503 or stale observation is not ready. |
 | Cold start | Timestamp from public request to exact application liveness response | Expected after idle; track separately from application latency. |
 | Deploy/restart | Render event/email plus `service_started`, `service_draining`, `service_stopped` | Missing graceful stop evidence is a failed drill. |
 | Database state | Deduplicated allowlisted pool availability/error transitions | No raw database errors, URLs, roles or SQL state. |

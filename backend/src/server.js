@@ -203,10 +203,10 @@ export async function handleIntentHttpRequest(request, options = {}) {
     if (request.method === "GET" && request.url === "/health") {
       return { statusCode: 200, payload: { ok: true } };
     }
-    if (request.method === "GET" && request.url === "/health/live") {
+    if (request.method === "GET" && isLivenessPath(request.url)) {
       return { statusCode: 200, payload: { status: "live" } };
     }
-    if (request.method === "GET" && request.url === "/health/ready") {
+    if (request.method === "GET" && isReadinessPath(request.url)) {
       const ready = options.operationalState?.isReady?.() === true;
       return {
         statusCode: ready ? 200 : 503,
@@ -353,10 +353,10 @@ function operationalHealthResult(method, url, operationalState) {
   if (method === "GET" && url === "/health") {
     return { statusCode: 200, payload: { ok: true } };
   }
-  if (method === "GET" && url === "/health/live") {
+  if (method === "GET" && isLivenessPath(url)) {
     return { statusCode: 200, payload: { status: "live" } };
   }
-  if (method === "GET" && url === "/health/ready") {
+  if (method === "GET" && isReadinessPath(url)) {
     const ready = operationalState?.isReady?.() === true;
     return {
       statusCode: ready ? 200 : 503,
@@ -364,6 +364,14 @@ function operationalHealthResult(method, url, operationalState) {
     };
   }
   return undefined;
+}
+
+function isLivenessPath(url) {
+  return url === "/healthz" || url === "/health/live";
+}
+
+function isReadinessPath(url) {
+  return url === "/readyz" || url === "/health/ready";
 }
 
 function serviceUnavailableResult() {

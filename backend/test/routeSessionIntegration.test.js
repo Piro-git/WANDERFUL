@@ -41,7 +41,7 @@ describe("route-session integration", () => {
     let active = 0;
     let maximumActive = 0;
     const endpoint = createRouteEndpoint({
-      env: { NODE_ENV: "production" },
+      env: { NODE_ENV: "production", ROUTE_PROVIDER_ENABLED: "true" },
       authorizer,
       provider: {
         async route(request) {
@@ -84,7 +84,7 @@ describe("route-session integration", () => {
     });
     let providerCalls = 0;
     const endpoint = createRouteEndpoint({
-      env: { NODE_ENV: "production" },
+      env: { NODE_ENV: "production", ROUTE_PROVIDER_ENABLED: "true" },
       authorizer,
       provider: {
         async route() {

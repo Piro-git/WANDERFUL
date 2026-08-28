@@ -175,25 +175,25 @@ describe("production operations", () => {
       outdoorAdventurePlanningEndpoint: async () => { endpointCalls += 1; }
     });
 
-    const live = await fetch(`${server.url}/health/live`);
+    const live = await fetch(`${server.url}/healthz`);
     assert.equal(live.status, 200);
     assert.deepEqual(await live.json(), { status: "live" });
-    const notReady = await fetch(`${server.url}/health/ready`);
+    const notReady = await fetch(`${server.url}/readyz`);
     assert.equal(notReady.status, 503);
     assert.deepEqual(await notReady.json(), { status: "not_ready" });
 
     state.setDependencyReady(true);
     state.markStarted();
-    const ready = await fetch(`${server.url}/health/ready`);
+    const ready = await fetch(`${server.url}/readyz`);
     assert.equal(ready.status, 200);
     assert.deepEqual(await ready.json(), { status: "ready" });
     state.setProviderReady(false);
     assert.equal(state.isAccepting(), true);
-    const providerNotReady = await fetch(`${server.url}/health/ready`);
+    const providerNotReady = await fetch(`${server.url}/readyz`);
     assert.equal(providerNotReady.status, 503);
     assert.deepEqual(await providerNotReady.json(), { status: "not_ready" });
     state.setProviderReady(true);
-    const providerReady = await fetch(`${server.url}/health/ready`);
+    const providerReady = await fetch(`${server.url}/readyz`);
     assert.equal(providerReady.status, 200);
     assert.equal(endpointCalls, 0);
   });

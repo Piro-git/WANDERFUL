@@ -25,10 +25,10 @@ for this reviewed lifecycle.
 
 Render is the simpler staging choice with a fixed quote and enough termination
 margin for the existing 10-second application deadline. Configure its platform
-health path as `/health/live`: startup cannot bind until database admission has
-passed, while a later database outage should degrade `/health/ready` and return
+health path as `/healthz`: startup cannot bind until database admission has
+passed, while a later database outage should degrade `/readyz` and return
 bounded 503 responses without creating a liveness restart loop. Monitor
-`/health/ready` separately. This mapping is a topology decision derived from
+`/readyz` separately. This mapping is a topology decision derived from
 Render's single service health-path model and must be proved after approval.
 
 Fly is technically attractive where proxy concurrency limits and IPv6 Supabase

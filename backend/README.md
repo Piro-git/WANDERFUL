@@ -10,8 +10,10 @@ The backend exposes:
 - `POST /api/app-attest/challenge`, `/register`, and `/route-session` for installation verification.
 - `POST /api/route` for a strictly validated GraphHopper routing request.
 - `GET /health` for a fast, provider-independent liveness response.
-- `GET /health/live` for the zero-dependency production liveness contract.
-- `GET /health/ready` for a coarse cached readiness state. It never returns dependency names or errors.
+- `GET /healthz` for the zero-dependency production liveness contract
+  (`/health/live` remains a compatibility alias).
+- `GET /readyz` for a coarse cached readiness state (`/health/ready` remains a
+  compatibility alias). It never returns dependency names or errors.
 
 The route endpoint proxies real GraphHopper results; it does not invent geometry, distance, duration, elevation, safety, scenic quality, water availability, trail status, camping legality, weather, POIs, navigation, accounts, or persistence. See [Route API contract](docs/route-api.md).
 

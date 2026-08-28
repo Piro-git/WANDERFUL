@@ -6,8 +6,9 @@ staging identity, least-privilege roles and CA material.
 
 ## Pre-deployment gates
 
-1. Require a clean reviewed `main` commit containing `render.yaml` and the
-   existing OCI runtime tests.
+1. Require a clean reviewed commit on
+   `codex/free-https-staging-backend-v1` containing `render.yaml` and the
+   existing OCI runtime tests. Never deploy or push `main` from this lane.
 2. Confirm the Render workspace has no payment method. Do not accept a trial,
    add billing information or upgrade the `free` instance.
 3. Confirm the target is exactly one service named `wanderful-staging-v1` in
@@ -22,7 +23,8 @@ staging identity, least-privilege roles and CA material.
 
 ## Create the candidate
 
-1. In Render, create a Blueprint from the reviewed repository and `main`.
+1. In Render, create a Blueprint from the reviewed repository and the exact
+   `codex/free-https-staging-backend-v1` commit recorded in the receipt.
 2. Inspect the proposed diff before applying it. It must contain exactly one
    Free web service and no database, disk, worker, cron, custom domain or paid
    resource.
@@ -48,14 +50,15 @@ coordinates, geometry, raw headers or provider errors.
 2. Verify the generated URL is HTTPS. Only now may a sanitized receipt assign
    `baseUrl.value`; repository source remains unassigned until that receipt is
    independently reviewed.
-3. From a cold service, call `GET /health/live`. Record wake duration and the
+3. From a cold service, call `GET /healthz`. Record wake duration and the
    exact final `200 {"status":"live"}` result; a Render loading page is not an
    application pass.
-4. Call `GET /health/ready` and require exact
+4. Call `GET /readyz` and require exact
    `200 {"status":"ready"}` after database admission.
 5. Call disabled provider endpoints with bounded synthetic inputs and require
-   safe `503 authorization_unavailable` results with zero authorization,
-   budget, lease, provider and research work.
+   safe bounded 503 results (`authorization_unavailable`,
+   `evidence_unavailable`, or `feature_unavailable` as appropriate) with zero
+   authorization, budget, lease, provider and research work.
 6. Inspect allowlisted logs for capability-disabled events and absence of
    secrets, prompts, coordinates, geometry, assertions and raw errors.
 7. Run the outage, drain and restart drills in the adjacent document.

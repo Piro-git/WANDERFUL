@@ -57,7 +57,7 @@ describe("staging runtime lifecycle", () => {
     runningServers.add(service.server);
 
     assert.equal(await checkBoundedLiveness({ port }), true);
-    const ready = await fetch(`http://127.0.0.1:${port}/health/ready`);
+    const ready = await fetch(`http://127.0.0.1:${port}/readyz`);
     assert.equal(ready.status, 200);
     assert.deepEqual(await ready.json(), { status: "ready" });
     assert.equal(FakePool.instances.length, 1);
@@ -103,7 +103,7 @@ describe("staging runtime lifecycle", () => {
     FakePool.instances[0].emit("error", new Error("repeated-private-error-sentinel"));
 
     assert.equal(service.operationalState.isReady(), false);
-    const ready = await fetch(`http://127.0.0.1:${port}/health/ready`);
+    const ready = await fetch(`http://127.0.0.1:${port}/readyz`);
     assert.equal(ready.status, 503);
     assert.deepEqual(await ready.json(), { status: "not_ready" });
     const late = await fetch(`http://127.0.0.1:${port}/api/route`, {
@@ -134,7 +134,7 @@ describe("staging runtime lifecycle", () => {
     runningServers.add(normal);
     await new Promise((resolve) => normal.listen(0, "127.0.0.1", resolve));
     assert.equal(await checkBoundedLiveness({ port: normal.address().port }), true);
-    assert.equal(requestPath, "/health/live");
+    assert.equal(requestPath, "/healthz");
 
     const oversized = createServer((_request, response) => {
       response.writeHead(200, { "Content-Type": "application/json" });

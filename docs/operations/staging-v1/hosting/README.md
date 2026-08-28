@@ -11,13 +11,14 @@ existing standalone Node staging runtime:
 - repository-built `backend/Dockerfile`;
 - one instance, automatic deploys off;
 - Render-generated managed HTTPS;
-- liveness at `/health/live`;
-- readiness at `/health/ready`;
+- liveness at `/healthz`;
+- readiness at `/readyz`;
 - 30-second platform shutdown delay around the application's bounded
   10-second drain deadline.
 
 The machine-readable source is `backend/container/staging-host-contract-v1.json`.
-The infrastructure candidate is `render.yaml`. Neither file is a deployment
+The infrastructure candidate is `render.yaml`, pinned to the dedicated review
+branch `codex/free-https-staging-backend-v1`. Neither file is a deployment
 receipt. The base URL remains `null` until a remote deployment has passed the
 gates in `DEPLOYMENT_AND_ROLLBACK_V1.md`. Do not insert the anticipated Render
 hostname, or any placeholder, into iOS configuration.

@@ -17,8 +17,8 @@ Supabase project is excluded by admission and operator policy.
 ```text
 untrusted iOS client / internet
   -> operator-approved HTTPS container ingress
-     -> bounded dependency-free GET /health/live
-     -> privacy-safe cached GET /health/ready
+     -> bounded dependency-free GET /healthz
+     -> privacy-safe cached GET /readyz
      -> container staging admission (exact stage, flags, approved project/role,
         TLS, process options and secret scope)
      -> existing production configuration preflight
