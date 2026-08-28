@@ -132,6 +132,23 @@ const APPLE_SECRET_BOUNDARY_FIELDS = Object.freeze([
   "private_certificate_material_inspected",
   "secret_values_inspected"
 ]);
+const APPLE_PROTECTED_FEATURE_FLAG_FIELDS = Object.freeze([
+  "DIRECT_GRAPHHOPPER_ENABLED",
+  "INSECURE_LOCAL_BACKEND_AUTH_ENABLED",
+  "IN_MEMORY_APP_ATTEST_ENABLED",
+  "OUTDOOR_EVIDENCE_ENABLED",
+  "REMOTE_INTENT_ENABLED",
+  "RESEARCH_GUIDED_PLANNING_ENABLED",
+  "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+  "SUPABASE_ONBOARDING_SYNC_ENABLED",
+  "SUPERWALL_ENABLED"
+]);
+const APPLE_SERVICE_CONFIGURATION_FIELDS = Object.freeze([
+  "INTENT_BACKEND_BASE_URL",
+  "SUPABASE_PROJECT_URL",
+  "SUPABASE_PUBLISHABLE_KEY",
+  "SUPERWALL_API_KEY"
+]);
 
 export class ReleasePackageValidationError extends Error {
   constructor(code) {
@@ -590,6 +607,18 @@ function validateAppleOperationalBoundary({ audit, manifest }) {
       !uniqueStrings(audit.no_go_reasons)) {
     invalid("missing_apple_no_go_reasons");
   }
+  if (!sameStrings(
+    Object.keys(audit.protected_feature_flags ?? {}),
+    APPLE_PROTECTED_FEATURE_FLAG_FIELDS
+  ) || Object.values(audit.protected_feature_flags).some((value) => value !== false)) {
+    invalid("false_green_apple_feature_flags");
+  }
+  if (!sameStrings(
+    Object.keys(audit.service_configuration ?? {}),
+    APPLE_SERVICE_CONFIGURATION_FIELDS
+  ) || Object.values(audit.service_configuration).some((value) => value !== "empty")) {
+    invalid("false_green_apple_service_configuration");
+  }
   const publicLinks = audit.public_links;
   if (publicLinks?.privacy_policy?.tracked_value !== "empty" ||
       publicLinks?.support?.tracked_value !== "empty" ||
@@ -685,7 +714,9 @@ function validateAppleArchiveGate({ audit, manifest, matrix, matrixRows, options
       (genericDiagnostic?.artifact_kind !== "generic_iphoneos_app_bundle" ||
        genericDiagnostic?.source_commit !== manifest.source_baseline ||
        !/^[0-9a-f]{64}$/.test(genericDiagnostic?.binary_sha256 ?? "") ||
-       genericDiagnostic?.archive_evidence !== false)) {
+       genericDiagnostic?.code_signing_state !== "unsigned" ||
+       genericDiagnostic?.archive_evidence !== false ||
+       genericDiagnostic?.distribution_claim !== false)) {
     invalid("generic_build_mislabeled_as_archive");
   }
   const manifestGenericDiagnostics =
@@ -694,8 +725,11 @@ function validateAppleArchiveGate({ audit, manifest, matrix, matrixRows, options
       (audit.builds?.generic_iphoneos_release_build_diagnostic === "passed" &&
        !manifestGenericDiagnostics.some((item) =>
          item?.artifact_kind === genericDiagnostic?.artifact_kind &&
+         item?.source_commit === genericDiagnostic?.source_commit &&
          item?.binary_sha256 === genericDiagnostic?.binary_sha256 &&
-         item?.archive_evidence === false
+         item?.code_signing_state === genericDiagnostic?.code_signing_state &&
+         item?.archive_evidence === false &&
+         item?.distribution_claim === false
        ))) {
     invalid("unreconciled_generic_build_diagnostic");
   }

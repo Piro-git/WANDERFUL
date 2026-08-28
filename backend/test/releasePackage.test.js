@@ -373,6 +373,25 @@ describe("Apple release evidence proof-integrity validator", () => {
     );
   });
 
+  it("rejects enabled protected flags and configured service identifiers", () => {
+    const enabledFlag = applePackageInput();
+    enabledFlag.audit.protected_feature_flags.REMOTE_INTENT_ENABLED = true;
+    assert.throws(
+      () => validateAppleReleasePackage(enabledFlag, appleValidatorOptions(enabledFlag)),
+      (error) => error.code === "false_green_apple_feature_flags"
+    );
+
+    const configuredService = applePackageInput();
+    configuredService.audit.service_configuration.INTENT_BACKEND_BASE_URL = "configured";
+    assert.throws(
+      () => validateAppleReleasePackage(
+        configuredService,
+        appleValidatorOptions(configuredService)
+      ),
+      (error) => error.code === "false_green_apple_service_configuration"
+    );
+  });
+
   it("rejects contradictory privacy answers and hosted-draft claims", () => {
     const contradiction = applePackageInput();
     contradiction.privacyDeclaration.data_not_collected = true;
@@ -457,6 +476,50 @@ describe("Apple release evidence proof-integrity validator", () => {
       () => validateAppleReleasePackage(input, appleValidatorOptions(input)),
       (error) => error instanceof ReleasePackageValidationError &&
         error.code === fixture.expectedErrorCode
+    );
+
+    const distributionClaim = applePackageInput();
+    distributionClaim.audit.artifacts
+      .generic_iphoneos_release_build_diagnostic.distribution_claim = true;
+    assert.throws(
+      () => validateAppleReleasePackage(
+        distributionClaim,
+        appleValidatorOptions(distributionClaim)
+      ),
+      (error) => error.code === "generic_build_mislabeled_as_archive"
+    );
+
+    const signedDiagnostic = applePackageInput();
+    signedDiagnostic.audit.artifacts
+      .generic_iphoneos_release_build_diagnostic.code_signing_state = "signed";
+    assert.throws(
+      () => validateAppleReleasePackage(
+        signedDiagnostic,
+        appleValidatorOptions(signedDiagnostic)
+      ),
+      (error) => error.code === "generic_build_mislabeled_as_archive"
+    );
+
+    const staleManifestReceipt = applePackageInput();
+    staleManifestReceipt.manifest.current_stage_c_evidence
+      .non_archive_diagnostics[0].source_commit = "0".repeat(40);
+    assert.throws(
+      () => validateAppleReleasePackage(
+        staleManifestReceipt,
+        appleValidatorOptions(staleManifestReceipt)
+      ),
+      (error) => error.code === "unreconciled_generic_build_diagnostic"
+    );
+
+    const forgedManifestDistribution = applePackageInput();
+    forgedManifestDistribution.manifest.current_stage_c_evidence
+      .non_archive_diagnostics[0].distribution_claim = true;
+    assert.throws(
+      () => validateAppleReleasePackage(
+        forgedManifestDistribution,
+        appleValidatorOptions(forgedManifestDistribution)
+      ),
+      (error) => error.code === "unreconciled_generic_build_diagnostic"
     );
   });
 

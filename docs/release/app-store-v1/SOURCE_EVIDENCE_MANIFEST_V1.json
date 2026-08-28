@@ -163,7 +163,8 @@
         "source_commit": "21f8450c976252210edf03389dc1b682d2440450",
         "binary_sha256": "e4c3dca93001e83179f245bc5d5065ed7fa4bd73407f03f7e5c86a6e964b0489",
         "code_signing_state": "unsigned",
-        "archive_evidence": false
+        "archive_evidence": false,
+        "distribution_claim": false
       }
     ],
     "release_verifier": {
@@ -595,11 +596,11 @@
   "package_tooling_files": [
     {
       "path": "backend/src/operations/releasePackage.js",
-      "sha256": "b3dbd5a1cd0eb8ffcec4c21102ffad384fb18178f5bd16ffe25292964931f683"
+      "sha256": "07f56f1109df63a40eea6049287a60958bb04ea942875b348c4a85d0d5dc0fc2"
     },
     {
       "path": "backend/test/releasePackage.test.js",
-      "sha256": "d675367be528c56b08245ca90cb29956892f99d5cc5906cfcd2e3c854f65bc8a"
+      "sha256": "1c65ba59703384c8340b5acc9bad994e422834390071007720aeecac6119dc4e"
     },
     {
       "path": "backend/test/fixtures/releasePackageProofIntegrity.json",
