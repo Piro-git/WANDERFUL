@@ -32,9 +32,23 @@ BEGIN
             'trailmind_app_owner', 'trailmind_control_owner'
           )
           AND NOT membership.inherit_option
-          AND membership.set_option
+          AND NOT membership.set_option
           AND membership.admin_option
-     ) <> 2 OR NOT EXISTS (
+     ) <> 2 OR (
+       SELECT pg_catalog.count(*)
+         FROM pg_catalog.pg_auth_members membership
+         JOIN pg_catalog.pg_roles member ON member.oid = membership.member
+         JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
+        WHERE member.rolname = current_user
+          AND target.rolname IN (
+            'trailmind_app_owner', 'trailmind_control_owner'
+          )
+          AND NOT membership.inherit_option
+          AND membership.set_option
+          AND NOT membership.admin_option
+     ) <> 2 OR NOT pg_catalog.pg_has_role(
+       current_user, 'migration_role', 'SET'
+     ) OR NOT EXISTS (
        SELECT 1
          FROM pg_catalog.pg_namespace namespace
          JOIN pg_catalog.pg_roles owner ON owner.oid = namespace.nspowner
@@ -883,9 +897,9 @@ DROP TABLE trailmind_phase1_guard.shared_acl_snapshot;
 DROP SCHEMA trailmind_phase1_guard;
 
 -- Retain the exact PostgreSQL 17 managed CREATEROLE creator memberships.
--- The two NOLOGIN owners require SET for bounded owner transitions. All nine
--- operational roles retain only the automatic ADMIN bookkeeping grant with
--- INHERIT FALSE and SET FALSE, so postgres cannot assume those identities.
+-- Bootstrap ADMIN rows remain unchanged. Separate self-granted SET-only rows
+-- permit bounded transitions to the two owners and migration_role; postgres
+-- cannot assume any other operational identity.
 DO $foundation$
 BEGIN
   IF (
@@ -898,8 +912,20 @@ BEGIN
          'trailmind_app_owner', 'trailmind_control_owner'
        )
        AND NOT membership.inherit_option
-       AND membership.set_option
+       AND NOT membership.set_option
        AND membership.admin_option
+  ) <> 2 OR (
+    SELECT pg_catalog.count(*)
+      FROM pg_catalog.pg_auth_members membership
+      JOIN pg_catalog.pg_roles member ON member.oid = membership.member
+      JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
+     WHERE member.rolname = 'postgres'
+       AND target.rolname IN (
+         'trailmind_app_owner', 'trailmind_control_owner'
+       )
+       AND NOT membership.inherit_option
+       AND membership.set_option
+       AND NOT membership.admin_option
   ) <> 2 OR (
     SELECT pg_catalog.count(*)
       FROM pg_catalog.pg_auth_members membership
@@ -916,7 +942,17 @@ BEGIN
        AND NOT membership.inherit_option
        AND NOT membership.set_option
        AND membership.admin_option
-  ) <> 9 OR EXISTS (
+  ) <> 9 OR (
+    SELECT pg_catalog.count(*)
+      FROM pg_catalog.pg_auth_members membership
+      JOIN pg_catalog.pg_roles member ON member.oid = membership.member
+      JOIN pg_catalog.pg_roles target ON target.oid = membership.roleid
+     WHERE member.rolname = 'postgres'
+       AND target.rolname = 'migration_role'
+       AND NOT membership.inherit_option
+       AND membership.set_option
+       AND NOT membership.admin_option
+  ) <> 1 OR EXISTS (
     SELECT 1
       FROM pg_catalog.pg_auth_members membership
       JOIN pg_catalog.pg_roles member ON member.oid = membership.member
@@ -933,9 +969,10 @@ BEGIN
        AND NOT (
          (target.rolname IN (
            'trailmind_app_owner', 'trailmind_control_owner'
-         ) AND NOT membership.inherit_option
-           AND membership.set_option
-           AND membership.admin_option)
+         ) AND NOT membership.inherit_option AND (
+           (NOT membership.set_option AND membership.admin_option) OR
+           (membership.set_option AND NOT membership.admin_option)
+         ))
          OR
          (target.rolname = ANY(ARRAY[
            'platform_provisioner', 'migration_role', 'regional_import_role',
@@ -943,9 +980,11 @@ BEGIN
            'outdoor_research_runtime_role',
            'outdoor_research_cancellation_control_role', 'pruner_role',
            'readonly_auditor_role'
-         ]::text[]) AND NOT membership.inherit_option
-           AND NOT membership.set_option
-           AND membership.admin_option)
+         ]::text[]) AND NOT membership.inherit_option AND (
+           (NOT membership.set_option AND membership.admin_option) OR
+           (target.rolname = 'migration_role'
+             AND membership.set_option AND NOT membership.admin_option)
+         ))
        )
   ) THEN
     RAISE EXCEPTION USING

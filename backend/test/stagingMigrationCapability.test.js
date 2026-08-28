@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
@@ -31,6 +32,7 @@ describe("sealed Supabase V2 migration capability", () => {
   });
 
   it("is single-use, short-lived, identity-bound, and non-serializing", async () => {
+    const admittedMigrations = await readAdmittedMigrations();
     const context = issueStagingPhase1V2MigrationCapability({
       projectRef: "mbvzwsrtqcrwhvykugcd",
       policyId: policy.policyId,
@@ -42,6 +44,7 @@ describe("sealed Supabase V2 migration capability", () => {
     await assert.rejects(runMigrationPolicy({
       client: { query: async () => { calls.push("database"); throw new Error("stop"); } },
       migrationDirectory: "/disposable",
+      admittedMigrations,
       migrationPolicy: policy,
       operatorContext: context,
       migrationPurpose: "apply",
@@ -49,11 +52,12 @@ describe("sealed Supabase V2 migration capability", () => {
       fileRead: async () => "SELECT 1",
       now: () => fixedNow
     }), /stop/);
-    assert.equal(calls.filter((call) => call === "file").length, 8);
+    assert.equal(calls.filter((call) => call === "file").length, 0);
     const beforeReuse = calls.length;
     await assert.rejects(runMigrationPolicy({
       client: { query: async () => calls.push("database") },
       migrationDirectory: "/disposable",
+      admittedMigrations,
       migrationPolicy: policy,
       operatorContext: context,
       migrationPurpose: "apply",
@@ -72,6 +76,7 @@ describe("sealed Supabase V2 migration capability", () => {
     await assert.rejects(runMigrationPolicy({
       client: { query: async () => calls.push("database") },
       migrationDirectory: "/disposable",
+      admittedMigrations,
       migrationPolicy: policy,
       operatorContext: expired,
       migrationPurpose: "verify-noop",
@@ -79,6 +84,30 @@ describe("sealed Supabase V2 migration capability", () => {
       fileRead: async () => "SELECT 1",
       now: () => new Date(fixedNow.getTime() + 30_001)
     }), /operator_context_invalid/);
+  });
+
+  it("rejects admitted-byte mutation before database access", async () => {
+    const admittedMigrations = await readAdmittedMigrations();
+    admittedMigrations[0] = Object.freeze({
+      ...admittedMigrations[0],
+      sql: `${admittedMigrations[0].sql}\nSELECT 1;`
+    });
+    const calls = [];
+    const context = issueStagingPhase1V2MigrationCapability({
+      projectRef: "mbvzwsrtqcrwhvykugcd",
+      policyId: policy.policyId,
+      purpose: "apply",
+      now: () => fixedNow
+    });
+    await assert.rejects(runMigrationPolicy({
+      client: { query: async () => calls.push("database") },
+      migrationPolicy: policy,
+      admittedMigrations,
+      operatorContext: context,
+      migrationPurpose: "apply",
+      now: () => fixedNow
+    }), /admitted_migration_invalid/);
+    assert.deepEqual(calls, []);
   });
 
   it("rejects a purpose mismatch before filesystem or database access", async () => {
@@ -140,3 +169,17 @@ describe("sealed Supabase V2 migration capability", () => {
     assert.doesNotMatch(result.stderr, /postgres(?:ql)?:\/\//i);
   });
 });
+
+async function readAdmittedMigrations() {
+  return Promise.all(SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.map(
+    async (version) => {
+      const sql = await readFile(new URL(`../migrations/${version}`, import.meta.url),
+        "utf8");
+      return Object.freeze({
+        version,
+        sql,
+        sha256: createHash("sha256").update(sql, "utf8").digest("hex")
+      });
+    }
+  ));
+}

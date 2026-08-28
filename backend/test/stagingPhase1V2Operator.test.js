@@ -16,6 +16,9 @@ const aclDigest = canonicalAclDigest({
   public: ["PUBLIC=USAGE"]
 });
 const restorePlanDigest = "d".repeat(64);
+const authorizationBindingDigest = "a".repeat(64);
+const candidateCommit = "5".repeat(40);
+const operatorDigestsDigest = "b".repeat(64);
 const runtimeFunctions = [
   "trailmind_runtime_outdoor_research_snapshot_context_v1",
   "trailmind_runtime_outdoor_research_highlights_v1",
@@ -56,7 +59,7 @@ describe("staging Phase 1 V2 future operator state machine", () => {
       "control:post-advisors",
       "control:final",
       "database:final",
-      "receipt:persist"
+      "receipt:stage"
     ]);
     assert.equal(result.receipt.status, "committed");
     assert.equal(result.receipt.projectRef, STAGING_PHASE1_V2_TARGET.projectRef);
@@ -69,9 +72,9 @@ describe("staging Phase 1 V2 future operator state machine", () => {
       result.receipt.phaseEvidence.map(({ ordinal }) => ordinal),
       [1, 2, 3, 4, 5, 6, 7, 8, 9]
     );
-    assert.equal(result.persistence.ordinal, 10);
-    assert.equal(result.persistence.receiptDigest, result.receiptDigest);
-    assert.equal(result.persistence.receiptBytes, result.receiptBytes);
+    assert.equal(result.staging.ordinal, 10);
+    assert.equal(result.staging.receiptDigest, result.receiptDigest);
+    assert.equal(result.staging.receiptBytes, result.receiptBytes);
     assert.equal(result.receipt.featureFlagCount, 13);
     assert.equal(result.receipt.featureFlagsAllFalse, true);
     assert.equal(result.receipt.protectedProjectMutationCount, 0);
@@ -125,9 +128,9 @@ describe("staging Phase 1 V2 future operator state machine", () => {
   it("requires an independently supplied exact restore-plan digest", async () => {
     for (const approval of [
       {},
-      { providerAclRestorePlanDigest: "e".repeat(64) },
+      buildApproval({ providerAclRestorePlanDigest: "e".repeat(64) }),
       {
-        providerAclRestorePlanDigest: restorePlanDigest,
+        ...buildApproval(),
         restorePlanDigest: restorePlanDigest
       }
     ]) {
@@ -258,7 +261,7 @@ function fixture(events) {
   const databaseSnapshot = databasePreSnapshot();
   const state = {
     now: () => new Date(now),
-    approval: { providerAclRestorePlanDigest: restorePlanDigest },
+    approval: buildApproval(),
     failAt: undefined,
     controlPlane: {
       preSnapshot: controlSnapshot,
@@ -393,10 +396,10 @@ function fixture(events) {
       }
     },
     receiptStore: {
-      async persist({ receiptDigest, receiptBytes }) {
-        events.push("receipt:persist");
+      async stage({ receiptDigest, receiptBytes }) {
+        events.push("receipt:stage");
         if (state.failAt === "receipt") throw new Error("fixture");
-        return phase("sanitized-durable-receipt", 10, "persisted", {
+        return phase("sanitized-terminal-receipt-staging", 10, "staged", {
           receiptDigest,
           receiptBytes
         }, "c");
@@ -404,6 +407,16 @@ function fixture(events) {
     }
   };
   return state;
+}
+
+function buildApproval(overrides = {}) {
+  return {
+    authorizationBindingDigest,
+    candidateCommit,
+    operatorDigestsDigest,
+    providerAclRestorePlanDigest: restorePlanDigest,
+    ...overrides
+  };
 }
 
 function controlPlaneSnapshot() {

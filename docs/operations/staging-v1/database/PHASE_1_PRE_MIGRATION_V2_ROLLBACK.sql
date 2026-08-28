@@ -67,7 +67,7 @@ BEGIN
        'outdoor_research_cancellation_control_role', 'pruner_role',
        'readonly_auditor_role'
      ]::text[])
-  ) <> 13 OR EXISTS (
+  ) <> 16 OR EXISTS (
     SELECT 1
       FROM pg_catalog.pg_auth_members membership
       JOIN pg_catalog.pg_roles member ON member.oid = membership.member
@@ -93,10 +93,13 @@ BEGIN
             membership.admin_option) NOT IN (
          ('migration_role', 'trailmind_app_owner', false, true, false),
          ('trailmind_control_owner', 'pg_signal_backend', true, false, false),
-         ('postgres', 'trailmind_app_owner', false, true, true),
-         ('postgres', 'trailmind_control_owner', false, true, true),
+         ('postgres', 'trailmind_app_owner', false, false, true),
+         ('postgres', 'trailmind_app_owner', false, true, false),
+         ('postgres', 'trailmind_control_owner', false, false, true),
+         ('postgres', 'trailmind_control_owner', false, true, false),
          ('postgres', 'platform_provisioner', false, false, true),
          ('postgres', 'migration_role', false, false, true),
+         ('postgres', 'migration_role', false, true, false),
          ('postgres', 'regional_import_role', false, false, true),
          ('postgres', 'projection_role', false, false, true),
          ('postgres', 'app_security_runtime_role', false, false, true),
@@ -527,9 +530,10 @@ DROP TABLE trailmind_phase1_guard.shared_acl_principal_snapshot;
 DROP TABLE trailmind_phase1_guard.shared_acl_snapshot;
 DROP SCHEMA trailmind_phase1_guard;
 
-REVOKE trailmind_app_owner FROM migration_role;
-REVOKE trailmind_app_owner FROM CURRENT_USER;
-REVOKE trailmind_control_owner FROM CURRENT_USER;
+REVOKE trailmind_app_owner FROM migration_role GRANTED BY CURRENT_USER;
+REVOKE trailmind_app_owner FROM CURRENT_USER GRANTED BY CURRENT_USER;
+REVOKE trailmind_control_owner FROM CURRENT_USER GRANTED BY CURRENT_USER;
+REVOKE migration_role FROM CURRENT_USER GRANTED BY CURRENT_USER;
 DROP ROLE
   platform_provisioner,
   migration_role,

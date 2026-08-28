@@ -81,7 +81,7 @@ export async function runStagingPhase1V2Operator({
   requireDependency(executor, "commitPostStep", "post_step");
   requireDependency(executor, "compensatePreLedger", "compensation");
   requireDependency(containment, "securePostCommitFailure", "containment");
-  requireDependency(receiptStore, "persist", "receipt_store");
+  requireDependency(receiptStore, "stage", "receipt_store");
   assertApproval(approval);
 
   const observedAt = exactDate(now());
@@ -247,11 +247,14 @@ export async function runStagingPhase1V2Operator({
       );
       phaseEvidence.push(finalEvidence);
 
-      attemptedPhase = "durable-receipt";
+      attemptedPhase = "terminal-receipt-staging";
       assertUniquePhaseEvidence(phaseEvidence);
       const receiptPayload = deepFreeze({
         schemaVersion: 1,
         status: "committed",
+        authorizationBindingDigest: approval.authorizationBindingDigest,
+        candidateCommit: approval.candidateCommit,
+        operatorDigestsDigest: approval.operatorDigestsDigest,
         projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
         organizationId: STAGING_PHASE1_V2_TARGET.organizationId,
         region: STAGING_PHASE1_V2_TARGET.region,
@@ -275,23 +278,23 @@ export async function runStagingPhase1V2Operator({
         throw operatorError("durable_receipt_oversized");
       }
       const receiptDigest = canonicalAclDigest(receiptPayload);
-      const persisted = await receiptStore.persist({
+      const staged = await receiptStore.stage({
         receipt: receiptPayload,
         receiptDigest,
         receiptBytes
       });
-      assertPhaseEvidence(persisted, {
-        phase: "sanitized-durable-receipt",
+      assertPhaseEvidence(staged, {
+        phase: "sanitized-terminal-receipt-staging",
         ordinal: 10,
-        status: "persisted",
+        status: "staged",
         fields: { receiptDigest, receiptBytes }
       });
-      assertUniquePhaseEvidence([...phaseEvidence, persisted]);
+      assertUniquePhaseEvidence([...phaseEvidence, staged]);
       return deepFreeze({
         receipt: receiptPayload,
         receiptDigest,
         receiptBytes,
-        persistence: persisted
+        staging: staged
       });
     } catch (error) {
       return handleFailure({
@@ -669,8 +672,17 @@ function assertUniquePhaseEvidence(phases) {
 }
 
 function assertApproval(approval) {
-  assertExactKeys(approval, ["providerAclRestorePlanDigest"], "approval");
-  if (!isDigest(approval.providerAclRestorePlanDigest)) {
+  assertExactKeys(approval, [
+    "authorizationBindingDigest", "candidateCommit",
+    "operatorDigestsDigest", "providerAclRestorePlanDigest"
+  ], "approval");
+  if (
+    !isDigest(approval.providerAclRestorePlanDigest) ||
+    !isDigest(approval.authorizationBindingDigest) ||
+    !isDigest(approval.operatorDigestsDigest) ||
+    typeof approval.candidateCommit !== "string" ||
+    !/^[a-f0-9]{40}$/.test(approval.candidateCommit)
+  ) {
     invalid("approval_restore_plan_digest");
   }
 }

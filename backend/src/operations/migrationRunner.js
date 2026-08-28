@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { MIGRATION_POLICIES } from "./stagingMigrationPolicy.js";
@@ -11,6 +12,7 @@ const APPLICATION_SCHEMA = "trailmind_app";
 
 export async function runMigrationPolicy({
   client,
+  admittedMigrations,
   migrationDirectory,
   migrationPolicy,
   operatorContext,
@@ -43,14 +45,16 @@ export async function runMigrationPolicy({
     throw new Error("trailmind_historical_migration_context_forbidden");
   }
 
-  const migrationSql = new Map();
-  for (const version of migrations) {
-    const path = join(migrationDirectory, version);
-    await fileAccess(path);
-    migrationSql.set(version, await fileRead(path, "utf8"));
-  }
-
   if (migrationPolicy.policyId === "historical-portable-v1") {
+    if (admittedMigrations !== undefined) {
+      throw new Error("trailmind_historical_admitted_migrations_forbidden");
+    }
+    const migrationSql = new Map();
+    for (const version of migrations) {
+      const path = join(migrationDirectory, version);
+      await fileAccess(path);
+      migrationSql.set(version, await fileRead(path, "utf8"));
+    }
     return runHistoricalPortablePolicy({
       client,
       migrations,
@@ -58,17 +62,18 @@ export async function runMigrationPolicy({
       policyId: migrationPolicy.policyId
     });
   }
+  const migrationSql = admittedMigrationMap(admittedMigrations, migrations);
   const newlyApplied = [];
   let transactionOpen = false;
   try {
     await client.query("BEGIN");
     transactionOpen = true;
     await client.query("SET LOCAL statement_timeout = '30s'");
-    await client.query(
-      "SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('trailmind-phase-1-foundation', 0))"
-    );
-    await assertMigrationLogin(client);
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    await assertMigrationOperator(client);
     await assertIsolatedPostgisOwnership(client);
+    await client.query("SET LOCAL ROLE migration_role");
+    await assertMigrationRole(client);
     await client.query("SET LOCAL ROLE trailmind_app_owner");
     await client.query(
       "SET LOCAL search_path = trailmind_app, pg_catalog, trailmind_gis, pg_temp"
@@ -99,7 +104,11 @@ export async function runMigrationPolicy({
 
     for (let index = applied.rowCount; index < migrations.length; index += 1) {
       const version = migrations[index];
-      await client.query(migrationSql.get(version));
+      const admitted = migrationSql.get(version);
+      if (sha256(admitted.sql) !== admitted.sha256) {
+        throw new Error("trailmind_admitted_migration_mutated");
+      }
+      await client.query(admitted.sql);
       await client.query(
         `INSERT INTO trailmind_app.trailmind_schema_migrations (version)
          VALUES ($1)`,
@@ -110,6 +119,7 @@ export async function runMigrationPolicy({
 
     await client.query("COMMIT");
     transactionOpen = false;
+    await assertOperatorRoleRestored(client);
     return Object.freeze([...newlyApplied]);
   } catch (error) {
     if (transactionOpen) await client.query("ROLLBACK");
@@ -197,9 +207,9 @@ async function runHistoricalPortablePolicy({
   }
 }
 
-async function assertMigrationLogin(client) {
+async function assertMigrationOperator(client) {
   const result = await client.query(`
-    WITH RECURSIVE login AS (
+    WITH RECURSIVE migration AS (
       SELECT role_record.*
         FROM pg_catalog.pg_roles role_record
        WHERE role_record.rolname = '${MIGRATION_LOGIN_ROLE}'
@@ -208,17 +218,17 @@ async function assertMigrationLogin(client) {
              membership.inherit_option,
              membership.set_option,
              membership.admin_option
-        FROM login
+        FROM migration
         JOIN pg_catalog.pg_auth_members membership
-          ON membership.member = login.oid
+          ON membership.member = migration.oid
         JOIN pg_catalog.pg_roles target
           ON target.oid = membership.roleid
     ), reachable_membership(role_oid, path) AS (
       SELECT membership.roleid,
-             ARRAY[login.oid, membership.roleid]::oid[]
-        FROM login
+             ARRAY[migration.oid, membership.roleid]::oid[]
+        FROM migration
         JOIN pg_catalog.pg_auth_members membership
-          ON membership.member = login.oid
+          ON membership.member = migration.oid
       UNION ALL
       SELECT membership.roleid,
              reachable.path || membership.roleid
@@ -227,12 +237,16 @@ async function assertMigrationLogin(client) {
           ON membership.member = reachable.role_oid
        WHERE NOT membership.roleid = ANY(reachable.path)
     )
-    SELECT session_user = '${MIGRATION_LOGIN_ROLE}' AS exact_session,
-           current_user = '${MIGRATION_LOGIN_ROLE}' AS exact_current,
-           login.rolcanlogin AND NOT login.rolinherit AND NOT login.rolsuper
-             AND NOT login.rolcreatedb AND NOT login.rolcreaterole
-             AND NOT login.rolreplication AND NOT login.rolbypassrls
-             AS exact_login_attributes,
+    SELECT session_user = 'postgres' AS exact_session,
+           current_user = 'postgres' AS exact_current,
+           operator.rolcanlogin AND NOT operator.rolinherit
+             AND NOT operator.rolsuper AND NOT operator.rolcreatedb
+             AND operator.rolcreaterole AND NOT operator.rolreplication
+             AND NOT operator.rolbypassrls AS exact_operator_attributes,
+           NOT migration.rolcanlogin AND NOT migration.rolinherit
+             AND NOT migration.rolsuper AND NOT migration.rolcreatedb
+             AND NOT migration.rolcreaterole AND NOT migration.rolreplication
+             AND NOT migration.rolbypassrls AS exact_migration_attributes,
            NOT owner.rolcanlogin AND NOT owner.rolinherit AND NOT owner.rolsuper
              AND NOT owner.rolcreatedb AND NOT owner.rolcreaterole
              AND NOT owner.rolreplication AND NOT owner.rolbypassrls
@@ -264,6 +278,30 @@ async function assertMigrationLogin(client) {
            pg_catalog.pg_has_role(
              '${MIGRATION_LOGIN_ROLE}', '${APPLICATION_OWNER_ROLE}', 'SET'
            ) AS may_set_owner,
+           pg_catalog.pg_has_role(
+             session_user, '${MIGRATION_LOGIN_ROLE}', 'SET'
+           ) AS operator_may_set_migration,
+           pg_catalog.pg_has_role(
+             session_user, '${APPLICATION_OWNER_ROLE}', 'SET'
+           ) AS operator_may_set_owner,
+           EXISTS (
+             SELECT 1
+               FROM pg_catalog.pg_locks held
+              WHERE held.pid = pg_catalog.pg_backend_pid()
+                AND held.locktype = 'advisory'
+                AND held.granted
+                AND held.objsubid = 1
+                AND held.classid = (
+                  (pg_catalog.hashtextextended(
+                    'trailmind-phase-1-foundation', 0
+                  ) >> 32) & 4294967295
+                )::oid
+                AND held.objid = (
+                  pg_catalog.hashtextextended(
+                    'trailmind-phase-1-foundation', 0
+                  ) & 4294967295
+                )::oid
+           ) AS outer_session_lock_held,
            pg_catalog.has_schema_privilege(
              '${APPLICATION_OWNER_ROLE}', 'trailmind_gis', 'USAGE'
            ) AS owner_gis_usage,
@@ -278,7 +316,9 @@ async function assertMigrationLogin(client) {
               WHERE extension.extname = 'postgis'
                 AND extension_namespace.nspname = 'trailmind_gis'
            ) AS isolated_postgis
-      FROM login
+      FROM migration
+      JOIN pg_catalog.pg_roles operator
+        ON operator.rolname = session_user
       JOIN pg_catalog.pg_roles owner
         ON owner.rolname = '${APPLICATION_OWNER_ROLE}'
       JOIN pg_catalog.pg_namespace namespace
@@ -287,7 +327,24 @@ async function assertMigrationLogin(client) {
   if (
     result.rowCount !== 1 ||
     Object.values(result.rows[0]).some((value) => value !== true)
-  ) throw new Error("trailmind_migration_login_owner_contract_invalid");
+  ) throw new Error("trailmind_migration_operator_owner_contract_invalid");
+}
+
+async function assertMigrationRole(client) {
+  const result = await client.query(`
+    SELECT session_user = 'postgres' AS exact_session,
+           current_user = '${MIGRATION_LOGIN_ROLE}' AS exact_current,
+           NOT role_record.rolcanlogin AND NOT role_record.rolinherit
+             AND NOT role_record.rolsuper AND NOT role_record.rolcreatedb
+             AND NOT role_record.rolcreaterole AND NOT role_record.rolreplication
+             AND NOT role_record.rolbypassrls AS exact_attributes
+      FROM pg_catalog.pg_roles role_record
+     WHERE role_record.rolname = current_user
+  `);
+  if (
+    result.rowCount !== 1 ||
+    Object.values(result.rows[0]).some((value) => value !== true)
+  ) throw new Error("trailmind_migration_role_transition_invalid");
 }
 
 async function assertIsolatedPostgisOwnership(client) {
@@ -409,7 +466,7 @@ async function assertIsolatedPostgisOwnership(client) {
 
 async function assertApplicationOwner(client) {
   const result = await client.query(`
-    SELECT session_user = '${MIGRATION_LOGIN_ROLE}' AS exact_session,
+    SELECT session_user = 'postgres' AS exact_session,
            current_user = '${APPLICATION_OWNER_ROLE}' AS exact_current,
            pg_catalog.pg_get_userbyid(namespace.nspowner) =
              '${APPLICATION_OWNER_ROLE}' AS exact_schema_owner,
@@ -424,6 +481,17 @@ async function assertApplicationOwner(client) {
     result.rowCount !== 1 ||
     Object.values(result.rows[0]).some((value) => value !== true)
   ) throw new Error("trailmind_migration_owner_transition_invalid");
+}
+
+async function assertOperatorRoleRestored(client) {
+  const result = await client.query(`
+    SELECT session_user = 'postgres' AS exact_session,
+           current_user = 'postgres' AS exact_current
+  `);
+  if (
+    result.rowCount !== 1 ||
+    Object.values(result.rows[0]).some((value) => value !== true)
+  ) throw new Error("trailmind_migration_operator_reversion_invalid");
 }
 
 async function assertLedgerShape(client, schema, owner) {
@@ -489,4 +557,30 @@ function quoteIdentifier(value) {
     throw new Error("trailmind_migration_schema_identifier_invalid");
   }
   return `"${value}"`;
+}
+
+function admittedMigrationMap(admittedMigrations, expectedVersions) {
+  if (
+    !Array.isArray(admittedMigrations) ||
+    admittedMigrations.length !== expectedVersions.length
+  ) throw new Error("trailmind_admitted_migrations_required");
+  const result = new Map();
+  for (let index = 0; index < expectedVersions.length; index += 1) {
+    const admitted = admittedMigrations[index];
+    if (
+      !admitted || typeof admitted !== "object" || Array.isArray(admitted) ||
+      JSON.stringify(Object.keys(admitted).sort()) !==
+        JSON.stringify(["sha256", "sql", "version"]) ||
+      admitted.version !== expectedVersions[index] ||
+      typeof admitted.sql !== "string" || admitted.sql.length === 0 ||
+      !/^[a-f0-9]{64}$/.test(admitted.sha256) ||
+      sha256(admitted.sql) !== admitted.sha256
+    ) throw new Error("trailmind_admitted_migration_invalid");
+    result.set(admitted.version, Object.freeze({ ...admitted }));
+  }
+  return result;
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }

@@ -88,7 +88,7 @@ CREATE ROLE trailmind_control_owner
 CREATE ROLE platform_provisioner
   NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE migration_role
-  LOGIN PASSWORD NULL NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+  NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE regional_import_role
   LOGIN PASSWORD NULL NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE projection_role
@@ -105,25 +105,20 @@ CREATE ROLE pruner_role
 CREATE ROLE readonly_auditor_role
   LOGIN PASSWORD NULL NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 
--- PostgreSQL 17 gives a non-superuser CREATEROLE creator ADMIN but SET FALSE
--- on new roles. Supabase's managed postgres role therefore needs an explicit,
--- auditable SET grant before it can create schemas or transfer function
--- ownership to the two NOLOGIN owners.
-DO $foundation$
-BEGIN
-  EXECUTE pg_catalog.format(
-    'GRANT trailmind_app_owner TO %I WITH INHERIT FALSE, SET TRUE, ADMIN TRUE',
-    CURRENT_USER
-  );
-  EXECUTE pg_catalog.format(
-    'GRANT trailmind_control_owner TO %I WITH INHERIT FALSE, SET TRUE, ADMIN TRUE',
-    CURRENT_USER
-  );
-END
-$foundation$;
+-- PostgreSQL 17 gives a non-superuser CREATEROLE creator an immutable,
+-- bootstrap-granted ADMIN membership with INHERIT FALSE and SET FALSE.
+-- Trying to rewrite that row with ADMIN TRUE fails with SQLSTATE 0LP01.
+-- Keep it intact and add separate, explicitly self-granted SET-only rows for
+-- the three bounded identities that this one-session operator may assume.
+GRANT trailmind_app_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
+GRANT trailmind_control_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
+GRANT migration_role TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
 
 GRANT trailmind_app_owner TO migration_role
-  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE;
+  WITH INHERIT FALSE, SET TRUE, ADMIN FALSE GRANTED BY CURRENT_USER;
 GRANT pg_signal_backend TO trailmind_control_owner
   WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
 
