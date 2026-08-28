@@ -58,6 +58,9 @@ describe("outdoor evidence importer contract", () => {
     assert.match(source, /sourceChecksumVerifiedAt/);
     assert.match(source, /input_file_sha256/);
     assert.match(source, /geofabrik_regional_extract/);
+    assert.match(source, /outdoor-capacity-profiles/);
+    assert.match(source, /stagingProfileRegionDirectory/);
+    assert.match(source, /optionalStagingProfile/);
     assert.match(source, /acquisition_provenance/);
     assert.match(
       source,

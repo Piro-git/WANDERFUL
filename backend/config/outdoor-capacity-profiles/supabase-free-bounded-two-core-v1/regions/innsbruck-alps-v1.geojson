@@ -1,0 +1,24 @@
+{
+  "type": "Feature",
+  "properties": {
+    "regionId": "innsbruck-alps-v1",
+    "name": "Innsbruck–Nordkette refresh-safe lake-evidence core v1 staging coverage",
+    "boundaryNotice": "Partial Innsbruck–Nordkette coverage for Supabase Free staging capacity, including a narrow source-backed Natterersee verification corridor; excludes Seefeld, Fulpmes and Neustift and is not full pilot or Alps coverage"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [11.37, 47.335],
+        [11.43, 47.335],
+        [11.43, 47.23],
+        [11.37, 47.23],
+        [11.37, 47.2355],
+        [11.338, 47.2355],
+        [11.338, 47.239],
+        [11.37, 47.239],
+        [11.37, 47.335]
+      ]
+    ]
+  }
+}

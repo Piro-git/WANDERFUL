@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trailmind.local/schemas/supabase-free-capacity-proof-v1.schema.json",
+  "title": "TrailMind Supabase Free current-data capacity proof v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "proofKind",
+    "decision",
+    "proofDate",
+    "repository",
+    "containment",
+    "officialPolicy",
+    "software",
+    "sources",
+    "migrationPolicy",
+    "measurements",
+    "acceptedProfile",
+    "performance",
+    "backupRestore",
+    "verification"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "proofKind": { "const": "trailmind_supabase_free_current_data_capacity_v1" },
+    "decision": {
+      "enum": [
+        "BOTH_REGIONS_FIT",
+        "BOUNDED_TWO_REGION_PROFILE",
+        "ONE_REGION_ONLY",
+        "BLOCKED"
+      ]
+    },
+    "proofDate": { "type": "string", "format": "date" },
+    "repository": { "$ref": "#/$defs/object" },
+    "containment": { "$ref": "#/$defs/object" },
+    "officialPolicy": { "$ref": "#/$defs/object" },
+    "software": { "$ref": "#/$defs/object" },
+    "sources": {
+      "type": "array",
+      "minItems": 4,
+      "items": { "$ref": "#/$defs/object" }
+    },
+    "migrationPolicy": { "$ref": "#/$defs/object" },
+    "measurements": { "$ref": "#/$defs/object" },
+    "acceptedProfile": { "$ref": "#/$defs/object" },
+    "performance": { "$ref": "#/$defs/object" },
+    "backupRestore": { "$ref": "#/$defs/object" },
+    "verification": { "$ref": "#/$defs/object" }
+  },
+  "$defs": {
+    "object": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": true
+    }
+  }
+}

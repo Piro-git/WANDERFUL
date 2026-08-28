@@ -1,0 +1,535 @@
+{
+  "schemaVersion": 1,
+  "proofKind": "trailmind_supabase_free_current_data_capacity_v1",
+  "decision": "BOUNDED_TWO_REGION_PROFILE",
+  "proofDate": "2026-08-28",
+  "repository": {
+    "branch": "codex/supabase-free-capacity-v1",
+    "baselineCommit": "a36c646815f390b60df734147a78e82c8ef46dd1",
+    "fetchedOriginMain": "a36c646815f390b60df734147a78e82c8ef46dd1",
+    "isolatedWorktreeCleanBeforeMeasurement": true,
+    "equivalentCurrentVolumeProofFound": false,
+    "overlappingActiveTaskFound": false
+  },
+  "containment": {
+    "remoteSupabaseContact": false,
+    "remoteSupabaseMutation": false,
+    "credentialAccess": false,
+    "configurationLocalXcconfigAccess": false,
+    "graphHopperCallCount": 0,
+    "aiProviderCallCount": 0,
+    "publicOverpassCallCount": 0,
+    "competitorScrapeCount": 0,
+    "loopbackOnlyPostgresql": true,
+    "disposableClustersStopped": true,
+    "disposableListenersRemaining": 0,
+    "taskOwnedDownloadsDumpsLogsAndClustersRemoved": true,
+    "initialFreeSpaceReadingsKiB": [15376156, 15373052],
+    "initialFreeSpaceGateKiB": 12582912,
+    "initialPostgresqlImportXcodeConflictFound": false,
+    "ports": [55432, 55433]
+  },
+  "officialPolicy": {
+    "checkedOn": "2026-08-28",
+    "databaseSizeDocumentation": "https://supabase.com/docs/guides/platform/database-size",
+    "databaseSizeDocumentationSnapshotSha256": "bee29c02ecd2233cfd403d4af0d24c981020e5633f750b08c10ab6a12e6cd984",
+    "changelog": "https://supabase.com/changelog",
+    "changelogSnapshotSha256": "49b064520ad70f592ea4ffc25f456fcc981404dc925f0c499e21438719a07163",
+    "verifiedFacts": {
+      "freeReadOnlyDatabaseSizeBytes": 500000000,
+      "newProjectBaselineRangeBytes": [40000000, 60000000],
+      "databaseSizeIsDistinctFromDiskAndWal": true,
+      "extensionVersionPinningDeprecatedEffective": "2026-08-05",
+      "postgresql17CurrentDefaultConfirmed": true
+    },
+    "capacityPolicy": {
+      "hardPlanCeilingBytes": 500000000,
+      "settledOperatingTargetBytes": 400000000,
+      "requiredHardCeilingHeadroomBytes": 100000000,
+      "conservativeManagedBaselineBytes": 60000000,
+      "observedRemoteBaselineBytesUserSupplied": 11700000,
+      "localEmptyBaselineBytes": 7804595,
+      "managedEquivalentFormula": "local_pg_database_size - 7804595 + 60000000"
+    }
+  },
+  "software": {
+    "postgresql": "17.10",
+    "postgis": "3.6.4",
+    "postgisFullVersion": "POSTGIS=3.6.4 94d984b; PGSQL=170; GEOS=3.14.1-CAPI-1.20.5; PROJ=9.8.1; NETWORK_ENABLED=OFF; LIBXML=2.15.3; LIBJSON=0.19",
+    "osm2pgsql": "2.3.1",
+    "osmium": "1.19.1",
+    "node": "22.22.3",
+    "npm": "10.9.8",
+    "supautils": {
+      "version": "3.4.0",
+      "commit": "7e8cfb7ec62a674a7bb28cbbf78b9612838b8468",
+      "dylibSha256": "9c84350571d6893b8ed439603004fef371b1224c862b89d025c195e09464014d"
+    }
+  },
+  "sources": [
+    {
+      "id": "niedersachsen",
+      "publisher": "Geofabrik",
+      "url": "https://download.geofabrik.de/europe/germany/niedersachsen-latest.osm.pbf",
+      "sourceDataTimestamp": "2026-08-26T20:22:15Z",
+      "replicationSequence": 4883,
+      "bytes": 503254893,
+      "publishedMd5": "9ea0580046ace0ad27104a3b7fdac871",
+      "publishedMd5Verified": true,
+      "sha256": "6029c847b32e6402195c9acf51791a32da763cf4daed50fe128a9ce830c42654"
+    },
+    {
+      "id": "sachsen-anhalt",
+      "publisher": "Geofabrik",
+      "url": "https://download.geofabrik.de/europe/germany/sachsen-anhalt-latest.osm.pbf",
+      "sourceDataTimestamp": "2026-08-26T20:22:15Z",
+      "replicationSequence": 4884,
+      "bytes": 173790914,
+      "publishedMd5": "d997d174c51b07744cb5326378923be2",
+      "publishedMd5Verified": true,
+      "sha256": "45abfb5fa16892c91e79f137b084e7ea21b5eef60ea8efba7eca29c2bdd2d381"
+    },
+    {
+      "id": "thueringen",
+      "publisher": "Geofabrik",
+      "url": "https://download.geofabrik.de/europe/germany/thueringen-latest.osm.pbf",
+      "sourceDataTimestamp": "2026-08-26T20:22:15Z",
+      "replicationSequence": 4885,
+      "bytes": 159236450,
+      "publishedMd5": "389fc279ac94e3a3e62a6d01ff6a9f19",
+      "publishedMd5Verified": true,
+      "sha256": "a5b0e226d4f3c698879cce214840648ce1d98c1f083155dfb16ae0ae46ea0ac5"
+    },
+    {
+      "id": "austria",
+      "publisher": "Geofabrik",
+      "url": "https://download.geofabrik.de/europe/austria-latest.osm.pbf",
+      "sourceDataTimestamp": "2026-08-26T20:22:15Z",
+      "replicationSequence": 4891,
+      "bytes": 808333364,
+      "publishedMd5": "3893c70121a683be3aaea68cac673b0c",
+      "publishedMd5Verified": true,
+      "sha256": "91ef35acbdb50e0c02ce0a3ac2e755145144f806d397480157767b53b1525cf8"
+    }
+  ],
+  "migrationPolicy": {
+    "id": "supabase-postgis-isolation-v2",
+    "historical008Applied": false,
+    "exactBytesApplied": true,
+    "firstRunAppliedCount": 9,
+    "secondRunAppliedCount": 0,
+    "secondRunStdoutBytes": 0,
+    "secondRunStderrBytes": 0,
+    "files": [
+      { "name": "001_app_attest.sql", "sha256": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16" },
+      { "name": "002_outdoor_evidence.sql", "sha256": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d" },
+      { "name": "003_outdoor_research_graph.sql", "sha256": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928" },
+      { "name": "004_osm_outdoor_research_projection.sql", "sha256": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3" },
+      { "name": "005_outdoor_research_projection_geometry.sql", "sha256": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8" },
+      { "name": "006_outdoor_route_membership_point_index.sql", "sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4" },
+      { "name": "007_routable_highlight_access_geography_index.sql", "sha256": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7" },
+      { "name": "009_supabase_postgis_isolated_runtime_read_contract.sql", "sha256": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294" },
+      { "name": "010_bounded_outdoor_import_schema_provisioning.sql", "sha256": "62f23c605654fc3e58661646d376bf68cca8e95c0e9354dc9da6d77c765ef467" }
+    ],
+    "excludedHistorical008Sha256": "e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32"
+  },
+  "measurements": {
+    "databaseStages": [
+      {
+        "stage": "empty_supabase_equivalent_system_and_postgis_baseline",
+        "localBytes": 7804595,
+        "managedEquivalentBytes": 60000000
+      },
+      {
+        "stage": "migrations_and_postgis_before_outdoor_data",
+        "localBytes": 18699955,
+        "incrementOverLocalEmptyBytes": 10895360,
+        "managedEquivalentBytes": 70895360
+      },
+      {
+        "stage": "full_harz_active_projection_settled_after_vacuum_analyze",
+        "localBytes": 1055987379,
+        "managedEquivalentBytes": 1108182784,
+        "importPeakBytes": 462722739,
+        "dryProjectionPeakBytes": 1030829747,
+        "activeProjectionPeakBytes": 1959409331,
+        "deadTuplesAfter": 0,
+        "fitsHardCeiling": false
+      },
+      {
+        "stage": "full_innsbruck_active_projection_settled_after_vacuum_analyze",
+        "localBytes": 576345779,
+        "managedEquivalentBytes": 628541184,
+        "importPeakBytes": 293090995,
+        "dryProjectionPeakBytes": 582129331,
+        "activeProjectionPeakBytes": 1073338035,
+        "deadTuplesAfter": 0,
+        "fitsHardCeiling": false
+      },
+      {
+        "stage": "full_harz_plus_full_innsbruck_settled_after_vacuum_analyze",
+        "localBytes": 1615787699,
+        "managedEquivalentBytes": 1667983104,
+        "activeProjectionPeakBytes": 2112452275,
+        "deadTuplesAfter": 0,
+        "fitsHardCeiling": false
+      },
+      {
+        "stage": "bounded_two_core_initial_generation_import_settled",
+        "localBytes": 34543283,
+        "managedEquivalentBytes": 86738688,
+        "transientPeakBytes": 62953139
+      },
+      {
+        "stage": "bounded_two_core_initial_generation_active_projection_settled",
+        "localBytes": 172078771,
+        "managedEquivalentBytes": 224274176,
+        "dryProjectionPeakBytes": 129382067
+      },
+      {
+        "stage": "bounded_two_core_retained_refresh_imports_settled",
+        "localBytes": 187152051,
+        "managedEquivalentBytes": 239347456,
+        "transientPeakBytes": 215873203
+      },
+      {
+        "stage": "bounded_two_core_retained_refresh_projection_peak",
+        "localBytes": 400864947,
+        "managedEquivalentBytes": 453060352,
+        "hardCeilingHeadroomBytes": 46939648
+      },
+      {
+        "stage": "bounded_two_core_retained_refresh_settled_before_maintenance",
+        "localBytes": 303167155,
+        "managedEquivalentBytes": 355362560,
+        "deadTuples": 28
+      },
+      {
+        "stage": "bounded_two_core_retained_refresh_settled_after_vacuum_analyze",
+        "localBytes": 303462067,
+        "managedEquivalentBytes": 355657472,
+        "observedRemoteBaselineEquivalentBytes": 307357472,
+        "settledOperatingTargetHeadroomBytes": 44342528,
+        "hardCeilingHeadroomBytes": 144342528,
+        "deadTuples": 0
+      }
+    ],
+    "rejectedProfiles": [
+      {
+        "profile": "full-harz-only",
+        "reason": "Harz alone exceeds the hard ceiling before another region is added",
+        "localSettledBytes": 1055987379
+      },
+      {
+        "profile": "full-innsbruck-only",
+        "reason": "Innsbruck alone exceeds the hard ceiling",
+        "localSettledBytes": 576345779
+      },
+      {
+        "profile": "full-harz-plus-bounded-innsbruck",
+        "reason": "Rejected by monotonic lower bound because full Harz alone exceeds the hard ceiling"
+      },
+      {
+        "profile": "broad-bounded-harz-plus-broad-bounded-innsbruck",
+        "reason": "Settled managed-equivalent size exceeds the 400 MB operating target and transient projection exceeds the 500 MB hard ceiling",
+        "localSettledBytes": 436360883,
+        "managedEquivalentSettledBytes": 488556288,
+        "localTransientPeakBytes": 670660275,
+        "managedEquivalentTransientPeakBytes": 722855680
+      }
+    ],
+    "fullProfileCounts": {
+      "harz-v1": {
+        "poiByCategory": { "lake": 92, "peak": 1878, "viewpoint": 923, "waterfall": 54, "wildernessHut": 2 },
+        "trails": 141197,
+        "trailsWithSurface": 87100,
+        "trailsWithVisibility": 4348,
+        "trailsWithSacScale": 4085,
+        "trailsWithAccessState": 26813,
+        "hikingRouteRelations": 887,
+        "routeMemberships": 29684,
+        "projectionEntities": 145033,
+        "projectionAssertions": 167999,
+        "projectionRelationships": 29467
+      },
+      "innsbruck-alps-v1": {
+        "poiByCategory": { "alpineHut": 99, "lake": 70, "peak": 958, "viewpoint": 310, "waterfall": 178, "wildernessHut": 14 },
+        "trails": 74982,
+        "trailsWithSurface": 36189,
+        "trailsWithVisibility": 2597,
+        "trailsWithSacScale": 6608,
+        "trailsWithAccessState": 7813,
+        "hikingRouteRelations": 500,
+        "routeMemberships": 7826,
+        "projectionEntities": 77111,
+        "projectionAssertions": 91840,
+        "projectionRelationships": 7804
+      }
+    },
+    "fullCombinedLargestTablesBytes": [
+      { "table": "outdoor_research_projection_assertions", "totalBytes": 423993344 },
+      { "table": "outdoor_research_projection_entities", "totalBytes": 422420480, "toastBytes": 6823936 },
+      { "table": "outdoor_research_assertions", "totalBytes": 210911232 },
+      { "table": "outdoor_evidence_trail_segments", "totalBytes": 159334400 },
+      { "table": "outdoor_research_source_entities", "totalBytes": 115523584 },
+      { "table": "outdoor_research_entities", "totalBytes": 95428608 },
+      { "table": "outdoor_research_projection_relationships", "totalBytes": 72359936 },
+      { "table": "outdoor_research_osm_entity_identities", "totalBytes": 65470464 }
+    ]
+  },
+  "acceptedProfile": {
+    "profileId": "supabase-free-bounded-two-core-v1",
+    "deploymentClass": "staging-only-capacity-profile",
+    "recommendForLaterAuthorizedRemoteProvisioning": true,
+    "fullHarzCoverage": false,
+    "fullInnsbruckPilotCoverage": false,
+    "retainedGenerationPolicy": "one active plus one superseded generation per region; remove or archive the oldest generation through a separately reviewed operation before a third refresh, or upgrade",
+    "thirdRetainedGenerationSupportedOnFree": false,
+    "profileFiles": {
+      "profile.json": "ea3f612b46e8d70bf3b5a76da96c8ec2ee7aac3b5a581e2e2790ceadc37c241e",
+      "regions/harz-v1.json": "769dc6a3129a4c383906057cd847a9eab7995851008d57c9fc76d959b7ca4e2d",
+      "regions/harz-v1.geojson": "c46667a05623c1a17b7d8e357f299341109de20b3dbb83c612eb7ecf53319e64",
+      "regions/innsbruck-alps-v1.json": "46d7d909f3a953a63fee8e3105d5c7828908d9fef306f631af3aebb54fca604e",
+      "regions/innsbruck-alps-v1.geojson": "54ac412f3cae5ad27a0376996eeb8742cda8d12fa92edf473df13d41a2f6ebe0",
+      "projection-temporary-workspace.sql": "e83dc88b029024eb5a00d2377b9a90c79cbf87a9de81ba741750486c49ea8841"
+    },
+    "derivedInputs": {
+      "fullCurrentHarz": {
+        "bytes": 40465234,
+        "sha256": "471d5c485e885c2eaecff3b9b60df8bc27b46cf823c47275d47d1ccbfa1b0e83",
+        "nodes": 3783038,
+        "ways": 563449,
+        "relations": 8247
+      },
+      "fullCurrentInnsbruck": {
+        "bytes": 24500212,
+        "sha256": "b7211fcf9225fa1ba45a9405fceab0dd5426316a86ade9a78bbf28622f5d464d",
+        "nodes": 2476813,
+        "ways": 246211,
+        "relations": 4577
+      },
+      "boundedHarz": {
+        "bytes": 1954850,
+        "sha256": "311dd2ecf8ab9a5914e1b7aedf15293625eba5eb974526001e60f772a17b6c48",
+        "nodes": 150208,
+        "ways": 15705,
+        "relations": 643
+      },
+      "boundedInnsbruck": {
+        "bytes": 4091030,
+        "sha256": "52710471231f661ea3c5eb6d1df75e01f02eebb2a3445b1922025539468046f7",
+        "nodes": 259457,
+        "ways": 39536,
+        "relations": 1087
+      },
+      "extractionStrategy": "osmium extract --strategy complete_ways using the tracked EPSG:4326 profile polygons"
+    },
+    "regions": {
+      "harz-v1": {
+        "truthfulName": "Harz refresh-safe and hut-evidence core v1 (staging only; partial Harz coverage)",
+        "bboxLonLat": [10.31, 51.528, 10.72, 51.88],
+        "srid": 4326,
+        "metricSrid": 25832,
+        "requiredAnchors": ["Ilsenburg", "Schierke", "Brocken"],
+        "excludedNamedCoverage": ["Bad Harzburg", "Wernigerode"],
+        "activeImportId": "9cd676ff-28a2-45c5-bd8f-91df0fbd29d5",
+        "activeProjectionRunId": "247666fc-1c30-4997-9363-2d5d4ee44edc",
+        "activeInputSha256": "311dd2ecf8ab9a5914e1b7aedf15293625eba5eb974526001e60f772a17b6c48",
+        "poiByCategory": { "lake": 1, "peak": 141, "viewpoint": 96, "waterfall": 12, "wildernessHut": 1 },
+        "trails": 5405,
+        "trailsWithSurface": 4418,
+        "trailsWithVisibility": 622,
+        "trailsWithSacScale": 649,
+        "trailsWithAccessState": 2095,
+        "hikingRouteRelations": 114,
+        "routeMemberships": 2214,
+        "projectionEntities": 5770,
+        "projectionAssertions": 7956,
+        "projectionRelationships": 2132,
+        "quarantines": 0,
+        "retentionPercentOfFull": { "pois": 8.51, "trails": 3.83, "relations": 12.85, "memberships": 7.46, "entities": 3.98, "assertions": 4.74, "relationships": 7.24 }
+      },
+      "innsbruck-alps-v1": {
+        "truthfulName": "Innsbruck–Nordkette refresh-safe lake-evidence core v1 (staging only; partial pilot coverage)",
+        "bboxLonLat": [11.338, 47.23, 11.43, 47.335],
+        "srid": 4326,
+        "metricSrid": 25832,
+        "requiredAnchors": ["Innsbruck", "Nordkette"],
+        "excludedNamedCoverage": ["Seefeld in Tirol", "Fulpmes", "Neustift im Stubaital"],
+        "activeImportId": "af6ace1b-4807-43d3-8480-8085526fa5cb",
+        "activeProjectionRunId": "bbee2ed0-4a83-40c6-b8d1-f22974d57973",
+        "activeInputSha256": "52710471231f661ea3c5eb6d1df75e01f02eebb2a3445b1922025539468046f7",
+        "poiByCategory": { "alpineHut": 1, "lake": 1, "peak": 18, "viewpoint": 39, "waterfall": 7, "wildernessHut": 1 },
+        "trails": 15592,
+        "trailsWithSurface": 10140,
+        "trailsWithVisibility": 310,
+        "trailsWithSacScale": 620,
+        "trailsWithAccessState": 2232,
+        "hikingRouteRelations": 42,
+        "routeMemberships": 650,
+        "projectionEntities": 15701,
+        "projectionAssertions": 18150,
+        "projectionRelationships": 643,
+        "quarantines": 0,
+        "retentionPercentOfFull": { "pois": 4.11, "trails": 20.79, "relations": 8.4, "memberships": 8.31, "entities": 20.36, "assertions": 19.76, "relationships": 8.24 }
+      }
+    },
+    "regionalPolygonsOverlap": false,
+    "activeImports": 2,
+    "supersededImports": 2,
+    "activeProjectionRuns": 2,
+    "supersededProjectionRuns": 2,
+    "allGenerationCounts": {
+      "importPois": 636,
+      "importTrails": 41994,
+      "importRelations": 312,
+      "importMemberships": 5728,
+      "projectionEntities": 42942,
+      "projectionAssertions": 52212,
+      "projectionRelationships": 5550,
+      "canonicalEntities": 21471,
+      "canonicalAssertions": 52212,
+      "canonicalRelationships": 5550,
+      "sourceEntityLinks": 21471,
+      "quarantines": 0
+    },
+    "repeatBehavior": {
+      "sameActiveImportDryRuns": "unchanged",
+      "sameActiveProjectionRuns": "unchanged",
+      "secondCurrentSourceGenerationCountsMatched": true,
+      "secondCurrentSourceGenerationDigestsMatched": true
+    },
+    "leaseAndRuntimeBoundary": {
+      "projectionRoleTemporary": true,
+      "projectionRolePersistentCreate": false,
+      "runtimeBaseTableAccess": false,
+      "runtimeSecurityDefinerFunctions": 5,
+      "rlsPolicies": 48,
+      "targetRestrictedCancellation": true,
+      "directPgCancelDenied": true,
+      "timeoutRollbackPreservedCounts": true
+    },
+    "catalog": {
+      "databaseBytes": 303462067,
+      "schemaTotalsBytes": {
+        "trailmind_app": 284966912,
+        "pg_catalog": 12206080,
+        "trailmind_gis": 7315456,
+        "information_schema": 253952
+      },
+      "tables": [
+        { "name": "outdoor_research_projection_assertions", "heapBytes": 71286784, "indexBytes": 14106624, "toastBytes": 8192, "totalBytes": 85450752 },
+        { "name": "outdoor_research_projection_entities", "heapBytes": 63938560, "indexBytes": 16474112, "toastBytes": 794624, "totalBytes": 81248256 },
+        { "name": "outdoor_research_assertions", "heapBytes": 15212544, "indexBytes": 25608192, "toastBytes": 8192, "totalBytes": 40861696 },
+        { "name": "outdoor_evidence_trail_segments", "heapBytes": 17391616, "indexBytes": 10592256, "toastBytes": 98304, "totalBytes": 28114944 },
+        { "name": "outdoor_research_entities", "heapBytes": 10002432, "indexBytes": 5390336, "toastBytes": 8192, "totalBytes": 15433728 },
+        { "name": "outdoor_research_source_entities", "heapBytes": 3465216, "indexBytes": 7585792, "toastBytes": 8192, "totalBytes": 11091968 },
+        { "name": "outdoor_research_projection_relationships", "heapBytes": 9093120, "indexBytes": 1720320, "toastBytes": 8192, "totalBytes": 10854400 },
+        { "name": "trailmind_gis.spatial_ref_sys", "heapBytes": 7061504, "indexBytes": 212992, "toastBytes": 8192, "totalBytes": 7315456 },
+        { "name": "outdoor_research_osm_entity_identities", "heapBytes": 2514944, "indexBytes": 3596288, "toastBytes": 8192, "totalBytes": 6152192 },
+        { "name": "outdoor_research_relationships", "heapBytes": 1228800, "indexBytes": 1015808, "toastBytes": 8192, "totalBytes": 2285568 },
+        { "name": "outdoor_evidence_hiking_relation_members", "heapBytes": 598016, "indexBytes": 966656, "toastBytes": 8192, "totalBytes": 1605632 },
+        { "name": "outdoor_evidence_pois", "heapBytes": 139264, "indexBytes": 147456, "toastBytes": 8192, "totalBytes": 327680 },
+        { "name": "outdoor_evidence_hiking_relations", "heapBytes": 65536, "indexBytes": 98304, "toastBytes": 8192, "totalBytes": 204800 },
+        { "name": "outdoor_research_projection_runs", "heapBytes": 16384, "indexBytes": 65536, "toastBytes": 8192, "totalBytes": 122880 },
+        { "name": "outdoor_evidence_imports", "heapBytes": 8192, "indexBytes": 65536, "toastBytes": 8192, "totalBytes": 114688 },
+        { "name": "outdoor_import_schema_leases", "heapBytes": 8192, "indexBytes": 65536, "toastBytes": 8192, "totalBytes": 114688 },
+        { "name": "outdoor_research_source_policies", "heapBytes": 8192, "indexBytes": 65536, "toastBytes": 8192, "totalBytes": 114688 },
+        { "name": "outdoor_research_sources", "heapBytes": 8192, "indexBytes": 65536, "toastBytes": 8192, "totalBytes": 114688 },
+        { "name": "outdoor_evidence_regions", "heapBytes": 8192, "indexBytes": 49152, "toastBytes": 8192, "totalBytes": 98304 },
+        { "name": "outdoor_research_source_authority_scopes", "heapBytes": 8192, "indexBytes": 49152, "toastBytes": 8192, "totalBytes": 98304 },
+        { "name": "outdoor_research_source_policy_relationship_scopes", "heapBytes": 8192, "indexBytes": 49152, "toastBytes": 8192, "totalBytes": 98304 },
+        { "name": "outdoor_research_source_policy_scopes", "heapBytes": 8192, "indexBytes": 49152, "toastBytes": 8192, "totalBytes": 98304 },
+        { "name": "trailmind_schema_migrations", "heapBytes": 8192, "indexBytes": 16384, "toastBytes": 8192, "totalBytes": 65536 },
+        { "name": "outdoor_research_observations", "heapBytes": 0, "indexBytes": 40960, "toastBytes": 8192, "totalBytes": 49152 },
+        { "name": "outdoor_research_derived_features", "heapBytes": 0, "indexBytes": 32768, "toastBytes": 8192, "totalBytes": 40960 },
+        { "name": "outdoor_research_entity_aliases", "heapBytes": 0, "indexBytes": 24576, "toastBytes": 8192, "totalBytes": 32768 },
+        { "name": "outdoor_research_projection_quarantines", "heapBytes": 0, "indexBytes": 24576, "toastBytes": 8192, "totalBytes": 32768 },
+        { "name": "app_attest_challenges", "heapBytes": 0, "indexBytes": 16384, "toastBytes": 8192, "totalBytes": 24576 },
+        { "name": "app_attest_keys", "heapBytes": 0, "indexBytes": 16384, "toastBytes": 8192, "totalBytes": 24576 },
+        { "name": "app_attest_provider_leases", "heapBytes": 0, "indexBytes": 16384, "toastBytes": 8192, "totalBytes": 24576 },
+        { "name": "app_attest_rate_windows", "heapBytes": 0, "indexBytes": 16384, "toastBytes": 8192, "totalBytes": 24576 },
+        { "name": "app_attest_route_sessions", "heapBytes": 0, "indexBytes": 16384, "toastBytes": 8192, "totalBytes": 24576 },
+        { "name": "app_attest_request_ids", "heapBytes": 0, "indexBytes": 8192, "toastBytes": 8192, "totalBytes": 16384 }
+      ],
+      "largestIndexes": [
+        { "name": "outdoor_research_assertions_source_id_provenance_identifier_key", "bytes": 11485184 },
+        { "name": "outdoor_research_assertions_source_provenance_idx", "bytes": 8863744 },
+        { "name": "outdoor_research_projection_assertions_lookup_idx", "bytes": 6012928 },
+        { "name": "outdoor_research_projection_a_projection_run_id_entity_id_p_key", "bytes": 4751360 },
+        { "name": "outdoor_research_projection_entities_identity_idx", "bytes": 4145152 },
+        { "name": "outdoor_evidence_trail_segments_identity_region_idx", "bytes": 3694592 },
+        { "name": "outdoor_research_projection_assertions_pkey", "bytes": 3342336 },
+        { "name": "outdoor_research_projection_e_projection_run_id_osm_type_os_key", "bytes": 2981888 },
+        { "name": "outdoor_research_assertions_current_lookup_idx", "bytes": 2924544 },
+        { "name": "outdoor_research_projection_entities_pkey", "bytes": 2883584 },
+        { "name": "outdoor_research_projection_entities_trail_geography_gist_idx", "bytes": 2826240 },
+        { "name": "outdoor_evidence_trail_segments_pkey", "bytes": 2752512 },
+        { "name": "outdoor_research_assertions_pkey", "bytes": 2318336 },
+        { "name": "outdoor_research_entities_category_lifecycle_idx", "bytes": 2203648 },
+        { "name": "outdoor_research_source_entit_entity_id_source_id_external__key", "bytes": 1933312 },
+        { "name": "outdoor_research_entities_geometry_gist_idx", "bytes": 1916928 },
+        { "name": "outdoor_research_projection_entities_geometry_gist_idx", "bytes": 1892352 },
+        { "name": "outdoor_evidence_trail_segments_geom_gist_idx", "bytes": 1867776 },
+        { "name": "outdoor_evidence_trail_segments_geom_metric_gist_idx", "bytes": 1818624 },
+        { "name": "outdoor_research_projection_entities_trail_point_gist_idx", "bytes": 1744896 }
+      ]
+    }
+  },
+  "performance": {
+    "samples": ["Brocken", "Ilsenburg", "Schierke", "Innsbruck", "Nordkette"],
+    "measurementRunsPerSampleAfterWarmup": 5,
+    "thresholdsMs": { "membershipP95": 1500, "routableAccessP95": 1500, "corridorP95": 2500 },
+    "completeSuiteRunP95Ms": {
+      "membership": { "Brocken": 168.8, "Ilsenburg": 151.5, "Schierke": 151.2, "Innsbruck": 126.6, "Nordkette": 131.9 },
+      "routableAccess": { "Brocken": 103.1, "Ilsenburg": 108.4, "Schierke": 98.7, "Innsbruck": 101.4, "Nordkette": 104.1 },
+      "corridor": { "Brocken": 3.3, "Ilsenburg": 4.7, "Schierke": 4.2, "Innsbruck": 5.4, "Nordkette": 3.4 }
+    },
+    "requiredIndexesObserved": [
+      "outdoor_research_projection_relationships_subject_idx",
+      "outdoor_research_projection_entities_trail_point_gist_idx",
+      "outdoor_research_projection_entities_trail_geography_gist_idx",
+      "outdoor_evidence_regions_boundary_gist_idx",
+      "outdoor_evidence_trail_segments_geom_metric_gist_idx",
+      "outdoor_evidence_pois_geom_metric_gist_idx"
+    ],
+    "explainAnalyzeBuffersUsed": true,
+    "representativeResearchDossiers": ["Brocken", "Innsbruck"],
+    "candidatePlansReadyOrPartialWithThreeProposals": true,
+    "providerRoutingCallCount": 0
+  },
+  "backupRestore": {
+    "format": "pg_dump custom zstd level 9",
+    "compressedBackupBytes": 25082690,
+    "compressedBackupSha256": "cd9ace551eb384ac6f6fb5a654ed6a1127ee608ad262668fd5b8ea62dce6b007",
+    "compressionUsedForQuotaClaim": false,
+    "sourceDatabaseBytes": 303462067,
+    "restoredDatabaseBytesBeforeAnalyzeVacuum": 278435507,
+    "restoredDatabaseBytesAfterAnalyzeVacuum": 277952179,
+    "sourceRowCountDigest": "f68852d66a3d2210a183f0aaa6fb2b5d",
+    "restoredRowCountDigest": "f68852d66a3d2210a183f0aaa6fb2b5d",
+    "restoredRlsPolicyCount": 48,
+    "restoredWrongOwnerCount": 0,
+    "restoredDeadTuples": 0,
+    "restoredQuarantines": 0,
+    "secondClusterPostgresql": "17.10",
+    "secondClusterPostgis": "3.6.4"
+  },
+  "verification": {
+    "focusedImporterProjectorRuntimePostgis": { "tests": 22, "passed": 22, "failed": 0 },
+    "completeBackend": { "tests": 1072, "suites": 114, "passed": 1072, "failed": 0, "cancelled": 0, "skipped": 0 },
+    "backendBuild": "passed",
+    "offlineOutdoorQuality": { "configured": 101, "executed": 101, "passed": 101, "failed": 0, "provenanceViolations": 0, "falseClaimViolations": 0 },
+    "jsonSchemaValidation": "passed",
+    "gitDiffCheck": "passed",
+    "credentialConflictWhitespaceGeneratedArtifactScans": "passed",
+    "localParallelWorkerObservation": {
+      "count": 2,
+      "signal": 11,
+      "scope": "Homebrew local PostgreSQL parallel workers during full-control projection and database-wide vacuum",
+      "recoveryRolledBackPartialProjection": true,
+      "acceptedMeasurementsUseParallelQueryAndMaintenanceWorkersDisabled": true,
+      "remoteManagedBehaviorInferred": false
+    }
+  }
+}

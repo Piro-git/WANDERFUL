@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "profileId": "supabase-free-bounded-two-core-v1",
+  "deploymentClass": "staging-only-capacity-profile",
+  "name": "Supabase Free bounded Harz and Innsbruck refresh-safe cores v1",
+  "description": "A deterministic staging-only capacity profile. It preserves every required evidence class and the Brocken–Schierke–Ilsenburg and Innsbruck–Nordkette anchors inside two explicitly bounded cores, with minimal source-backed category-preservation corridors and room for one retained refresh generation. It is not full Harz or full Innsbruck Alpine Pilot coverage.",
+  "baseRegions": [
+    {
+      "regionId": "harz-v1",
+      "coverageLabel": "Harz core: Ilsenburg–Brocken–Schierke plus a narrow southern mapped-hut verification corridor",
+      "west": 10.31,
+      "south": 51.528,
+      "east": 10.72,
+      "north": 51.88,
+      "shape": "rectangular anchor core with a narrow source-backed wilderness-hut verification corridor",
+      "fullRegionCoverage": false
+    },
+    {
+      "regionId": "innsbruck-alps-v1",
+      "coverageLabel": "Innsbruck Alpine core: Innsbruck–Nordkette",
+      "west": 11.338,
+      "south": 47.23,
+      "east": 11.43,
+      "north": 47.335,
+      "shape": "bounded Innsbruck–Nordkette core with a narrow Natterersee category-preservation corridor",
+      "fullRegionCoverage": false,
+      "excludedReviewedAnchors": ["Seefeld in Tirol", "Fulpmes", "Neustift im Stubaital"]
+    }
+  ],
+  "requiredEvidenceClasses": [
+    "viewpoint",
+    "peak",
+    "lake",
+    "waterfall",
+    "alpineHut",
+    "wildernessHut",
+    "trailSegment",
+    "hikingRouteRelation"
+  ],
+  "limitations": [
+    "Not full Harz coverage",
+    "Not full Innsbruck Alpine Pilot coverage",
+    "The narrow Harz wilderness-hut and Innsbruck lake corridors preserve source-backed evidence categories but do not imply broad coverage around those corridors",
+    "Bad Harzburg and Wernigerode are outside the Harz refresh-safe core",
+    "Seefeld in Tirol, Fulpmes and Neustift im Stubaital are outside the Innsbruck refresh-safe core",
+    "Requests outside the stored polygons must not be presented as covered",
+    "Mapped presence and access tags are not guarantees of current safety, legality, opening or water availability"
+  ]
+}

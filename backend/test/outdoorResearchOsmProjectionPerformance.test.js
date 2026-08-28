@@ -45,6 +45,19 @@ describe("OSM projection candidate preparation", () => {
     assert.doesNotMatch(project, /VACUUM/i);
   });
 
+  it("uses the shared import advisory lock without requiring input-table update privileges", async () => {
+    const source = await readFile(projectorURL, "utf8");
+    const projectStart = source.indexOf("  async project(input = {})");
+    const preflightStart = source.indexOf("  async preflight(", projectStart);
+    const project = source.slice(projectStart, preflightStart);
+    const preflight = source.slice(preflightStart);
+
+    assert.match(project, /trailmind-outdoor-import:/);
+    assert.match(project, /pg_try_advisory_xact_lock/);
+    assert.match(project, /active_import_changed/);
+    assert.doesNotMatch(preflight, /FOR\s+(?:KEY\s+)?(?:SHARE|UPDATE)/i);
+  });
+
   it("materializes and analyzes filtered candidates before the identity join", async () => {
     const source = await readFile(projectorURL, "utf8");
     const filteredTable = source.indexOf(

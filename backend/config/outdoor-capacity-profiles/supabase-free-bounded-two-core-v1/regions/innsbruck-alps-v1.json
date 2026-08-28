@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "regionId": "innsbruck-alps-v1",
+  "name": "Innsbruck–Nordkette refresh-safe lake-evidence core v1 (staging only; partial pilot coverage)",
+  "boundaryFile": "innsbruck-alps-v1.geojson",
+  "boundaryKind": "trailmind-operational-polygon",
+  "coordinateReferenceSystem": "EPSG:4326",
+  "metricSRID": 25832,
+  "freshnessThresholdDays": 14,
+  "pathMatchToleranceMeters": 25,
+  "supportedFeatureClasses": [
+    "viewpoint",
+    "peak",
+    "lake",
+    "waterfall",
+    "alpineHut",
+    "wildernessHut",
+    "trailSegment",
+    "hikingRouteRelation"
+  ],
+  "requiredAnchors": [
+    { "name": "Innsbruck", "latitude": 47.269, "longitude": 11.404 },
+    { "name": "Nordkette", "latitude": 47.312, "longitude": 11.384 }
+  ],
+  "sourceMetadataContract": {
+    "required": [
+      "datasetName",
+      "sourceIdentifier",
+      "sourceDataTimestamp",
+      "retrievedAt",
+      "toolVersion",
+      "importSchemaVersion",
+      "acquisitionChannel",
+      "inputFileSha256"
+    ],
+    "optional": [
+      "sourceChecksum",
+      "sourceChecksumVerifiedAt"
+    ]
+  }
+}
