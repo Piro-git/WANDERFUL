@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import {
   appendFileSync,
@@ -22,9 +22,6 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
 import {
-  admitStagingPhase1V2Session
-} from "../src/operations/stagingPhase1V2Admission.js";
-import {
   createNoEchoTtyAdapter,
   inspectCertificateAuthority,
   liveLauncherHelp,
@@ -33,6 +30,9 @@ import {
   runStagingPhase1V2PreflightOnly,
   StagingPhase1V2LiveLauncherError
 } from "../src/operations/stagingPhase1V2LiveLauncher.js";
+import {
+  createSyntheticStagingPhase1V2ObserverFactory
+} from "../src/operations/stagingPhase1V2MachineObserver.js";
 
 const REPOSITORY_ROOT = realpathSync(new URL("../..", import.meta.url));
 const CANDIDATE = "10dd59adf4b12dec8288e261438331db78fff9b2";
@@ -130,93 +130,94 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     assert.equal(calls, 0);
   });
 
-  it("uses a no-echo TTY secret, unlinks it before one adapter invocation, consumes the envelope and leaks no secret", async () => {
-    const fixture = await liveFixture();
-    let adapterCalls = 0;
-    let secretPromptCalls = 0;
-    const tty = fakeTty(fixture.now, () => { secretPromptCalls += 1; });
-    const argvSnapshot = [...process.argv];
-    const envSnapshot = { ...fixture.env };
-    let credentialFd;
-    const io = {
-      ...realIO(),
-      open(path, flags, mode) {
-        const fd = openSync(path, flags, mode);
-        if (path.includes("/credential-")) {
-          credentialFd = fd;
-          assert.notEqual(flags & constants.O_EXCL, 0);
-          assert.notEqual(flags & constants.O_NOFOLLOW, 0);
-          assert.equal(mode, 0o600);
-        }
-        return fd;
+  it("requires the production observer before prompt, Git, CA, envelope, receipt, network, database or adapter work", async () => {
+    const root = await mkdtemp("/private/tmp/trailmind-observer-required-test.");
+    temporaryRoots.push(root);
+    const calls = {
+      adapter: 0, database: 0, git: 0, io: 0, line: 0, network: 0, secret: 0
+    };
+    const typedManualEvidence = {
+      isTTY: true,
+      async readLine() {
+        calls.line += 1;
+        return "0";
+      },
+      async readSecret() {
+        calls.secret += 1;
+        return Buffer.from(SECRET);
       }
     };
-
-    const outcome = await runStagingPhase1V2LiveLauncher(fixture.options, {
-      env: fixture.env,
-      tty,
-      now: () => fixture.now,
-      randomUUID: sequence(UUIDS),
-      repositoryRoot: REPOSITORY_ROOT,
-      temporaryBase: fixture.root,
-      io,
-      gitInspection: gitInspection(),
-      observer: unusedObserver(),
-      runAuthorized: async ({ admissionRequest }, dependencies) => {
-        adapterCalls += 1;
-        assert.equal(dependencies.signal.aborted, false);
-        assert(admissionRequest.passwordFd >= 3);
-        assert.equal(fstatSync(admissionRequest.passwordFd).nlink, 0);
-        const inheritedProbe = spawnSync(process.execPath, [
-          "-e",
-          `try { require('node:fs').fstatSync(${admissionRequest.passwordFd}); ` +
-            "process.exit(1); } catch { process.exit(0); }"
-        ], { stdio: "ignore" });
-        assert.equal(inheritedProbe.status, 0);
-        assert.equal(admissionRequest.endpointClass, "direct");
-        assert.equal(admissionRequest.target.projectRef,
-          "mbvzwsrtqcrwhvykugcd");
-        assert.equal(admissionRequest.target.organizationId,
-          "wbnftkftyamxzvxsftda");
-        assert.equal(admissionRequest.target.postgresMajor, 17);
-        assert.equal(admissionRequest.tls.mode, "verify-full");
-        assert.equal(admissionRequest.gitAttestation.clean, true);
-        assert.match(admissionRequest.controlObservationDigest,
-          /^[a-f0-9]{64}$/);
-        let admission;
-        try {
-          admission = admitStagingPhase1V2Session(admissionRequest, {
-            env: {}, now: () => fixture.now,
-            repositoryRoot: REPOSITORY_ROOT,
-            gitInspection: gitInspection()
-          });
-        } catch (error) {
-          throw new StagingPhase1V2LiveLauncherError(
-            `test_${error.code ?? "admission"}`
-          );
+    await assert.rejects(runStagingPhase1V2LiveLauncher({
+      mode: "live",
+      caPath: join(root, "must-not-be-opened.pem"),
+      endpointClass: "direct",
+      address: "2606:4700:4700::1111"
+    }, {
+      env: {},
+      tty: typedManualEvidence,
+      temporaryBase: root,
+      observer: {
+        typedAdvisorCounts: [0, 0],
+        typedCleanup: "SESSION_CLOSED:41241:0:0"
+      },
+      gitInspection() { calls.git += 1; },
+      io: new Proxy({}, {
+        get() {
+          calls.io += 1;
+          return () => { throw new Error("must not perform file IO"); };
         }
-        const secrets = admission.takeSecrets();
-        assert.equal(secrets.password, SECRET);
-        secrets.ca.fill(0);
-        admission.dispose();
-        return {
-          receiptDigest: "e".repeat(64),
-          receipt: { status: "committed" }
-        };
-      }
+      }),
+      networkCounter: calls.network,
+      databaseCounter: calls.database,
+      runAuthorized: async () => { calls.adapter += 1; }
+    }), fixed("observer_required"));
+    assert.deepEqual(calls, {
+      adapter: 0, database: 0, git: 0, io: 0, line: 0, network: 0, secret: 0
     });
+    assert.deepEqual(readdirSync(root), []);
+  });
 
-    assert.equal(outcome.status, "committed");
-    assert(Number.isSafeInteger(credentialFd) && credentialFd >= 3);
-    assert.throws(() => fstatSync(credentialFd), { code: "EBADF" });
-    assert.equal(adapterCalls, 1);
-    assert.equal(secretPromptCalls, 1);
-    assert.equal(tty.echoedSecret, false);
-    assert.equal(argvSnapshot.some((value) => value.includes(SECRET)), false);
-    assert.equal(Object.values(envSnapshot).some(
-      (value) => String(value).includes(SECRET)), false);
-    assert.equal(scanRegularFiles(outcome.artifactDirectory).includes(SECRET),
-      false);
+  it("rejects arbitrary and synthetic observer packages before password or adapter work", async () => {
+    let secretReads = 0;
+    let adapterCalls = 0;
+    const options = {
+      mode: "live",
+      caPath: "/private/tmp/must-not-be-opened.pem",
+      endpointClass: "direct",
+      address: "2606:4700:4700::1111"
+    };
+    for (const observerPackage of [
+      {},
+      {
+        packageDigest: "a".repeat(64),
+        async inspectPre() { return { blockingFindingCount: 0 }; }
+      },
+      createSyntheticStagingPhase1V2ObserverFactory()
+    ]) {
+      await assert.rejects(runStagingPhase1V2LiveLauncher(options, {
+        env: {},
+        tty: {
+          isTTY: true,
+          async readSecret() {
+            secretReads += 1;
+            return Buffer.from(SECRET);
+          }
+        },
+        observerPackage,
+        runAuthorized: async () => { adapterCalls += 1; }
+      }), fixed("observer_untrusted"));
+    }
+    assert.equal(secretReads, 0);
+    assert.equal(adapterCalls, 0);
+  });
+
+  it("keeps the production script on the pinned launcher with no generic boundary bypass", () => {
+    const source = readFileSync(join(
+      REPOSITORY_ROOT, "backend/scripts/staging/phase1-v2-operator.js"
+    ), "utf8");
+    assert.match(source, /runStagingPhase1V2LiveLauncher\(options\)/);
+    assert.doesNotMatch(source,
+      /runAuthorizedStagingPhase1V2SingleSession|export\s+async\s+function\s+main/);
   });
 
   it("validates CA ownership, mode, canonical identity, link count, X.509 content and TOCTOU stability", async () => {
@@ -310,32 +311,6 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     }), /:ca$/);
   });
 
-  it("uses exclusive attempt creation and cleans password state on cancellation", async () => {
-    const fixture = await liveFixture();
-    const cancelledTty = fakeTty(fixture.now);
-    cancelledTty.readSecret = async () => {
-      throw new StagingPhase1V2LiveLauncherError("cancelled");
-    };
-    const dependencies = {
-      env: {}, tty: cancelledTty, now: () => fixture.now,
-      randomUUID: sequence(UUIDS), repositoryRoot: REPOSITORY_ROOT,
-      temporaryBase: fixture.root, gitInspection: gitInspection(),
-      observer: unusedObserver()
-    };
-    await assert.rejects(
-      runStagingPhase1V2LiveLauncher(fixture.options, dependencies),
-      fixed("cancelled")
-    );
-    assert.equal(scanRegularFiles(fixture.root).includes(SECRET), false);
-    assert(readdirSync(fixture.root).some((name) =>
-      name === `trailmind-phase1-v2-live-${UUIDS[0]}`));
-
-    await assert.rejects(runStagingPhase1V2LiveLauncher(fixture.options, {
-      ...dependencies,
-      randomUUID: sequence(UUIDS)
-    }), fixed("attempt_directory"));
-  });
-
   it("runs the synthetic preflight through Git, CA, file, FD and envelope admission with zero remote calls", async () => {
     const root = await mkdtemp("/private/tmp/trailmind-launcher-preflight-test.");
     temporaryRoots.push(root);
@@ -368,7 +343,12 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     });
     assert.deepEqual(result, {
       status: "preflight-passed",
-      localBoundaryChecks: 9,
+      localBoundaryChecks: 13,
+      observerMode: "synthetic-preflight-non-authorizing",
+      observerPhases: [
+        "pre-control", "post-ddl-advisors", "final-control",
+        "post-disconnect-cleanup"
+      ],
       networkCalls: 0,
       databaseCalls: 0
     });
@@ -404,61 +384,10 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     const help = liveLauncherHelp();
     assert.equal(/postgres(?:ql)?:\/\/|PGPASSWORD|DATABASE_URL|password=/i
       .test(help), false);
+    assert.match(help, /observer_required/);
+    assert.doesNotMatch(help, /enter.*advisor|type.*digest|session_closed/i);
   });
 });
-
-async function liveFixture() {
-  const root = await mkdtemp("/private/tmp/trailmind-launcher-live-test.");
-  temporaryRoots.push(root);
-  const caPath = join(root, "official-target-ca.pem");
-  createTestCa(caPath, root);
-  return {
-    root,
-    caPath,
-    env: {},
-    now: new Date(),
-    options: {
-      mode: "live",
-      caPath,
-      endpointClass: "direct",
-      address: "2606:4700:4700::1111"
-    }
-  };
-}
-
-function fakeTty(now, onSecret = () => {}) {
-  const tty = {
-    isTTY: true,
-    echoedSecret: false,
-    async readLine(prompt) {
-      if (prompt.startsWith("Type AUTHORIZE_")) {
-        return "AUTHORIZE_TRAILMIND_STAGING_MBVZWSRTQCRWHVYKUGCD_ACTIVE_FREE_NANO_USD0_EUCENTRAL1_PG17";
-      }
-      if (prompt.startsWith("Type PROTECTED_PROJECTS_")) {
-        return "PROTECTED_PROJECTS_UNSELECTED_ZERO_MUTATIONS";
-      }
-      if (prompt.includes("observation time")) return now.toISOString();
-      if (prompt.includes("Expected database ACL")) return "a".repeat(64);
-      if (prompt.includes("Provider ACL restore-plan")) return "d".repeat(64);
-      if (prompt.includes("blocking finding count")) return "0";
-      throw new Error("unexpected test prompt");
-    },
-    async readSecret(_prompt, options) {
-      onSecret();
-      assert.equal(options.maximumBytes, 1_024);
-      return Buffer.from(SECRET, "utf8");
-    }
-  };
-  return tty;
-}
-
-function unusedObserver() {
-  return {
-    async observePostAdvisors() { throw new Error("not expected"); },
-    async observeFinalControl() { throw new Error("not expected"); },
-    async observeCleanup() { throw new Error("not expected"); }
-  };
-}
 
 function createTestCa(caPath, root) {
   caCounter += 1;
@@ -486,20 +415,6 @@ function gitInspection() {
 function sequence(values) {
   let index = 0;
   return () => values[index++];
-}
-
-function scanRegularFiles(root) {
-  const values = [];
-  const visit = (path) => {
-    for (const name of readdirSync(path)) {
-      const child = join(path, name);
-      const metadata = lstatSync(child);
-      if (metadata.isDirectory()) visit(child);
-      else if (metadata.isFile()) values.push(readFileSync(child, "utf8"));
-    }
-  };
-  visit(root);
-  return values.join("\n");
 }
 
 function realIO() {

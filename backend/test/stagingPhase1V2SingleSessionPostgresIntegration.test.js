@@ -328,6 +328,7 @@ async function runOperator({
           completionState: "session-closed",
           idleSessionCount: result.rows[0].idle_session_count,
           observedAt: new Date().toISOString(),
+          observerArtifactDigest: "7".repeat(64),
           operatorDigestsDigest: request.operatorDigestsDigest,
           projectRef: request.projectRef,
           runId: request.runId,
@@ -1057,6 +1058,7 @@ function controlPlane(events, failPostAdvisors) {
       if (failPostAdvisors) throw new Error("test-only advisor failure");
       return phase("post-ddl-advisors", 8, "acceptable", {
         observedAt: new Date().toISOString(),
+        observerArtifactDigest: "8".repeat(64),
         security: advisor("8"),
         performance: advisor("9")
       }, "8");
@@ -1092,6 +1094,7 @@ function controlSnapshot() {
       performance: { status: "completed", blockingFindingCount: 0, observedAt }
     },
     expectedDatabaseAclDigest: expectedAclDigest,
+    observerArtifactDigest: "7".repeat(64),
     protectedProjects: [
       {
         ref: "bejvhhjbgtvctpsnlwid", kind: "production",

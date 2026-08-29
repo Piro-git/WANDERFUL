@@ -1,15 +1,9 @@
 import { pathToFileURL } from "node:url";
-import { runAuthorizedStagingPhase1V2SingleSession } from
-  "../../src/operations/stagingPhase1V2SingleSessionAdapter.js";
 import {
   liveLauncherHelp,
   parseLiveLauncherArguments,
   runStagingPhase1V2LiveLauncher
 } from "../../src/operations/stagingPhase1V2LiveLauncher.js";
-
-export async function main(boundaries, dependencies) {
-  return runAuthorizedStagingPhase1V2SingleSession(boundaries, dependencies);
-}
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   try {

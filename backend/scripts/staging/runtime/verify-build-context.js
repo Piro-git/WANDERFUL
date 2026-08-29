@@ -22,6 +22,7 @@ const OPERATOR_ONLY_FILES = new Set([
   "src/operations/stagingMigrationPolicy.js",
   "src/operations/stagingPhase1V2Admission.js",
   "src/operations/stagingPhase1V2LiveLauncher.js",
+  "src/operations/stagingPhase1V2MachineObserver.js",
   "src/operations/stagingPhase1V2SingleSessionAdapter.js",
   "src/operations/stagingPhase1V2Operator.js"
 ]);

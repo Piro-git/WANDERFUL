@@ -34,7 +34,7 @@ export const STAGING_PHASE1_V2_APPLICATION_NAME =
   "trailmind_phase1_v2_operator";
 export const STAGING_PHASE1_V2_AUTHORIZATION_LIFETIME_MILLISECONDS =
   5 * 60 * 1_000;
-export const STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION = "1.0.0";
+export const STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION = "1.1.0";
 export const STAGING_PHASE1_V2_REVIEWED_BASELINE =
   "a36c646815f390b60df734147a78e82c8ef46dd1";
 
@@ -159,6 +159,7 @@ const EXECUTABLE_OPERATOR_FILES = Object.freeze([
   "backend/src/operations/stagingMigrationPolicy.js",
   "backend/src/operations/stagingPhase1V2Admission.js",
   "backend/src/operations/stagingPhase1V2LiveLauncher.js",
+  "backend/src/operations/stagingPhase1V2MachineObserver.js",
   "backend/src/operations/stagingPhase1V2Operator.js",
   "backend/src/operations/stagingPhase1V2SingleSessionAdapter.js"
 ]);

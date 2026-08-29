@@ -41,6 +41,17 @@ import {
 import {
   runAuthorizedStagingPhase1V2SingleSession
 } from "./stagingPhase1V2SingleSessionAdapter.js";
+import {
+  assertSyntheticStagingPhase1V2ObserverSession,
+  createSyntheticStagingPhase1V2ObserverFactory,
+  createSyntheticStagingPhase1V2ObserverSession,
+  machineCleanupEvidence,
+  machineControlSnapshot,
+  machinePostAdvisorEvidence,
+  observeStagingPhase1V2MachinePhase,
+  requireReviewedStagingPhase1V2ProductionObserverFactory,
+  StagingPhase1V2MachineObserverError
+} from "./stagingPhase1V2MachineObserver.js";
 
 const MAXIMUM_PASSWORD_BYTES = 1_024;
 const MAXIMUM_CA_BYTES = 256 * 1_024;
@@ -50,11 +61,6 @@ const BRACKETED_PASTE_ENABLE = "\u001b[?2004h";
 const BRACKETED_PASTE_DISABLE = "\u001b[?2004l";
 const LIVE_CONFIRMATION =
   "AUTHORIZE_TRAILMIND_STAGING_MBVZWSRTQCRWHVYKUGCD_ACTIVE_FREE_NANO_USD0_EUCENTRAL1_PG17";
-const PROTECTED_CONFIRMATION =
-  "PROTECTED_PROJECTS_UNSELECTED_ZERO_MUTATIONS";
-const FINAL_CONFIRMATION =
-  "RECONFIRM_TRAILMIND_OUTDOOR_STAGING_V1_UNCHANGED";
-const DIGEST_PATTERN = /^[a-f0-9]{64}$/;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const FEATURE_FLAGS = Object.freeze([
@@ -106,7 +112,9 @@ export function liveLauncherHelp() {
     "  node scripts/staging/phase1-v2-operator.js --ca-file <absolute-path> --endpoint <direct|session> --address <exact-ip>",
     "",
     "The live command accepts only the fixed TrailMind staging target.",
-    "It collects authorization observations interactively and reads the database password from a no-echo TTY prompt.",
+    "Live execution is disabled until a reviewed machine observer is installed in this package.",
+    "Without it, execution stops with observer_required before authorization or password intake.",
+    "Preflight uses synthetic, non-authorizing observations and performs no network or database work.",
     "Connection URLs, host/user overrides, secret arguments, piped input, and transaction pooling are rejected."
   ].join("\n");
 }
@@ -161,6 +169,14 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
   const tty = dependencies.tty ?? createProcessTty();
   assertSafeEnvironment(env);
   if (tty.isTTY !== true) blocked("tty_required");
+  let observerFactory;
+  try {
+    observerFactory = requireReviewedStagingPhase1V2ProductionObserverFactory(
+      dependencies.observerPackage
+    );
+  } catch (error) {
+    throw sanitizeLauncherFailure(error);
+  }
 
   const now = dependencies.now ?? (() => new Date());
   const repositoryRoot = resolve(dependencies.repositoryRoot ??
@@ -188,6 +204,26 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
       repositoryRoot,
       gitInspection: dependencies.gitInspection
     });
+    const observerBinding = Object.freeze({
+      attemptId,
+      candidateCommit: candidateBindings.candidateCommit,
+      candidateTree: candidateBindings.candidateTree,
+      organizationId: STAGING_PHASE1_V2_TARGET.organizationId,
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      region: STAGING_PHASE1_V2_TARGET.region,
+      runId
+    });
+    const observerSession = observerFactory.createSession(observerBinding);
+    const preObservation = await observeStagingPhase1V2MachinePhase(
+      observerSession,
+      {
+        applicationName: null,
+        authorizationBindingDigest: null,
+        backendPid: null,
+        phase: "pre-control",
+        stagedReceiptDigest: null
+      }
+    );
     const ca = inspectCertificateAuthority({
       path: options.caPath,
       repositoryRoot,
@@ -196,25 +232,22 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
     });
     const connection = liveConnection(options.endpointClass, options.address);
     const tls = tlsBinding(connection.host);
-    const authorizationMetadata = await collectAuthorizationMetadata({
-      tty, now, signal,
-      promptTimeoutMilliseconds: dependencies.promptTimeoutMilliseconds
-    });
-    const observer = dependencies.observer ?? createInteractiveObserver({
+    await collectActionAuthorization({
       tty, now, signal,
       promptTimeoutMilliseconds: dependencies.promptTimeoutMilliseconds
     });
     const boundaries = createStagingPhase1V2LiveBoundaryPackage({
       attemptDirectory: task.path,
-      authorizationMetadata,
       env,
       now,
-      observer,
-      runId
+      observerSession,
+      preObservation,
+      runId,
+      attemptId,
+      candidateCommit: candidateBindings.candidateCommit,
+      candidateTree: candidateBindings.candidateTree
     });
-    const controlObservationDigest = sha256(canonicalJson(
-      authorizationMetadata
-    ));
+    const controlObservationDigest = preObservation.artifactDigest;
     secret = await tty.readSecret(
       "Database password: ",
       { maximumBytes: MAXIMUM_PASSWORD_BYTES, signal,
@@ -261,7 +294,7 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
       ),
       caSha256: ca.sha256,
       providerAclRestorePlanDigest:
-        authorizationMetadata.providerAclRestorePlanDigest,
+        preObservation.evidence.providerAclRestorePlanDigest,
       operatorDigests: candidateBindings.operatorDigests
     });
     envelopePath = createAuthorizationEnvelope({
@@ -280,7 +313,7 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
       candidateCommit: candidateBindings.candidateCommit,
       candidateTree: candidateBindings.candidateTree,
       providerAclRestorePlanDigest:
-        authorizationMetadata.providerAclRestorePlanDigest,
+        preObservation.evidence.providerAclRestorePlanDigest,
       connection,
       controlObservationDigest,
       endpointClass: options.endpointClass,
@@ -354,6 +387,7 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
   let credential;
   let admission;
   let password;
+  const observerPhases = [];
   try {
     const caPath = join(task.path, "synthetic-ca.pem");
     (dependencies.createSyntheticCa ?? createSyntheticCa)(caPath, task.path);
@@ -363,6 +397,54 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
     const bindings = readStagingPhase1V2CandidateBindings({
       repositoryRoot,
       gitInspection: dependencies.gitInspection
+    });
+    const observerBinding = Object.freeze({
+      attemptId,
+      candidateCommit: bindings.candidateCommit,
+      candidateTree: bindings.candidateTree,
+      organizationId: STAGING_PHASE1_V2_TARGET.organizationId,
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      region: STAGING_PHASE1_V2_TARGET.region,
+      runId
+    });
+    const observerFactory = dependencies.syntheticObserverFactory ??
+      createSyntheticStagingPhase1V2ObserverFactory({
+        now,
+        randomId: dependencies.observerRandomUUID ?? randomUUID,
+        onObservation: (phase) => observerPhases.push(phase)
+      });
+    const observerSession = createSyntheticStagingPhase1V2ObserverSession(
+      observerFactory, observerBinding
+    );
+    assertSyntheticStagingPhase1V2ObserverSession(observerSession);
+    const preObservation = await observeStagingPhase1V2MachinePhase(
+      observerSession,
+      {
+        applicationName: null,
+        authorizationBindingDigest: null,
+        backendPid: null,
+        phase: "pre-control",
+        stagedReceiptDigest: null
+      }
+    );
+    const boundaries = createStagingPhase1V2LiveBoundaryPackage({
+      attemptDirectory: task.path,
+      attemptId,
+      candidateCommit: bindings.candidateCommit,
+      candidateTree: bindings.candidateTree,
+      env: {},
+      now,
+      observerSession,
+      preObservation,
+      runId
+    });
+    await boundaries.controlPlane.inspectPre({
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      readOnly: true
+    });
+    await boundaries.containmentControl.assertAllDisabled({
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      readOnly: true
     });
     password = await tty.readSecret("Synthetic preflight password: ", {
       maximumBytes: MAXIMUM_PASSWORD_BYTES,
@@ -394,7 +476,7 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
       candidateCommit: bindings.candidateCommit,
       candidateTree: bindings.candidateTree,
       connection,
-      controlObservationDigest: "c".repeat(64),
+      controlObservationDigest: preObservation.artifactDigest,
       endpointClass: "direct",
       gitAttestation: bindings.gitAttestation,
       target: TARGET_BINDING,
@@ -407,7 +489,8 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
         realpathSync(task.authorizationStoreDirectory)
       ),
       caSha256: ca.sha256,
-      providerAclRestorePlanDigest: "d".repeat(64),
+      providerAclRestorePlanDigest:
+        preObservation.evidence.providerAclRestorePlanDigest,
       operatorDigests: bindings.operatorDigests
     };
     const envelopePath = createAuthorizationEnvelope({
@@ -422,9 +505,10 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
       runId,
       candidateCommit: bindings.candidateCommit,
       candidateTree: bindings.candidateTree,
-      providerAclRestorePlanDigest: "d".repeat(64),
+      providerAclRestorePlanDigest:
+        preObservation.evidence.providerAclRestorePlanDigest,
       connection,
-      controlObservationDigest: "c".repeat(64),
+      controlObservationDigest: preObservation.artifactDigest,
       endpointClass: "direct",
       gitAttestation: bindings.gitAttestation,
       target: TARGET_BINDING,
@@ -448,12 +532,36 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
     admission.dispose();
     admission = undefined;
     assertDescriptorClosed(credential.fd, dependencies.io);
+    const lock = Object.freeze({ backendPid: 41_241 });
+    await boundaries.controlPlane.inspectPostAdvisors({
+      lock,
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      readOnly: true
+    });
+    await boundaries.controlPlane.inspectFinal({
+      lock,
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      readOnly: true
+    });
+    await boundaries.cleanupVerifier.proveSessionClosed({
+      applicationName: "trailmind_phase1_v2_operator",
+      authorizationBindingDigest: "7".repeat(64),
+      backendPid: lock.backendPid,
+      candidateCommit: bindings.candidateCommit,
+      candidateTree: bindings.candidateTree,
+      operatorDigestsDigest: "8".repeat(64),
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      runId,
+      stagedReceiptDigest: "9".repeat(64)
+    });
     if (network.calls !== 0 || database.calls !== 0) {
       blocked("preflight_remote_activity");
     }
     return Object.freeze({
       status: "preflight-passed",
-      localBoundaryChecks: 9,
+      localBoundaryChecks: 13,
+      observerMode: "synthetic-preflight-non-authorizing",
+      observerPhases: Object.freeze([...observerPhases]),
       networkCalls: 0,
       databaseCalls: 0
     });
@@ -465,76 +573,29 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
   }
 }
 
-export function createStagingPhase1V2LiveBoundaryPackage({
+function createStagingPhase1V2LiveBoundaryPackage({
   attemptDirectory,
-  authorizationMetadata,
+  attemptId,
+  candidateCommit,
+  candidateTree,
   env,
   now,
-  observer,
+  observerSession,
+  preObservation,
   runId
 }) {
   assertSafeEnvironment(env);
-  if (!isExactObject(authorizationMetadata, [
-    "expectedDatabaseAclDigest", "observedAt",
-    "performanceAdvisorBlockingFindingCount",
-    "protectedProjectsConfirmation", "providerAclRestorePlanDigest",
-    "securityAdvisorBlockingFindingCount", "targetObservationConfirmation"
-  ]) || !DIGEST_PATTERN.test(authorizationMetadata.expectedDatabaseAclDigest) ||
-      !DIGEST_PATTERN.test(
-        authorizationMetadata.providerAclRestorePlanDigest
-      ) || authorizationMetadata.securityAdvisorBlockingFindingCount !== 0 ||
-      authorizationMetadata.performanceAdvisorBlockingFindingCount !== 0 ||
-      authorizationMetadata.targetObservationConfirmation !==
-        LIVE_CONFIRMATION ||
-      authorizationMetadata.protectedProjectsConfirmation !==
-        PROTECTED_CONFIRMATION ||
-      !UUID_PATTERN.test(runId)) blocked("authorization_metadata");
-  for (const method of [
-    "observePostAdvisors", "observeFinalControl", "observeCleanup"
-  ]) if (typeof observer?.[method] !== "function") blocked("observer");
-  const featureFlags = Object.freeze(Object.fromEntries(
-    FEATURE_FLAGS.map((name) => [name, false])
-  ));
-  const protectedProjects = Object.freeze([
-    Object.freeze({
-      ref: "bejvhhjbgtvctpsnlwid", kind: "production",
-      selected: false, mutationCount: 0
-    }),
-    Object.freeze({
-      ref: "cmkvbxppgofteoutfslp", kind: "planua",
-      selected: false, mutationCount: 0
-    })
-  ]);
-  const controlSnapshot = (observedAt) => deepFreeze({
-    observedAt,
-    project: {
-      ref: STAGING_PHASE1_V2_TARGET.projectRef,
-      name: STAGING_PHASE1_V2_TARGET.projectName,
-      organizationId: STAGING_PHASE1_V2_TARGET.organizationId,
-      region: STAGING_PHASE1_V2_TARGET.region,
-      status: STAGING_PHASE1_V2_TARGET.status
-    },
-    billing: {
-      organizationPlan: STAGING_PHASE1_V2_TARGET.organizationPlan,
-      computeSize: STAGING_PHASE1_V2_TARGET.computeSize,
-      currency: STAGING_PHASE1_V2_TARGET.monthlyCost.currency,
-      monthlyCostAmount: STAGING_PHASE1_V2_TARGET.monthlyCost.amount,
-      nonzeroAddonCount: 0,
-      observedAt
-    },
-    advisors: {
-      security: {
-        status: "completed", blockingFindingCount: 0, observedAt
-      },
-      performance: {
-        status: "completed", blockingFindingCount: 0, observedAt
-      }
-    },
-    expectedDatabaseAclDigest:
-      authorizationMetadata.expectedDatabaseAclDigest,
-    protectedProjects,
-    featureFlags
-  });
+  if (!UUID_PATTERN.test(attemptId) || !UUID_PATTERN.test(runId) ||
+      !/^[a-f0-9]{40}$/.test(candidateCommit) ||
+      !/^[a-f0-9]{40}$/.test(candidateTree) ||
+      preObservation?.binding?.attemptId !== attemptId ||
+      preObservation?.binding?.runId !== runId ||
+      preObservation?.binding?.candidateCommit !== candidateCommit ||
+      preObservation?.binding?.candidateTree !== candidateTree) {
+    blocked("observer_binding");
+  }
+  const preSnapshot = machineControlSnapshot(preObservation);
+  let preConsumed = false;
   const receiptStore = createDurableReceiptStore({
     directory: join(attemptDirectory, "receipts"), now
   });
@@ -542,26 +603,37 @@ export function createStagingPhase1V2LiveBoundaryPackage({
     controlPlane: Object.freeze({
       async inspectPre(request) {
         assertBoundaryRequest(request, runId, false);
-        return controlSnapshot(authorizationMetadata.observedAt);
+        if (preConsumed) blocked("observer_replay");
+        preConsumed = true;
+        return preSnapshot;
       },
-      async inspectPostAdvisors(request, context) {
+      async inspectPostAdvisors(request) {
         assertBoundaryRequest(request, runId, true);
-        const value = await observer.observePostAdvisors({
-          projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
-          runId
-        }, context);
-        return validatePostAdvisorObservation(value);
+        const artifact = await observeStagingPhase1V2MachinePhase(
+          observerSession,
+          {
+            applicationName: "trailmind_phase1_v2_operator",
+            authorizationBindingDigest: null,
+            backendPid: request.lock.backendPid,
+            phase: "post-ddl-advisors",
+            stagedReceiptDigest: null
+          }
+        );
+        return machinePostAdvisorEvidence(artifact);
       },
-      async inspectFinal(request, context) {
+      async inspectFinal(request) {
         assertBoundaryRequest(request, runId, true);
-        const value = await observer.observeFinalControl({
-          projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
-          runId
-        }, context);
-        if (value?.confirmation !== FINAL_CONFIRMATION) {
-          blocked("final_target_confirmation");
-        }
-        return controlSnapshot(exactIso(value.observedAt));
+        const artifact = await observeStagingPhase1V2MachinePhase(
+          observerSession,
+          {
+            applicationName: "trailmind_phase1_v2_operator",
+            authorizationBindingDigest: null,
+            backendPid: request.lock.backendPid,
+            phase: "final-control",
+            stagedReceiptDigest: null
+          }
+        );
+        return machineControlSnapshot(artifact);
       }
     }),
     containmentControl: Object.freeze({
@@ -576,32 +648,18 @@ export function createStagingPhase1V2LiveBoundaryPackage({
       }
     }),
     cleanupVerifier: Object.freeze({
-      async proveSessionClosed(request, context) {
-        const value = await observer.observeCleanup(request, context);
-        if (
-          value?.backendSessionCount !== 0 || value?.idleSessionCount !== 0 ||
-          value?.confirmation !==
-            `SESSION_CLOSED:${request.backendPid}:0:0`
-        ) blocked("cleanup_observation");
-        const proof = {
-          applicationName: request.applicationName,
-          authorizationBindingDigest: request.authorizationBindingDigest,
-          backendPid: request.backendPid,
-          backendSessionCount: 0,
-          candidateCommit: request.candidateCommit,
-          candidateTree: request.candidateTree,
-          completionState: "session-closed",
-          idleSessionCount: 0,
-          observedAt: exactIso(value.observedAt),
-          operatorDigestsDigest: request.operatorDigestsDigest,
-          projectRef: request.projectRef,
-          runId: request.runId,
-          stagedReceiptDigest: request.stagedReceiptDigest
-        };
-        return Object.freeze({
-          ...proof,
-          evidenceDigest: canonicalAclDigest(proof)
-        });
+      async proveSessionClosed(request) {
+        const artifact = await observeStagingPhase1V2MachinePhase(
+          observerSession,
+          {
+            applicationName: request.applicationName,
+            authorizationBindingDigest: request.authorizationBindingDigest,
+            backendPid: request.backendPid,
+            phase: "post-disconnect-cleanup",
+            stagedReceiptDigest: request.stagedReceiptDigest
+          }
+        );
+        return machineCleanupEvidence(artifact, request);
       }
     }),
     receiptStore
@@ -859,9 +917,8 @@ function createDurableReceiptStore({ directory, now }) {
   });
 }
 
-async function collectAuthorizationMetadata({
+async function collectActionAuthorization({
   tty,
-  now,
   signal,
   promptTimeoutMilliseconds
 }) {
@@ -873,108 +930,7 @@ async function collectAuthorizationMetadata({
     `Type ${LIVE_CONFIRMATION}: `, options
   );
   if (confirmation !== LIVE_CONFIRMATION) blocked("target_confirmation");
-  const protectedProjectsConfirmation = await tty.readLine(
-    `Type ${PROTECTED_CONFIRMATION}: `, options
-  );
-  if (protectedProjectsConfirmation !== PROTECTED_CONFIRMATION) {
-    blocked("protected_projects_confirmation");
-  }
-  const observedAt = exactIso(await tty.readLine(
-    "Read-only control observation time (ISO-8601): ", options
-  ));
-  assertFresh(observedAt, exactDate(now()));
-  const expectedDatabaseAclDigest = await readDigest(
-    tty, "Expected database ACL SHA-256: ", options
-  );
-  const providerAclRestorePlanDigest = await readDigest(
-    tty, "Provider ACL restore-plan SHA-256: ", options
-  );
-  const securityAdvisorBlockingFindingCount = await readZero(
-    tty, "Security advisor blocking finding count (must be 0): ", options
-  );
-  const performanceAdvisorBlockingFindingCount = await readZero(
-    tty, "Performance advisor blocking finding count (must be 0): ", options
-  );
-  return Object.freeze({
-    observedAt,
-    expectedDatabaseAclDigest,
-    providerAclRestorePlanDigest,
-    targetObservationConfirmation: confirmation,
-    protectedProjectsConfirmation,
-    securityAdvisorBlockingFindingCount,
-    performanceAdvisorBlockingFindingCount
-  });
-}
-
-function createInteractiveObserver({
-  tty,
-  now,
-  signal,
-  promptTimeoutMilliseconds
-}) {
-  const options = {
-    signal,
-    timeoutMilliseconds: boundedPromptTimeout(promptTimeoutMilliseconds)
-  };
-  return Object.freeze({
-    async observePostAdvisors() {
-      const observedAt = exactIso(await tty.readLine(
-        "Post-DDL advisor observation time (ISO-8601): ", options
-      ));
-      assertFresh(observedAt, exactDate(now()));
-      return Object.freeze({
-        observedAt,
-        security: {
-          status: "completed",
-          blockingFindingCount: await readZero(
-            tty, "Post-DDL security blocking finding count (must be 0): ", options
-          ),
-          noticeCount: await readNonnegativeInteger(
-            tty, "Post-DDL security notice count: ", options
-          ),
-          evidenceDigest: await readDigest(
-            tty, "Post-DDL security evidence SHA-256: ", options
-          )
-        },
-        performance: {
-          status: "completed",
-          blockingFindingCount: await readZero(
-            tty, "Post-DDL performance blocking finding count (must be 0): ", options
-          ),
-          noticeCount: await readNonnegativeInteger(
-            tty, "Post-DDL performance notice count: ", options
-          ),
-          evidenceDigest: await readDigest(
-            tty, "Post-DDL performance evidence SHA-256: ", options
-          )
-        }
-      });
-    },
-    async observeFinalControl() {
-      const confirmation = await tty.readLine(
-        `Type ${FINAL_CONFIRMATION}: `, options
-      );
-      const observedAt = exactIso(await tty.readLine(
-        "Final control observation time (ISO-8601): ", options
-      ));
-      assertFresh(observedAt, exactDate(now()));
-      return Object.freeze({ confirmation, observedAt });
-    },
-    async observeCleanup(request) {
-      const confirmation = await tty.readLine(
-        `Type SESSION_CLOSED:${request.backendPid}:0:0: `, options
-      );
-      const observedAt = exactIso(await tty.readLine(
-        "Session-closure observation time (ISO-8601): ", options
-      ));
-      return Object.freeze({
-        backendSessionCount: 0,
-        confirmation,
-        idleSessionCount: 0,
-        observedAt
-      });
-    }
-  });
+  return true;
 }
 
 function createProcessTty() {
@@ -1111,37 +1067,6 @@ function syntheticPreflightTty() {
       return Buffer.from("synthetic-preflight-password", "utf8");
     }
   });
-}
-
-function validatePostAdvisorObservation(value) {
-  if (!isExactObject(value, ["observedAt", "performance", "security"])) {
-    blocked("post_advisor_observation");
-  }
-  const observedAt = exactIso(value.observedAt);
-  const phase = "post-ddl-advisors";
-  const fields = {
-    observedAt,
-    security: validateAdvisor(value.security),
-    performance: validateAdvisor(value.performance)
-  };
-  return Object.freeze({
-    phase,
-    ordinal: 8,
-    status: "acceptable",
-    evidenceDigest: canonicalAclDigest({
-      phase, ordinal: 8, status: "acceptable", fields
-    }),
-    ...fields
-  });
-}
-
-function validateAdvisor(value) {
-  if (!isExactObject(value, [
-    "blockingFindingCount", "evidenceDigest", "noticeCount", "status"
-  ]) || value.status !== "completed" || value.blockingFindingCount !== 0 ||
-      !Number.isSafeInteger(value.noticeCount) || value.noticeCount < 0 ||
-      !DIGEST_PATTERN.test(value.evidenceDigest)) blocked("advisor_observation");
-  return Object.freeze({ ...value });
 }
 
 function liveConnection(endpointClass, address) {
@@ -1439,51 +1364,10 @@ function inside(path, root) {
   return child === "" || (!child.startsWith(`..${sep}`) && child !== "..");
 }
 
-function assertFresh(value, now) {
-  const observed = new Date(value);
-  const age = now.getTime() - observed.getTime();
-  if (Number.isNaN(observed.getTime()) || age < 0 ||
-      age > STAGING_PHASE1_V2_AUTHORIZATION_LIFETIME_MILLISECONDS) {
-    blocked("observation_freshness");
-  }
-}
-
-async function readDigest(tty, prompt, options) {
-  const value = await tty.readLine(prompt, options);
-  if (!DIGEST_PATTERN.test(value)) blocked("digest");
-  return value;
-}
-
-async function readZero(tty, prompt, options) {
-  const value = await readNonnegativeInteger(tty, prompt, options);
-  if (value !== 0) blocked("blocking_finding");
-  return value;
-}
-
-async function readNonnegativeInteger(tty, prompt, options) {
-  const value = await tty.readLine(prompt, options);
-  if (!/^(0|[1-9][0-9]{0,5})$/.test(value)) blocked("integer");
-  return Number(value);
-}
-
 function boundedPromptTimeout(value) {
   if (value === undefined) return DEFAULT_PROMPT_TIMEOUT_MILLISECONDS;
   if (!Number.isSafeInteger(value) || value <= 0 ||
       value > DEFAULT_PROMPT_TIMEOUT_MILLISECONDS) blocked("prompt_timeout");
-  return value;
-}
-
-function exactIso(value) {
-  if (typeof value !== "string") blocked("timestamp");
-  let canonical;
-  try {
-    canonical = new Date(value).toISOString();
-  } catch {
-    blocked("timestamp");
-  }
-  if (canonical !== value) {
-    blocked("timestamp");
-  }
   return value;
 }
 
@@ -1503,11 +1387,6 @@ function canonicalJson(value) {
       `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
   }
   return JSON.stringify(value);
-}
-
-function isExactObject(value, keys) {
-  return value !== null && typeof value === "object" && !Array.isArray(value) &&
-    JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
 }
 
 function walk(value, visitor) {
@@ -1541,6 +1420,11 @@ function realIO() {
 
 function sanitizeLauncherFailure(error) {
   if (error instanceof StagingPhase1V2LiveLauncherError) return error;
+  if (error instanceof StagingPhase1V2MachineObserverError) {
+    const code = typeof error.code === "string" &&
+      /^[a-z0-9_]{1,64}$/.test(error.code) ? error.code : "observer_rejected";
+    return new StagingPhase1V2LiveLauncherError(code);
+  }
   if (["StagingPhase1V2AdmissionError", "StagingPhase1V2AdapterError"]
     .includes(error?.name)) {
     if (error.name === "StagingPhase1V2AdmissionError") {

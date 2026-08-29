@@ -473,9 +473,13 @@ async function requireContainment(containment, lock, classification) {
 export function assertControlPlaneSnapshot(snapshot, now) {
   assertExactKeys(snapshot, [
     "observedAt", "project", "billing", "advisors",
-    "expectedDatabaseAclDigest", "protectedProjects", "featureFlags"
+    "expectedDatabaseAclDigest", "observerArtifactDigest",
+    "protectedProjects", "featureFlags"
   ], "control_plane_snapshot");
   assertFresh(snapshot.observedAt, now, "control_plane");
+  if (!isDigest(snapshot.observerArtifactDigest)) {
+    invalid("control_plane_observer_digest");
+  }
   assertExactKeys(snapshot.project, [
     "ref", "name", "organizationId", "region", "status"
   ], "control_plane_project");
@@ -654,8 +658,14 @@ function assertPostAdvisorEvidence(evidence, now) {
     ordinal: 8,
     status: "acceptable",
     fields: {},
-    extraKeys: ["observedAt", "security", "performance"]
+    extraKeys: [
+      "observedAt", "observerArtifactDigest", "security", "performance"
+    ]
   });
+  if (!isDigest(evidence.observerArtifactDigest) ||
+      evidence.observerArtifactDigest !== evidence.evidenceDigest) {
+    invalid("post_advisors_observer_digest");
+  }
   assertFresh(evidence.observedAt, now, "post_advisors");
   for (const kind of ["security", "performance"]) {
     assertExactKeys(evidence[kind], [

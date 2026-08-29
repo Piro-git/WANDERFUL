@@ -367,6 +367,7 @@ describe("staging Phase 1 V2 one-session adapter", () => {
       ["stagedReceiptDigest", "0".repeat(64)],
       ["applicationName", "replayed_operator"],
       ["completionState", "stale"],
+      ["observerArtifactDigest", "typed-session-closed"],
       ["observedAt", new Date(NOW.getTime() - 600_000).toISOString()]
     ]) {
       const events = [];
@@ -391,6 +392,28 @@ describe("staging Phase 1 V2 one-session adapter", () => {
       );
       assert.equal(events.includes("receipt:persist"), false);
     }
+  });
+
+  it("cannot publish a terminal receipt from typed session-closed text", async () => {
+    const events = [];
+    const Client = fakeClientClass({ events });
+    const fixture = await authorizationFixture();
+    const external = boundaries(events);
+    external.cleanupVerifier.proveSessionClosed = async (request) => ({
+      backendPid: request.backendPid,
+      backendSessionCount: 0,
+      confirmation: `SESSION_CLOSED:${request.backendPid}:0:0`,
+      idleSessionCount: 0,
+      observedAt: NOW.toISOString()
+    });
+    await assert.rejects(
+      runAuthorizedStagingPhase1V2SingleSession({
+        admissionRequest: fixture.request,
+        ...external
+      }, dependencies(Client)),
+      fixedError("cleanup_unproved")
+    );
+    assert.equal(events.includes("receipt:persist"), false);
   });
 
   it("rejects stale or cross-run durable receipt acknowledgements", async () => {
@@ -640,6 +663,7 @@ function boundaries(events, { failPostAdvisors = false } = {}) {
         if (failPostAdvisors) throw new Error("private provider response");
         return phase("post-ddl-advisors", 8, "acceptable", {
           observedAt: NOW.toISOString(),
+          observerArtifactDigest: "8".repeat(64),
           security: advisor("8"),
           performance: advisor("9")
         }, "8");
@@ -672,6 +696,7 @@ function boundaries(events, { failPostAdvisors = false } = {}) {
           completionState: "session-closed",
           idleSessionCount: 0,
           observedAt: NOW.toISOString(),
+          observerArtifactDigest: "7".repeat(64),
           operatorDigestsDigest: request.operatorDigestsDigest,
           projectRef: request.projectRef,
           runId: request.runId,
@@ -904,6 +929,7 @@ function controlPlaneSnapshot() {
       }
     },
     expectedDatabaseAclDigest: canonicalAclDigest(SHARED_ACL),
+    observerArtifactDigest: "7".repeat(64),
     protectedProjects: [
       {
         ref: "bejvhhjbgtvctpsnlwid", kind: "production",

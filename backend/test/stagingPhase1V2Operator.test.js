@@ -300,6 +300,7 @@ function fixture(events) {
         if (state.failAt === "advisors") throw new Error("fixture");
         return phase("post-ddl-advisors", 8, "acceptable", {
           observedAt: now.toISOString(),
+          observerArtifactDigest: "8".repeat(64),
           security: advisor("8"),
           performance: advisor("9")
         }, "8");
@@ -478,6 +479,7 @@ function controlPlaneSnapshot() {
       }
     },
     expectedDatabaseAclDigest: aclDigest,
+    observerArtifactDigest: "7".repeat(64),
     protectedProjects: [
       {
         ref: "bejvhhjbgtvctpsnlwid",
