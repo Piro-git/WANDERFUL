@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import {
   chmod,
   link,
   lstat,
   mkdtemp,
+  readFile,
   rename,
   symlink,
   writeFile
@@ -29,10 +31,12 @@ import {
   admitStagingPhase1V2Session,
   readStagingPhase1V2CandidateBindings,
   STAGING_PHASE1_V2_DIRECT_HOST,
+  STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
   STAGING_PHASE1_V2_SESSION_HOST
 } from "../src/operations/stagingPhase1V2Admission.js";
 
-const NOW = new Date("2026-08-27T08:00:00.000Z");
+const NOW = new Date(Date.now() + 60_000);
+NOW.setMilliseconds(0);
 const CANDIDATE = "52849b4c75cd6e5ddf00473adf8a3265160d750d";
 const CANDIDATE_TREE = "b".repeat(40);
 const PROJECT = "mbvzwsrtqcrwhvykugcd";
@@ -81,6 +85,8 @@ describe("staging Phase 1 V2 admission", () => {
   it("rejects production and disabled runs before any DNS, socket, secret or file IO", () => {
     for (const override of [
       { projectRef: "bejvhhjbgtvctpsnlwid" },
+      { projectRef: "cmkvbxppgofteoutfslp" },
+      { projectRef: "unknownprojectref0000" },
       { enabled: false }
     ]) {
       let calls = 0;
@@ -145,13 +151,31 @@ describe("staging Phase 1 V2 admission", () => {
     assert.throws(() => admit(expired), /authorization_expired/);
     assert.equal(await missing(expired.authorizationEnvelopePath), true);
 
+    const future = await authorizationFixture({
+      envelope: {
+        issuedAt: new Date(NOW.getTime() + 1_000).toISOString(),
+        expiresAt: new Date(NOW.getTime() + 61_000).toISOString()
+      }
+    });
+    assert.throws(() => admit(future), /authorization_expired/);
+    assert.equal(await missing(future.authorizationEnvelopePath), true);
+
     for (const mutate of [
       (value) => { value.projectRef = "bejvhhjbgtvctpsnlwid"; },
+      (value) => { value.attemptId = randomUUID(); },
       (value) => { value.policyId = "historical-portable-v1"; },
       (value) => { value.runId = randomUUID(); },
       (value) => { value.candidateCommit = "a".repeat(40); },
       (value) => { value.candidateTree = "a".repeat(40); },
       (value) => { value.connection.port = 6543; },
+      (value) => { value.controlObservationDigest = "b".repeat(64); },
+      (value) => { value.endpointClass = "session"; },
+      (value) => { value.gitAttestation.clean = false; },
+      (value) => { value.target.organizationId = "wrong-organization"; },
+      (value) => { value.tls.mode = "require"; },
+      (value) => { value.credentialContainment.pathUnlinkedBeforeDatabase =
+        false; },
+      (value) => { value.liveBoundaryPackageVersion = "0.0.0"; },
       (value) => { value.dataApiExposedSchemas.push("trailmind_app"); },
       (value) => { value.caSha256 = "a".repeat(64); },
       (value) => { value.providerAclRestorePlanDigest = "a".repeat(64); },
@@ -227,7 +251,7 @@ describe("staging Phase 1 V2 admission", () => {
   it("rejects CA replacement and never reads password before the CA binding passes", async () => {
     const fixture = await authorizationFixture({ linkedPassword: true });
     await writeFile(fixture.caPath, "replacement-ca", { mode: 0o600 });
-    assert.throws(() => admit(fixture), /ca_digest/);
+    assert.throws(() => admit(fixture), /ca_(digest|pem|x509)/);
     const passwordMetadata = await lstat(fixture.passwordPath);
     assert.equal(passwordMetadata.size > 0, true);
   });
@@ -336,18 +360,28 @@ async function authorizationFixture({
       mkdir(authorizationStoreDirectory, { mode: 0o700 }));
   }
   const caPath = join(root, "ca.pem");
-  const ca = Buffer.from("test-only-ca-material\n");
-  await writeFile(caPath, ca, { mode: 0o600 });
+  const caKeyPath = join(root, "ca-key.pem");
+  execFileSync("openssl", [
+    "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
+    "-days", "1", "-subj", "/CN=TrailMind Admission Test CA",
+    "-addext", "basicConstraints=critical,CA:TRUE",
+    "-keyout", caKeyPath, "-out", caPath
+  ], { stdio: ["ignore", "ignore", "ignore"] });
+  unlinkSync(caKeyPath);
+  await chmod(caPath, 0o600);
+  const ca = await readFile(caPath);
   const passwordPath = join(root, "password");
   await writeFile(passwordPath, "test-only-password", { mode: 0o600 });
   const passwordFd = openSync(passwordPath, "r");
   if (!linkedPassword) unlinkSync(passwordPath);
   const runId = randomUUID();
+  const attemptId = randomUUID();
   const bindings = readStagingPhase1V2CandidateBindings({
     gitInspection: testGitInspection()
   });
   const authorization = {
     schemaVersion: 1,
+    attemptId,
     authorizationId: randomUUID(),
     singleUse: true,
     issuedAt: new Date(NOW.getTime() - 1_000).toISOString(),
@@ -358,6 +392,14 @@ async function authorizationFixture({
     candidateCommit: CANDIDATE,
     candidateTree: CANDIDATE_TREE,
     connection: { ...connection },
+    controlObservationDigest: "c".repeat(64),
+    endpointClass: endpointClass(connection),
+    gitAttestation: structuredClone(bindings.gitAttestation),
+    target: targetBinding(),
+    tls: tlsBinding(connection),
+    credentialContainment: credentialContainment(),
+    liveBoundaryPackageVersion:
+      STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
     dataApiExposedSchemas: ["public", "graphql_public"],
     authorizationStoreDirectorySha256: sha256(
       realpathSync(authorizationStoreDirectory)
@@ -380,6 +422,7 @@ async function authorizationFixture({
     passwordPath,
     request: {
       enabled: true,
+      attemptId,
       projectRef: PROJECT,
       policyId: POLICY,
       runId,
@@ -387,6 +430,14 @@ async function authorizationFixture({
       candidateTree: CANDIDATE_TREE,
       providerAclRestorePlanDigest: "d".repeat(64),
       connection: { ...connection },
+      controlObservationDigest: "c".repeat(64),
+      endpointClass: endpointClass(connection),
+      gitAttestation: bindings.gitAttestation,
+      target: targetBinding(),
+      tls: tlsBinding(connection),
+      credentialContainment: credentialContainment(),
+      liveBoundaryPackageVersion:
+        STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
       dataApiExposedSchemas: ["public", "graphql_public"],
       authorizationEnvelopePath,
       authorizationStoreDirectory,
@@ -397,20 +448,77 @@ async function authorizationFixture({
 }
 
 function baseRequest() {
+  const connection = directConnection();
   return {
     enabled: true,
+    attemptId: randomUUID(),
     projectRef: PROJECT,
     policyId: POLICY,
     runId: randomUUID(),
     candidateCommit: CANDIDATE,
     candidateTree: CANDIDATE_TREE,
     providerAclRestorePlanDigest: "d".repeat(64),
-    connection: directConnection(),
+    connection,
+    controlObservationDigest: "c".repeat(64),
+    endpointClass: "direct",
+    gitAttestation: {
+      clean: true,
+      repositoryRootSha256: "f".repeat(64),
+      reviewedOperatorAncestor: "a36c646815f390b60df734147a78e82c8ef46dd1"
+    },
+    target: targetBinding(),
+    tls: tlsBinding(connection),
+    credentialContainment: credentialContainment(),
+    liveBoundaryPackageVersion:
+      STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
     dataApiExposedSchemas: ["public", "graphql_public"],
     authorizationEnvelopePath: "/private/tmp/not-read-authorization",
     authorizationStoreDirectory: "/private/tmp/not-read-store",
     passwordFd: 99,
     caPath: "/private/tmp/not-read-ca"
+  };
+}
+
+function endpointClass(connection) {
+  return connection.host === STAGING_PHASE1_V2_DIRECT_HOST
+    ? "direct"
+    : "session";
+}
+
+function tlsBinding(connection) {
+  return {
+    certificateAuthority: "target-project-ca",
+    minimumVersion: "TLSv1.2",
+    mode: "verify-full",
+    rejectUnauthorized: true,
+    serverNameVerification: connection.host
+  };
+}
+
+function credentialContainment() {
+  return {
+    descriptorMinimum: 3,
+    descriptorSameProcessOnly: true,
+    fileMode: "0600",
+    intake: "interactive-tty-noecho",
+    ownerUid: process.geteuid(),
+    pathUnlinkedBeforeDatabase: true,
+    singleLinkBeforeUnlink: true
+  };
+}
+
+function targetBinding() {
+  return {
+    databaseName: "postgres",
+    monthlyCostUsd: 0,
+    organizationId: "wbnftkftyamxzvxsftda",
+    organizationName: "Alibra AI",
+    organizationPlan: "free",
+    postgresMajor: 17,
+    projectName: "TrailMind Outdoor Staging V1",
+    projectRef: PROJECT,
+    region: "eu-central-1",
+    regionLabel: "Frankfurt"
   };
 }
 

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, X509Certificate } from "node:crypto";
 import {
   closeSync,
   constants,
@@ -34,8 +34,9 @@ export const STAGING_PHASE1_V2_APPLICATION_NAME =
   "trailmind_phase1_v2_operator";
 export const STAGING_PHASE1_V2_AUTHORIZATION_LIFETIME_MILLISECONDS =
   5 * 60 * 1_000;
+export const STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION = "1.0.0";
 export const STAGING_PHASE1_V2_REVIEWED_BASELINE =
-  "52849b4c75cd6e5ddf00473adf8a3265160d750d";
+  "a36c646815f390b60df734147a78e82c8ef46dd1";
 
 const PRODUCTION_PROJECT_REF = "bejvhhjbgtvctpsnlwid";
 const MAXIMUM_AUTHORIZATION_BYTES = 64 * 1024;
@@ -71,44 +72,83 @@ const FORBIDDEN_ENVIRONMENT_KEYS = Object.freeze([
   "PGUSER"
 ]);
 const REQUEST_KEYS = Object.freeze([
+  "attemptId",
   "authorizationEnvelopePath",
   "authorizationStoreDirectory",
   "caPath",
   "candidateCommit",
   "candidateTree",
   "connection",
+  "controlObservationDigest",
+  "credentialContainment",
   "dataApiExposedSchemas",
   "enabled",
+  "endpointClass",
+  "gitAttestation",
+  "liveBoundaryPackageVersion",
   "passwordFd",
   "policyId",
   "projectRef",
   "providerAclRestorePlanDigest",
-  "runId"
+  "runId",
+  "target",
+  "tls"
 ]);
 const CONNECTION_KEYS = Object.freeze([
   "address", "database", "host", "port", "user"
 ]);
 const ENVELOPE_KEYS = Object.freeze([
+  "attemptId",
   "authorizationId",
   "authorizationStoreDirectorySha256",
   "caSha256",
   "candidateCommit",
   "candidateTree",
   "connection",
+  "controlObservationDigest",
+  "credentialContainment",
   "dataApiExposedSchemas",
+  "endpointClass",
   "expiresAt",
+  "gitAttestation",
   "issuedAt",
+  "liveBoundaryPackageVersion",
   "operatorDigests",
   "policyId",
   "projectRef",
   "providerAclRestorePlanDigest",
   "runId",
   "schemaVersion",
-  "singleUse"
+  "singleUse",
+  "target",
+  "tls"
 ]);
 const OPERATOR_DIGEST_KEYS = Object.freeze([
+  "capacityContractDigest",
+  "dependencyDigest",
   "files",
-  "managedMigrationsDigest"
+  "lifecycleDigest",
+  "liveBoundaryPackageDigest",
+  "liveBoundaryPackageVersion",
+  "managedMigrationsDigest",
+  "operatorSqlDigest"
+]);
+const TARGET_KEYS = Object.freeze([
+  "databaseName", "monthlyCostUsd", "organizationId", "organizationName",
+  "organizationPlan", "postgresMajor", "projectName", "projectRef",
+  "region", "regionLabel"
+]);
+const TLS_KEYS = Object.freeze([
+  "certificateAuthority", "minimumVersion", "mode",
+  "rejectUnauthorized", "serverNameVerification"
+]);
+const CREDENTIAL_CONTAINMENT_KEYS = Object.freeze([
+  "descriptorMinimum", "descriptorSameProcessOnly", "fileMode",
+  "intake", "ownerUid", "pathUnlinkedBeforeDatabase",
+  "singleLinkBeforeUnlink"
+]);
+const GIT_ATTESTATION_KEYS = Object.freeze([
+  "clean", "repositoryRootSha256", "reviewedOperatorAncestor"
 ]);
 const EXECUTABLE_OPERATOR_FILES = Object.freeze([
   "backend/scripts/disposable/run-staging-phase1-v2-single-session-adapter.js",
@@ -118,6 +158,7 @@ const EXECUTABLE_OPERATOR_FILES = Object.freeze([
   "backend/src/operations/stagingMigrationCapability.js",
   "backend/src/operations/stagingMigrationPolicy.js",
   "backend/src/operations/stagingPhase1V2Admission.js",
+  "backend/src/operations/stagingPhase1V2LiveLauncher.js",
   "backend/src/operations/stagingPhase1V2Operator.js",
   "backend/src/operations/stagingPhase1V2SingleSessionAdapter.js"
 ]);
@@ -133,6 +174,32 @@ const KNOWN_MIGRATION_FILES = Object.freeze([
   ...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.slice(0, 7),
   "008_outdoor_research_runtime_read_contract.sql",
   ...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.slice(7)
+]);
+const DEPENDENCY_FILES = Object.freeze([
+  "backend/package-lock.json",
+  "backend/package.json"
+]);
+const CAPACITY_FILES = Object.freeze([
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/capacity-contract-v1.json",
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/profile.json",
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/regions/harz-v1.geojson",
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/regions/harz-v1.json",
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/regions/innsbruck-alps-v1.geojson",
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/regions/innsbruck-alps-v1.json",
+  "backend/src/outdoorEvidence/outdoorCapacityAdmission.js"
+]);
+const LIFECYCLE_FILES = Object.freeze([
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/capacity-generation-lifecycle.sql",
+  "backend/config/outdoor-capacity-profiles/" +
+    "supabase-free-bounded-two-core-v1/projection-temporary-workspace.sql",
+  "backend/src/operations/serviceLifecycle.js"
 ]);
 const repositoryRoot = dirname(dirname(dirname(dirname(
   fileURLToPath(import.meta.url)
@@ -195,6 +262,7 @@ export function admitStagingPhase1V2Session(request, dependencies = {}) {
     if (
       candidateBindings.candidateCommit !== request.candidateCommit ||
       candidateBindings.candidateTree !== request.candidateTree ||
+      !sameJson(candidateBindings.gitAttestation, request.gitAttestation) ||
       !exactOperatorDigests(
         envelope.operatorDigests,
         candidateBindings.operatorDigests
@@ -208,11 +276,13 @@ export function admitStagingPhase1V2Session(request, dependencies = {}) {
       maximumBytes: MAXIMUM_CA_BYTES,
       code: "ca"
     });
+    validateCertificateAuthority(ca, now);
     if (sha256(ca) !== envelope.caSha256) {
       ca.fill(0);
       blocked("ca_digest");
     }
   } catch (error) {
+    ca?.fill?.(0);
     try { io.close(request.passwordFd); } catch { /* secret FD stays unread */ }
     throw error;
   }
@@ -292,6 +362,9 @@ export function readStagingPhase1V2CandidateBindings({
 
   const allRelativeFiles = [
     ...EXECUTABLE_OPERATOR_FILES,
+    ...DEPENDENCY_FILES,
+    ...CAPACITY_FILES,
+    ...LIFECYCLE_FILES,
     ...Object.values(OPERATOR_SQL_FILES),
     ...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.map(
       (name) => `backend/migrations/${name}`
@@ -329,13 +402,29 @@ export function readStagingPhase1V2CandidateBindings({
       sha256: digest
     }))
   ));
+  const digestFiles = (paths) => sha256(canonicalJson(paths.slice().sort()
+    .map((path) => ({ path, sha256: sha256(content.get(path)) }))));
+  const liveBoundaryPackagePath =
+    "backend/src/operations/stagingPhase1V2LiveLauncher.js";
   return Object.freeze({
     candidateCommit: before.head,
     candidateTree: before.tree,
+    gitAttestation: Object.freeze({
+      clean: true,
+      repositoryRootSha256: sha256(root),
+      reviewedOperatorAncestor: STAGING_PHASE1_V2_REVIEWED_BASELINE
+    }),
     admittedMigrations,
     operatorDigests: Object.freeze({
+      capacityContractDigest: digestFiles(CAPACITY_FILES),
+      dependencyDigest: digestFiles(DEPENDENCY_FILES),
       files: Object.freeze(files),
-      managedMigrationsDigest
+      lifecycleDigest: digestFiles(LIFECYCLE_FILES),
+      liveBoundaryPackageDigest: sha256(content.get(liveBoundaryPackagePath)),
+      liveBoundaryPackageVersion:
+        STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
+      managedMigrationsDigest,
+      operatorSqlDigest: digestFiles(Object.values(OPERATOR_SQL_FILES))
     }),
     operatorSql
   });
@@ -349,16 +438,30 @@ function validateRequestBeforeIO(request, env) {
     request.projectRef !== STAGING_PHASE1_V2_TARGET.projectRef
   ) blocked("project_ref");
   if (request.policyId !== STAGING_PHASE1_V2_POLICY_ID) blocked("policy");
+  if (!UUID_PATTERN.test(request.attemptId)) blocked("attempt_id");
   if (!UUID_PATTERN.test(request.runId)) blocked("run_id");
+  if (request.attemptId === request.runId) blocked("attempt_identity");
   if (!COMMIT_PATTERN.test(request.candidateCommit)) blocked("candidate_commit");
   if (!COMMIT_PATTERN.test(request.candidateTree)) blocked("candidate_tree");
   if (!DIGEST_PATTERN.test(request.providerAclRestorePlanDigest)) {
     blocked("provider_acl_digest");
   }
+  if (!DIGEST_PATTERN.test(request.controlObservationDigest)) {
+    blocked("control_observation_digest");
+  }
   if (!isExactObject(request.connection, CONNECTION_KEYS)) {
     blocked("connection_fields");
   }
   validateConnection(request.connection);
+  validateEndpointClass(request.endpointClass, request.connection);
+  validateTargetBinding(request.target);
+  validateTlsBinding(request.tls, request.connection.host);
+  validateCredentialContainment(request.credentialContainment);
+  validateGitAttestation(request.gitAttestation);
+  if (
+    request.liveBoundaryPackageVersion !==
+      STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION
+  ) blocked("live_boundary_version");
   if (
     !Array.isArray(request.dataApiExposedSchemas) ||
     request.dataApiExposedSchemas.length !== 2 ||
@@ -382,6 +485,68 @@ function validateRequestBeforeIO(request, env) {
   ) {
     blocked("environment_alias");
   }
+}
+
+function validateEndpointClass(endpointClass, connection) {
+  const expected = connection.host === STAGING_PHASE1_V2_DIRECT_HOST
+    ? "direct"
+    : connection.host === STAGING_PHASE1_V2_SESSION_HOST
+      ? "session"
+      : undefined;
+  if (endpointClass !== expected) blocked("endpoint_class");
+}
+
+function validateTargetBinding(target) {
+  if (!isExactObject(target, TARGET_KEYS)) blocked("target_fields");
+  if (
+    target.projectRef !== STAGING_PHASE1_V2_TARGET.projectRef ||
+    target.projectName !== STAGING_PHASE1_V2_TARGET.projectName ||
+    target.organizationId !== STAGING_PHASE1_V2_TARGET.organizationId ||
+    target.organizationName !== STAGING_PHASE1_V2_TARGET.organizationName ||
+    target.region !== STAGING_PHASE1_V2_TARGET.region ||
+    target.regionLabel !== STAGING_PHASE1_V2_TARGET.regionLabel ||
+    target.organizationPlan !== STAGING_PHASE1_V2_TARGET.organizationPlan ||
+    target.monthlyCostUsd !== STAGING_PHASE1_V2_TARGET.monthlyCost.amount ||
+    target.postgresMajor !== STAGING_PHASE1_V2_TARGET.postgresMajor ||
+    target.databaseName !== "postgres"
+  ) blocked("target_binding");
+}
+
+function validateTlsBinding(tls, host) {
+  if (!isExactObject(tls, TLS_KEYS)) blocked("tls_fields");
+  if (
+    tls.mode !== "verify-full" ||
+    tls.certificateAuthority !== "target-project-ca" ||
+    tls.rejectUnauthorized !== true ||
+    tls.serverNameVerification !== host ||
+    tls.minimumVersion !== "TLSv1.2"
+  ) blocked("tls_binding");
+}
+
+function validateCredentialContainment(value) {
+  if (!isExactObject(value, CREDENTIAL_CONTAINMENT_KEYS)) {
+    blocked("credential_containment_fields");
+  }
+  if (
+    value.intake !== "interactive-tty-noecho" ||
+    value.descriptorMinimum !== 3 ||
+    value.descriptorSameProcessOnly !== true ||
+    value.pathUnlinkedBeforeDatabase !== true ||
+    value.singleLinkBeforeUnlink !== true ||
+    value.fileMode !== "0600" ||
+    value.ownerUid !== process.geteuid()
+  ) blocked("credential_containment");
+}
+
+function validateGitAttestation(value) {
+  if (!isExactObject(value, GIT_ATTESTATION_KEYS)) {
+    blocked("git_attestation_fields");
+  }
+  if (
+    value.clean !== true ||
+    value.reviewedOperatorAncestor !== STAGING_PHASE1_V2_REVIEWED_BASELINE ||
+    !DIGEST_PATTERN.test(value.repositoryRootSha256)
+  ) blocked("git_attestation");
 }
 
 function validateConnection(connection) {
@@ -503,20 +668,38 @@ function validateAuthorizationEnvelope(envelope, request, now) {
     envelope.schemaVersion !== 1 ||
     envelope.singleUse !== true ||
     !UUID_PATTERN.test(envelope.authorizationId) ||
+    envelope.attemptId !== request.attemptId ||
     envelope.projectRef !== request.projectRef ||
     envelope.policyId !== request.policyId ||
     envelope.runId !== request.runId ||
     envelope.candidateCommit !== request.candidateCommit ||
     envelope.candidateTree !== request.candidateTree ||
+    envelope.controlObservationDigest !== request.controlObservationDigest ||
     envelope.providerAclRestorePlanDigest !==
       request.providerAclRestorePlanDigest ||
     !sameJson(envelope.connection, request.connection) ||
+    envelope.endpointClass !== request.endpointClass ||
+    !sameJson(envelope.target, request.target) ||
+    !sameJson(envelope.tls, request.tls) ||
+    !sameJson(
+      envelope.credentialContainment,
+      request.credentialContainment
+    ) ||
+    !sameJson(envelope.gitAttestation, request.gitAttestation) ||
+    envelope.liveBoundaryPackageVersion !==
+      request.liveBoundaryPackageVersion ||
     !sameJson(envelope.dataApiExposedSchemas, request.dataApiExposedSchemas) ||
     !DIGEST_PATTERN.test(envelope.caSha256) ||
+    !DIGEST_PATTERN.test(envelope.controlObservationDigest) ||
     !DIGEST_PATTERN.test(envelope.authorizationStoreDirectorySha256) ||
     !DIGEST_PATTERN.test(envelope.providerAclRestorePlanDigest) ||
     !isExactObject(envelope.operatorDigests, OPERATOR_DIGEST_KEYS)
   ) blocked("authorization_binding");
+  validateEndpointClass(envelope.endpointClass, envelope.connection);
+  validateTargetBinding(envelope.target);
+  validateTlsBinding(envelope.tls, envelope.connection.host);
+  validateCredentialContainment(envelope.credentialContainment);
+  validateGitAttestation(envelope.gitAttestation);
   const issuedAt = exactDate(new Date(envelope.issuedAt));
   const expiresAt = exactDate(new Date(envelope.expiresAt));
   const lifetime = expiresAt.getTime() - issuedAt.getTime();
@@ -559,6 +742,7 @@ function claimAuthorizationId({
   }
 
   const binding = Object.freeze({
+    attemptId: envelope.attemptId,
     authorizationId: envelope.authorizationId,
     authorizationEnvelopeSha256: envelopeSha256,
     candidateCommit: envelope.candidateCommit,
@@ -568,8 +752,15 @@ function claimAuthorizationId({
     runId: envelope.runId,
     targetDigest: sha256(canonicalJson({
       connection: envelope.connection,
+      controlObservationDigest: envelope.controlObservationDigest,
+      credentialContainment: envelope.credentialContainment,
       dataApiExposedSchemas: envelope.dataApiExposedSchemas,
-      providerAclRestorePlanDigest: envelope.providerAclRestorePlanDigest
+      endpointClass: envelope.endpointClass,
+      gitAttestation: envelope.gitAttestation,
+      liveBoundaryPackageVersion: envelope.liveBoundaryPackageVersion,
+      providerAclRestorePlanDigest: envelope.providerAclRestorePlanDigest,
+      target: envelope.target,
+      tls: envelope.tls
     }))
   });
   const bindingDigest = sha256(canonicalJson(binding));
@@ -693,10 +884,11 @@ function readProtectedFile({ path, root, io, maximumBytes, code }) {
   let descriptor;
   try {
     const metadata = io.lstat(path);
-    assertProtectedRegularFile(metadata, code);
+    assertProtectedRegularFile(metadata, code, { singleLink: true });
+    if (io.realpath(path) !== resolve(path)) blocked(`${code}_path`);
     descriptor = io.open(path, constants.O_RDONLY | noFollowFlag());
     const opened = io.fstat(descriptor);
-    assertProtectedRegularFile(opened, code);
+    assertProtectedRegularFile(opened, code, { singleLink: true });
     if (opened.dev !== metadata.dev || opened.ino !== metadata.ino) {
       blocked(`${code}_race`);
     }
@@ -705,14 +897,19 @@ function readProtectedFile({ path, root, io, maximumBytes, code }) {
     }
     const value = io.readFile(descriptor);
     const after = io.fstat(descriptor);
+    const afterPath = io.lstat(path);
     if (
       value.length !== opened.size || value.length > maximumBytes ||
       after.dev !== opened.dev || after.ino !== opened.ino ||
       after.size !== opened.size || after.mtimeMs !== opened.mtimeMs ||
-      after.ctimeMs !== opened.ctimeMs
+      after.ctimeMs !== opened.ctimeMs ||
+      afterPath.dev !== opened.dev || afterPath.ino !== opened.ino ||
+      afterPath.size !== opened.size ||
+      afterPath.mtimeMs !== opened.mtimeMs ||
+      afterPath.ctimeMs !== opened.ctimeMs
     ) {
       value.fill(0);
-      blocked(`${code}_size`);
+      blocked(`${code}_race`);
     }
     return value;
   } catch (error) {
@@ -722,6 +919,40 @@ function readProtectedFile({ path, root, io, maximumBytes, code }) {
     if (descriptor !== undefined) {
       try { io.close(descriptor); } catch { /* bounded fail-closed read */ }
     }
+  }
+}
+
+function validateCertificateAuthority(bytes, now) {
+  let text;
+  let blocks;
+  try {
+    text = bytes.toString("utf8");
+    if (Buffer.byteLength(text, "utf8") !== bytes.length) blocked("ca_pem");
+    blocks = text.match(
+      /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
+    );
+    if (!blocks || blocks.length === 0 ||
+        text.replace(
+          /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g,
+          ""
+        ).trim() !== "") blocked("ca_pem");
+    for (const pem of blocks) {
+      const certificate = new X509Certificate(pem);
+      const validFrom = new Date(certificate.validFrom);
+      const validTo = new Date(certificate.validTo);
+      if (
+        certificate.ca !== true ||
+        Number.isNaN(validFrom.getTime()) || Number.isNaN(validTo.getTime()) ||
+        validTo.getTime() <= validFrom.getTime() ||
+        now.getTime() < validFrom.getTime() || now.getTime() > validTo.getTime()
+      ) blocked("ca_x509");
+    }
+  } catch (error) {
+    if (error instanceof StagingPhase1V2AdmissionError) throw error;
+    blocked("ca_x509");
+  } finally {
+    text = undefined;
+    blocks = undefined;
   }
 }
 
@@ -796,7 +1027,8 @@ function readRepositoryFile(path, root, io) {
 }
 
 function assertOutsideRepository(path, root, io, code) {
-  if (!isAbsolute(path) || isInside(resolve(path), root)) blocked(`${code}_path`);
+  if (!isAbsolute(path) || resolve(path) !== path ||
+      isInside(resolve(path), root)) blocked(`${code}_path`);
   try {
     const parent = io.realpath(dirname(path));
     const resolvedPath = join(parent, path.slice(dirname(path).length + 1));
@@ -826,7 +1058,14 @@ function assertProtectedRepositoryFile(metadata) {
 
 function exactOperatorDigests(actual, expected) {
   return isExactObject(actual, OPERATOR_DIGEST_KEYS) &&
+    DIGEST_PATTERN.test(actual.capacityContractDigest) &&
+    DIGEST_PATTERN.test(actual.dependencyDigest) &&
+    DIGEST_PATTERN.test(actual.lifecycleDigest) &&
+    DIGEST_PATTERN.test(actual.liveBoundaryPackageDigest) &&
+    actual.liveBoundaryPackageVersion ===
+      STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION &&
     DIGEST_PATTERN.test(actual.managedMigrationsDigest) &&
+    DIGEST_PATTERN.test(actual.operatorSqlDigest) &&
     Array.isArray(actual.files) && actual.files.length > 0 &&
     actual.files.every((file) =>
       isExactObject(file, ["path", "sha256"]) &&

@@ -112,7 +112,8 @@ subjectAltName = DNS:db.mbvzwsrtqcrwhvykugcd.supabase.co
       "-keyout", caKey,
       "-out", caCertificate,
       "-days", "1",
-      "-subj", "/CN=TrailMind disposable PostgreSQL 17 CA"
+      "-subj", "/CN=TrailMind disposable PostgreSQL 17 CA",
+      "-addext", "basicConstraints=critical,CA:TRUE"
     ], { capture: true });
     run("openssl", [
       "req", "-newkey", "rsa:2048", "-nodes",

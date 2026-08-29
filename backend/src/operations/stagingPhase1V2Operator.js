@@ -9,11 +9,14 @@ import {
 export const STAGING_PHASE1_V2_TARGET = deepFreeze({
   projectRef: "mbvzwsrtqcrwhvykugcd",
   projectName: "TrailMind Outdoor Staging V1",
+  organizationName: "Alibra AI",
   organizationId: "wbnftkftyamxzvxsftda",
   region: "eu-central-1",
+  regionLabel: "Frankfurt",
   status: "ACTIVE_HEALTHY",
   organizationPlan: "free",
   computeSize: "nano",
+  postgresMajor: 17,
   monthlyCost: Object.freeze({ currency: "USD", amount: 0 })
 });
 
@@ -519,7 +522,9 @@ export function assertControlPlaneSnapshot(snapshot, now) {
 
 export function assertDatabaseSnapshot(controlSnapshot, snapshot, approval) {
   assertExactKeys(snapshot, [
-    "projectRef", "databaseName", "trailmindRoleCount",
+    "projectRef", "databaseName", "currentDatabaseBytes",
+    "freePlanDatabaseLimitBytes", "phase1MinimumHeadroomBytes",
+    "capacityAdmission", "trailmindRoleCount",
     "trailmindSchemaCount", "trailmindObjectCount", "postgisInstalled",
     "publicPostgisRoutineCount", "siblingWriterSessionCount", "sessionUser",
     "currentUser", "databaseOwner", "extensionsSchemaOwner",
@@ -536,6 +541,13 @@ export function assertDatabaseSnapshot(controlSnapshot, snapshot, approval) {
     snapshot.projectRef !== STAGING_PHASE1_V2_TARGET.projectRef ||
     DENIED_PROJECT_REFS.has(snapshot.projectRef) ||
     snapshot.databaseName !== "postgres" ||
+    !Number.isSafeInteger(snapshot.currentDatabaseBytes) ||
+    snapshot.currentDatabaseBytes < 0 ||
+    snapshot.freePlanDatabaseLimitBytes !== 500_000_000 ||
+    snapshot.phase1MinimumHeadroomBytes !== 40_000_000 ||
+    snapshot.capacityAdmission !== true ||
+    snapshot.currentDatabaseBytes + snapshot.phase1MinimumHeadroomBytes >
+      snapshot.freePlanDatabaseLimitBytes ||
     snapshot.trailmindRoleCount !== 0 ||
     snapshot.trailmindSchemaCount !== 0 ||
     snapshot.trailmindObjectCount !== 0 ||
@@ -574,7 +586,9 @@ function assertRecoverableDatabaseSnapshot(
   controlSnapshot, snapshot, approval
 ) {
   assertExactKeys(snapshot, [
-    "projectRef", "databaseName", "trailmindRoleCount",
+    "projectRef", "databaseName", "currentDatabaseBytes",
+    "freePlanDatabaseLimitBytes", "phase1MinimumHeadroomBytes",
+    "capacityAdmission", "trailmindRoleCount",
     "trailmindSchemaCount", "trailmindObjectCount", "postgisInstalled",
     "publicPostgisRoutineCount", "siblingWriterSessionCount", "sessionUser",
     "currentUser", "databaseOwner", "extensionsSchemaOwner",
@@ -591,6 +605,13 @@ function assertRecoverableDatabaseSnapshot(
     snapshot.projectRef !== STAGING_PHASE1_V2_TARGET.projectRef ||
     DENIED_PROJECT_REFS.has(snapshot.projectRef) ||
     snapshot.databaseName !== "postgres" ||
+    !Number.isSafeInteger(snapshot.currentDatabaseBytes) ||
+    snapshot.currentDatabaseBytes < 0 ||
+    snapshot.freePlanDatabaseLimitBytes !== 500_000_000 ||
+    snapshot.phase1MinimumHeadroomBytes !== 40_000_000 ||
+    snapshot.capacityAdmission !== true ||
+    snapshot.currentDatabaseBytes + snapshot.phase1MinimumHeadroomBytes >
+      snapshot.freePlanDatabaseLimitBytes ||
     snapshot.trailmindRoleCount !== 12 ||
     snapshot.trailmindSchemaCount !== 4 ||
     !Number.isInteger(snapshot.trailmindObjectCount) ||

@@ -126,6 +126,10 @@ describe("staging Phase 1 V2 future operator state machine", () => {
 
   for (const [name, mutate] of [
     ["nonempty roles", (value) => { value.trailmindRoleCount = 1; }],
+    ["insufficient Free-plan capacity", (value) => {
+      value.currentDatabaseBytes = 470_000_000;
+      value.capacityAdmission = false;
+    }],
     ["installed PostGIS", (value) => { value.postgisInstalled = true; }],
     ["sibling writer", (value) => { value.siblingWriterSessionCount = 1; }],
     ["wrong operator", (value) => { value.currentUser = "supabase_admin"; }],
@@ -496,6 +500,10 @@ function databasePreSnapshot() {
   return {
     projectRef: "mbvzwsrtqcrwhvykugcd",
     databaseName: "postgres",
+    currentDatabaseBytes: 12_000_000,
+    freePlanDatabaseLimitBytes: 500_000_000,
+    phase1MinimumHeadroomBytes: 40_000_000,
+    capacityAdmission: true,
     trailmindRoleCount: 0,
     trailmindSchemaCount: 0,
     trailmindObjectCount: 0,

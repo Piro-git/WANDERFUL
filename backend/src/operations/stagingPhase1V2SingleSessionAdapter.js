@@ -35,6 +35,8 @@ const IDLE_TRANSACTION_TIMEOUT_MILLISECONDS = 5_000;
 const OVERALL_TIMEOUT_MILLISECONDS = 120_000;
 const DNS_TIMEOUT_MILLISECONDS = 5_000;
 const CLEANUP_TIMEOUT_MILLISECONDS = 5_000;
+const FREE_PLAN_DATABASE_LIMIT_BYTES = 500_000_000;
+const PHASE1_MINIMUM_HEADROOM_BYTES = 40_000_000;
 const LOCK_TOKEN = Symbol("trailmind-phase1-v2-session-lock");
 const RUNTIME_FUNCTIONS = Object.freeze([
   "trailmind_runtime_outdoor_research_highlights_v1",
@@ -213,6 +215,7 @@ export async function runAuthorizedStagingPhase1V2SingleSession({
   let secrets;
   let session;
   let cleanupComplete = false;
+  let abortListener;
   try {
     admission = admitStagingPhase1V2Session(
       admissionRequest,
@@ -263,6 +266,14 @@ export async function runAuthorizedStagingPhase1V2SingleSession({
       receiptStore,
       now: dependencies.now ?? (() => new Date())
     });
+    if (dependencies.signal?.aborted) {
+      session.abort("cancelled");
+      throw adapterFailure("cancelled");
+    }
+    abortListener = () => session.abort("cancelled");
+    dependencies.signal?.addEventListener?.(
+      "abort", abortListener, { once: true }
+    );
     const operation = session.run();
     const staged = await raceOverallTimeout(
       operation,
@@ -279,9 +290,13 @@ export async function runAuthorizedStagingPhase1V2SingleSession({
   } catch (error) {
     throw sanitizeFailure(error, session?.failureCode());
   } finally {
+    if (abortListener) {
+      dependencies.signal?.removeEventListener?.("abort", abortListener);
+    }
     if (!cleanupComplete) await session?.cleanup();
     admission?.dispose();
     secrets?.ca?.fill(0);
+    if (secrets) secrets.password = undefined;
   }
 }
 
@@ -861,6 +876,9 @@ function createSession({
     const topologyResult = await query(`
       /* trailmind:phase1-v2:pre-snapshot */
       SELECT pg_catalog.current_database() AS database_name,
+             pg_catalog.pg_database_size(
+               pg_catalog.current_database()
+             )::integer AS current_database_bytes,
              session_user,
              current_user,
              pg_catalog.pg_get_userbyid(database_record.datdba)
@@ -957,6 +975,13 @@ function createSession({
     return Object.freeze({
       projectRef: admission.projectRef,
       databaseName: topology.database_name,
+      currentDatabaseBytes: topology.current_database_bytes,
+      freePlanDatabaseLimitBytes: FREE_PLAN_DATABASE_LIMIT_BYTES,
+      phase1MinimumHeadroomBytes: PHASE1_MINIMUM_HEADROOM_BYTES,
+      capacityAdmission:
+        Number.isInteger(topology.current_database_bytes) &&
+        topology.current_database_bytes + PHASE1_MINIMUM_HEADROOM_BYTES <=
+          FREE_PLAN_DATABASE_LIMIT_BYTES,
       trailmindRoleCount: topology.trailmind_role_count,
       trailmindSchemaCount: topology.trailmind_schema_count,
       trailmindObjectCount: topology.trailmind_object_count,

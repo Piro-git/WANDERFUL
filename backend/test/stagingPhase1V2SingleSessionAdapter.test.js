@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { openSync, realpathSync, unlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { fstatSync, openSync, realpathSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
 import {
   readStagingPhase1V2CandidateBindings,
   STAGING_PHASE1_V2_APPLICATION_NAME,
-  STAGING_PHASE1_V2_DIRECT_HOST
+  STAGING_PHASE1_V2_DIRECT_HOST,
+  STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION
 } from "../src/operations/stagingPhase1V2Admission.js";
 import {
   createStagingPhase1V2SingleSessionDependencies,
@@ -20,7 +22,8 @@ import {
   SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2
 } from "../src/operations/stagingMigrationPolicy.js";
 
-const NOW = new Date("2026-08-27T08:00:00.000Z");
+const NOW = new Date(Date.now() + 60_000);
+NOW.setMilliseconds(0);
 const CANDIDATE = "52849b4c75cd6e5ddf00473adf8a3265160d750d";
 const CANDIDATE_TREE = "b".repeat(40);
 const PROJECT = "mbvzwsrtqcrwhvykugcd";
@@ -290,6 +293,26 @@ describe("staging Phase 1 V2 one-session adapter", () => {
     assert.equal(events.includes("client:pre"), false);
     assert.equal(events.includes("receipt:persist"), false);
     assert.equal(client.connection.stream.destroyed, true);
+  });
+
+  it("closes the consumed descriptor and client on external cancellation", async () => {
+    const events = [];
+    const Client = fakeClientClass({ events });
+    const fixture = await authorizationFixture();
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(runAuthorizedStagingPhase1V2SingleSession({
+      admissionRequest: fixture.request,
+      ...boundaries(events)
+    }, {
+      ...dependencies(Client),
+      signal: controller.signal
+    }), fixedError("cancelled"));
+    assert.equal(Client.instances.length, 1);
+    assert.equal(Client.instances[0].ended, true);
+    assert.equal(events.includes("receipt:persist"), false);
+    assert.throws(() => fstatSync(fixture.request.passwordFd),
+      (error) => error?.code === "EBADF");
   });
 
   it("contains post-commit boundary failure before returning a fixed redacted error", async () => {
@@ -701,14 +724,23 @@ async function authorizationFixture() {
   temporaryRoots.push(root);
   const authorizationStoreDirectory = join(root, "consumed");
   await mkdir(authorizationStoreDirectory, { mode: 0o700 });
-  const ca = Buffer.from("test-only-ca-material\n");
   const caPath = join(root, "ca.pem");
-  await writeFile(caPath, ca, { mode: 0o600 });
+  const caKeyPath = join(root, "ca-key.pem");
+  execFileSync("openssl", [
+    "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
+    "-days", "1", "-subj", "/CN=TrailMind Adapter Test CA",
+    "-addext", "basicConstraints=critical,CA:TRUE",
+    "-keyout", caKeyPath, "-out", caPath
+  ], { stdio: ["ignore", "ignore", "ignore"] });
+  unlinkSync(caKeyPath);
+  await chmod(caPath, 0o600);
+  const ca = await readFile(caPath);
   const passwordPath = join(root, "password");
   await writeFile(passwordPath, "test-only-password", { mode: 0o600 });
   const passwordFd = openSync(passwordPath, "r");
   unlinkSync(passwordPath);
   const runId = randomUUID();
+  const attemptId = randomUUID();
   const providerAclRestorePlanDigest = canonicalAclDigest(PROVIDER_PLAN);
   const bindings = readStagingPhase1V2CandidateBindings({
     gitInspection: testGitInspection()
@@ -716,6 +748,7 @@ async function authorizationFixture() {
   const authorizationEnvelopePath = join(root, "authorization.json");
   await writeFile(authorizationEnvelopePath, JSON.stringify({
     schemaVersion: 1,
+    attemptId,
     authorizationId: randomUUID(),
     singleUse: true,
     issuedAt: new Date(NOW.getTime() - 1_000).toISOString(),
@@ -726,6 +759,14 @@ async function authorizationFixture() {
     candidateCommit: CANDIDATE,
     candidateTree: CANDIDATE_TREE,
     connection: directConnection(),
+    controlObservationDigest: "c".repeat(64),
+    endpointClass: "direct",
+    gitAttestation: bindings.gitAttestation,
+    target: targetBinding(),
+    tls: tlsBinding(),
+    credentialContainment: credentialContainment(),
+    liveBoundaryPackageVersion:
+      STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
     dataApiExposedSchemas: ["public", "graphql_public"],
     authorizationStoreDirectorySha256: sha256(
       realpathSync(authorizationStoreDirectory)
@@ -737,6 +778,7 @@ async function authorizationFixture() {
   return {
     request: {
       enabled: true,
+      attemptId,
       projectRef: PROJECT,
       policyId: POLICY,
       runId,
@@ -744,12 +786,57 @@ async function authorizationFixture() {
       candidateTree: CANDIDATE_TREE,
       providerAclRestorePlanDigest,
       connection: directConnection(),
+      controlObservationDigest: "c".repeat(64),
+      endpointClass: "direct",
+      gitAttestation: bindings.gitAttestation,
+      target: targetBinding(),
+      tls: tlsBinding(),
+      credentialContainment: credentialContainment(),
+      liveBoundaryPackageVersion:
+        STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
       dataApiExposedSchemas: ["public", "graphql_public"],
       authorizationEnvelopePath,
       authorizationStoreDirectory,
       passwordFd,
       caPath
     }
+  };
+}
+
+function tlsBinding() {
+  return {
+    certificateAuthority: "target-project-ca",
+    minimumVersion: "TLSv1.2",
+    mode: "verify-full",
+    rejectUnauthorized: true,
+    serverNameVerification: STAGING_PHASE1_V2_DIRECT_HOST
+  };
+}
+
+function credentialContainment() {
+  return {
+    descriptorMinimum: 3,
+    descriptorSameProcessOnly: true,
+    fileMode: "0600",
+    intake: "interactive-tty-noecho",
+    ownerUid: process.geteuid(),
+    pathUnlinkedBeforeDatabase: true,
+    singleLinkBeforeUnlink: true
+  };
+}
+
+function targetBinding() {
+  return {
+    databaseName: "postgres",
+    monthlyCostUsd: 0,
+    organizationId: "wbnftkftyamxzvxsftda",
+    organizationName: "Alibra AI",
+    organizationPlan: "free",
+    postgresMajor: 17,
+    projectName: "TrailMind Outdoor Staging V1",
+    projectRef: PROJECT,
+    region: "eu-central-1",
+    regionLabel: "Frankfurt"
   };
 }
 
@@ -859,6 +946,7 @@ function identityRow() {
 function preSnapshotRow() {
   return {
     database_name: "postgres",
+    current_database_bytes: 12_000_000,
     session_user: "postgres",
     current_user: "postgres",
     database_owner: "postgres",

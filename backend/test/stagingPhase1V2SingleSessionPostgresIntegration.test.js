@@ -8,7 +8,8 @@ import pg from "pg";
 import {
   admitStagingPhase1V2Session,
   readStagingPhase1V2CandidateBindings,
-  STAGING_PHASE1_V2_DIRECT_HOST
+  STAGING_PHASE1_V2_DIRECT_HOST,
+  STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION
 } from "../src/operations/stagingPhase1V2Admission.js";
 import {
   runAuthorizedStagingPhase1V2SingleSession
@@ -928,6 +929,7 @@ async function createAuthorization() {
     (error) => { if (error?.code !== "EEXIST") throw error; }
   );
   const runId = randomUUID();
+  const attemptId = randomUUID();
   const authorizationId = randomUUID();
   const authPath = join(root, `${authorizationId}.json`);
   const passwordPath = join(root, `${authorizationId}.password`);
@@ -944,6 +946,7 @@ async function createAuthorization() {
   };
   await writeFile(authPath, JSON.stringify({
     schemaVersion: 1,
+    attemptId,
     authorizationId,
     singleUse: true,
     issuedAt: new Date(Date.now() - 1_000).toISOString(),
@@ -954,6 +957,14 @@ async function createAuthorization() {
     candidateCommit: candidate,
     candidateTree,
     connection,
+    controlObservationDigest: "c".repeat(64),
+    endpointClass: "direct",
+    gitAttestation: bindings.gitAttestation,
+    target: targetBinding(),
+    tls: tlsBinding(),
+    credentialContainment: credentialContainment(),
+    liveBoundaryPackageVersion:
+      STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
     dataApiExposedSchemas: ["public", "graphql_public"],
     authorizationStoreDirectorySha256: sha256(
       realpathSync(authorizationStoreDirectory)
@@ -964,6 +975,7 @@ async function createAuthorization() {
   }), { mode: 0o600 });
   return {
     enabled: true,
+    attemptId,
     projectRef: PROJECT,
     policyId: POLICY,
     runId,
@@ -971,11 +983,56 @@ async function createAuthorization() {
     candidateTree,
     providerAclRestorePlanDigest: expectedProviderDigest,
     connection,
+    controlObservationDigest: "c".repeat(64),
+    endpointClass: "direct",
+    gitAttestation: bindings.gitAttestation,
+    target: targetBinding(),
+    tls: tlsBinding(),
+    credentialContainment: credentialContainment(),
+    liveBoundaryPackageVersion:
+      STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION,
     dataApiExposedSchemas: ["public", "graphql_public"],
     authorizationEnvelopePath: authPath,
     authorizationStoreDirectory,
     passwordFd,
     caPath
+  };
+}
+
+function tlsBinding() {
+  return {
+    certificateAuthority: "target-project-ca",
+    minimumVersion: "TLSv1.2",
+    mode: "verify-full",
+    rejectUnauthorized: true,
+    serverNameVerification: STAGING_PHASE1_V2_DIRECT_HOST
+  };
+}
+
+function credentialContainment() {
+  return {
+    descriptorMinimum: 3,
+    descriptorSameProcessOnly: true,
+    fileMode: "0600",
+    intake: "interactive-tty-noecho",
+    ownerUid: process.geteuid(),
+    pathUnlinkedBeforeDatabase: true,
+    singleLinkBeforeUnlink: true
+  };
+}
+
+function targetBinding() {
+  return {
+    databaseName: "postgres",
+    monthlyCostUsd: 0,
+    organizationId: "wbnftkftyamxzvxsftda",
+    organizationName: "Alibra AI",
+    organizationPlan: "free",
+    postgresMajor: 17,
+    projectName: "TrailMind Outdoor Staging V1",
+    projectRef: PROJECT,
+    region: "eu-central-1",
+    regionLabel: "Frankfurt"
   };
 }
 
