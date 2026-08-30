@@ -1,33 +1,30 @@
 import assert from "node:assert/strict";
-import { createHash, randomUUID } from "node:crypto";
-import {
-  chmodSync, closeSync, fstatSync, mkdtempSync, openSync, readFileSync,
-  rmSync, unlinkSync, writeSync
-} from "node:fs";
+import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
 import {
   createSyntheticStagingPhase1V2ObserverFactory,
   createSyntheticStagingPhase1V2ObserverSession,
-  disposeStagingPhase1V2ProductionObserverSession,
   machineCleanupEvidence,
   machineControlSnapshot,
   machinePostAdvisorEvidence,
   observeStagingPhase1V2MachinePhase,
-  prepareStagingPhase1V2ProductionPreControl,
   requireReviewedStagingPhase1V2ProductionObserverFactory,
   STAGING_PHASE1_V2_AUDITOR_SQL_MANIFEST,
   STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST,
   STAGING_PHASE1_V2_OBSERVER_CONTRACT_DIGEST,
-  STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE,
-  STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY,
   STAGING_PHASE1_V2_SYNTHETIC_OBSERVER_PACKAGE,
   StagingPhase1V2MachineObserverError,
   validateStagingPhase1V2AuditorIdentityFixture,
   validateStagingPhase1V2CleanupResultFixture,
   validateStagingPhase1V2ControlCredentialTypeFixture,
+  parseStagingPhase1V2ControlJsonFixture,
   validateStagingPhase1V2ControlResponseFixture,
-  validateStagingPhase1V2ControlResponseMetadataFixture
+  validateStagingPhase1V2ControlResponseMetadataFixture,
+  validateStagingPhase1V2TargetSessionFixture
 } from "../src/operations/stagingPhase1V2MachineObserver.js";
+import {
+  deriveStagingPhase1V2DatabaseRunBinding
+} from "../src/operations/stagingPhase1V2ProductionObserverContract.js";
 
 const NOW = new Date("2026-08-29T10:00:00.000Z");
 const ATTEMPT = "11111111-1111-4111-8111-111111111111";
@@ -38,8 +35,16 @@ const TREE = "ae82c3e2e4693ae911587e3fbba2516469c9e4d2";
 const PROJECT = "mbvzwsrtqcrwhvykugcd";
 const ORGANIZATION = "wbnftkftyamxzvxsftda";
 const REGION = "eu-central-1";
-const APPLICATION = "trailmind_phase1_v2_operator";
 const PID = 41_241;
+const BACKEND_START = "2026-08-29T09:59:00.000Z";
+const AUTHORIZATION_BINDING_DIGEST = "7".repeat(64);
+const DATABASE_RUN_BINDING = deriveStagingPhase1V2DatabaseRunBinding({
+  authorizationBindingDigest: AUTHORIZATION_BINDING_DIGEST,
+  candidateCommit: COMMIT,
+  projectRef: PROJECT,
+  runId: RUN
+});
+const APPLICATION = DATABASE_RUN_BINDING.applicationName;
 
 describe("staging Phase 1 V2 machine observer", () => {
   it("traverses the pinned synthetic machine fixture once in causal phase order", async () => {
@@ -115,19 +120,10 @@ describe("staging Phase 1 V2 machine observer", () => {
         observerFailure("observer_untrusted")
       );
     }
-    assert.throws(
-      () => requireReviewedStagingPhase1V2ProductionObserverFactory({
-        ...STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY,
-        packageBinding: STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE
-      }),
-      observerFailure("observer_untrusted")
-    );
-    assert.equal(
-      requireReviewedStagingPhase1V2ProductionObserverFactory(
-        STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
-      ),
-      STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
-    );
+    assert.throws(() =>
+      requireReviewedStagingPhase1V2ProductionObserverFactory({
+        createSession() {}, packageBinding: { copied: true }
+      }), observerFailure("observer_untrusted"));
     assert.throws(
       () => createSyntheticStagingPhase1V2ObserverSession({
         packageBinding: STAGING_PHASE1_V2_SYNTHETIC_OBSERVER_PACKAGE,
@@ -137,17 +133,7 @@ describe("staging Phase 1 V2 machine observer", () => {
     );
   });
 
-  it("pins the only production factory to this source and exact read-only manifests", () => {
-    const source = readFileSync(new URL(
-      "../src/operations/stagingPhase1V2MachineObserver.js", import.meta.url
-    ));
-    const sourceText = source.toString("utf8");
-    assert.equal(STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE.sourceDigest,
-      createHash("sha256").update(source).digest("hex"));
-    assert.doesNotMatch(sourceText, /response\.resume\(\)/);
-    assert.match(sourceText, /response\.destroy\(\)/);
-    assert.match(sourceText, /chunk\.fill\(0\)/);
-    assert.match(sourceText, /process\.env\[name\]/);
+  it("keeps production unregistered and pins the fixed read-only manifests", () => {
     assert.deepEqual(STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST.transport, {
       host: "api.supabase.com",
       method: "GET",
@@ -177,8 +163,8 @@ describe("staging Phase 1 V2 machine observer", () => {
     }
     assert.deepEqual(Object.keys(STAGING_PHASE1_V2_AUDITOR_SQL_MANIFEST)
       .sort(), [
-      "begin", "cleanup", "foundation", "identity", "providerAcl",
-      "rollback", "sharedAcl", "timeouts"
+      "begin", "cleanup", "foundation", "identity", "membership",
+      "providerAcl", "rollback", "sharedAcl", "timeouts", "tls"
     ]);
     assert.equal(Object.values(STAGING_PHASE1_V2_AUDITOR_SQL_MANIFEST)
       .every((digest) => /^[a-f0-9]{64}$/.test(digest)), true);
@@ -202,14 +188,18 @@ describe("staging Phase 1 V2 machine observer", () => {
     assert.deepEqual(inventory.protectedProjects.map(({ ref }) => ref), [
       "bejvhhjbgtvctpsnlwid", "cmkvbxppgofteoutfslp"
     ]);
-    assert.deepEqual(validateStagingPhase1V2ControlResponseFixture(
+    const advisor = validateStagingPhase1V2ControlResponseFixture(
       "security", advisorFixture("SECURITY")
-    ), {
+    );
+    assert.deepEqual({ ...advisor, lintSetDigest: "digest" }, {
       blockingFindingCount: 0,
       evidenceDigest: "0".repeat(64),
+      levelCounts: { ERROR: 0, INFO: 1, WARN: 0 },
+      lintSetDigest: "digest",
       noticeCount: 1,
-      status: "completed"
+      status: "notice-only"
     });
+    assert.match(advisor.lintSetDigest, /^[a-f0-9]{64}$/);
     assert.equal(validateStagingPhase1V2ControlResponseMetadataFixture({
       contentEncoding: undefined,
       contentLength: "128",
@@ -285,7 +275,7 @@ describe("staging Phase 1 V2 machine observer", () => {
     advisor.lints[0].categories = ["PERFORMANCE"];
     assert.throws(() => validateStagingPhase1V2ControlResponseFixture(
       "security", advisor
-    ), observerFailure("advisor_category"));
+    ), observerFailure("advisor_response"));
     assert.throws(() => validateStagingPhase1V2ControlResponseMetadataFixture({
       contentEncoding: undefined,
       contentLength: undefined,
@@ -316,123 +306,88 @@ describe("staging Phase 1 V2 machine observer", () => {
     }
   });
 
-  it("contains rejected non-OAuth credential types in unlinked descriptors without remote work", async () => {
-    const root = mkdtempSync("/private/tmp/trailmind-control-fd-test.");
-    try {
-      const legacyServiceJwt = jwtFixture({
-        iss: "supabase", role: "service_role"
-      });
-      const rejected = [
-        "sbp_" + "do-not-log-this-token".repeat(3),
-        "sb_secret_" + "x".repeat(48),
-        "sb_publishable_" + "x".repeat(48),
-        legacyServiceJwt
-      ];
-      assert.deepEqual(validateStagingPhase1V2ControlCredentialTypeFixture(
-        "oauth_" + "x".repeat(64)
-      ), { accepted: true });
-      assert.deepEqual(validateStagingPhase1V2ControlCredentialTypeFixture(
-        jwtFixture({ scope: "projects:read organizations:read database:read" })
-      ), { accepted: true });
-      for (const token of rejected) {
-        assert.throws(
-          () => validateStagingPhase1V2ControlCredentialTypeFixture(token),
-          observerFailure("control_credential_type")
-        );
+  it("rejects non-OAuth credential types without exposing their values", () => {
+    const legacyServiceJwt = jwtFixture({
+      iss: "supabase", role: "service_role"
+    });
+    const rejected = [
+      "sbp_" + "do-not-log-this-token".repeat(3),
+      "sb_secret_" + "x".repeat(48),
+      "sb_publishable_" + "x".repeat(48),
+      legacyServiceJwt
+    ];
+    assert.deepEqual(validateStagingPhase1V2ControlCredentialTypeFixture(
+      "oauth_" + "x".repeat(64)
+    ), { accepted: true });
+    for (const token of rejected) {
+      let failure;
+      try {
+        validateStagingPhase1V2ControlCredentialTypeFixture(token);
+      } catch (error) {
+        failure = error;
       }
-      for (const [index, token] of rejected.entries()) {
-        const path = `${root}/credential-${index}`;
-        let fd;
-        let productionSession;
-        try {
-          fd = openSync(path, "wx+", 0o600);
-          chmodSync(path, 0o600);
-          writeSync(fd, Buffer.from(token));
-          unlinkSync(path);
-          assert.equal(fstatSync(fd).nlink, 0);
-          productionSession =
-            STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
-              .createSession(binding(), { controlCredentialFd: fd });
-          let failure;
-          try {
-            await prepareStagingPhase1V2ProductionPreControl(
-              productionSession, request("pre-control")
-            );
-          } catch (error) {
-            failure = error;
-          }
-          assert.ok(observerFailure("control_credential_type")(failure));
-          assert.equal(failure.message.includes(token), false);
-        } finally {
-          await disposeStagingPhase1V2ProductionObserverSession(
-            productionSession
-          );
-          try { closeSync(fd); } catch { /* observer owns and closes it */ }
-        }
-      }
-    } finally {
-      rmSync(root, { recursive: true, force: true });
+      assert.ok(observerFailure("control_credential_type")(failure));
+      assert.equal(failure.message.includes(token), false);
     }
   });
 
-  it("requires a stable, read-only PostgreSQL 17 Supabase auditor identity", () => {
-    const applicationName = "trailmind_p1v2_auditor_fixture";
-    const row = auditorIdentityFixture(applicationName);
-    assert.deepEqual(validateStagingPhase1V2AuditorIdentityFixture({
-      applicationName,
-      backendPid: undefined,
-      clientPid: row.backend_pid,
-      row
-    }), { backendPid: row.backend_pid });
+  it("requires the distinct least-privilege observer auditor contract", () => {
+    const fixture = auditorIdentityFixture();
+    assert.deepEqual(validateStagingPhase1V2AuditorIdentityFixture(fixture), {
+      accepted: true,
+      role: "trailmind_phase1_v2_stats_auditor"
+    });
     for (const mutate of [
-      (value) => { value.transaction_read_only = "off"; },
-      (value) => { value.application_name = APPLICATION; },
-      (value) => { value.backend_pid += 1; },
-      (value) => { value.no_advisory_locks = false; },
-      (value) => { value.shared_preload_libraries = "pg_stat_statements"; },
-      (value) => { value.server_version_num = 160_000; },
-      (value) => { value.rolsuper = true; }
+      (value) => { value.role = "postgres"; },
+      (value) => { value.roleAttributes.createdb = true; },
+      (value) => { value.roleAttributes.bypassrls = true; },
+      (value) => { value.memberships[0].inherit = true; },
+      (value) => { value.memberships[0].admin = true; },
+      (value) => { value.defaults.defaultTransactionReadOnly = "off"; },
+      (value) => { value.forbiddenAccess.productData = true; },
+      (value) => { value.forbiddenAccess.genericSql = true; }
     ]) {
-      const invalid = structuredClone(row);
+      const invalid = structuredClone(fixture);
       mutate(invalid);
-      assert.throws(() => validateStagingPhase1V2AuditorIdentityFixture({
-        applicationName,
-        backendPid: row.backend_pid,
-        clientPid: row.backend_pid,
-        row: invalid
-      }), observerFailure("auditor_identity"));
+      assert.throws(() => validateStagingPhase1V2AuditorIdentityFixture(
+        invalid
+      ), observerFailure("auditor_privilege"));
     }
-    assert.throws(() => validateStagingPhase1V2AuditorIdentityFixture({
-      applicationName,
-      backendPid: row.backend_pid + 1,
-      clientPid: row.backend_pid,
-      row
-    }), observerFailure("auditor_identity"));
   });
 
-  it("accepts only independent cleanup 0/0 proof and rejects active, idle and self-proof cases", () => {
-    const clean = {
-      active_session_count: 0,
-      auditor_excluded: null,
-      exact_session_count: 0,
-      idle_session_count: 0
-    };
-    assert.deepEqual(validateStagingPhase1V2CleanupResultFixture({
-      row: clean, rowCount: 1
-    }), { activeSessionCount: 0, idleSessionCount: 0 });
+  it("requires exact backend_start binding and two fresh cleanup samples", () => {
+    const expected = sessionBindingFixture();
+    assert.deepEqual(validateStagingPhase1V2TargetSessionFixture({
+      expected,
+      observed: targetSessionFixture(expected)
+    }), { accepted: true });
+    const samples = cleanupSamplesFixture(expected);
+    assert.equal(validateStagingPhase1V2CleanupResultFixture({
+      expected, samples
+    }).accepted, true);
     for (const invalid of [
-      { ...clean, active_session_count: 1, exact_session_count: 1 },
-      { ...clean, idle_session_count: 1, exact_session_count: 1 },
-      { ...clean, auditor_excluded: false },
-      { ...clean, exact_session_count: 1 }
+      [samples[0]],
+      [{ ...samples[0], exactBackendInstanceCount: 1 }, samples[1]],
+      [samples[0], { ...samples[1], matchingApplicationCount: 1 }],
+      [samples[0], { ...samples[1], backendStart:
+        "2026-08-29T09:59:59.000Z" }],
+      [samples[0], { ...samples[1], samePidOtherInstanceCount: 1 }],
+      [samples[0], { ...samples[1], observedAt:
+        "2026-08-29T10:00:00.100Z" }]
     ]) {
       assert.throws(() => validateStagingPhase1V2CleanupResultFixture({
-        row: invalid, rowCount: 1
-      }), observerFailure("cleanup_sessions_present"));
+        expected, samples: invalid
+      }), (error) => error instanceof StagingPhase1V2MachineObserverError);
     }
-    assert.throws(() => validateStagingPhase1V2CleanupResultFixture({
-      row: clean, rowCount: 0
-    }), observerFailure("cleanup_sessions_present"));
+  });
+
+  it("rejects duplicate JSON keys and bounded parser false-greens", () => {
+    assert.throws(() => parseStagingPhase1V2ControlJsonFixture(
+      Buffer.from('{"lints":[],"lints":[{"level":"INFO"}]}')
+    ), (error) => error?.code === "control_duplicate_json_key");
+    assert.throws(() => parseStagingPhase1V2ControlJsonFixture(
+      Buffer.from('{"x":[[[[[1]]]]]}'), { maximumDepth: 3 }
+    ), (error) => error?.code === "control_response_bounds");
   });
 
   it("rejects manual control, advisor and cleanup assertions as untrusted artifacts", () => {
@@ -618,8 +573,12 @@ function request(phase) {
   const pre = phase === "pre-control";
   return {
     applicationName: pre ? null : APPLICATION,
-    authorizationBindingDigest: cleanup ? "7".repeat(64) : null,
+    authorizationBindingDigest: pre ? null : AUTHORIZATION_BINDING_DIGEST,
     backendPid: pre ? null : PID,
+    backendStart: pre ? null : BACKEND_START,
+    databaseRunBindingDigest: pre
+      ? null
+      : DATABASE_RUN_BINDING.databaseRunBindingDigest,
     phase,
     stagedReceiptDigest: cleanup ? "9".repeat(64) : null
   };
@@ -628,10 +587,12 @@ function request(phase) {
 function cleanupRequest() {
   return {
     applicationName: APPLICATION,
-    authorizationBindingDigest: "7".repeat(64),
+    authorizationBindingDigest: AUTHORIZATION_BINDING_DIGEST,
     backendPid: PID,
+    backendStart: BACKEND_START,
     candidateCommit: COMMIT,
     candidateTree: TREE,
+    databaseRunBindingDigest: DATABASE_RUN_BINDING.databaseRunBindingDigest,
     operatorDigestsDigest: "8".repeat(64),
     projectRef: PROJECT,
     runId: RUN,
@@ -741,33 +702,95 @@ function advisorFixture(category) {
   };
 }
 
-function auditorIdentityFixture(applicationName) {
+function auditorIdentityFixture() {
   return {
-    application_name: applicationName,
-    backend_pid: 51_241,
-    can_read_all_settings: true,
-    can_read_all_stats: true,
-    current_user: "postgres",
-    database_name: "postgres",
-    is_superuser: "off",
-    no_advisory_locks: true,
-    postgres_cannot_set_supabase_admin: true,
-    rolbypassrls: false,
-    rolcanlogin: true,
-    rolcreatedb: true,
-    rolcreaterole: true,
-    rolreplication: false,
-    rolsuper: false,
-    server_version_num: 170_004,
-    session_user: "postgres",
-    shared_preload_libraries: "supautils, pg_stat_statements",
-    supabase_admin_superuser: true,
-    supautils_legacy_superuser: null,
-    supautils_privileged_extensions: "postgis",
-    supautils_privileged_role: "postgres",
-    supautils_superuser: "supabase_admin",
-    transaction_read_only: "on"
+    databaseName: "postgres",
+    defaults: {
+      defaultTransactionReadOnly: "on",
+      idleInTransactionSessionTimeout: "5s",
+      lockTimeout: "1s",
+      searchPath: "pg_catalog",
+      statementTimeout: "5s"
+    },
+    forbiddenAccess: {
+      databaseCreate: false,
+      databaseTemporary: false,
+      genericSql: false,
+      ownedObjects: false,
+      pgMonitor: false,
+      pgReadAllData: false,
+      pgReadAllSettings: false,
+      pgWriteAllData: false,
+      productData: false,
+      productRoutineExecute: false,
+      schemaCreate: false
+    },
+    memberships: [{
+      admin: false,
+      inherit: false,
+      role: "pg_read_all_stats",
+      set: true
+    }],
+    role: "trailmind_phase1_v2_stats_auditor",
+    roleAttributes: {
+      bypassrls: false,
+      canLogin: true,
+      connectionLimit: 1,
+      credentialUnexpired: true,
+      createdb: false,
+      createrole: false,
+      inherit: false,
+      replication: false,
+      superuser: false
+    },
+    sessionUserName: "trailmind_phase1_v2_stats_auditor",
+    tls: { active: true, version: "TLSv1.3" }
   };
+}
+
+function sessionBindingFixture() {
+  return {
+    applicationName: APPLICATION,
+    backendPid: PID,
+    backendStart: BACKEND_START
+  };
+}
+
+function targetSessionFixture(expected) {
+  return {
+    ...expected,
+    backendType: "client backend",
+    databaseName: "postgres",
+    databaseUser: "postgres",
+    exactBackendInstanceCount: 1,
+    idleExactInstanceCount: 0,
+    matchingApplicationCount: 1,
+    samePidOtherInstanceCount: 0,
+    tls: true
+  };
+}
+
+function cleanupSamplesFixture(expected) {
+  const build = (observedAt, statsSnapshotId) => ({
+    ...expected,
+    clearSnapshot: true,
+    exactBackendInstanceCount: 0,
+    idleExactInstanceCount: 0,
+    matchingApplicationCount: 0,
+    observedAt,
+    samePidOtherInstanceCount: 0,
+    statsSnapshotId
+  });
+  return [
+    build(
+      "2026-08-29T10:00:00.000Z",
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    ),
+    build(
+      "2026-08-29T10:00:00.250Z",
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    )
+  ];
 }
 
 function jwtFixture(payload) {

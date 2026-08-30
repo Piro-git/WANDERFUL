@@ -4,10 +4,13 @@ import { checkServerIdentity } from "node:tls";
 import pg from "pg";
 import {
   admitStagingPhase1V2Session,
-  STAGING_PHASE1_V2_APPLICATION_NAME,
   STAGING_PHASE1_V2_DIRECT_HOST,
   STAGING_PHASE1_V2_SESSION_HOST
 } from "./stagingPhase1V2Admission.js";
+import {
+  deriveStagingPhase1V2DatabaseRunBinding,
+  validateStagingPhase1V2CleanupSamples
+} from "./stagingPhase1V2ProductionObserverContract.js";
 import {
   canonicalAclDigest,
   runStagingPhase1V2Operator,
@@ -214,6 +217,7 @@ export async function runAuthorizedStagingPhase1V2SingleSession({
   let admission;
   let secrets;
   let session;
+  let databaseRunBinding;
   let cleanupComplete = false;
   let abortListener;
   try {
@@ -221,6 +225,12 @@ export async function runAuthorizedStagingPhase1V2SingleSession({
       admissionRequest,
       dependencies.admission
     );
+    databaseRunBinding = deriveStagingPhase1V2DatabaseRunBinding({
+      authorizationBindingDigest: admission.authorizationBindingDigest,
+      candidateCommit: admission.candidateCommit,
+      projectRef: admission.projectRef,
+      runId: admission.runId
+    });
     await boundedDnsAdmission(
       admission.connection.host,
       admission.connection.address,
@@ -243,7 +253,7 @@ export async function runAuthorizedStagingPhase1V2SingleSession({
           minVersion: "TLSv1.2"
         },
         enableChannelBinding: true,
-        application_name: STAGING_PHASE1_V2_APPLICATION_NAME,
+        application_name: databaseRunBinding.applicationName,
         connectionTimeoutMillis: CONNECT_TIMEOUT_MILLISECONDS,
         statement_timeout: STATEMENT_TIMEOUT_MILLISECONDS,
         lock_timeout: LOCK_TIMEOUT_MILLISECONDS,
@@ -263,6 +273,7 @@ export async function runAuthorizedStagingPhase1V2SingleSession({
       client,
       containmentControl,
       controlPlane,
+      databaseRunBinding,
       receiptStore,
       now: dependencies.now ?? (() => new Date())
     });
@@ -318,6 +329,12 @@ export function createStagingPhase1V2SingleSessionDependencies({
     client,
     containmentControl,
     controlPlane,
+    databaseRunBinding: deriveStagingPhase1V2DatabaseRunBinding({
+      authorizationBindingDigest: admission.authorizationBindingDigest,
+      candidateCommit: admission.candidateCommit,
+      projectRef: admission.projectRef,
+      runId: admission.runId
+    }),
     receiptStore,
     now
   });
@@ -328,6 +345,7 @@ function createSession({
   client,
   containmentControl,
   controlPlane,
+  databaseRunBinding,
   receiptStore,
   now
 }) {
@@ -335,12 +353,16 @@ function createSession({
   let ended = false;
   let abortCode;
   let backendPid;
+  let backendStart;
   let activeLock;
   let initialSharedAclDigest;
   let lastFailureCode;
   let stagedReceipt;
   const boundaryAbort = new AbortController();
   const operatorDigestsDigest = canonicalAclDigest(admission.operatorDigests);
+  const applicationName = databaseRunBinding.applicationName;
+  const databaseRunBindingDigest =
+    databaseRunBinding.databaseRunBindingDigest;
   client.on?.("error", () => abort("connection_lost"));
 
   async function run() {
@@ -414,7 +436,11 @@ function createSession({
         activeLock = Object.freeze({
           [LOCK_TOKEN]: true,
           acquired: true,
+          applicationName,
+          authorizationBindingDigest: admission.authorizationBindingDigest,
           backendPid,
+          backendStart,
+          databaseRunBindingDigest,
           key
         });
         try {
@@ -699,6 +725,11 @@ function createSession({
              session_user,
              current_user,
              pg_catalog.pg_backend_pid()::integer AS backend_pid,
+             current_setting('application_name') AS application_name,
+             pg_catalog.to_char(
+               activity.backend_start AT TIME ZONE 'UTC',
+               'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+             ) AS backend_start,
              current_setting('server_version_num')::integer
                AS server_version_num,
              current_setting('shared_preload_libraries')
@@ -730,6 +761,8 @@ function createSession({
                'postgres', 'supabase_admin', 'SET'
              ) AS postgres_cannot_set_supabase_admin
         FROM pg_catalog.pg_roles role_record
+        JOIN pg_catalog.pg_stat_activity activity
+          ON activity.pid = pg_catalog.pg_backend_pid()
        WHERE role_record.rolname = current_user
     `);
     if (
@@ -737,6 +770,7 @@ function createSession({
       identity.rows[0].database_name !== "postgres" ||
       identity.rows[0].session_user !== "postgres" ||
       identity.rows[0].current_user !== "postgres" ||
+      identity.rows[0].application_name !== applicationName ||
       Math.trunc(identity.rows[0].server_version_num / 10_000) !== 17 ||
       !settingListIncludes(
         identity.rows[0].shared_preload_libraries, "supautils"
@@ -768,6 +802,7 @@ function createSession({
       throw adapterFailure("identity");
     }
     backendPid = identity.rows[0].backend_pid;
+    backendStart = exactBackendStart(identity.rows[0].backend_start);
     await query(
       `/* trailmind:phase1-v2:timeouts */
        SELECT pg_catalog.set_config('statement_timeout', $1, false),
@@ -792,6 +827,10 @@ function createSession({
     const attestation = await query(`
       /* trailmind:phase1-v2:session-attestation */
       SELECT pg_catalog.pg_backend_pid()::integer AS backend_pid,
+             pg_catalog.to_char(
+               activity.backend_start AT TIME ZONE 'UTC',
+               'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+             ) AS backend_start,
              pg_catalog.current_database() AS database_name,
              session_user,
              current_user,
@@ -823,6 +862,8 @@ function createSession({
                   )::oid
              ) AS foundation_lock_held
         FROM pg_catalog.pg_roles role_record
+        JOIN pg_catalog.pg_stat_activity activity
+          ON activity.pid = pg_catalog.pg_backend_pid()
        WHERE role_record.rolname = current_user
     `, [STAGING_PHASE1_V2_LOCK_KEY]);
     const row = attestation.rows[0] ?? {};
@@ -830,10 +871,11 @@ function createSession({
       attestation.rowCount !== 1 ||
       !Number.isInteger(client.processID) || client.processID !== backendPid ||
       row.backend_pid !== backendPid ||
+      exactBackendStart(row.backend_start) !== backendStart ||
       row.database_name !== "postgres" ||
       row.session_user !== "postgres" ||
       row.current_user !== "postgres" ||
-      row.application_name !== STAGING_PHASE1_V2_APPLICATION_NAME ||
+      row.application_name !== applicationName ||
       row.is_superuser !== "off" ||
       row.rolcanlogin !== true ||
       row.rolsuper !== false ||
@@ -868,6 +910,11 @@ function createSession({
       lock !== activeLock ||
       lock[LOCK_TOKEN] !== true ||
       lock.backendPid !== backendPid ||
+      lock.backendStart !== backendStart ||
+      lock.applicationName !== applicationName ||
+      lock.authorizationBindingDigest !==
+        admission.authorizationBindingDigest ||
+      lock.databaseRunBindingDigest !== databaseRunBindingDigest ||
       lock.key !== STAGING_PHASE1_V2_LOCK_KEY
     ) throw adapterFailure("lock_attestation");
   }
@@ -962,7 +1009,7 @@ function createSession({
       TRAILMIND_ROLES,
       ["trailmind_app", "trailmind_control", "trailmind_gis",
         "trailmind_phase1_guard"],
-      STAGING_PHASE1_V2_APPLICATION_NAME
+      applicationName
     ]);
     if (topologyResult.rowCount !== 1) throw adapterFailure("pre_snapshot");
     const topology = topologyResult.rows[0];
@@ -1336,7 +1383,7 @@ function createSession({
         JOIN pg_catalog.pg_roles extension_owner
           ON extension_owner.oid = extension_record.extowner
        WHERE database_record.datname = pg_catalog.current_database()
-    `, [STAGING_PHASE1_V2_APPLICATION_NAME]);
+    `, [applicationName]);
     if (final.rowCount !== 1) throw adapterFailure("final_snapshot");
     const row = final.rows[0];
     const sharedAcl = await readSharedAcl();
@@ -1597,6 +1644,11 @@ function createSession({
     const beforeClose = await query(`
       /* trailmind:phase1-v2:cleanup-attestation */
       SELECT pg_catalog.pg_backend_pid()::integer AS backend_pid,
+             pg_catalog.to_char(
+               activity.backend_start AT TIME ZONE 'UTC',
+               'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+             ) AS backend_start,
+             current_setting('application_name') AS application_name,
              session_user = 'postgres' AS exact_session,
              current_user = 'postgres' AS exact_current,
              NOT EXISTS (
@@ -1605,10 +1657,14 @@ function createSession({
                   AND held.locktype = 'advisory'
                   AND held.granted
              ) AS no_advisory_locks
+        FROM pg_catalog.pg_stat_activity activity
+       WHERE activity.pid = pg_catalog.pg_backend_pid()
     `);
     if (
       beforeClose.rowCount !== 1 ||
       beforeClose.rows[0]?.backend_pid !== backendPid ||
+      exactBackendStart(beforeClose.rows[0]?.backend_start) !== backendStart ||
+      beforeClose.rows[0]?.application_name !== applicationName ||
       beforeClose.rows[0]?.exact_session !== true ||
       beforeClose.rows[0]?.exact_current !== true ||
       beforeClose.rows[0]?.no_advisory_locks !== true
@@ -1619,12 +1675,14 @@ function createSession({
     let cleanupProof;
     try {
       cleanupProof = await cleanupVerifier.proveSessionClosed({
-        applicationName: STAGING_PHASE1_V2_APPLICATION_NAME,
+        applicationName,
         authorizationBindingDigest: admission.authorizationBindingDigest,
         backendPid,
+        backendStart,
         candidateCommit: admission.candidateCommit,
         candidateTree: admission.candidateTree,
         completedAt: staged.receipt.completedAt,
+        databaseRunBindingDigest,
         operatorDigestsDigest,
         projectRef: admission.projectRef,
         stagedReceiptDigest: staged.receiptDigest,
@@ -1637,8 +1695,11 @@ function createSession({
     if (
       !isExactObject(cleanupProof, [
         "applicationName", "authorizationBindingDigest", "backendPid",
+        "backendStart",
         "backendSessionCount", "candidateCommit", "candidateTree",
-        "completionState", "evidenceDigest", "idleSessionCount",
+        "cleanupSamples", "completionState", "databaseRunBindingDigest",
+        "evidenceDigest",
+        "idleSessionCount",
         "observedAt", "observerArtifactDigest", "observerPackageDigest",
         "observerPackageId", "observerPackageVersion",
         "observerSourceDigest", "observerTrustMode",
@@ -1646,10 +1707,12 @@ function createSession({
         "stagedReceiptDigest"
       ]) || cleanupProof.backendSessionCount !== 0 ||
       cleanupProof.idleSessionCount !== 0 ||
-      cleanupProof.applicationName !== STAGING_PHASE1_V2_APPLICATION_NAME ||
+      cleanupProof.applicationName !== applicationName ||
       cleanupProof.authorizationBindingDigest !==
         admission.authorizationBindingDigest ||
       cleanupProof.backendPid !== backendPid ||
+      cleanupProof.backendStart !== backendStart ||
+      cleanupProof.databaseRunBindingDigest !== databaseRunBindingDigest ||
       cleanupProof.candidateCommit !== admission.candidateCommit ||
       cleanupProof.candidateTree !== admission.candidateTree ||
       cleanupProof.completionState !== "session-closed" ||
@@ -1670,6 +1733,15 @@ function createSession({
       canonicalAclDigest(withoutKey(cleanupProof, "evidenceDigest")) !==
         cleanupProof.evidenceDigest
     ) throw adapterFailure("cleanup_unproved");
+    try {
+      validateStagingPhase1V2CleanupSamples(cleanupProof.cleanupSamples, {
+        applicationName,
+        backendPid,
+        backendStart
+      });
+    } catch {
+      throw adapterFailure("cleanup_unproved");
+    }
 
     const receipt = Object.freeze({
       ...staged.receipt,
@@ -1681,12 +1753,14 @@ function createSession({
     let persistence;
     try {
       persistence = await receiptStore.persist({
-        applicationName: STAGING_PHASE1_V2_APPLICATION_NAME,
+        applicationName,
         authorizationBindingDigest: admission.authorizationBindingDigest,
         backendPid,
+        backendStart,
         candidateCommit: admission.candidateCommit,
         candidateTree: admission.candidateTree,
         cleanupEvidenceDigest: cleanupProof.evidenceDigest,
+        databaseRunBindingDigest,
         operatorDigestsDigest,
         projectRef: admission.projectRef,
         receipt,
@@ -1700,16 +1774,20 @@ function createSession({
     if (
       !isExactObject(persistence, [
         "applicationName", "authorizationBindingDigest", "backendPid",
+        "backendStart",
         "candidateCommit", "candidateTree", "cleanupEvidenceDigest",
-        "evidenceDigest", "operatorDigestsDigest", "ordinal", "persistedAt",
+        "databaseRunBindingDigest", "evidenceDigest", "operatorDigestsDigest",
+        "ordinal", "persistedAt",
         "phase", "projectRef", "receiptBytes", "receiptDigest", "runId",
         "status"
       ]) || persistence.phase !== "sanitized-durable-receipt" ||
       persistence.ordinal !== 11 || persistence.status !== "persisted" ||
-      persistence.applicationName !== STAGING_PHASE1_V2_APPLICATION_NAME ||
+      persistence.applicationName !== applicationName ||
       persistence.authorizationBindingDigest !==
         admission.authorizationBindingDigest ||
       persistence.backendPid !== backendPid ||
+      persistence.backendStart !== backendStart ||
+      persistence.databaseRunBindingDigest !== databaseRunBindingDigest ||
       persistence.candidateCommit !== admission.candidateCommit ||
       persistence.candidateTree !== admission.candidateTree ||
       persistence.cleanupEvidenceDigest !== cleanupProof.evidenceDigest ||
@@ -1916,6 +1994,19 @@ function isBoundaryTimestamp(value, notBefore, notAfter) {
 function withoutVolatileIdentity(topology) {
   const { sibling_writer_session_count: ignored, ...stable } = topology;
   return stable;
+}
+
+function exactBackendStart(value) {
+  if (typeof value === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(?:\d{3}|\d{6})Z$/.test(value) &&
+      !Number.isNaN(new Date(value).getTime())) {
+    return value;
+  }
+  const observed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(observed.getTime())) {
+    throw adapterFailure("session_backend_start");
+  }
+  return observed.toISOString();
 }
 
 function timeoutEquals(value, milliseconds) {

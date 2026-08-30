@@ -42,6 +42,9 @@ import {
   runAuthorizedStagingPhase1V2SingleSession
 } from "./stagingPhase1V2SingleSessionAdapter.js";
 import {
+  deriveStagingPhase1V2DatabaseRunBinding
+} from "./stagingPhase1V2ProductionObserverContract.js";
+import {
   attachStagingPhase1V2ProductionDatabaseAuditor,
   assertSyntheticStagingPhase1V2ObserverSession,
   createSyntheticStagingPhase1V2ObserverFactory,
@@ -53,7 +56,6 @@ import {
   observeStagingPhase1V2MachinePhase,
   prepareStagingPhase1V2ProductionPreControl,
   requireReviewedStagingPhase1V2ProductionObserverFactory,
-  STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY,
   StagingPhase1V2MachineObserverError
 } from "./stagingPhase1V2MachineObserver.js";
 
@@ -178,9 +180,7 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
   if (tty.isTTY !== true) blocked("tty_required");
   let observerFactory;
   try {
-    observerFactory = requireReviewedStagingPhase1V2ProductionObserverFactory(
-      STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
-    );
+    observerFactory = requireReviewedStagingPhase1V2ProductionObserverFactory();
   } catch (error) {
     throw sanitizeLauncherFailure(error);
   }
@@ -204,6 +204,7 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
   });
   const signal = cancellation.signal;
   let secret;
+  let auditorSecret;
   let controlCredential;
   let credential;
   let observerSession;
@@ -246,6 +247,8 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
       applicationName: null,
       authorizationBindingDigest: null,
       backendPid: null,
+      backendStart: null,
+      databaseRunBindingDigest: null,
       phase: "pre-control",
       stagedReceiptDigest: null
     });
@@ -272,20 +275,31 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
         ) }
     );
     validateSecretBuffer(secret, MAXIMUM_PASSWORD_BYTES);
+    auditorSecret = await tty.readSecret(
+      "Independent observer auditor password: ",
+      { maximumBytes: MAXIMUM_PASSWORD_BYTES, signal,
+        timeoutMilliseconds: boundedPromptTimeout(undefined) }
+    );
+    validateSecretBuffer(auditorSecret, MAXIMUM_PASSWORD_BYTES);
     credential = createUnlinkedCredentialPair({
+      auditorPassword: auditorSecret,
       directory: task.path,
       password: secret,
       io: undefined
     });
     secret.fill(0);
     secret = undefined;
+    auditorSecret.fill(0);
+    auditorSecret = undefined;
     unlinkCredentialPairBeforeDatabase(credential);
     await attachStagingPhase1V2ProductionDatabaseAuditor(
       observerSession,
       {
         auditorCredentialFd: credential.auditorFd,
         caPath: ca.path,
-        connection
+        connection: liveAuditorConnection(
+          options.endpointClass, options.address
+        )
       }
     );
     const preObservation = await observeStagingPhase1V2MachinePhase(
@@ -386,6 +400,7 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
   } finally {
     cancellation.dispose();
     secret?.fill?.(0);
+    auditorSecret?.fill?.(0);
     closeCredential(credential);
     closeCredential(controlCredential);
     await disposeStagingPhase1V2ProductionObserverSession(observerSession);
@@ -427,6 +442,7 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
   let credential;
   let admission;
   let password;
+  let auditorPassword;
   const observerPhases = [];
   try {
     const caPath = join(task.path, "synthetic-ca.pem");
@@ -463,6 +479,8 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
         applicationName: null,
         authorizationBindingDigest: null,
         backendPid: null,
+        backendStart: null,
+        databaseRunBindingDigest: null,
         phase: "pre-control",
         stagedReceiptDigest: null
       }
@@ -494,10 +512,17 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
       )
     });
     validateSecretBuffer(password);
+    auditorPassword = Buffer.from(`auditor-${password.toString("utf8")}`);
+    validateSecretBuffer(auditorPassword);
     credential = createUnlinkedCredentialPair({
-      directory: task.path, password, io: dependencies.io
+      auditorPassword,
+      directory: task.path,
+      password,
+      io: dependencies.io
     });
     password.fill(0);
+    auditorPassword.fill(0);
+    auditorPassword = undefined;
     const connection = liveConnection(
       "direct", "2606:4700:4700::1111"
     );
@@ -572,7 +597,19 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
     admission.dispose();
     admission = undefined;
     assertDescriptorClosed(credential.fd, dependencies.io);
-    const lock = Object.freeze({ backendPid: 41_241 });
+    const authorizationBindingDigest = "7".repeat(64);
+    const databaseRunBinding = deriveStagingPhase1V2DatabaseRunBinding({
+      authorizationBindingDigest,
+      candidateCommit: bindings.candidateCommit,
+      projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
+      runId
+    });
+    const lock = Object.freeze({
+      ...databaseRunBinding,
+      authorizationBindingDigest,
+      backendPid: 41_241,
+      backendStart: exactDate(now()).toISOString()
+    });
     await boundaries.controlPlane.inspectPostAdvisors({
       lock,
       projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
@@ -584,11 +621,13 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
       readOnly: true
     });
     await boundaries.cleanupVerifier.proveSessionClosed({
-      applicationName: "trailmind_phase1_v2_operator",
-      authorizationBindingDigest: "7".repeat(64),
+      applicationName: lock.applicationName,
+      authorizationBindingDigest,
       backendPid: lock.backendPid,
+      backendStart: lock.backendStart,
       candidateCommit: bindings.candidateCommit,
       candidateTree: bindings.candidateTree,
+      databaseRunBindingDigest: lock.databaseRunBindingDigest,
       operatorDigestsDigest: "8".repeat(64),
       projectRef: STAGING_PHASE1_V2_TARGET.projectRef,
       runId,
@@ -607,6 +646,7 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
     });
   } finally {
     password?.fill?.(0);
+    auditorPassword?.fill?.(0);
     admission?.dispose?.();
     closeCredential(credential, dependencies.io);
     safelyDeletePreflightDirectory(task.path, dependencies.io);
@@ -652,9 +692,13 @@ function createStagingPhase1V2LiveBoundaryPackage({
         const artifact = await observeStagingPhase1V2MachinePhase(
           observerSession,
           {
-            applicationName: "trailmind_phase1_v2_operator",
-            authorizationBindingDigest: null,
+            applicationName: request.lock.applicationName,
+            authorizationBindingDigest:
+              request.lock.authorizationBindingDigest,
             backendPid: request.lock.backendPid,
+            backendStart: request.lock.backendStart,
+            databaseRunBindingDigest:
+              request.lock.databaseRunBindingDigest,
             phase: "post-ddl-advisors",
             stagedReceiptDigest: null
           }
@@ -666,9 +710,13 @@ function createStagingPhase1V2LiveBoundaryPackage({
         const artifact = await observeStagingPhase1V2MachinePhase(
           observerSession,
           {
-            applicationName: "trailmind_phase1_v2_operator",
-            authorizationBindingDigest: null,
+            applicationName: request.lock.applicationName,
+            authorizationBindingDigest:
+              request.lock.authorizationBindingDigest,
             backendPid: request.lock.backendPid,
+            backendStart: request.lock.backendStart,
+            databaseRunBindingDigest:
+              request.lock.databaseRunBindingDigest,
             phase: "final-control",
             stagedReceiptDigest: null
           }
@@ -695,6 +743,8 @@ function createStagingPhase1V2LiveBoundaryPackage({
             applicationName: request.applicationName,
             authorizationBindingDigest: request.authorizationBindingDigest,
             backendPid: request.backendPid,
+            backendStart: request.backendStart,
+            databaseRunBindingDigest: request.databaseRunBindingDigest,
             phase: "post-disconnect-cleanup",
             stagedReceiptDigest: request.stagedReceiptDigest
           }
@@ -834,56 +884,35 @@ function createUnlinkedCredential({
 
 function createUnlinkedCredentialPair({
   directory,
+  auditorPassword,
   password,
   io = realIO()
 }) {
   validateSecretBuffer(password, MAXIMUM_PASSWORD_BYTES);
-  const path = join(directory, `credential-pair-${randomUUID()}`);
-  let fd;
-  let auditorFd;
+  validateSecretBuffer(auditorPassword, MAXIMUM_PASSWORD_BYTES);
+  if (password.length === auditorPassword.length &&
+      password.equals(auditorPassword)) blocked("auditor_credential_reuse");
+  let primary;
+  let auditor;
   try {
-    fd = io.open(path, constants.O_RDWR | constants.O_CREAT |
-      constants.O_EXCL | (constants.O_NOFOLLOW ?? 0), 0o600);
-    if (!Number.isSafeInteger(fd) || fd < 3) blocked("password_fd");
-    let offset = 0;
-    while (offset < password.length) {
-      const written = io.write(
-        fd, password, offset, password.length - offset, offset
-      );
-      if (!Number.isInteger(written) || written <= 0) {
-        blocked("password_write");
-      }
-      offset += written;
-    }
-    io.fsync(fd);
-    const primary = io.fstat(fd);
-    const linked = io.lstat(path);
-    assertProtectedRegular(primary, "password_file", true);
-    if (!sameFileState(primary, linked) || primary.size !== password.length) {
-      blocked("password_file_race");
-    }
-    auditorFd = io.open(
-      path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)
-    );
-    if (!Number.isSafeInteger(auditorFd) || auditorFd < 3 ||
-        auditorFd === fd) blocked("auditor_password_fd");
-    const auditor = io.fstat(auditorFd);
-    if (!sameFileState(primary, auditor) || auditor.nlink !== 1) {
-      blocked("password_file_race");
+    primary = createUnlinkedCredential({ directory, password, io });
+    auditor = createUnlinkedCredential({
+      directory, password: auditorPassword, io
+    });
+    if (primary.fd === auditor.fd ||
+        (primary.dev === auditor.dev && primary.ino === auditor.ino)) {
+      blocked("auditor_credential_reuse");
     }
     return {
-      fd,
-      auditorFd,
-      path,
-      dev: primary.dev,
-      ino: primary.ino,
+      ...primary,
+      auditor,
+      auditorFd: auditor.fd,
       linked: true,
       independentOpenDescriptions: true
     };
   } catch (error) {
-    if (auditorFd !== undefined) try { io.close(auditorFd); } catch { /* bounded */ }
-    if (fd !== undefined) try { io.close(fd); } catch { /* bounded */ }
-    try { io.unlink(path); } catch { /* O_EXCL path may not exist */ }
+    closeCredential(auditor, io);
+    closeCredential(primary, io);
     if (error instanceof StagingPhase1V2LiveLauncherError) throw error;
     blocked("password_file");
   }
@@ -910,25 +939,18 @@ function unlinkCredentialBeforeDatabase(credential, io = realIO()) {
 }
 
 function unlinkCredentialPairBeforeDatabase(credential, io = realIO()) {
-  if (!credential?.linked || credential.independentOpenDescriptions !== true) {
+  if (!credential?.linked || !credential?.auditor?.linked ||
+      credential.independentOpenDescriptions !== true) {
     blocked("password_unlink");
   }
   try {
-    const linked = io.lstat(credential.path);
-    const primary = io.fstat(credential.fd);
-    const auditor = io.fstat(credential.auditorFd);
-    if (!sameIdentity(credential, linked) ||
-        !sameFileState(linked, primary) ||
-        !sameFileState(linked, auditor) || credential.fd ===
-          credential.auditorFd) blocked("password_file_race");
-    io.unlink(credential.path);
-    credential.linked = false;
-    for (const fd of [credential.fd, credential.auditorFd]) {
-      const unlinked = io.fstat(fd);
-      if (unlinked.nlink !== 0 || !sameIdentity(credential, unlinked)) {
-        blocked("password_unlink");
-      }
+    if (credential.fd === credential.auditor.fd ||
+        (credential.dev === credential.auditor.dev &&
+          credential.ino === credential.auditor.ino)) {
+      blocked("auditor_credential_reuse");
     }
+    unlinkCredentialBeforeDatabase(credential, io);
+    unlinkCredentialBeforeDatabase(credential.auditor, io);
   } catch (error) {
     if (error instanceof StagingPhase1V2LiveLauncherError) throw error;
     blocked("password_unlink");
@@ -946,9 +968,7 @@ function closeCredential(credential, io = realIO()) {
     credential.linked = false;
   }
   try { io.close(credential.fd); } catch { /* admission consumes the FD */ }
-  if (credential.auditorFd !== undefined) {
-    try { io.close(credential.auditorFd); } catch { /* observer consumes it */ }
-  }
+  closeCredential(credential.auditor, io);
 }
 
 function createAuthorizationEnvelope({ directory, envelope, io = realIO() }) {
@@ -997,9 +1017,11 @@ function createDurableReceiptStore({ directory, now }) {
         applicationName: payload.applicationName,
         authorizationBindingDigest: payload.authorizationBindingDigest,
         backendPid: payload.backendPid,
+        backendStart: payload.backendStart,
         candidateCommit: payload.candidateCommit,
         candidateTree: payload.candidateTree,
         cleanupEvidenceDigest: payload.cleanupEvidenceDigest,
+        databaseRunBindingDigest: payload.databaseRunBindingDigest,
         operatorDigestsDigest: payload.operatorDigestsDigest,
         ordinal: 11,
         persistedAt: exactDate(now()).toISOString(),
@@ -1217,6 +1239,16 @@ function liveConnection(endpointClass, address) {
   });
 }
 
+function liveAuditorConnection(endpointClass, address) {
+  if (endpointClass !== "direct") blocked("auditor_direct_required");
+  const connection = liveConnection("direct", address);
+  const role = "trailmind_phase1_v2_stats_auditor";
+  return Object.freeze({
+    ...connection,
+    user: role
+  });
+}
+
 function tlsBinding(host) {
   return Object.freeze({
     certificateAuthority: "target-project-ca",
@@ -1239,7 +1271,7 @@ function credentialContainmentBinding() {
     intake: "interactive-tty-noecho",
     ownerUid: process.geteuid(),
     pathUnlinkedBeforeDatabase: true,
-    sameCredentialIdentity: true,
+    sameCredentialIdentity: false,
     singleLinkBeforeUnlink: true
   });
 }

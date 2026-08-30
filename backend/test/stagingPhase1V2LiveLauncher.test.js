@@ -191,12 +191,14 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     assert.equal(reads, 0);
   });
 
-  it("uses only the internal observer and fixed single-session adapter", () => {
+  it("keeps live mutation behind the unregistered reviewed observer gate", () => {
     const launcher = readFileSync(join(
       REPOSITORY_ROOT,
       "backend/src/operations/stagingPhase1V2LiveLauncher.js"
     ), "utf8");
     assert.match(launcher,
+      /requireReviewedStagingPhase1V2ProductionObserverFactory\(\)/);
+    assert.doesNotMatch(launcher,
       /STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY/);
     assert.match(launcher,
       /await runAuthorizedStagingPhase1V2SingleSession\(/);
@@ -221,7 +223,7 @@ describe("staging Phase 1 V2 secure live launcher", () => {
       "process.env[name]"
     ]);
     assert.equal((observer.match(/productionFactories\.add\(/g) ?? []).length,
-      1);
+      0);
   });
 
   it("keeps the production script on the pinned launcher with no generic boundary bypass", () => {
@@ -342,7 +344,7 @@ describe("staging Phase 1 V2 secure live launcher", () => {
       ...baseIO,
       open(path, flags, mode) {
         const fd = baseIO.open(path, flags, mode);
-        if (path.includes("credential-pair-")) {
+        if (path.includes("credential-")) {
           credentialFds.push({ fd, path, state: fstatSync(fd) });
         }
         return fd;
@@ -382,9 +384,9 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     assert.equal(syntheticPassword.every((byte) => byte === 0), true);
     assert.equal(credentialFds.length, 2);
     assert.notEqual(credentialFds[0].fd, credentialFds[1].fd);
-    assert.equal(credentialFds[0].path, credentialFds[1].path);
-    assert.equal(credentialFds[0].state.dev, credentialFds[1].state.dev);
-    assert.equal(credentialFds[0].state.ino, credentialFds[1].state.ino);
+    assert.notEqual(credentialFds[0].path, credentialFds[1].path);
+    assert.ok(credentialFds[0].state.dev !== credentialFds[1].state.dev ||
+      credentialFds[0].state.ino !== credentialFds[1].state.ino);
     for (const { fd } of credentialFds) {
       assert.throws(() => fstatSync(fd), { code: "EBADF" });
     }
@@ -401,12 +403,12 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     const io = {
       ...baseIO,
       open(path, flags, mode) {
-        if (path.includes("credential-pair-")) {
+        if (path.includes("credential-")) {
           pairOpens += 1;
           if (pairOpens === 2) throw new Error("controlled second open fault");
         }
         const fd = baseIO.open(path, flags, mode);
-        if (path.includes("credential-pair-")) firstFd = fd;
+        if (path.includes("credential-")) firstFd = fd;
         return fd;
       }
     };

@@ -507,7 +507,7 @@ function credentialContainment() {
     intake: "interactive-tty-noecho",
     ownerUid: process.geteuid(),
     pathUnlinkedBeforeDatabase: true,
-    sameCredentialIdentity: true,
+    sameCredentialIdentity: false,
     singleLinkBeforeUnlink: true
   };
 }

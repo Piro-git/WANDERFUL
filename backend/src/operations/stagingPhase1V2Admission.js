@@ -30,8 +30,6 @@ export const STAGING_PHASE1_V2_DIRECT_HOST =
   "db.mbvzwsrtqcrwhvykugcd.supabase.co";
 export const STAGING_PHASE1_V2_SESSION_HOST =
   "aws-0-eu-central-1.pooler.supabase.com";
-export const STAGING_PHASE1_V2_APPLICATION_NAME =
-  "trailmind_phase1_v2_operator";
 export const STAGING_PHASE1_V2_AUTHORIZATION_LIFETIME_MILLISECONDS =
   5 * 60 * 1_000;
 export const STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION = "1.1.0";
@@ -163,6 +161,9 @@ const EXECUTABLE_OPERATOR_FILES = Object.freeze([
   "backend/src/operations/stagingPhase1V2LiveLauncher.js",
   "backend/src/operations/stagingPhase1V2MachineObserver.js",
   "backend/src/operations/stagingPhase1V2Operator.js",
+  "backend/src/operations/stagingPhase1V2ProductionArtifacts.js",
+  "backend/src/operations/stagingPhase1V2ProductionAuditor.js",
+  "backend/src/operations/stagingPhase1V2ProductionObserverContract.js",
   "backend/src/operations/stagingPhase1V2SingleSessionAdapter.js"
 ]);
 const OPERATOR_SQL_FILES = Object.freeze({
@@ -539,7 +540,7 @@ function validateCredentialContainment(value) {
     value.descriptorsDistinct !== true ||
     value.independentOpenDescriptions !== true ||
     value.pathUnlinkedBeforeDatabase !== true ||
-    value.sameCredentialIdentity !== true ||
+    value.sameCredentialIdentity !== false ||
     value.singleLinkBeforeUnlink !== true ||
     value.fileMode !== "0600" ||
     value.ownerUid !== process.geteuid()
