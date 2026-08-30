@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "contractId": "trailmind-production-observer-acceptance-v1",
+  "reviewedAt": "2026-08-30T00:00:00Z",
+  "baseline": {
+    "ref": "origin/codex/secure-supabase-live-launcher-v1",
+    "commit": "adea2c08540e87f0acd7eebb976c72eab8eb76c3",
+    "tree": "0b0d0dbe7ac7c870261a0b0f8f8755039ddf6d22"
+  },
+  "decision": {
+    "architectureImplementation": "GO",
+    "productionFactoryRegistration": "NO_GO",
+    "liveExecution": "NO_GO",
+    "admission": "OBSERVER_REQUIRED",
+    "baselineFailClosed": "ACCEPTED"
+  },
+  "recommendedArchitecture": {
+    "id": "source-pinned-oauth-management-plus-independent-postgres-auditor-v1",
+    "exclusive": true,
+    "components": [
+      "private-source-pinned-production-factory",
+      "fixed-function-supabase-management-oauth-client",
+      "existing-single-mutating-postgres-session",
+      "separate-least-privilege-postgres-auditor",
+      "four-signed-durable-hash-chained-artifacts",
+      "cleanup-before-terminal-receipt"
+    ],
+    "forbiddenAlternatives": [
+      "repository-runtime-codex-mcp-credential-reuse",
+      "two-phase-codex-mcp-handoff",
+      "personal-access-token-admission",
+      "generic-injected-transport",
+      "generic-injected-callback",
+      "manual-observer-artifact",
+      "management-api-read-only-sql-as-cleanup-proof",
+      "mutating-postgres-session-self-attestation"
+    ]
+  },
+  "target": {
+    "projectName": "TrailMind Outdoor Staging V1",
+    "projectRef": "mbvzwsrtqcrwhvykugcd",
+    "organizationName": "Alibra AI",
+    "organizationIdOrSlug": "wbnftkftyamxzvxsftda",
+    "region": "eu-central-1",
+    "regionLabel": "Frankfurt",
+    "organizationPlan": "free",
+    "monthlyCost": {
+      "currency": "USD",
+      "amount": 0
+    },
+    "computeContract": "free-plan-nano",
+    "postgresMajor": 17,
+    "databaseName": "postgres"
+  },
+  "protectedProjects": [
+    {
+      "kind": "planua",
+      "ref": "cmkvbxppgofteoutfslp",
+      "selected": false,
+      "maximumProjectSpecificCalls": 0,
+      "maximumMutations": 0
+    },
+    {
+      "kind": "production",
+      "ref": "bejvhhjbgtvctpsnlwid",
+      "selected": false,
+      "maximumProjectSpecificCalls": 0,
+      "maximumMutations": 0
+    }
+  ],
+  "factory": {
+    "packageId": "trailmind.production.staging-phase1-v2-observer",
+    "trustMode": "production-authenticated-v1",
+    "construction": "module-private-literal",
+    "registration": "module-internal-only",
+    "publicRegistrationAllowed": false,
+    "runtimeExpectedDigestAllowed": false,
+    "sourceManifestDigestAlgorithm": "sha256(sorted(path + NUL + sha256(fileBytes) + LF))",
+    "requiredManifestEntries": [
+      "backend/src/operations/stagingPhase1V2MachineObserver.js",
+      "backend/src/operations/stagingPhase1V2LiveLauncher.js",
+      "backend/src/operations/stagingPhase1V2Admission.js",
+      "backend/src/operations/stagingPhase1V2SingleSessionAdapter.js",
+      "backend/src/operations/stagingPhase1V2Operator.js",
+      "backend/package.json",
+      "backend/package-lock.json",
+      "all-new-production-observer-client-files"
+    ],
+    "requiredAdmissionInventory": "all executable observer files in EXECUTABLE_OPERATOR_FILES",
+    "signature": {
+      "algorithm": "Ed25519",
+      "publicKeySource": "reviewed-literal-source",
+      "publicKeyDigestAlgorithm": "sha256",
+      "privateKeySource": "separate-protected-unlinked-fd",
+      "domainSeparator": "trailmind-production-observer-v1",
+      "dynamicPublicKeyAllowed": false
+    }
+  },
+  "managementAuthentication": {
+    "method": "oauth2-access-token",
+    "allowedScopes": [
+      "organizations:read",
+      "projects:read",
+      "database:read"
+    ],
+    "forbiddenCredentialTypes": [
+      "personal-access-token",
+      "oauth-refresh-token",
+      "oauth-client-secret",
+      "authorization-code",
+      "browser-cookie",
+      "codex-mcp-session",
+      "service-role-key",
+      "database-password"
+    ],
+    "intake": {
+      "source": "dedicated-protected-unlinked-fd",
+      "minimumFd": 3,
+      "maximumBytes": 8192,
+      "mode": "0600",
+      "singleRead": true,
+      "offsetAtRead": 0,
+      "singleLinkBeforeUnlink": true,
+      "unlinkedBeforeNetwork": true,
+      "distinctFromAllOtherSecretAndArtifactFiles": true,
+      "childProcessWhilePresent": false,
+      "argv": false,
+      "environment": false,
+      "stdin": false,
+      "clipboard": false,
+      "logs": false,
+      "errors": false,
+      "artifacts": false
+    }
+  },
+  "managementTransport": {
+    "scheme": "https",
+    "host": "api.supabase.com",
+    "port": 443,
+    "allowedMethods": [
+      "GET"
+    ],
+    "normalCallCount": 12,
+    "maximumCallCount": 12,
+    "redirects": 0,
+    "automaticRetries": 0,
+    "proxyAllowed": false,
+    "requestBodyAllowed": false,
+    "minimumTls": "1.2",
+    "verifyHostname": true,
+    "publicPinnedAddressesOnly": true,
+    "timeoutsMilliseconds": {
+      "connect": 3000,
+      "tlsAndHeaders": 5000,
+      "perRequestTotal": 10000,
+      "managementPhaseTotal": 45000
+    },
+    "responseBounds": {
+      "maximumHeaderBytes": 16384,
+      "maximumBodyBytes": 262144,
+      "maximumJsonDepth": 16,
+      "maximumArrayItems": 10000,
+      "maximumStringBytes": 16384,
+      "compressionAllowed": false,
+      "duplicateJsonKeysAllowed": false,
+      "unknownEnumsAllowed": false
+    },
+    "calls": [
+      {
+        "phase": "pre-control",
+        "ordinal": 1,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd"
+      },
+      {
+        "phase": "pre-control",
+        "ordinal": 2,
+        "method": "GET",
+        "path": "/v1/organizations/wbnftkftyamxzvxsftda"
+      },
+      {
+        "phase": "pre-control",
+        "ordinal": 3,
+        "method": "GET",
+        "path": "/v1/organizations/wbnftkftyamxzvxsftda/projects?limit=100&offset=0"
+      },
+      {
+        "phase": "pre-control",
+        "ordinal": 4,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/security"
+      },
+      {
+        "phase": "pre-control",
+        "ordinal": 5,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/performance"
+      },
+      {
+        "phase": "post-ddl-advisors",
+        "ordinal": 6,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/security"
+      },
+      {
+        "phase": "post-ddl-advisors",
+        "ordinal": 7,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/performance"
+      },
+      {
+        "phase": "final-control",
+        "ordinal": 8,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd"
+      },
+      {
+        "phase": "final-control",
+        "ordinal": 9,
+        "method": "GET",
+        "path": "/v1/organizations/wbnftkftyamxzvxsftda"
+      },
+      {
+        "phase": "final-control",
+        "ordinal": 10,
+        "method": "GET",
+        "path": "/v1/organizations/wbnftkftyamxzvxsftda/projects?limit=100&offset=0"
+      },
+      {
+        "phase": "final-control",
+        "ordinal": 11,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/security"
+      },
+      {
+        "phase": "final-control",
+        "ordinal": 12,
+        "method": "GET",
+        "path": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/performance"
+      }
+    ],
+    "billingAddonsEndpointAccepted": false,
+    "billingAddonsReason": "current official endpoint does not document an accepted OAuth scope",
+    "mutationMethodsAllowed": false,
+    "protectedProjectSpecificCallsAllowed": false
+  },
+  "managementEvidence": {
+    "requiredProjectStatus": "ACTIVE_HEALTHY",
+    "identityStableAcrossPhases": true,
+    "advisorBlockingLevels": [
+      "ERROR",
+      "WARN"
+    ],
+    "unknownAdvisorLevelBlocks": true,
+    "partialAdvisorResponseBlocks": true,
+    "rawResponsePersisted": false,
+    "rawResponseCanonicalDigestRequired": true,
+    "providerFreshnessAfterDdlRequired": true,
+    "localObservedAtCountsAsProviderFreshness": false,
+    "billingInferenceAllowed": false
+  },
+  "databaseRunBinding": {
+    "applicationNameAlgorithm": "trailmind_p1v2_ + first24hex(sha256(RFC8785({runId,authorizationBindingDigest,candidateCommit,projectRef})))",
+    "fullDigestField": "databaseRunBindingDigest",
+    "requiredSessionTuple": [
+      "projectRef",
+      "databaseName",
+      "databaseUser",
+      "runId",
+      "authorizationBindingDigest",
+      "databaseRunBindingDigest",
+      "applicationName",
+      "backendPid",
+      "backendStart",
+      "tls"
+    ],
+    "fixedApplicationNameAllowed": false,
+    "pidWithoutBackendStartAllowed": false
+  },
+  "databaseAuditor": {
+    "requiredBeforeMutation": true,
+    "proposedRole": "trailmind_phase1_v2_observer_auditor",
+    "existingReadonlyAuditorRoleAccepted": false,
+    "mutatingPostgresCredentialReuseAllowed": false,
+    "managementReadOnlySqlSubstitutionAllowed": false,
+    "connectionLimit": 1,
+    "roleAttributes": {
+      "login": true,
+      "inherit": false,
+      "superuser": false,
+      "createdb": false,
+      "createrole": false,
+      "replication": false,
+      "bypassrls": false
+    },
+    "requiredMemberships": [
+      {
+        "role": "pg_read_all_stats",
+        "inherit": false,
+        "set": true,
+        "admin": false
+      }
+    ],
+    "forbiddenMembershipsAndGrants": [
+      "pg_monitor",
+      "pg_read_all_settings",
+      "pg_read_all_data",
+      "pg_write_all_data",
+      "product-schema-usage",
+      "product-table-select",
+      "product-function-execute",
+      "schema-create",
+      "role-admin",
+      "bypassrls"
+    ],
+    "defaults": {
+      "database": "postgres",
+      "defaultTransactionReadOnly": true,
+      "searchPath": "pg_catalog",
+      "statementTimeoutMilliseconds": 5000,
+      "lockTimeoutMilliseconds": 1000,
+      "idleInTransactionTimeoutMilliseconds": 5000
+    },
+    "allowedStatementFamilies": [
+      "auditor_identity_v1",
+      "target_session_discovery_v1",
+      "target_session_v1",
+      "database_acl_v1"
+    ],
+    "genericSqlAllowed": false,
+    "unqualifiedIdentifiersAllowed": false,
+    "productDataReadAllowed": false,
+    "directOrSessionPort": 5432,
+    "transactionPoolerPort6543Allowed": false,
+    "clearStatsSnapshotBeforeSessionQuery": true
+  },
+  "artifacts": {
+    "schemaVersion": 2,
+    "canonicalization": "RFC8785-JCS",
+    "maximumBytesEach": 65536,
+    "count": 4,
+    "phases": [
+      {
+        "sequence": 1,
+        "phase": "pre-control",
+        "fileSuffix": "observer.01.pre-control.json",
+        "previousArtifactDigest": null
+      },
+      {
+        "sequence": 2,
+        "phase": "post-ddl-advisors",
+        "fileSuffix": "observer.02.post-ddl-advisors.json",
+        "previousArtifactDigest": "artifact-1"
+      },
+      {
+        "sequence": 3,
+        "phase": "final-control",
+        "fileSuffix": "observer.03.final-control.json",
+        "previousArtifactDigest": "artifact-2"
+      },
+      {
+        "sequence": 4,
+        "phase": "post-disconnect-cleanup",
+        "fileSuffix": "observer.04.post-disconnect-cleanup.json",
+        "previousArtifactDigest": "artifact-3"
+      }
+    ],
+    "requiredBindings": [
+      "attemptId",
+      "runId",
+      "authorizationBindingDigest",
+      "candidateCommit",
+      "candidateTree",
+      "operatorDigestsDigest",
+      "projectRef",
+      "organizationId",
+      "region",
+      "databaseRunBindingDigest",
+      "applicationName",
+      "backendPid",
+      "backendStart"
+    ],
+    "writeFlags": [
+      "O_WRONLY",
+      "O_CREAT",
+      "O_EXCL",
+      "O_NOFOLLOW"
+    ],
+    "fileMode": "0600",
+    "fileFsync": true,
+    "directoryFsync": true,
+    "rereadAndVerifyBeforeNextPhase": true,
+    "rawSecretsAllowed": false,
+    "rawApiBodiesAllowed": false,
+    "manualArtifactsAllowed": false
+  },
+  "cleanup": {
+    "mutatingClientClosedBeforeObservation": true,
+    "freshTransactions": true,
+    "requiredConsecutiveSamples": 2,
+    "minimumSampleSeparationMilliseconds": 250,
+    "maximumSampleSeparationMilliseconds": 2000,
+    "expectedEachSample": {
+      "exactBackendInstanceCount": 0,
+      "matchingApplicationCount": 0,
+      "idleExactInstanceCount": 0
+    },
+    "receiptBeforeSecondZeroAllowed": false,
+    "singleZeroSampleAllowed": false,
+    "hiddenOrNullStatsFieldsCountAsZero": false
+  },
+  "terminalPublication": {
+    "requiresFourVerifiedArtifacts": true,
+    "requiresValidSignatureChain": true,
+    "requiresCallCount": 12,
+    "requiresZeroManagementMutations": true,
+    "requiresZeroProtectedProjectCalls": true,
+    "requiresAuditorAclDigest": true,
+    "requiresTwoZeroCleanupSamples": true,
+    "requiresAllSecretsClosedAndWiped": true,
+    "requiresNoPendingNetworkOperation": true,
+    "requiresTargetAndAuditorClosed": true,
+    "requiresDurableFsync": true,
+    "manualOrStdoutFallbackAllowed": false
+  },
+  "requiredFailureCodes": [
+    "observer_required",
+    "observer_untrusted",
+    "observer_package_digest",
+    "observer_signature_key",
+    "observer_contract",
+    "control_auth_required",
+    "control_auth_scope",
+    "control_transport",
+    "control_endpoint",
+    "control_redirect",
+    "control_response_bounds",
+    "control_rate_limited",
+    "control_identity",
+    "control_status",
+    "control_plan",
+    "control_compute",
+    "control_billing_capability_unavailable",
+    "advisor_unavailable",
+    "advisor_schema",
+    "advisor_partial",
+    "advisor_unknown_lint",
+    "advisor_blocking",
+    "advisor_freshness_unproved",
+    "auditor_auth_required",
+    "auditor_role",
+    "auditor_privilege",
+    "auditor_visibility",
+    "auditor_tls",
+    "auditor_sql",
+    "auditor_acl",
+    "observer_replay",
+    "observer_order",
+    "observer_cross_binding",
+    "observer_stale",
+    "observer_oversized",
+    "observer_signature",
+    "observer_persistence",
+    "cleanup_pending",
+    "cleanup_visibility",
+    "cleanup_race",
+    "cleanup_unproved",
+    "receipt_publication_rejected",
+    "receipt_publication_unproved"
+  ],
+  "tests": {
+    "deterministicRequired": true,
+    "realPostgres17PostgisRequired": true,
+    "realPostgresUsesDistinctMutatorAndAuditorCredentials": true,
+    "negativeStatsVisibilityTestRequired": true,
+    "idleSessionCleanupNegativeTestRequired": true,
+    "pidReuseBackendStartTestRequired": true,
+    "realSupabaseTargetAllowed": false,
+    "managementApiFixture": "local-tls-only",
+    "skipsAllowed": false,
+    "flakyTestsAllowed": false
+  },
+  "observerRequiredConditions": [
+    "unreviewed-or-dynamic-source-package-or-public-key-digest",
+    "missing-or-wrong-oauth-access-token-or-scopes",
+    "pat-mcp-refresh-token-callback-manual-artifact-or-generic-sql-proposed",
+    "target-identity-status-plan-compute-or-postgres-major-mismatch",
+    "billing-zero-and-addon-proof-unavailable-under-accepted-scopes",
+    "advisor-provider-freshness-unproved",
+    "advisor-unavailable-changed-partial-rate-limited-unknown-or-blocking",
+    "auditor-not-preprovisioned-separate-or-pg-read-all-stats-visible",
+    "pid-backend-start-application-run-binding-incomplete",
+    "cleanup-not-two-fresh-consecutive-exact-zero-samples",
+    "artifact-signature-chain-or-durable-order-incomplete",
+    "any-required-test-skipped-flaky-or-failing",
+    "official-platform-contract-materially-changed",
+    "project-paused-inactive-or-capability-inferred"
+  ],
+  "reviewNonActions": {
+    "remoteMutationCount": 0,
+    "realTargetDatabaseAccessCount": 0,
+    "credentialAccessCount": 0,
+    "caFileAccessCount": 0,
+    "providerConfigurationAccessCount": 0,
+    "runtimeCodeChanges": 0
+  }
+}
