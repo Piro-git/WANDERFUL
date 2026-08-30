@@ -1,0 +1,18 @@
+{
+  "artifactContract": {
+    "key": {
+      "keyId": null,
+      "requiredPinnedPublicKeySpkiSha256": null
+    }
+  },
+  "auditorContract": {
+    "connection": {
+      "sslrootcertSha256": null
+    }
+  },
+  "reviewReceipts": [],
+  "staticGate": {
+    "independentCatalogAssertionProgramSha256": null,
+    "independentExpectedManifestSha256": null
+  }
+}
