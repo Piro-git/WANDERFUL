@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 4,
-  "contractVersion": "staging-container-admission-v4-shared-extension-isolation",
+  "schemaVersion": 5,
+  "contractVersion": "staging-container-admission-v5-engine-activation",
   "databaseAdmission": {
     "applicationSchemaEnvironmentName": "TRAILMIND_APPLICATION_SCHEMA",
     "applicationSchemaPattern": "^trailmind_[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
@@ -65,17 +65,26 @@
       { "name": "APP_ATTEST_ALLOWED_VALIDATION_CATEGORIES", "type": "bounded_integer_list", "secret": false },
       { "name": "APP_ATTEST_ALLOWED_BUNDLE_VERSIONS", "type": "bounded_version_list", "secret": false }
     ],
-    "exactFalse": [
+    "capabilityFlags": [
       "ROUTE_PROVIDER_ENABLED",
       "INTENT_PROVIDER_ENABLED",
       "OUTDOOR_EVIDENCE_PROVIDER_ENABLED",
       "OUTDOOR_RESEARCH_PLANNING_ENABLED",
-      "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+      "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED"
+    ],
+    "exactFalse": [
+      "INTENT_PROVIDER_ENABLED",
       "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING",
       "INTENT_ALLOW_INSECURE_LOCAL_PARSING",
       "INTENT_ALLOW_DETERMINISTIC_MOCK",
       "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL",
       "APP_ATTEST_ALLOW_IN_MEMORY"
+    ],
+    "conditionalSecrets": [
+      { "name": "GRAPHHOPPER_API_KEY", "requiredWhen": "ROUTE_PROVIDER_ENABLED", "secret": true },
+      { "name": "OUTDOOR_RESEARCH_DATABASE_URL", "requiredWhen": "OUTDOOR_RESEARCH_PLANNING_ENABLED", "secret": true, "roleClass": "outdoor_research_runtime_role", "tlsMode": "verify-full" },
+      { "name": "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL", "requiredWhen": "OUTDOOR_RESEARCH_PLANNING_ENABLED", "secret": true, "roleClass": "outdoor_research_cancellation_control_role", "tlsMode": "verify-full" },
+      { "name": "OUTDOOR_EVIDENCE_DATABASE_URL", "requiredWhen": "OUTDOOR_EVIDENCE_PROVIDER_ENABLED", "secret": true, "roleClass": "dedicated_outdoor_evidence_runtime", "tlsMode": "verify-full" }
     ],
     "forbidden": [
       "APP_ATTEST_CONTROL_DATABASE_URL",
@@ -85,12 +94,8 @@
       "POSTGRES_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
       "SUPABASE_SECRET_KEY",
-      "GRAPHHOPPER_API_KEY",
       "GOOGLE_API_KEY",
       "OPENROUTER_API_KEY",
-      "OUTDOOR_RESEARCH_DATABASE_URL",
-      "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL",
-      "OUTDOOR_EVIDENCE_DATABASE_URL",
       "NODE_OPTIONS",
       "NODE_TLS_REJECT_UNAUTHORIZED",
       "NODE_EXTRA_CA_CERTS",

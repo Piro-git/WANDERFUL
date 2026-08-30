@@ -523,6 +523,9 @@ describe("outdoor-adventure planning endpoint v1", () => {
       }
     };
     const endpoint = successfulEndpoint({
+      env: enabledEnv({
+        TRAILMIND_APPLICATION_SCHEMA: "trailmind_app"
+      }),
       repository: undefined,
       outdoorResearchPool: productPool,
       outdoorResearchCancellationPool: cancellationPool,
@@ -531,6 +534,15 @@ describe("outdoor-adventure planning endpoint v1", () => {
         assert.equal(
           dependencies.repository.cancellationPool,
           cancellationPool
+        );
+        assert.match(
+          dependencies.repository.runtimeQueries.snapshotContext,
+          /SELECT "trailmind_app"\.trailmind_runtime_outdoor_research_snapshot_context_v1/
+        );
+        assert.equal(
+          dependencies.repository.cancellationQuery,
+          "SELECT trailmind_control." +
+            "cancel_active_outdoor_research_backend_integer($1) AS cancelled"
         );
         return clarificationResponse(planningRequest.intent);
       }

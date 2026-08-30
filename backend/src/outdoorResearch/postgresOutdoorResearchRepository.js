@@ -671,6 +671,15 @@ SELECT *
 const DEFAULT_RUNTIME_SCHEMA = "public";
 const RUNTIME_SCHEMA_PATTERN = /^[a-z_][a-z0-9_]{0,62}$/;
 const DEFAULT_RUNTIME_QUERIES = runtimeQueries(DEFAULT_RUNTIME_SCHEMA);
+const CANCELLATION_MODES = new Set([
+  "direct",
+  "trailmind_control_v1"
+]);
+const DIRECT_CANCELLATION_QUERY =
+  "SELECT pg_cancel_backend($1) AS cancelled";
+const TRAILMIND_CONTROL_V1_CANCELLATION_QUERY =
+  "SELECT trailmind_control." +
+  "cancel_active_outdoor_research_backend_integer($1) AS cancelled";
 
 export class PostgresOutdoorResearchRepository {
   constructor(options = {}) {
@@ -694,6 +703,13 @@ export class PostgresOutdoorResearchRepository {
       throw outdoorResearchExecutorError("invalid_dependencies");
     }
     this.cancellationPool = options.cancellationPool;
+    const cancellationMode = options.cancellationMode ?? "direct";
+    if (!CANCELLATION_MODES.has(cancellationMode)) {
+      throw outdoorResearchExecutorError("invalid_dependencies");
+    }
+    this.cancellationQuery = cancellationMode === "trailmind_control_v1"
+      ? TRAILMIND_CONTROL_V1_CANCELLATION_QUERY
+      : DIRECT_CANCELLATION_QUERY;
     this.statementTimeoutMs = boundedExecutorTimeout(
       options.statementTimeoutMs,
       policy.defaultStatementTimeoutMs,
@@ -739,7 +755,8 @@ export class PostgresOutdoorResearchRepository {
       }
       cancellationPromise = cancelActivePostgresQuery(
         this.cancellationPool,
-        client.processID
+        client.processID,
+        this.cancellationQuery
       );
     };
     try {
@@ -982,15 +999,12 @@ class PostgresOutdoorResearchSnapshotSession {
   }
 }
 
-async function cancelActivePostgresQuery(pool, processId) {
+async function cancelActivePostgresQuery(pool, processId, query) {
   if (!Number.isInteger(processId) || processId < 1) return false;
   let cancellationClient;
   try {
     cancellationClient = await pool.connect();
-    const result = await cancellationClient.query(
-      "SELECT pg_cancel_backend($1) AS cancelled",
-      [processId]
-    );
+    const result = await cancellationClient.query(query, [processId]);
     return result.rows?.[0]?.cancelled === true;
   } catch {
     return false;

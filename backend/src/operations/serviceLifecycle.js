@@ -4,6 +4,9 @@ import { PostgresAppAttestRepository } from "../appAttest/postgresAppAttestRepos
 import { createIntentServer } from "../server.js";
 import { createOperationalLogger } from "./operationalEvents.js";
 import {
+  outdoorResearchDatabaseAdmissionProbe
+} from "./stagingDatabaseAdmission.js";
+import {
   appAttestDatabaseConfiguration,
   assertProductionConfiguration,
   evidenceDatabaseConfiguration,
@@ -238,15 +241,29 @@ function createRuntimePools(env, PoolClass, owned = [], onPoolError) {
   let outdoorResearchCancellation;
   if (flagEnabled(env.OUTDOOR_RESEARCH_PLANNING_ENABLED)) {
     const researchConfig = researchDatabaseConfiguration(env);
+    const researchAdmission = outdoorResearchDatabaseAdmissionProbe(
+      env,
+      "runtime"
+    );
     outdoorResearch = createPool(
       PoolClass,
       env.OUTDOOR_RESEARCH_DATABASE_URL,
       researchConfig,
-      {},
+      { startupOptions: researchAdmission.startupOptions },
       onPoolError
     );
     owned.push(outdoorResearch);
-    required.push(outdoorResearch);
+    required.push({
+      id: "outdoor_research",
+      pool: outdoorResearch,
+      query: researchAdmission.query,
+      values: researchAdmission.values,
+      requiresAdmission: true
+    });
+    const cancellationAdmission = outdoorResearchDatabaseAdmissionProbe(
+      env,
+      "cancellation"
+    );
     outdoorResearchCancellation = createPool(
       PoolClass,
       env.OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL,
@@ -255,11 +272,17 @@ function createRuntimePools(env, PoolClass, owned = [], onPoolError) {
         maximumConnections: 1,
         statementTimeoutMs: 1_000
       },
-      {},
+      { startupOptions: cancellationAdmission.startupOptions },
       onPoolError
     );
     owned.push(outdoorResearchCancellation);
-    required.push(outdoorResearchCancellation);
+    required.push({
+      id: "outdoor_research_cancellation",
+      pool: outdoorResearchCancellation,
+      query: cancellationAdmission.query,
+      values: cancellationAdmission.values,
+      requiresAdmission: true
+    });
   }
 
   let outdoorEvidence;

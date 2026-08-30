@@ -23,16 +23,24 @@ const EXACT_FALSE_FLAGS = Object.freeze([
 
 const REQUIRED_OPERATOR_VALUES = Object.freeze([
   "TRAILMIND_STAGING_PROJECT_REF_SHA256",
-  "TRAILMIND_APPLICATION_SCHEMA",
-  "APP_ATTEST_RUNTIME_ROLE",
-  "APP_ATTEST_CONTROL_ROLE",
-  "APP_ATTEST_OPERATOR_ROLE",
   "APP_ATTEST_DATABASE_URL",
+  "OUTDOOR_RESEARCH_DATABASE_URL",
+  "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL",
+  "OUTDOOR_EVIDENCE_DATABASE_URL",
+  "GRAPHHOPPER_API_KEY",
   "APP_ATTEST_APP_ID_PREFIX",
   "APP_ATTEST_BUNDLE_ID",
   "APP_ATTEST_ALLOWED_VALIDATION_CATEGORIES",
   "APP_ATTEST_ALLOWED_BUNDLE_VERSIONS"
 ]);
+const REQUIRED_PUBLIC_VALUES = Object.freeze({
+  TRAILMIND_APPLICATION_SCHEMA: "trailmind_app",
+  APP_ATTEST_RUNTIME_ROLE: "app_security_runtime_role",
+  APP_ATTEST_CONTROL_ROLE: "pruner_role",
+  APP_ATTEST_OPERATOR_ROLE: "migration_role",
+  GRAPHHOPPER_BASE_URL: "https://graphhopper.com/api/1",
+  ROUTE_GLOBAL_MAX_CONCURRENCY: '"16"'
+});
 
 describe("free staging hosting contract", () => {
   it("defines one manual Frankfurt Render Free container service", async () => {
@@ -46,7 +54,7 @@ describe("free staging hosting contract", () => {
     assert.match(blueprint, /^\s*region: frankfurt$/m);
     assert.match(
       blueprint,
-      /^\s*branch: codex\/integrate-staging-release-wave1$/m
+      /^\s*branch: main$/m
     );
     assert.match(blueprint, /^\s*autoDeployTrigger: off$/m);
     assert.match(blueprint, /^\s*healthCheckPath: \/healthz$/m);
@@ -70,11 +78,15 @@ describe("free staging hosting contract", () => {
         "TRAILMIND_RELEASE_STAGE",
         "APP_ATTEST_ENVIRONMENT",
         ...REQUIRED_OPERATOR_VALUES,
+        ...Object.keys(REQUIRED_PUBLIC_VALUES),
         ...EXACT_FALSE_FLAGS
       ].sort()
     );
     for (const name of REQUIRED_OPERATOR_VALUES) {
       assert.deepEqual(blocks.get(name), ["sync: false"]);
+    }
+    for (const [name, value] of Object.entries(REQUIRED_PUBLIC_VALUES)) {
+      assert.deepEqual(blocks.get(name), [`value: ${value}`]);
     }
     assert.deepEqual(blocks.get("NODE_ENV"), ["value: production"]);
     assert.deepEqual(blocks.get("TRAILMIND_RELEASE_STAGE"), ["value: staging"]);
@@ -84,7 +96,6 @@ describe("free staging hosting contract", () => {
       "POSTGRES_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
       "SUPABASE_SECRET_KEY",
-      "GRAPHHOPPER_API_KEY",
       "GOOGLE_API_KEY",
       "OPENROUTER_API_KEY",
       "APP_ATTEST_CONTROL_DATABASE_URL",
@@ -117,7 +128,10 @@ describe("free staging hosting contract", () => {
       "blocked_until_validated_remote_deployment_receipt"
     );
     assert.equal(contract.releasePolicy.closedBeta, "not_eligible");
-    assert.equal(contract.releasePolicy.providerFlags, "exact_false");
+    assert.equal(
+      contract.releasePolicy.providerFlags,
+      "tracked_defaults_false_staging_operator_only"
+    );
     assert.equal(contract.releasePolicy.remoteMutationAuthorized, false);
     assert.equal(contract.freeTierLimitations.productionEligible, false);
     assert.equal(contract.freeTierLimitations.idleSpinDownMinutes, 15);

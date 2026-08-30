@@ -8,6 +8,10 @@ import {
   outdoorAdventureOrchestrationConfigurationV1
 } from "../outdoorAdventure/orchestrationPolicy.js";
 import { providerConfiguration } from "../routing/graphHopperProvider.js";
+import {
+  OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE,
+  OUTDOOR_RESEARCH_RUNTIME_ROLE
+} from "./stagingDatabaseAdmission.js";
 
 const CONTRACT_VERSION = "backend-production-configuration-v1";
 const RELEASE_STAGES = new Set(["staging", "closed_beta", "public"]);
@@ -215,6 +219,14 @@ function validateResearchComposition(env) {
   );
   const appSecurityUrl = requiredPostgresUrl(env.APP_ATTEST_DATABASE_URL);
   if (productUrl === cancellationUrl || productUrl === appSecurityUrl) invalid();
+  if (env.TRAILMIND_RELEASE_STAGE === "staging") {
+    requiredExact(env.TRAILMIND_APPLICATION_SCHEMA, "trailmind_app");
+    requiredDatabaseRole(productUrl, OUTDOOR_RESEARCH_RUNTIME_ROLE);
+    requiredDatabaseRole(
+      cancellationUrl,
+      OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE
+    );
+  }
   researchDatabaseConfiguration(env);
   outdoorAdventureOrchestrationConfigurationV1(env);
 }
@@ -341,6 +353,13 @@ function requiredPostgresUrl(value) {
     invalid();
   }
   return text;
+}
+
+function requiredDatabaseRole(value, expected) {
+  const parsed = new URL(value);
+  const role = decodeURIComponent(parsed.username).split(".", 1)[0];
+  if (role !== expected) invalid();
+  return role;
 }
 
 function requiredOpaque(value, maximumLength) {

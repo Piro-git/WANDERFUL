@@ -20,6 +20,16 @@ const ANCHOR = { latitude: 51.8, longitude: 10.6 };
 const NOW = new Date("2026-07-24T12:00:00Z");
 
 describe("PostGIS outdoor research repository", () => {
+  it("rejects an unknown cancellation boundary before database work", () => {
+    assert.throws(
+      () => new PostgresOutdoorResearchRepository({
+        pool: { async connect() {} },
+        cancellationMode: "unreviewed"
+      }),
+      hasCode("invalid_dependencies")
+    );
+  });
+
   it("derives exact mapped capabilities from one active governed snapshot", async () => {
     const harness = repositoryHarness({ snapshotRow: activeSnapshotRow() });
     const result = await harness.repository.withConsistentSnapshot({}, async (session) =>

@@ -19,6 +19,202 @@ const APP_ATTEST_TABLE_NAMES = Object.freeze([
   "app_attest_provider_leases"
 ]);
 
+export const OUTDOOR_RESEARCH_RUNTIME_ROLE =
+  "outdoor_research_runtime_role";
+export const OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE =
+  "outdoor_research_cancellation_control_role";
+export const OUTDOOR_RESEARCH_RUNTIME_FUNCTION_SIGNATURES = Object.freeze([
+  "trailmind_app.trailmind_runtime_outdoor_research_snapshot_context_v1(" +
+    "text,double precision,double precision)",
+  "trailmind_app.trailmind_runtime_outdoor_research_highlights_v1(" +
+    "uuid,text,double precision,double precision,text[],double precision," +
+    "text[],integer,double precision)",
+  "trailmind_app.trailmind_runtime_outdoor_research_route_memberships_v1(" +
+    "uuid,text,double precision,double precision,double precision,integer," +
+    "integer)",
+  "trailmind_app.trailmind_runtime_outdoor_research_route_assertions_v1(" +
+    "uuid,uuid[],text[],integer)",
+  "trailmind_app.trailmind_runtime_outdoor_research_trail_access_candidates_v1(" +
+    "uuid,text,uuid[],double precision,integer,text[],text[],integer)"
+]);
+
+const OUTDOOR_RESEARCH_RUNTIME_ADMISSION_SQL = `
+WITH identity AS (
+  SELECT role.*
+    FROM pg_catalog.pg_roles role
+   WHERE role.rolname = $2
+), expected_function AS (
+  SELECT pg_catalog.to_regprocedure(signature) AS oid
+    FROM pg_catalog.unnest($3::text[]) signature
+), application_function AS (
+  SELECT procedure.oid, procedure.proowner, procedure.prosecdef,
+         procedure.proconfig, owner.rolname AS owner_name
+    FROM pg_catalog.pg_proc procedure
+    JOIN pg_catalog.pg_namespace namespace
+      ON namespace.oid = procedure.pronamespace
+    JOIN pg_catalog.pg_roles owner ON owner.oid = procedure.proowner
+   WHERE namespace.nspname = $1
+), application_relation AS (
+  SELECT relation.oid, relation.relkind
+    FROM pg_catalog.pg_class relation
+    JOIN pg_catalog.pg_namespace namespace
+      ON namespace.oid = relation.relnamespace
+   WHERE namespace.nspname = $1
+     AND relation.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+)
+SELECT (
+  current_user = $2
+  AND session_user = $2
+  AND EXISTS (
+    SELECT 1 FROM identity role
+     WHERE role.rolcanlogin
+       AND NOT role.rolinherit
+       AND NOT role.rolsuper
+       AND NOT role.rolcreatedb
+       AND NOT role.rolcreaterole
+       AND NOT role.rolreplication
+       AND NOT role.rolbypassrls
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM identity role
+      JOIN pg_catalog.pg_auth_members membership
+        ON membership.member = role.oid
+  )
+  AND pg_catalog.replace(
+    pg_catalog.replace(pg_catalog.current_setting('search_path'), ' ', ''),
+    '"', ''
+  ) = 'pg_catalog,trailmind_app,pg_temp'
+  AND pg_catalog.has_database_privilege(
+    current_user, pg_catalog.current_database(), 'CONNECT'
+  )
+  AND NOT pg_catalog.has_database_privilege(
+    current_user, pg_catalog.current_database(), 'CREATE'
+  )
+  AND NOT pg_catalog.has_database_privilege(
+    current_user, pg_catalog.current_database(), 'TEMPORARY'
+  )
+  AND pg_catalog.has_schema_privilege(current_user, $1, 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, $1, 'CREATE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'public', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'extensions', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'trailmind_gis', 'USAGE')
+  AND NOT EXISTS (
+    SELECT 1 FROM application_relation relation
+     WHERE (
+       relation.relkind <> 'S'
+       AND pg_catalog.has_table_privilege(
+         current_user, relation.oid,
+         'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'
+       )
+     ) OR (
+       relation.relkind = 'S'
+       AND pg_catalog.has_sequence_privilege(
+         current_user, relation.oid, 'USAGE,SELECT,UPDATE'
+       )
+     )
+  )
+  AND (
+    SELECT pg_catalog.count(*)
+      FROM expected_function expected
+      JOIN application_function procedure ON procedure.oid = expected.oid
+     WHERE expected.oid IS NOT NULL
+       AND procedure.owner_name = 'trailmind_app_owner'
+       AND procedure.prosecdef
+       AND 'search_path=pg_catalog,trailmind_app,trailmind_gis,pg_temp' =
+           ANY(procedure.proconfig)
+       AND pg_catalog.has_function_privilege(
+         current_user, procedure.oid, 'EXECUTE'
+       )
+       AND NOT pg_catalog.has_function_privilege(
+         'public', procedure.oid, 'EXECUTE'
+       )
+  ) = pg_catalog.cardinality($3::text[])
+  AND NOT EXISTS (
+    SELECT 1 FROM application_function procedure
+     WHERE pg_catalog.has_function_privilege(
+       current_user, procedure.oid, 'EXECUTE'
+     )
+       AND procedure.oid <> ALL(
+         ARRAY(SELECT oid FROM expected_function WHERE oid IS NOT NULL)
+       )
+  )
+) AS admitted`;
+
+const OUTDOOR_RESEARCH_CANCELLATION_ADMISSION_SQL = `
+WITH identity AS (
+  SELECT role.*
+    FROM pg_catalog.pg_roles role
+   WHERE role.rolname = $1
+), cancellation_function AS (
+  SELECT procedure.oid, procedure.prosecdef, procedure.proconfig,
+         owner.rolname AS owner_name
+    FROM pg_catalog.pg_proc procedure
+    JOIN pg_catalog.pg_roles owner ON owner.oid = procedure.proowner
+   WHERE procedure.oid = pg_catalog.to_regprocedure(
+     'trailmind_control.cancel_active_outdoor_research_backend_integer(integer)'
+   )
+)
+SELECT (
+  current_user = $1
+  AND session_user = $1
+  AND EXISTS (
+    SELECT 1 FROM identity role
+     WHERE role.rolcanlogin
+       AND NOT role.rolinherit
+       AND NOT role.rolsuper
+       AND NOT role.rolcreatedb
+       AND NOT role.rolcreaterole
+       AND NOT role.rolreplication
+       AND NOT role.rolbypassrls
+       AND role.rolconnlimit = 1
+  )
+  AND NOT EXISTS (
+    SELECT 1
+      FROM identity role
+      JOIN pg_catalog.pg_auth_members membership
+        ON membership.member = role.oid
+  )
+  AND pg_catalog.replace(
+    pg_catalog.replace(pg_catalog.current_setting('search_path'), ' ', ''),
+    '"', ''
+  ) = 'pg_catalog,trailmind_control,pg_temp'
+  AND pg_catalog.has_database_privilege(
+    current_user, pg_catalog.current_database(), 'CONNECT'
+  )
+  AND NOT pg_catalog.has_database_privilege(
+    current_user, pg_catalog.current_database(), 'CREATE'
+  )
+  AND NOT pg_catalog.has_database_privilege(
+    current_user, pg_catalog.current_database(), 'TEMPORARY'
+  )
+  AND pg_catalog.has_schema_privilege(
+    current_user, 'trailmind_control', 'USAGE'
+  )
+  AND NOT pg_catalog.has_schema_privilege(
+    current_user, 'trailmind_control', 'CREATE'
+  )
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'trailmind_app', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'public', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'extensions', 'USAGE')
+  AND NOT pg_catalog.has_schema_privilege(current_user, 'trailmind_gis', 'USAGE')
+  AND EXISTS (
+    SELECT 1 FROM cancellation_function procedure
+     WHERE procedure.owner_name = 'trailmind_control_owner'
+       AND procedure.prosecdef
+       AND 'search_path=pg_catalog,pg_temp' = ANY(procedure.proconfig)
+       AND pg_catalog.has_function_privilege(
+         current_user, procedure.oid, 'EXECUTE'
+       )
+       AND NOT pg_catalog.has_function_privilege(
+         'public', procedure.oid, 'EXECUTE'
+       )
+  )
+  AND trailmind_control.cancel_active_outdoor_research_backend_integer(
+    pg_catalog.pg_backend_pid()
+  ) IS FALSE
+) AS admitted`;
+
 export const APP_ATTEST_RUNTIME_PRIVILEGE_MANIFEST = deepFreeze({
   responsibility: "app_attest_runtime",
   roleEnvironmentName: "APP_ATTEST_RUNTIME_ROLE",
@@ -556,6 +752,39 @@ export function stagingDatabaseAdmissionProbe(env = process.env, responsibility 
     ],
     manifest
   });
+}
+
+export function outdoorResearchDatabaseAdmissionProbe(
+  env = process.env,
+  responsibility = "runtime"
+) {
+  const applicationSchema = applicationSchemaConfiguration(env);
+  if (applicationSchema !== "trailmind_app") invalid();
+  if (responsibility === "runtime") {
+    return deepFreeze({
+      responsibility: "outdoor_research_runtime",
+      role: OUTDOOR_RESEARCH_RUNTIME_ROLE,
+      startupOptions:
+        '-c search_path=pg_catalog,"trailmind_app",pg_temp',
+      query: OUTDOOR_RESEARCH_RUNTIME_ADMISSION_SQL,
+      values: [
+        applicationSchema,
+        OUTDOOR_RESEARCH_RUNTIME_ROLE,
+        [...OUTDOOR_RESEARCH_RUNTIME_FUNCTION_SIGNATURES]
+      ]
+    });
+  }
+  if (responsibility === "cancellation") {
+    return deepFreeze({
+      responsibility: "outdoor_research_cancellation",
+      role: OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE,
+      startupOptions:
+        '-c search_path=pg_catalog,"trailmind_control",pg_temp',
+      query: OUTDOOR_RESEARCH_CANCELLATION_ADMISSION_SQL,
+      values: [OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE]
+    });
+  }
+  return invalid();
 }
 
 export function quotePostgresIdentifier(value) {

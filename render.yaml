@@ -7,7 +7,7 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-    branch: codex/integrate-staging-release-wave1
+    branch: main
     autoDeployTrigger: off
     renderSubdomainPolicy: enabled
     healthCheckPath: /healthz
@@ -23,15 +23,27 @@ services:
       - key: TRAILMIND_STAGING_PROJECT_REF_SHA256
         sync: false
       - key: TRAILMIND_APPLICATION_SCHEMA
-        sync: false
+        value: trailmind_app
       - key: APP_ATTEST_RUNTIME_ROLE
-        sync: false
+        value: app_security_runtime_role
       - key: APP_ATTEST_CONTROL_ROLE
-        sync: false
+        value: pruner_role
       - key: APP_ATTEST_OPERATOR_ROLE
-        sync: false
+        value: migration_role
       - key: APP_ATTEST_DATABASE_URL
         sync: false
+      - key: OUTDOOR_RESEARCH_DATABASE_URL
+        sync: false
+      - key: OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL
+        sync: false
+      - key: OUTDOOR_EVIDENCE_DATABASE_URL
+        sync: false
+      - key: GRAPHHOPPER_API_KEY
+        sync: false
+      - key: GRAPHHOPPER_BASE_URL
+        value: https://graphhopper.com/api/1
+      - key: ROUTE_GLOBAL_MAX_CONCURRENCY
+        value: "16"
       - key: APP_ATTEST_APP_ID_PREFIX
         sync: false
       - key: APP_ATTEST_BUNDLE_ID

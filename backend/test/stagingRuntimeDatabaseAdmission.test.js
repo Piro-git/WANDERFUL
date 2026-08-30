@@ -4,6 +4,10 @@ import {
   APP_ATTEST_CONTROL_PRIVILEGE_MANIFEST,
   APP_ATTEST_RUNTIME_PRIVILEGE_MANIFEST,
   applicationSchemaConfiguration,
+  outdoorResearchDatabaseAdmissionProbe,
+  OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE,
+  OUTDOOR_RESEARCH_RUNTIME_FUNCTION_SIGNATURES,
+  OUTDOOR_RESEARCH_RUNTIME_ROLE,
   quotePostgresIdentifier,
   stagingDatabaseAdmissionProbe,
   stagingDatabaseIdentityConfiguration
@@ -112,6 +116,50 @@ describe("staging database admission contract", () => {
     }
   });
 
+  it("admits only the V2 research functions and target-restricted cancellation boundary", () => {
+    const runtime = outdoorResearchDatabaseAdmissionProbe(
+      validEnvironment(),
+      "runtime"
+    );
+    assert.equal(runtime.role, OUTDOOR_RESEARCH_RUNTIME_ROLE);
+    assert.equal(
+      runtime.startupOptions,
+      '-c search_path=pg_catalog,"trailmind_app",pg_temp'
+    );
+    assert.deepEqual(
+      runtime.values[2],
+      OUTDOOR_RESEARCH_RUNTIME_FUNCTION_SIGNATURES
+    );
+    for (const required of [
+      "rolbypassrls",
+      "pg_auth_members",
+      "has_table_privilege",
+      "has_sequence_privilege",
+      "has_function_privilege",
+      "trailmind_app_owner",
+      "search_path=pg_catalog,trailmind_app,trailmind_gis,pg_temp"
+    ]) assert.match(runtime.query, new RegExp(escapePattern(required)));
+
+    const cancellation = outdoorResearchDatabaseAdmissionProbe(
+      validEnvironment(),
+      "cancellation"
+    );
+    assert.equal(
+      cancellation.role,
+      OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE
+    );
+    assert.equal(
+      cancellation.startupOptions,
+      '-c search_path=pg_catalog,"trailmind_control",pg_temp'
+    );
+    assert.match(
+      cancellation.query,
+      /cancel_active_outdoor_research_backend_integer/
+    );
+    assert.match(cancellation.query, /rolconnlimit = 1/);
+    assert.match(cancellation.query, /trailmind_control_owner/);
+  });
+
   it("fails closed on all reviewed catalog privilege and shadow boundaries", () => {
     const sql = stagingDatabaseAdmissionProbe(validEnvironment(), "runtime").query;
     for (const requiredFragment of [
@@ -143,6 +191,13 @@ describe("staging database admission contract", () => {
   it("rejects an unknown runtime responsibility", () => {
     assert.throws(
       () => stagingDatabaseAdmissionProbe(validEnvironment(), "operator"),
+      /staging_database_admission_invalid/
+    );
+    assert.throws(
+      () => outdoorResearchDatabaseAdmissionProbe(
+        validEnvironment(),
+        "operator"
+      ),
       /staging_database_admission_invalid/
     );
   });

@@ -22,6 +22,7 @@ import {
 import {
   planAndRouteOutdoorAdventureV2
 } from "../src/outdoorAdventure/outdoorAdventureOrchestratorV2.js";
+import { createIntentServer } from "../src/server.js";
 import {
   RESEARCH_TRAIL_ACCESS_CANDIDATE_POLICY_V1
 } from "../src/routeResearch/index.js";
@@ -1194,6 +1195,129 @@ ${outdoorResearchRepositoryQueriesForTesting.trailAccessCandidates}`,
       routed.provenance.selectedHighlights[0].routingCoordinate
     );
     assert.doesNotThrow(() => validateOutdoorAdventurePlanningResponseV2(result));
+  });
+
+  it("runs one Harz V2/V3 route through the production HTTP composition", async () => {
+    const region = REGIONS[0];
+    const ids = seeded.get(region.operationalRegionId);
+    const highlight = {
+      longitude: region.anchor.longitude + 0.01,
+      latitude: region.anchor.latitude
+    };
+    await insertProjectedTrailSegment({
+      pool,
+      sourceId,
+      projectionRunId: ids.runId,
+      importId: ids.importId,
+      operationalRegionId: region.operationalRegionId,
+      osmId: region.osmBase + 261,
+      coordinates: [
+        { longitude: highlight.longitude - 0.001, latitude: highlight.latitude },
+        { longitude: highlight.longitude + 0.001, latitude: highlight.latitude }
+      ]
+    });
+
+    const providerBodies = [];
+    let authorizationCalls = 0;
+    const server = createIntentServer({
+      env: {
+        NODE_ENV: "production",
+        TRAILMIND_APPLICATION_SCHEMA: schemaName,
+        ROUTE_PROVIDER_ENABLED: "true",
+        OUTDOOR_RESEARCH_PLANNING_ENABLED: "true",
+        OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true",
+        GRAPHHOPPER_API_KEY: "test-only-placeholder",
+        GRAPHHOPPER_BASE_URL: "https://graphhopper.com/api/1",
+        OUTDOOR_RESEARCH_PLANNING_MAX_PROPOSALS: "2",
+        OUTDOOR_RESEARCH_PLANNING_MAX_GRAPHHOPPER_CALLS: "2",
+        OUTDOOR_RESEARCH_PLANNING_MAX_CONCURRENCY: "2"
+      },
+      appAttestRuntime: {
+        repository: { isDurable: true },
+        endpoint: async () => ({ statusCode: 404, payload: {} }),
+        routeAuthorizer: {
+          async authorize() {
+            authorizationCalls += 1;
+            return {
+              authorized: true,
+              rateLimitKey: "composed-postgis-test",
+              limitsConsumed: true,
+              async release() {}
+            };
+          }
+        }
+      },
+      outdoorResearchPool: runtimePool,
+      outdoorResearchRuntimeSchema: schemaName,
+      researchClock: () => NOW,
+      async fetchImpl(_url, init) {
+        const body = JSON.parse(init.body);
+        providerBodies.push(body);
+        const internalRequest = {
+          points: body.points.map(([longitude, latitude]) => ({
+            latitude,
+            longitude
+          }))
+        };
+        const response = deterministicProviderResponse(internalRequest);
+        return Response.json({
+          paths: response.paths,
+          snapped_waypoints: response.paths[0].snapped_waypoints
+        });
+      }
+    });
+    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = server.address();
+      const response = await fetch(
+        `http://127.0.0.1:${address.port}` +
+          "/api/outdoor-research/plan-route",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: "TrailMindRouteSession test-placeholder",
+            "x-trailmind-request-id":
+              "11111111-1111-4111-8111-111111111119"
+          },
+          body: JSON.stringify({
+            schemaVersion: 2,
+            intent: intent(region, {
+              requiredFacilities: [],
+              preferredExperiences: []
+            })
+          })
+        }
+      );
+      const payload = await response.json();
+      assert.equal(response.status, 200, JSON.stringify(payload));
+      assert.equal(payload.schemaVersion, 2);
+      assert(["partial", "routed"].includes(payload.state));
+      assert.equal(
+        payload.routedAlternatives.candidatePlanPolicyVersion,
+        "research-guided-route-candidates-v2"
+      );
+      const routed = payload.routedAlternatives.attempts.find((attempt) =>
+        attempt.state === "routed"
+      );
+      assert.ok(routed);
+      assert.equal(
+        routed.routeResults[0].geometryProvider,
+        "graphhopper"
+      );
+      assert.equal(authorizationCalls, 1);
+      assert(providerBodies.length > 0 && providerBodies.length <= 2);
+      assert(providerBodies.every((body) =>
+        body.profile === "foot" &&
+        body.points_encoded === false &&
+        body.instructions === true
+      ));
+      assert.doesNotThrow(() =>
+        validateOutdoorAdventurePlanningResponseV2(payload)
+      );
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 
   it("rejects restricted, quarantined, malformed, inactive and unsupported trail access", async () => {

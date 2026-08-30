@@ -34,7 +34,7 @@
   "releasePolicy": {
     "iosConnection": "blocked_until_validated_remote_deployment_receipt",
     "closedBeta": "not_eligible",
-    "providerFlags": "exact_false",
+    "providerFlags": "tracked_defaults_false_staging_operator_only",
     "remoteMutationAuthorized": false
   }
 }

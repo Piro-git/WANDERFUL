@@ -91,6 +91,22 @@ describe("production operations", () => {
         enabled.OUTDOOR_RESEARCH_DATABASE_URL
     });
     assert.equal(aliased.decision, "blocked");
+
+    const staging = evaluateProductionConfiguration({
+      ...enabled,
+      TRAILMIND_RELEASE_STAGE: "staging",
+      OUTDOOR_RESEARCH_DATABASE_URL:
+        "postgresql://outdoor_research_runtime_role:" +
+          "research-secret@example.invalid/trailmind",
+      OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL:
+        "postgresql://outdoor_research_cancellation_control_role:" +
+          "cancel-secret@example.invalid/trailmind"
+    });
+    assert.equal(staging.decision, "ready");
+    assert.equal(evaluateProductionConfiguration({
+      ...enabled,
+      TRAILMIND_RELEASE_STAGE: "staging"
+    }).decision, "blocked");
   });
 
   it("keeps the remote intent and evidence providers outside the closed-beta surface", () => {

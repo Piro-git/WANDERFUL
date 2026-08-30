@@ -720,7 +720,8 @@ describe("outdoor adventure staging proof operational capture", () => {
       async query(statement, values) {
         assert.equal(
           statement,
-          "SELECT pg_cancel_backend($1) AS cancelled"
+          "SELECT trailmind_control." +
+            "cancel_active_outdoor_research_backend_integer($1) AS cancelled"
         );
         assert.deepEqual(values, [42]);
         const error = new Error("cancelled");
@@ -747,6 +748,7 @@ describe("outdoor adventure staging proof operational capture", () => {
           return cancellationClient;
         }
       },
+      cancellationMode: "trailmind_control_v1",
       transactionLifecycleObserver(event) {
         lifecycle.push(event);
       }

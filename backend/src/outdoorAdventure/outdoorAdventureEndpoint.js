@@ -99,7 +99,8 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
       const dependencies = resolveDependencies(
         options,
         configuration,
-        provider
+        provider,
+        env
       );
       const orchestrator = useTrailAccessV2
         ? options.orchestratorV2 ?? options.orchestrator ??
@@ -170,7 +171,7 @@ export function createOutdoorAdventurePlanningEndpoint(options = {}) {
   };
 }
 
-function resolveDependencies(options, configuration, provider) {
+function resolveDependencies(options, configuration, provider, env) {
   const pool = options.outdoorResearchPool;
   const cancellationPool = options.outdoorResearchCancellationPool;
   let repository = options.repository;
@@ -178,7 +179,15 @@ function resolveDependencies(options, configuration, provider) {
     repository = new PostgresOutdoorResearchRepository({
       pool,
       cancellationPool,
-      statementTimeoutMs: configuration.statementTimeoutMs
+      statementTimeoutMs: configuration.statementTimeoutMs,
+      runtimeSchema:
+        options.outdoorResearchRuntimeSchema ??
+        env.TRAILMIND_APPLICATION_SCHEMA,
+      cancellationMode:
+        options.outdoorResearchCancellationMode ??
+        (env.TRAILMIND_APPLICATION_SCHEMA === "trailmind_app"
+          ? "trailmind_control_v1"
+          : undefined)
     });
   }
   const appSecurityPools = new Set([

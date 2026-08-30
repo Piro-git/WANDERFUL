@@ -1,18 +1,23 @@
 import { createHash } from "node:crypto";
 import {
   applicationSchemaConfiguration,
+  OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE,
+  OUTDOOR_RESEARCH_RUNTIME_ROLE,
   stagingDatabaseIdentityConfiguration
 } from "../src/operations/stagingDatabaseAdmission.js";
 
-const CONTRACT_VERSION = "staging-container-admission-v4-shared-extension-isolation";
+const CONTRACT_VERSION = "staging-container-admission-v5-engine-activation";
 const OFF_LIMITS_PRODUCTION_PROJECT_REF_SHA256 =
   "730c9715a50e01394edff472b079a0742e6c34159c51329032d0bb8e8d7aa6b7";
-const EXACT_FALSE_FLAGS = Object.freeze([
+const CAPABILITY_FLAGS = Object.freeze([
   "ROUTE_PROVIDER_ENABLED",
   "INTENT_PROVIDER_ENABLED",
   "OUTDOOR_EVIDENCE_PROVIDER_ENABLED",
   "OUTDOOR_RESEARCH_PLANNING_ENABLED",
-  "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+  "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED"
+]);
+const EXACT_FALSE_FLAGS = Object.freeze([
+  "INTENT_PROVIDER_ENABLED",
   "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING",
   "INTENT_ALLOW_INSECURE_LOCAL_PARSING",
   "INTENT_ALLOW_DETERMINISTIC_MOCK",
@@ -27,12 +32,8 @@ const FORBIDDEN_WEB_PROCESS_VALUES = Object.freeze([
   "POSTGRES_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
   "SUPABASE_SECRET_KEY",
-  "GRAPHHOPPER_API_KEY",
   "GOOGLE_API_KEY",
   "OPENROUTER_API_KEY",
-  "OUTDOOR_RESEARCH_DATABASE_URL",
-  "OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL",
-  "OUTDOOR_EVIDENCE_DATABASE_URL",
   "NODE_OPTIONS",
   "NODE_TLS_REJECT_UNAUTHORIZED",
   "NODE_EXTRA_CA_CERTS",
@@ -71,8 +72,17 @@ export function evaluateStagingContainerEnvironment(env = process.env, options =
     requiredExact(env.NODE_ENV, "production");
     requiredExact(env.TRAILMIND_RELEASE_STAGE, "staging");
   });
-  check("all_capabilities_disabled", () => {
+  check("bounded_capability_flags", () => {
+    for (const name of CAPABILITY_FLAGS) exactBooleanFlag(env[name]);
     for (const name of EXACT_FALSE_FLAGS) requiredExact(env[name], "false");
+    if (
+      enabled(env.OUTDOOR_RESEARCH_PLANNING_ENABLED) &&
+      !enabled(env.ROUTE_PROVIDER_ENABLED)
+    ) invalid();
+    if (
+      enabled(env.OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED) &&
+      !enabled(env.OUTDOOR_RESEARCH_PLANNING_ENABLED)
+    ) invalid();
   });
   check("web_process_secret_minimization", () => {
     for (const name of FORBIDDEN_WEB_PROCESS_VALUES) requiredAbsent(env[name]);
@@ -84,24 +94,50 @@ export function evaluateStagingContainerEnvironment(env = process.env, options =
   check("least_privilege_staging_database", () => {
     applicationSchemaConfiguration(env);
     const identities = stagingDatabaseIdentityConfiguration(env);
-    const parsed = requiredPostgresUrl(env.APP_ATTEST_DATABASE_URL);
-    const role = decodeURIComponent(parsed.username).split(".", 1)[0].toLowerCase();
-    if (
-      !role || role !== identities.runtimeRole || !parsed.password ||
-      FORBIDDEN_DATABASE_ROLES.has(role)
-    ) invalid();
-    const projectRef = databaseProjectRef(parsed);
     const expectedProjectHash = requiredSha256(
       env.TRAILMIND_STAGING_PROJECT_REF_SHA256
     );
+    if (expectedProjectHash === OFF_LIMITS_PRODUCTION_PROJECT_REF_SHA256) invalid();
+    const appSecurity = requiredRuntimeDatabaseUrl(
+      env.APP_ATTEST_DATABASE_URL,
+      identities.runtimeRole,
+      expectedProjectHash
+    );
+    const databaseUrls = [appSecurity.toString()];
+    const researchSecretsPresent = present(env.OUTDOOR_RESEARCH_DATABASE_URL) ||
+      present(env.OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL);
     if (
-      !projectRef || expectedProjectHash === OFF_LIMITS_PRODUCTION_PROJECT_REF_SHA256 ||
-      sha256(projectRef) !== expectedProjectHash
-    ) invalid();
-    if (parsed.port !== "" && parsed.port !== "5432") invalid();
-    if (parsed.pathname !== "/postgres") invalid();
-    const rootCertificate = requiredDatabaseSearchParameters(parsed);
-    if (!/^\/etc\/secrets\/[a-z0-9_.-]{1,96}\.crt$/.test(rootCertificate ?? "")) invalid();
+      enabled(env.OUTDOOR_RESEARCH_PLANNING_ENABLED) ||
+      researchSecretsPresent
+    ) {
+      databaseUrls.push(requiredRuntimeDatabaseUrl(
+        env.OUTDOOR_RESEARCH_DATABASE_URL,
+        OUTDOOR_RESEARCH_RUNTIME_ROLE,
+        expectedProjectHash
+      ).toString());
+      databaseUrls.push(requiredRuntimeDatabaseUrl(
+        env.OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL,
+        OUTDOOR_RESEARCH_CANCELLATION_CONTROL_ROLE,
+        expectedProjectHash
+      ).toString());
+    }
+    if (
+      enabled(env.OUTDOOR_EVIDENCE_PROVIDER_ENABLED) ||
+      present(env.OUTDOOR_EVIDENCE_DATABASE_URL)
+    ) {
+      const evidence = requiredRuntimeDatabaseUrl(
+        env.OUTDOOR_EVIDENCE_DATABASE_URL,
+        undefined,
+        expectedProjectHash
+      );
+      databaseUrls.push(evidence.toString());
+    }
+    if (new Set(databaseUrls).size !== databaseUrls.length) invalid();
+  });
+  check("provider_secret_scope", () => {
+    if (enabled(env.ROUTE_PROVIDER_ENABLED) || present(env.GRAPHHOPPER_API_KEY)) {
+      requiredOpaque(env.GRAPHHOPPER_API_KEY);
+    }
   });
 
   return deepFreeze({
@@ -109,9 +145,9 @@ export function evaluateStagingContainerEnvironment(env = process.env, options =
     contractVersion: CONTRACT_VERSION,
     decision: checks.every(({ status }) => status === "pass") ? "ready" : "blocked",
     checks,
-    capabilities: EXACT_FALSE_FLAGS.slice(0, 5).map((name) => ({
+    capabilities: CAPABILITY_FLAGS.map((name) => ({
       id: name.toLowerCase(),
-      state: "disabled"
+      state: enabled(env[name]) ? "enabled" : "disabled"
     }))
   });
 }
@@ -144,9 +180,26 @@ export function assertStagingContainerEnvironment(env = process.env, options = {
 export function stagingAdmissionContract() {
   return deepFreeze({
     contractVersion: CONTRACT_VERSION,
+    capabilityFlags: [...CAPABILITY_FLAGS],
     exactFalseFlags: [...EXACT_FALSE_FLAGS],
     forbiddenWebProcessValues: [...FORBIDDEN_WEB_PROCESS_VALUES]
   });
+}
+
+function requiredRuntimeDatabaseUrl(value, expectedRole, expectedProjectHash) {
+  const parsed = requiredPostgresUrl(value);
+  const role = decodeURIComponent(parsed.username).split(".", 1)[0].toLowerCase();
+  if (
+    !role || (expectedRole !== undefined && role !== expectedRole) ||
+    !parsed.password || FORBIDDEN_DATABASE_ROLES.has(role)
+  ) invalid();
+  const projectRef = databaseProjectRef(parsed);
+  if (!projectRef || sha256(projectRef) !== expectedProjectHash) invalid();
+  if (parsed.port !== "" && parsed.port !== "5432") invalid();
+  if (parsed.pathname !== "/postgres") invalid();
+  const rootCertificate = requiredDatabaseSearchParameters(parsed);
+  if (!/^\/etc\/secrets\/[a-z0-9_.-]{1,96}\.crt$/.test(rootCertificate ?? "")) invalid();
+  return parsed;
 }
 
 function requiredPostgresUrl(value) {
@@ -178,6 +231,20 @@ function requiredExact(value, expected) {
   if (value !== expected) invalid();
 }
 
+function exactBooleanFlag(value) {
+  if (value !== "true" && value !== "false") invalid();
+}
+
+function enabled(value) {
+  return value === "true";
+}
+
+function requiredOpaque(value) {
+  if (typeof value !== "string" || value.length < 1 || value.length > 8_192) {
+    invalid();
+  }
+}
+
 function requiredSha256(value) {
   if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) invalid();
   return value;
@@ -185,6 +252,10 @@ function requiredSha256(value) {
 
 function requiredAbsent(value) {
   if (value !== undefined && value !== "") invalid();
+}
+
+function present(value) {
+  return value !== undefined && value !== "";
 }
 
 function deepFreeze(value) {

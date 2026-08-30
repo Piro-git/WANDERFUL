@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import pg from "pg";
-import { stagingDatabaseAdmissionProbe } from "../src/operations/stagingDatabaseAdmission.js";
+import {
+  outdoorResearchDatabaseAdmissionProbe,
+  stagingDatabaseAdmissionProbe
+} from "../src/operations/stagingDatabaseAdmission.js";
 
 const disposable = disposableConfiguration(process.env);
 const operationalRoles = Object.freeze([
@@ -331,6 +334,22 @@ describe("Supabase PostGIS isolation V2 disposable PostgreSQL contract", {
 
   it("allows outdoor runtime to execute exactly five bounded functions and no direct PostGIS", async () => {
     const runtime = pools.get("outdoor_research_runtime_role");
+    const runtimeAdmission = outdoorResearchDatabaseAdmissionProbe({
+      TRAILMIND_APPLICATION_SCHEMA: "trailmind_app"
+    }, "runtime");
+    assert.equal((await runtime.query(
+      runtimeAdmission.query,
+      runtimeAdmission.values
+    )).rows[0]?.admitted, true);
+    const cancellationAdmission = outdoorResearchDatabaseAdmissionProbe({
+      TRAILMIND_APPLICATION_SCHEMA: "trailmind_app"
+    }, "cancellation");
+    assert.equal((await pools.get(
+      "outdoor_research_cancellation_control_role"
+    ).query(
+      cancellationAdmission.query,
+      cancellationAdmission.values
+    )).rows[0]?.admitted, true);
     const executable = await runtime.query(`
       SELECT procedure.proname
         FROM pg_catalog.pg_proc procedure

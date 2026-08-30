@@ -86,6 +86,61 @@ describe("staging runtime lifecycle", () => {
     assert.equal(processObject.handlers.size, 0);
   });
 
+  it("admits the V2 research and bounded cancellation roles before serving", async () => {
+    const port = await unusedPort();
+    const events = [];
+    const service = await startStagingContainerProcess({
+      env: stagingEnvironment({
+        PORT: String(port),
+        ROUTE_PROVIDER_ENABLED: "true",
+        OUTDOOR_RESEARCH_PLANNING_ENABLED: "true",
+        OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true",
+        ROUTE_GLOBAL_MAX_CONCURRENCY: "16",
+        GRAPHHOPPER_API_KEY: "deterministic-test-provider-key",
+        OUTDOOR_RESEARCH_DATABASE_URL:
+          stagingDatabaseUrl("outdoor_research_runtime_role"),
+        OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL:
+          stagingDatabaseUrl("outdoor_research_cancellation_control_role")
+      }),
+      PoolClass: FakePool,
+      process: fakeProcess(),
+      logger: loggerInto(events),
+      execArgv: [],
+      setIntervalImpl() { return { unref() {} }; },
+      clearIntervalImpl() {}
+    });
+    runningServers.add(service.server);
+
+    assert.equal(FakePool.instances.length, 3);
+    assert.equal(
+      FakePool.instances[1].options.options,
+      '-c search_path=pg_catalog,"trailmind_app",pg_temp'
+    );
+    assert.equal(
+      FakePool.instances[1].queries[0].values[2].some((signature) =>
+        signature.includes("trailmind_runtime_outdoor_research_snapshot_context_v1")
+      ),
+      true
+    );
+    assert.equal(
+      FakePool.instances[2].options.options,
+      '-c search_path=pg_catalog,"trailmind_control",pg_temp'
+    );
+    assert.match(
+      FakePool.instances[2].queries[0].text,
+      /cancel_active_outdoor_research_backend_integer/
+    );
+    assert.equal(FakePool.instances[2].options.max, 1);
+    assert.equal(events.some((event) =>
+      event.event === "runtime_capability_state" &&
+      event.capability === "outdoor_research" &&
+      event.state === "enabled"
+    ), true);
+
+    await service.shutdown("test");
+    runningServers.delete(service.server);
+  });
+
   it("turns an idle pool error into privacy-safe not-ready state without a crash", async () => {
     const port = await unusedPort();
     const events = [];
@@ -234,4 +289,10 @@ function stagingEnvironment(overrides = {}) {
     APP_ATTEST_ALLOW_IN_MEMORY: "false",
     ...overrides
   };
+}
+
+function stagingDatabaseUrl(role) {
+  return `postgresql://${role}.abcdefghijklmnopqrst:secret-sentinel@` +
+    "aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=verify-full" +
+    "&sslrootcert=/etc/secrets/supabase-staging-ca.crt";
 }

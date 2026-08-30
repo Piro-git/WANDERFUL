@@ -86,8 +86,12 @@ describe("staging OCI artifact", () => {
       "utf8"
     ));
     const sourceContract = stagingAdmissionContract();
-    assert.equal(machineContract.schemaVersion, 4);
+    assert.equal(machineContract.schemaVersion, 5);
     assert.equal(machineContract.contractVersion, sourceContract.contractVersion);
+    assert.deepEqual(
+      machineContract.runtime.capabilityFlags,
+      sourceContract.capabilityFlags
+    );
     assert.deepEqual(machineContract.runtime.exactFalse, sourceContract.exactFalseFlags);
     assert.deepEqual(machineContract.runtime.forbidden, sourceContract.forbiddenWebProcessValues);
     assert.equal(machineContract.runtime.node.minimumMajor, 22);

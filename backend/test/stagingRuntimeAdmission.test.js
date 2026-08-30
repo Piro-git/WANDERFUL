@@ -10,13 +10,55 @@ import {
 import { runStagingPruner } from "../scripts/staging/runtime/run-pruner.js";
 
 describe("staging container admission", () => {
-  it("admits only the isolated all-disabled least-privilege staging shape", () => {
+  it("admits the isolated all-disabled least-privilege staging baseline", () => {
     const env = stagingEnvironment();
     const report = assertStagingContainerEnvironment(env, { execArgv: [] });
     assert.equal(report.decision, "ready");
     assert.equal(report.checks.every(({ status }) => status === "pass"), true);
     assert.equal(report.capabilities.every(({ state }) => state === "disabled"), true);
     assert.equal(JSON.stringify(report).includes(env.APP_ATTEST_DATABASE_URL), false);
+  });
+
+  it("admits an operator-supplied research activation without weakening insecure flags", () => {
+    const env = stagingEnvironment({
+      ROUTE_PROVIDER_ENABLED: "true",
+      OUTDOOR_RESEARCH_PLANNING_ENABLED: "true",
+      OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true",
+      GRAPHHOPPER_API_KEY: "activation-placeholder",
+      OUTDOOR_RESEARCH_DATABASE_URL:
+        databaseUrl("outdoor_research_runtime_role"),
+      OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL:
+        databaseUrl("outdoor_research_cancellation_control_role")
+    });
+    const report = assertStagingContainerEnvironment(env, { execArgv: [] });
+    assert.equal(report.decision, "ready");
+    assert.deepEqual(
+      report.capabilities.filter(({ state }) => state === "enabled")
+        .map(({ id }) => id),
+      [
+        "route_provider_enabled",
+        "outdoor_research_planning_enabled",
+        "outdoor_routable_highlight_access_enabled"
+      ]
+    );
+    assert.equal(JSON.stringify(report).includes("activation-placeholder"), false);
+  });
+
+  it("admits validated activation secrets while rollback flags stay disabled", () => {
+    const env = stagingEnvironment({
+      GRAPHHOPPER_API_KEY: "staged-activation-placeholder",
+      OUTDOOR_RESEARCH_DATABASE_URL:
+        databaseUrl("outdoor_research_runtime_role"),
+      OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL:
+        databaseUrl("outdoor_research_cancellation_control_role")
+    });
+    const report = assertStagingContainerEnvironment(env, { execArgv: [] });
+    assert.equal(report.decision, "ready");
+    assert.equal(report.capabilities.every(({ state }) => state === "disabled"), true);
+    assert.equal(
+      JSON.stringify(report).includes("staged-activation-placeholder"),
+      false
+    );
   });
 
   it("rejects enabled or malformed flags, privileged roles and operator credentials", () => {
@@ -29,7 +71,18 @@ describe("staging container admission", () => {
       { APP_ATTEST_CONTROL_DATABASE_URL: databaseUrl("trailmind_pruner") },
       { APP_ATTEST_OPERATOR_DATABASE_URL: databaseUrl("trailmind_operator") },
       { DATABASE_URL: databaseUrl("legacy_runtime") },
-      { GRAPHHOPPER_API_KEY: "unused-secret-sentinel" },
+      { OUTDOOR_RESEARCH_DATABASE_URL:
+          databaseUrl("outdoor_research_runtime_role") },
+      { OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true" },
+      {
+        ROUTE_PROVIDER_ENABLED: "true",
+        OUTDOOR_RESEARCH_PLANNING_ENABLED: "true",
+        GRAPHHOPPER_API_KEY: "activation-placeholder",
+        OUTDOOR_RESEARCH_DATABASE_URL:
+          databaseUrl("wrong_research_role"),
+        OUTDOOR_RESEARCH_CANCELLATION_DATABASE_URL:
+          databaseUrl("outdoor_research_cancellation_control_role")
+      },
       { NODE_TLS_REJECT_UNAUTHORIZED: "0" },
       { NODE_OPTIONS: "--inspect=0.0.0.0:9229" },
       { PGOPTIONS: "-c search_path=shadow,public" },
