@@ -22,10 +22,14 @@ Do not put credentials, certificates, private profile contents, API keys, tax/ba
 - [ ] Approve copyright year/owner and rights to icon/art/code/other supplied assets.
 - [ ] Publish and approve the canonical HTTPS privacy policy.
 - [ ] Publish and approve the canonical HTTPS support page and monitored contact.
+- [ ] Complete every item in `OWNER_LEGAL_INPUTS_V1.md`, including controller/trader details, processor regions/contracts, exact retention, legal bases, rights workflow, age, terms, and host logs.
+- [ ] Render and validate `public-site` with the approved owner configuration; deploy only the rendered output and verify it from a clean device/network.
 - [ ] Approve final App Privacy answers, including production routing retention and the embedded Superwall Purchase History declaration.
+- [ ] If the advanced engine is enabled, approve `APP_STORE_PRIVACY_ANSWERS_ENGINE_ENABLED_V1.md` against its exact backend/evidence provider behavior.
 - [ ] Approve App Store Connect record, immutable SKU, primary language, and developer name.
 - [ ] Approve Navigation as the primary category and decide whether a secondary category is needed.
 - [ ] Complete age-rating, content-rights, storefront/availability, and export-compliance decisions.
+- [ ] Select the Apple Standard EULA or approve/configure a custom EULA; separately approve the public terms wording.
 - [ ] Approve launch geography and any honest routing-coverage wording.
 - [ ] Approve the English metadata and final signed-build screenshots.
 - [ ] Approve review notes and deterministic reviewer route request.

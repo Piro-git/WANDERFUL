@@ -34,8 +34,8 @@ Current public App Store decision: **NO-GO**
 | Apple team/signing | `DEVELOPMENT_TEAM` is empty; no private signing inspection authorized | Blocked | Owner selects team/profile and creates signed archive |
 | Production core routing | Current Release intentionally cannot route | Blocked | Owner configures and verifies GraphHopper gateway |
 | Physical iPhone | No device available through configured workflow | Follow-up | Smoke-test signed build if available; not a standalone App Attest blocker |
-| Public privacy/support URLs | Release values empty | App Store blocker | Publish and configure canonical HTTPS pages |
-| App Privacy | Conservative draft prepared | App Store blocker | Owner/legal finalize against production retention and embedded manifests |
+| Public privacy/support URLs | Validated fail-closed static package exists; owner inputs/domain/deployment and Release values remain empty | App Store blocker | Complete owner/legal inputs, render, deploy to canonical HTTPS, verify, then configure exact URLs |
+| App Privacy | Conservative disabled-engine draft plus engine-enabled decision sheet prepared | App Store blocker | Owner/legal finalize against exact production payload/retention/providers and embedded manifests |
 | App Store Connect/legal | Record, SKU, legal entity, rights, rating, export, storefronts unknown | App Store blocker | Owner supplies decisions |
 | Screenshots | Capture plan exists; final signed-build assets not captured | App Store blocker | Capture truthful final screenshots |
 | Upload/submission authority | Not granted | Blocked by scope | Owner explicitly authorizes each action |

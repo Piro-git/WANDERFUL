@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How Wanderful handles route requests, local app data, security data, support messages, and website access data.">
+  <meta name="robots" content="{{ROBOTS_DIRECTIVE}}">
+  <title>Privacy policy · Wanderful</title>
+  <link rel="canonical" href="{{CANONICAL_ORIGIN}}/privacy/">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <!-- DRAFT_ONLY_START -->
+  <aside class="draft-banner" aria-label="Draft status">Draft source — incomplete owner inputs — do not publish</aside>
+  <!-- DRAFT_ONLY_END -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="../privacy/" aria-label="Wanderful privacy home">Wanderful</a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul>
+          <li><a aria-current="page" href="../privacy/">Privacy</a></li>
+          <li><a href="../support/">Support</a></li>
+          <li><a href="../privacy-choices/">Your choices</a></li>
+          <li><a href="../terms/">Terms</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  <main id="main-content">
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow">Privacy, explained clearly</p>
+      <h1 id="page-title">Your adventure is personal.</h1>
+      <p class="lede">Wanderful uses the information needed to build a requested route, protect the service, and help when you contact support. It is not an advertising or cross-company tracking product.</p>
+      <div class="status-row">
+        <span>Effective: {{EFFECTIVE_DATE}}</span>
+        <span>Controller: {{CONTROLLER_LEGAL_NAME}}</span>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <section class="content-card" aria-labelledby="summary-heading">
+        <h2 id="summary-heading">The short version</h2>
+        <ul>
+          <li>Your Trail Profile, onboarding progress, and saved routes stay on your iPhone. Wanderful V1 has no user account or cloud sync.</li>
+          <li>When you request a route, Wanderful may send your prompt, requested places or coordinates, activity, constraints, and preferences to the Wanderful backend so it can plan the route and gather relevant outdoor evidence.</li>
+          <li>The routing provider receives the coordinates, activity profile, and routing constraints needed to calculate route geometry. It does not need your identity or a Wanderful account.</li>
+          <li>Wanderful is designed not to create a prompt-history or exact-location-history feature. Transient processing and bounded security logs are described below.</li>
+          <li>There are no ads, analytics, tracking pixels, or cross-company tracking in this V1 boundary.</li>
+        </ul>
+        <div class="callout">
+          <p><strong>Route safety:</strong> Wanderful is a planning aid, not live navigation or an assurance of safety, access, legality, conditions, scenery, or water. Review every route before starting.</p>
+        </div>
+      </section>
+
+      <section class="content-card" aria-labelledby="controller-heading">
+        <h2 id="controller-heading">Who is responsible</h2>
+        <p>The controller for Wanderful is {{CONTROLLER_LEGAL_NAME}}, {{CONTROLLER_LEGAL_FORM}}, {{POSTAL_ADDRESS}}, {{COUNTRY}}.</p>
+        <p>Privacy questions and rights requests: <a href="mailto:{{PRIVACY_EMAIL}}">{{PRIVACY_EMAIL}}</a>.</p>
+        <p>Support questions: <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>.</p>
+        <p>Phone or documented alternative: {{SUPPORT_PHONE_OR_UNAVAILABLE}}. Register details: {{REGISTER_DETAILS_OR_NOT_APPLICABLE}}. VAT details: {{VAT_ID_OR_NOT_APPLICABLE}}.</p>
+        <p>EU Digital Services Act status: {{DSA_TRADER_STATUS}}.</p>
+      </section>
+
+      <section class="content-card" aria-labelledby="app-data-heading">
+        <h2 id="app-data-heading">Information handled by the app</h2>
+        <h3>Route planning requests</h3>
+        <p>When you ask Wanderful to plan an adventure, the app and backend process the text you enter, requested start and destination places, resolved coordinates, activity type, target distance or duration, route type, difficulty and other preferences or constraints. The purpose is to understand your request, find relevant evidence, calculate route options, and explain how an option matches your request.</p>
+        <p>Legal basis: {{ROUTING_LEGAL_BASIS}}.</p>
+
+        <h3>Information kept on your iPhone</h3>
+        <p>Onboarding state, your optional Trail Profile, and saved routes are stored locally. V1 does not create a Wanderful account and does not sync those records to Supabase or another cloud profile. You can edit or remove them in the app. A user-directed GPX export contains route coordinates and goes to the app or person you choose in Apple’s share sheet.</p>
+
+        <h3>Optional speech input</h3>
+        <p>If you actively start voice input and grant Microphone and Speech Recognition permission, Apple’s Speech service may process the audio to produce text. Typed planning remains available when you decline. Wanderful does not keep the raw audio or send raw audio to its own backend.</p>
+
+        <h3>Security and abuse prevention</h3>
+        <p>Apple App Attest can provide an app-installation assertion used to protect the route service. Bounded operational or security logs contain: {{SECURITY_LOG_FIELDS}}. They are used to operate, secure, rate-limit, and diagnose the service. Legal basis: {{SECURITY_LEGAL_BASIS}}.</p>
+      </section>
+
+      <section class="content-card" aria-labelledby="providers-heading">
+        <h2 id="providers-heading">Services involved</h2>
+        <div class="data-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Service</th>
+                <th scope="col">What it does</th>
+                <th scope="col">Information involved</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Apple platform services</td>
+                <td>Geocoding, optional Speech, App Attest, and the system share sheet</td>
+                <td>Place queries; optional audio; an app attestation; or a file you choose to share, depending on the action</td>
+              </tr>
+              <tr>
+                <td>Wanderful backend</td>
+                <td>Understands route requests, orchestrates evidence lookup, protects requests, and returns route options</td>
+                <td>Prompt, requested places or coordinates, activity, constraints, preferences, App Attest/security data, and necessary request metadata. Hosting: {{BACKEND_HOSTING_DETAILS}}</td>
+              </tr>
+              <tr>
+                <td>GraphHopper routing</td>
+                <td>Calculates real route geometry and route statistics</td>
+                <td>Requested coordinates, routing profile, and routing constraints. Provider/role/region: {{GRAPHHOPPER_DETAILS}}</td>
+              </tr>
+              <tr>
+                <td>Outdoor evidence providers</td>
+                <td>Finds supporting outdoor or route context when research-guided planning is enabled</td>
+                <td>Search terms, approximate route area, and relevant constraints—not a Wanderful account. Providers/roles/regions: {{EVIDENCE_PROVIDER_DETAILS}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Wanderful requires service providers acting on its behalf to handle personal data only for the contracted service and with appropriate safeguards. International transfer details: {{INTERNATIONAL_TRANSFER_DETAILS}}.</p>
+      </section>
+
+      <section class="content-card" aria-labelledby="retention-heading">
+        <h2 id="retention-heading">How long information is kept</h2>
+        <dl>
+          <dt>Route request processing</dt>
+          <dd>Wanderful is designed not to maintain a user-facing prompt or exact-location history. Request content and precise coordinates used in backend processing are removed or de-identified within {{ROUTING_REQUEST_TRANSIENT_PERIOD}}.</dd>
+          <dt>Security and operational logs</dt>
+          <dd>The bounded fields listed above are retained for {{SECURITY_LOG_RETENTION}}, unless a specific security incident requires a documented longer hold.</dd>
+          <dt>Local app data</dt>
+          <dd>Trail Profile and saved-route data remain on your iPhone until you delete them or remove the app, subject to normal device and backup behavior described by Apple.</dd>
+          <dt>Support correspondence</dt>
+          <dd>If you email support, the message and contact details are retained for {{SUPPORT_MESSAGE_RETENTION}}. Legal basis: {{SUPPORT_LEGAL_BASIS}}.</dd>
+        </dl>
+        <p>Wanderful does not use route requests for advertising, sell them, or use them for cross-company tracking.</p>
+      </section>
+
+      <section class="content-card" aria-labelledby="site-heading">
+        <h2 id="site-heading">This website</h2>
+        <p>These pages use no cookies, JavaScript, browser storage, analytics, tracking pixels, contact forms, embeds, or remote fonts. The static host, {{SITE_HOST_NAME}}, may receive ordinary request metadata such as IP address, date and time, requested page, referrer, and user agent when it delivers a page. Access-log retention: {{SITE_ACCESS_LOG_RETENTION}}.</p>
+        <p>Because the site provides no form, choosing an email link opens your own mail app. Your email provider and ours then process the message under their own terms.</p>
+      </section>
+
+      <section class="content-card" aria-labelledby="choices-heading">
+        <h2 id="choices-heading">Your choices and rights</h2>
+        <p>You can use typed planning without speech permission, edit or delete your local Trail Profile and saved routes, revoke app permissions in iOS Settings, and decide where an exported GPX file goes. See the <a href="../privacy-choices/">step-by-step privacy choices page</a>.</p>
+        <p>Depending on applicable law, you may request access, correction, deletion, restriction, portability, or objection, and you may withdraw consent where processing relies on consent. Wanderful has no V1 account, so there is no account-deletion control; local deletion and requests about off-device support or service records are separate.</p>
+        <p>Send a request to <a href="mailto:{{PRIVACY_EMAIL}}">{{PRIVACY_EMAIL}}</a>. We may need proportionate information to verify that a record concerns you. You may complain to {{SUPERVISORY_AUTHORITY_NAME}} at <a href="{{SUPERVISORY_AUTHORITY_URL}}">{{SUPERVISORY_AUTHORITY_URL}}</a> or another competent supervisory authority.</p>
+      </section>
+
+      <section class="content-card" aria-labelledby="children-heading">
+        <h2 id="children-heading">Children</h2>
+        <p>Minimum intended age: {{MINIMUM_AGE}}. {{CHILDREN_POLICY}}</p>
+      </section>
+
+      <section class="content-card" aria-labelledby="changes-heading">
+        <h2 id="changes-heading">Changes and contact</h2>
+        <p>We will update this page before materially changing the described data practices. The effective date at the top identifies the current version. Last legal review: {{LAST_LEGAL_REVIEW_DATE}}.</p>
+        <p><a class="contact-link" href="mailto:{{PRIVACY_EMAIL}}">Email privacy</a></p>
+      </section>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>Wanderful turns an outdoor idea into route options. Review before starting.</p>
+      <nav class="footer-nav" aria-label="Legal and support">
+        <ul>
+          <li><a href="../privacy/">Privacy</a></li>
+          <li><a href="../support/">Support</a></li>
+          <li><a href="../privacy-choices/">Choices</a></li>
+          <li><a href="../terms/">Terms</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

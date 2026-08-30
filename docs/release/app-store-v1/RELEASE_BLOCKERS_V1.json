@@ -45,8 +45,8 @@
       ],
       "title": "Public privacy and support assets are not configured",
       "owner": "Legal and support owner",
-      "evidence": "Release privacy and support URL slots are empty; native destinations remain available.",
-      "closure": "Publish canonical HTTPS pages with a monitored contact, legally approve them, and configure the exact URLs."
+      "evidence": "A validated fail-closed static package now exists under public-site, but owner/legal inputs, monitored contacts, a canonical domain, deployment, production reachability, and Release URL configuration remain incomplete. Native destinations remain available.",
+      "closure": "Complete OWNER_LEGAL_INPUTS_V1.md, render with an owner-approved publishable configuration, legally approve and deploy the output to canonical HTTPS, verify it from a clean device/network, and configure the exact URLs."
     },
     {
       "id": "WV1-005",
@@ -55,7 +55,7 @@
       ],
       "title": "App Privacy answers are provisional",
       "owner": "Privacy/legal and routing service owner",
-      "evidence": "Production routing retention/logging and the embedded Superwall Purchase History declaration need final reconciliation.",
+      "evidence": "The engine-enabled decision sheet separates transient processing from retained collection, but production routing/evidence payloads, provider retention/logging, and the embedded Superwall Purchase History declaration need final reconciliation.",
       "closure": "Approve the exact signed-artifact Xcode privacy report, production data policy, no-tracking answer, and matching public policy."
     },
     {

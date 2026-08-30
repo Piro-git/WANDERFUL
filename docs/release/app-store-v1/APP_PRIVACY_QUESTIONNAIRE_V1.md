@@ -4,6 +4,8 @@ Status: **provisional; do not publish until the production routing policy and ow
 
 Assessment date: 2026-08-30
 
+This questionnaire describes the currently reviewed local-parser/disabled-research boundary. If the advanced research/routing engine is enabled for the submitted build, use `APP_STORE_PRIVACY_ANSWERS_ENGINE_ENABLED_V1.md` instead and reconcile its transient-processing decisions against exact production evidence.
+
 ## Verified V1 data flow
 
 - The full typed route prompt is parsed locally. Release does not send it to a remote AI service.

@@ -3,6 +3,8 @@
 Status: **DRAFT — NOT HOSTED**
 Source baseline: `21f8450c976252210edf03389dc1b682d2440450`
 
+This file is retained as the historical drafting baseline. The deployable, fail-closed support template and validator are in `public-site`; do not publish until its owner inputs and launch-boundary statements are approved.
+
 This is source-derived page copy, not a live support service. All bracketed `OWNER REQUIRED` fields must be supplied and verified before publication. No email address, domain, operator, legal address, response time or service-level promise is invented.
 
 ## Owner-required publication fields

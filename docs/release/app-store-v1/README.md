@@ -19,6 +19,8 @@ Two blockers apply to TestFlight:
 
 Public App Store submission additionally requires owner-approved public privacy/support URLs, final App Privacy answers, App Store Connect fields, legal/content-rights decisions, screenshots, and explicit upload/submission authority.
 
+A dependency-free, fail-closed public privacy/support site package now exists under `public-site`. Its source remains visibly draft-only and noindex. The checked-in placeholder configuration is intentionally rejected; a publishable render requires all controller/contact/provider/retention/legal fields plus owner and legal approval. No domain, hosting, deployment, DNS, or app/App Store URL configuration has occurred.
+
 The following are **not V1 blockers under the owner decision for this release**:
 
 - research-guided planning, outdoor evidence, routable highlights, and remote intent are off;
@@ -118,6 +120,11 @@ Release uses the production App Attest entitlement. The first-party privacy mani
 - `APP_REVIEW_NOTES_V1.md` — reviewer path once production routing is enabled.
 - `SIGNING_TESTFLIGHT_ARCHIVE_RUNBOOK_V1.md` — bounded owner-operated distribution procedure.
 - `OWNER_DECISIONS_V1.md` — exact non-engineering decisions still required.
+- `OWNER_LEGAL_INPUTS_V1.md` — short completion form for legal identity, processors, retention, rights, terms, and hosting facts.
+- `APP_STORE_PRIVACY_ANSWERS_ENGINE_ENABLED_V1.md` — provisional App Privacy decision sheet if the advanced engine is enabled.
+- `LEGAL_AND_PLATFORM_SOURCE_NOTE_V1.md` — dated primary-source Apple/EU/German research and legal-review stop list.
+- `DEPLOY_STATIC_LEGAL_SITE_V1.md` — owner-operated static rendering, hosting, verification, URL, and rollback procedure.
+- `public-site/` — responsive static privacy, support, privacy-choices, and terms templates with a fail-closed renderer/validator.
 - `SCREENSHOT_CAPTURE_PLAN_V1.md`, `PRIVACY_POLICY_CONTENT_DRAFT_V1.md`, and `SUPPORT_PAGE_CONTENT_DRAFT_V1.md` — final-asset inputs.
 
 Older audit/evidence files in this directory are retained as historical records. They do not override this handoff or prove current signing, public hosting, TestFlight, or App Store Connect state.
