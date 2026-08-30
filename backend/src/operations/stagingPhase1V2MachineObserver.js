@@ -1,9 +1,41 @@
 import { createHash, randomUUID } from "node:crypto";
+import { lookup as dnsLookup } from "node:dns/promises";
+import {
+  closeSync,
+  fstatSync,
+  readFileSync,
+  readSync
+} from "node:fs";
+import { request as httpsRequest } from "node:https";
+import { isIP, Socket } from "node:net";
+import { checkServerIdentity } from "node:tls";
+import pg from "pg";
 import {
   STAGING_PHASE1_V2_TARGET
 } from "./stagingPhase1V2Operator.js";
+import {
+  STAGING_PHASE1_V2_DIRECT_HOST,
+  STAGING_PHASE1_V2_SESSION_HOST
+} from "./stagingPhase1V2Admission.js";
+import {
+  STAGING_PHASE1_V2_PRODUCTION_SOURCE_MANIFEST
+} from "./stagingPhase1V2ProductionSourceManifest.js";
+import {
+  assertStagingPhase1V2AdvisorFreshness,
+  assertStagingPhase1V2BillingEvidence,
+  assertStagingPhase1V2StagingInitializationAdmission,
+  classifyStagingPhase1V2AdvisorResponse,
+  parseStagingPhase1V2BoundedJson,
+  STAGING_PHASE1_V2_PRODUCTION_OBSERVER_POLICY,
+  StagingPhase1V2ProductionObserverContractError,
+  validateStagingPhase1V2AuditorContract,
+  validateStagingPhase1V2CleanupSamples,
+  validateStagingPhase1V2ControlCredentialDescriptor,
+  validateStagingPhase1V2RestrictedBillingObservation,
+  validateStagingPhase1V2TargetSession
+} from "./stagingPhase1V2ProductionObserverContract.js";
 
-export const STAGING_PHASE1_V2_OBSERVER_CONTRACT_VERSION = "1.0.0";
+export const STAGING_PHASE1_V2_OBSERVER_CONTRACT_VERSION = "2.0.0";
 export const STAGING_PHASE1_V2_OBSERVER_CONTRACT_DIGEST = sha256(canonicalJson({
   name: "trailmind-supabase-staging-observer-contract",
   phases: [
@@ -20,12 +52,37 @@ export const STAGING_PHASE1_V2_SYNTHETIC_OBSERVER_PACKAGE = deepFreeze({
   })),
   packageId: "trailmind.synthetic.staging-observer-fixture",
   packageVersion: "1.0.0",
+  sourceDigest: sha256(canonicalJson({
+    fixture: "trailmind.synthetic.staging-observer-fixture",
+    version: "1.0.0"
+  })),
   trustMode: "synthetic-preflight"
+});
+
+export const STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE = deepFreeze({
+  packageDigest: STAGING_PHASE1_V2_PRODUCTION_SOURCE_MANIFEST.packageDigest,
+  packageId: STAGING_PHASE1_V2_PRODUCTION_OBSERVER_POLICY.packageId,
+  packageVersion: "2.0.0-unregistered",
+  sourceDigest: STAGING_PHASE1_V2_PRODUCTION_SOURCE_MANIFEST.sourceDigest,
+  trustMode: STAGING_PHASE1_V2_PRODUCTION_OBSERVER_POLICY.trustMode,
+  registrationStatus: "observer_required"
 });
 
 const MAXIMUM_ARTIFACT_BYTES = 32 * 1024;
 const MAXIMUM_OBSERVATION_AGE_MILLISECONDS = 5 * 60 * 1_000;
-const APPLICATION_NAME = "trailmind_phase1_v2_operator";
+const AUDITOR_ROLE = "trailmind_phase1_v2_stats_auditor";
+const AUDITOR_APPLICATION_PREFIX = "trailmind_p1v2_auditor_";
+const CONTROL_HOST = "api.supabase.com";
+const CONTROL_PORT = 443;
+const CONTROL_TIMEOUT_MILLISECONDS = 5_000;
+const CONTROL_PHASE_TIMEOUT_MILLISECONDS = 20_000;
+const MAXIMUM_CONTROL_CALLS = 14;
+const MAXIMUM_CONTROL_TOKEN_BYTES = 8 * 1_024;
+const AUDITOR_CONNECT_TIMEOUT_MILLISECONDS = 10_000;
+const AUDITOR_STATEMENT_TIMEOUT_MILLISECONDS = 5_000;
+const AUDITOR_LOCK_TIMEOUT_MILLISECONDS = 1_000;
+const AUDITOR_IDLE_TIMEOUT_MILLISECONDS = 5_000;
+const MAXIMUM_PASSWORD_BYTES = 1_024;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const COMMIT_PATTERN = /^[a-f0-9]{40}$/;
@@ -61,10 +118,281 @@ const PROTECTED_PROJECTS = deepFreeze([
     selected: false, mutationCount: 0
   }
 ]);
+const TRAILMIND_ROLES = Object.freeze([
+  "app_security_runtime_role",
+  "migration_role",
+  "outdoor_research_cancellation_control_role",
+  "outdoor_research_runtime_role",
+  "platform_provisioner",
+  "projection_role",
+  "pruner_role",
+  "readonly_auditor_role",
+  "regional_import_role",
+  "trailmind_app_owner",
+  "trailmind_control_owner",
+  "trailmind_import_schema_owner"
+]);
+const TRAILMIND_SCHEMAS = Object.freeze([
+  "trailmind_app", "trailmind_control", "trailmind_gis",
+  "trailmind_phase1_guard"
+]);
+const CONTROL_REQUESTS = deepFreeze({
+  project: {
+    path: `/v1/projects/${STAGING_PHASE1_V2_TARGET.projectRef}`,
+    maximumBytes: 16 * 1024,
+    requiredPermission: "project_admin_read"
+  },
+  organization: {
+    path: `/v1/organizations/${STAGING_PHASE1_V2_TARGET.organizationId}`,
+    maximumBytes: 8 * 1024,
+    requiredPermission: "organization_admin_read"
+  },
+  inventory: {
+    path: `/v1/organizations/${STAGING_PHASE1_V2_TARGET.organizationId}` +
+      "/projects?limit=100&offset=0&sort=name_asc",
+    maximumBytes: 32 * 1024,
+    requiredPermission: "organization_projects_read"
+  },
+  billing: {
+    path: `/v1/projects/${STAGING_PHASE1_V2_TARGET.projectRef}` +
+      "/billing/addons",
+    maximumBytes: 32 * 1024,
+    requiredPermission: "infra_add_ons_read"
+  },
+  security: {
+    path: `/v1/projects/${STAGING_PHASE1_V2_TARGET.projectRef}` +
+      "/advisors/security?lint_type=sql",
+    maximumBytes: 32 * 1024,
+    requiredPermission: "advisors_read"
+  },
+  performance: {
+    path: `/v1/projects/${STAGING_PHASE1_V2_TARGET.projectRef}` +
+      "/advisors/performance",
+    maximumBytes: 32 * 1024,
+    requiredPermission: "advisors_read"
+  }
+});
+const CONTROL_PHASE_REQUESTS = deepFreeze({
+  "pre-control": [
+    "project", "organization", "inventory", "billing", "security",
+    "performance"
+  ],
+  "post-ddl-advisors": ["security", "performance"],
+  "final-control": [
+    "project", "organization", "inventory", "billing", "security",
+    "performance"
+  ]
+});
+export const STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST = deepFreeze({
+  maximumCalls: MAXIMUM_CONTROL_CALLS,
+  phaseTimeoutMilliseconds: CONTROL_PHASE_TIMEOUT_MILLISECONDS,
+  requiredOAuthScopes: [
+    "database:read", "organizations:read", "projects:read"
+  ],
+  requiredFineGrainedPermissions: [
+    "advisors_read", "infra_add_ons_read", "organization_admin_read",
+    "organization_projects_read", "project_admin_read"
+  ],
+  requestTimeoutMilliseconds: CONTROL_TIMEOUT_MILLISECONDS,
+  transport: {
+    host: CONTROL_HOST,
+    method: "GET",
+    port: CONTROL_PORT,
+    protocol: "https:",
+    redirects: false,
+    retries: 0,
+    tlsMinimumVersion: "TLSv1.2",
+    verifyHostname: true
+  },
+  requests: Object.fromEntries(Object.entries(CONTROL_REQUESTS)
+    .map(([name, value]) => [name, { ...value, method: "GET" }])),
+  phases: CONTROL_PHASE_REQUESTS
+});
+
+const AUDITOR_SQL = deepFreeze({
+  begin: "BEGIN READ ONLY",
+  rollback: "ROLLBACK",
+  timeouts: `
+    /* trailmind:phase1-v2:auditor-timeouts */
+    SELECT pg_catalog.set_config('statement_timeout', $1, true),
+           pg_catalog.set_config('lock_timeout', $2, true),
+           pg_catalog.set_config(
+             'idle_in_transaction_session_timeout', $3, true
+           )`,
+  identity: `
+    /* trailmind:phase1-v2:auditor-identity */
+    SELECT pg_catalog.current_database() AS database_name,
+           SESSION_USER AS session_user_name,
+           CURRENT_USER AS current_user_name,
+           pg_catalog.pg_backend_pid()::integer AS backend_pid,
+           pg_catalog.current_setting('application_name') AS application_name,
+           login.rolcanlogin,
+           login.rolinherit,
+           login.rolsuper,
+           login.rolcreatedb,
+           login.rolcreaterole,
+           login.rolreplication,
+           login.rolbypassrls,
+           login.rolconnlimit,
+           pg_catalog.current_setting('transaction_read_only')
+             AS transaction_read_only,
+           pg_catalog.current_setting('search_path') AS search_path,
+           pg_catalog.current_setting('statement_timeout')
+             AS statement_timeout,
+           pg_catalog.current_setting('lock_timeout') AS lock_timeout,
+           pg_catalog.current_setting('idle_in_transaction_session_timeout')
+             AS idle_timeout
+      FROM pg_catalog.pg_roles AS login
+     WHERE login.rolname = SESSION_USER`,
+  membership: `
+    /* trailmind:phase1-v2:auditor-membership */
+    SELECT granted.rolname AS granted_role,
+           membership.admin_option,
+           membership.inherit_option,
+           membership.set_option
+      FROM pg_catalog.pg_auth_members AS membership
+      JOIN pg_catalog.pg_roles AS granted
+        ON granted.oid = membership.roleid
+      JOIN pg_catalog.pg_roles AS member
+        ON member.oid = membership.member
+     WHERE member.rolname = SESSION_USER
+     ORDER BY granted.rolname`,
+  tls: `
+    /* trailmind:phase1-v2:auditor-tls */
+    SELECT ssl, version, cipher, bits
+      FROM pg_catalog.pg_stat_ssl
+     WHERE pid = pg_catalog.pg_backend_pid()`,
+  foundation: `
+    /* trailmind:phase1-v2:auditor-foundation */
+    SELECT (SELECT pg_catalog.count(*)::integer
+              FROM pg_catalog.pg_roles role_record
+             WHERE role_record.rolname = ANY($1::text[]))
+             AS trailmind_role_count,
+           (SELECT pg_catalog.count(*)::integer
+              FROM pg_catalog.pg_namespace namespace
+             WHERE namespace.nspname = ANY($2::text[]))
+             AS trailmind_schema_count,
+           (SELECT pg_catalog.count(*)::integer
+              FROM (
+                SELECT relation.oid
+                  FROM pg_catalog.pg_class relation
+                  JOIN pg_catalog.pg_namespace namespace
+                    ON namespace.oid = relation.relnamespace
+                 WHERE namespace.nspname = ANY($2::text[])
+                UNION ALL
+                SELECT procedure.oid
+                  FROM pg_catalog.pg_proc procedure
+                  JOIN pg_catalog.pg_namespace namespace
+                    ON namespace.oid = procedure.pronamespace
+                 WHERE namespace.nspname = ANY($2::text[])
+              ) object_record) AS trailmind_object_count,
+           EXISTS (
+             SELECT 1 FROM pg_catalog.pg_extension WHERE extname = 'postgis'
+           ) AS postgis_installed`,
+  sharedAcl: `
+    /* trailmind:phase1-v2:auditor-shared-acl */
+    WITH shared_object AS (
+      SELECT 'database'::text AS object_kind,
+             database_record.datname AS object_name,
+             database_record.datdba AS owner_oid,
+             database_record.datacl AS object_acl,
+             'd'::"char" AS acl_kind
+        FROM pg_catalog.pg_database database_record
+       WHERE database_record.datname = pg_catalog.current_database()
+      UNION ALL
+      SELECT 'schema'::text,
+             namespace.nspname,
+             namespace.nspowner,
+             namespace.nspacl,
+             'n'::"char"
+        FROM pg_catalog.pg_namespace namespace
+       WHERE namespace.nspname IN ('public', 'extensions')
+    )
+    SELECT shared_object.object_kind,
+           shared_object.object_name,
+           pg_catalog.pg_get_userbyid(shared_object.owner_oid) AS owner_name,
+           shared_object.object_acl::text AS raw_acl,
+           COALESCE((
+             SELECT pg_catalog.jsonb_agg(
+               pg_catalog.jsonb_build_object(
+                 'grantee', CASE WHEN privilege.grantee = 0 THEN 'PUBLIC'
+                   ELSE pg_catalog.pg_get_userbyid(privilege.grantee) END,
+                 'grantor', pg_catalog.pg_get_userbyid(privilege.grantor),
+                 'privilege', privilege.privilege_type,
+                 'grantable', privilege.is_grantable
+               ) ORDER BY privilege.grantee, privilege.grantor,
+                          privilege.privilege_type, privilege.is_grantable
+             )
+               FROM pg_catalog.aclexplode(COALESCE(
+                 shared_object.object_acl,
+                 pg_catalog.acldefault(
+                   shared_object.acl_kind, shared_object.owner_oid
+                 )
+               )) privilege
+           ), '[]'::jsonb) AS semantic_acl
+      FROM shared_object
+     ORDER BY shared_object.object_kind, shared_object.object_name`,
+  providerAcl: `
+    /* trailmind:phase1-v2:auditor-provider-acl-plan */
+    WITH preserved_principal AS (
+      SELECT role_record.rolname
+        FROM pg_catalog.pg_roles role_record
+       WHERE role_record.rolname <> ALL($1::text[])
+    ), expected_privilege(object_kind, object_name, privilege_name) AS (
+      VALUES
+        ('database', pg_catalog.current_database(), 'CONNECT'),
+        ('database', pg_catalog.current_database(), 'CREATE'),
+        ('database', pg_catalog.current_database(), 'TEMPORARY'),
+        ('schema', 'public', 'USAGE'),
+        ('schema', 'public', 'CREATE'),
+        ('schema', 'extensions', 'USAGE'),
+        ('schema', 'extensions', 'CREATE')
+    )
+    SELECT principal.rolname AS principal_name,
+           privilege.object_kind,
+           privilege.object_name,
+           privilege.privilege_name,
+           CASE privilege.object_kind
+             WHEN 'database' THEN pg_catalog.has_database_privilege(
+               principal.rolname, privilege.object_name,
+               privilege.privilege_name
+             )
+             ELSE pg_catalog.has_schema_privilege(
+               principal.rolname, privilege.object_name,
+               privilege.privilege_name
+             )
+           END AS effective
+      FROM preserved_principal principal
+     CROSS JOIN expected_privilege privilege
+     ORDER BY principal.rolname, privilege.object_kind,
+              privilege.object_name, privilege.privilege_name`,
+  cleanup: `
+    /* trailmind:phase1-v2:auditor-post-disconnect */
+    SELECT pg_catalog.count(*) FILTER (
+             WHERE activity.state = 'active'
+           )::integer AS active_session_count,
+           pg_catalog.count(*) FILTER (
+             WHERE activity.state <> 'active' OR activity.state IS NULL
+           )::integer AS idle_session_count,
+           pg_catalog.count(*)::integer AS exact_session_count,
+           pg_catalog.bool_and(
+             activity.pid <> pg_catalog.pg_backend_pid()
+           ) AS auditor_excluded
+      FROM pg_catalog.pg_stat_activity activity
+     WHERE activity.datname = pg_catalog.current_database()
+       AND activity.pid <> pg_catalog.pg_backend_pid()
+       AND activity.application_name = $1
+       AND activity.pid = $2`
+});
+export const STAGING_PHASE1_V2_AUDITOR_SQL_MANIFEST = deepFreeze(
+  Object.fromEntries(Object.entries(AUDITOR_SQL).map(([name, sql]) => [
+    name, sha256(sql)
+  ]))
+);
 const syntheticFactories = new WeakSet();
 const syntheticSessions = new WeakSet();
-// Intentionally empty in this release. Only a future reviewed implementation
-// in this module may add instances; there is no public registration API.
+// Production trust is object identity for the singleton constructed below.
+// There is deliberately no public registration or promotion API.
 const productionFactories = new WeakSet();
 const productionSessions = new WeakSet();
 const validatedArtifacts = new WeakSet();
@@ -78,15 +406,54 @@ export class StagingPhase1V2MachineObserverError extends Error {
   }
 }
 
-// No production factory is registered in this release. A future reviewed
-// implementation must be added inside this module so arbitrary application
-// callbacks cannot become a trust anchor by copying public metadata.
+const { Client: NodePostgresClient } = pg;
+class AuditorChannelBindingClient extends NodePostgresClient {
+  _handleAuthSASL(message) {
+    super._handleAuthSASL(message);
+    this.trailmindChannelBindingEstablished =
+      this.saslSession?.mechanism === "SCRAM-SHA-256-PLUS";
+  }
+}
+
 export function requireReviewedStagingPhase1V2ProductionObserverFactory(
   candidate
 ) {
-  if (candidate === undefined || candidate === null) blocked("observer_required");
+  if (candidate === undefined || candidate === null) {
+    try {
+      assertStagingPhase1V2StagingInitializationAdmission();
+    } catch (error) {
+      if (error instanceof StagingPhase1V2ProductionObserverContractError) {
+        blocked("observer_required");
+      }
+      throw error;
+    }
+    blocked("observer_required");
+  }
   if (productionFactories.has(candidate)) return candidate;
   blocked("observer_untrusted");
+}
+
+export async function prepareStagingPhase1V2ProductionPreControl(
+  session,
+  request
+) {
+  if (!productionSessions.has(session)) blocked("observer_untrusted");
+  return session.preparePreControl(request);
+}
+
+export async function attachStagingPhase1V2ProductionDatabaseAuditor(
+  session,
+  options
+) {
+  if (!productionSessions.has(session)) blocked("observer_untrusted");
+  return session.attachAuditor(options);
+}
+
+export async function disposeStagingPhase1V2ProductionObserverSession(
+  session
+) {
+  if (!productionSessions.has(session)) return;
+  await session.dispose();
 }
 
 export function createSyntheticStagingPhase1V2ObserverFactory({
@@ -193,6 +560,9 @@ export function machineCleanupEvidence(artifact, request) {
   if (
     evidence.applicationName !== request.applicationName ||
     evidence.backendPid !== request.backendPid ||
+    evidence.backendStart !== request.backendStart ||
+    evidence.databaseRunBindingDigest !==
+      request.databaseRunBindingDigest ||
     evidence.authorizationBindingDigest !==
       request.authorizationBindingDigest ||
     evidence.stagedReceiptDigest !== request.stagedReceiptDigest
@@ -201,13 +571,21 @@ export function machineCleanupEvidence(artifact, request) {
     applicationName: request.applicationName,
     authorizationBindingDigest: request.authorizationBindingDigest,
     backendPid: request.backendPid,
+    backendStart: request.backendStart,
     backendSessionCount: evidence.activeSessionCount,
     candidateCommit: request.candidateCommit,
     candidateTree: request.candidateTree,
     completionState: "session-closed",
+    cleanupSamples: evidence.cleanupSamples,
+    databaseRunBindingDigest: request.databaseRunBindingDigest,
     idleSessionCount: evidence.idleSessionCount,
     observedAt: artifact.observedAt,
     observerArtifactDigest: artifact.artifactDigest,
+    observerPackageDigest: artifact.observer.packageDigest,
+    observerPackageId: artifact.observer.packageId,
+    observerPackageVersion: artifact.observer.packageVersion,
+    observerSourceDigest: artifact.observer.sourceDigest,
+    observerTrustMode: artifact.observer.trustMode,
     operatorDigestsDigest: request.operatorDigestsDigest,
     projectRef: request.projectRef,
     runId: request.runId,
@@ -217,6 +595,1138 @@ export function machineCleanupEvidence(artifact, request) {
     ...proof,
     evidenceDigest: sha256(canonicalJson(proof))
   });
+}
+
+function createProductionSession({ binding, controlCredentialFd }) {
+  let controlCredential;
+  try {
+    controlCredential = readProtectedDescriptor({
+      fd: controlCredentialFd,
+      maximumBytes: MAXIMUM_CONTROL_TOKEN_BYTES,
+      label: "control_credential"
+    });
+  } finally {
+    closeDescriptor(controlCredentialFd);
+  }
+  let controlCredentialText = controlCredential.toString("utf8");
+  if (isRejectedControlCredential(controlCredentialText)) {
+    controlCredential.fill(0);
+    controlCredentialText = "";
+    blocked("control_credential_type");
+  }
+  controlCredentialText = "";
+  const packageBinding = STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE;
+  const sessionBindingDigest = sha256(canonicalJson({
+    binding,
+    contractDigest: STAGING_PHASE1_V2_OBSERVER_CONTRACT_DIGEST,
+    packageBinding
+  }));
+  const usedIds = new Set();
+  const usedNonces = new Set();
+  const usedDigests = new Set();
+  let nextPhase = 0;
+  let previousDigest = null;
+  let previousObservedAt = null;
+  let preControl;
+  let preControlInvariants;
+  let auditor;
+  let disposed = false;
+  let controlCalls = 0;
+
+  const session = Object.freeze({
+    packageBinding,
+    sessionBindingDigest,
+    async preparePreControl(request) {
+      if (disposed) blocked("observer_disposed");
+      validateRequest(request, "pre-control");
+      if (preControl !== undefined) blocked("observer_replay");
+      const requestNonce = uniqueRandomId(usedNonces);
+      const observation = await observeControlPlane({
+        credential: controlCredential,
+        phase: "pre-control",
+        requestNonce,
+        reserveCall() {
+          controlCalls += 1;
+          if (controlCalls > MAXIMUM_CONTROL_CALLS) blocked("control_call_limit");
+        }
+      });
+      preControl = deepFreeze({ ...observation, requestNonce });
+      return Object.freeze({
+        completedAt: preControl.completedAt,
+        evidenceDigest: preControl.evidenceDigest,
+        requestNonce
+      });
+    },
+    async attachAuditor(options) {
+      if (disposed) blocked("observer_disposed");
+      if (!preControl || auditor) blocked("auditor_order");
+      auditor = await createDatabaseAuditor({ binding, ...options });
+      return Object.freeze({
+        applicationName: auditor.applicationName,
+        backendPid: auditor.backendPid,
+        evidenceDigest: auditor.preflight.evidenceDigest
+      });
+    },
+    async observe(request) {
+      if (disposed) blocked("observer_disposed");
+      validateRequest(request, PHASES[nextPhase]);
+      if (!preControl || !auditor) blocked("observer_not_ready");
+      const requestNonce = request.phase === "pre-control"
+        ? preControl.requestNonce
+        : uniqueRandomId(usedNonces);
+      let evidence;
+      if (request.phase === "pre-control") {
+        assertFreshInternalTimestamp(preControl.completedAt);
+        assertFreshInternalTimestamp(auditor.preflight.observedAt);
+        evidence = productionControlEvidence(preControl, auditor.preflight);
+      } else if (request.phase === "post-ddl-advisors") {
+        const [control, database] = await Promise.all([
+          observeControlPlane({
+            credential: controlCredential,
+            phase: request.phase,
+            requestNonce,
+            reserveCall() {
+              controlCalls += 1;
+              if (controlCalls > MAXIMUM_CONTROL_CALLS) {
+                blocked("control_call_limit");
+              }
+            }
+          }),
+          auditor.inspectAcl()
+        ]);
+        assertStableDatabaseAcl(auditor.preflight, database);
+        evidence = productionAdvisorEvidence(control, database, auditor);
+      } else if (request.phase === "final-control") {
+        const [control, database] = await Promise.all([
+          observeControlPlane({
+            credential: controlCredential,
+            phase: request.phase,
+            requestNonce,
+            reserveCall() {
+              controlCalls += 1;
+              if (controlCalls > MAXIMUM_CONTROL_CALLS) {
+                blocked("control_call_limit");
+              }
+            }
+          }),
+          auditor.inspectAcl()
+        ]);
+        assertStableDatabaseAcl(auditor.preflight, database);
+        evidence = productionControlEvidence(control, database, auditor);
+        controlCredential.fill(0);
+      } else {
+        evidence = await auditor.proveCleanup(request);
+      }
+      const observedAt = new Date().toISOString();
+      let artifact = sealMachineArtifact({
+        binding,
+        evidence,
+        observedAt,
+        observationId: uniqueRandomId(usedIds),
+        packageBinding,
+        phase: request.phase,
+        previousObservationDigest: previousDigest,
+        request,
+        requestNonce,
+        sequence: nextPhase + 1,
+        sessionBindingDigest
+      });
+      validateArtifact({
+        artifact,
+        binding,
+        packageBinding,
+        previousDigest,
+        previousObservedAt,
+        request,
+        requestNonce,
+        sequence: nextPhase + 1,
+        sessionBindingDigest,
+        now: new Date(),
+        usedIds,
+        usedDigests,
+        usedNonces
+      });
+      if (artifact.phase === "pre-control") {
+        preControlInvariants = controlInvariants(artifact.evidence);
+      } else if (artifact.phase === "final-control" &&
+          !sameJson(
+            controlInvariants(artifact.evidence), preControlInvariants
+          )) {
+        blocked("control_contradiction");
+      }
+      usedIds.add(artifact.observationId);
+      usedNonces.add(artifact.requestNonce);
+      usedDigests.add(artifact.artifactDigest);
+      previousDigest = artifact.artifactDigest;
+      previousObservedAt = artifact.observedAt;
+      nextPhase += 1;
+      artifact = deepFreeze(artifact);
+      validatedArtifacts.add(artifact);
+      if (request.phase === "post-disconnect-cleanup") await session.dispose();
+      return artifact;
+    },
+    async dispose() {
+      if (disposed) return;
+      disposed = true;
+      controlCredential.fill(0);
+      await auditor?.dispose();
+    }
+  });
+  return session;
+}
+
+function sealMachineArtifact({
+  binding,
+  evidence,
+  observedAt,
+  observationId,
+  packageBinding,
+  phase,
+  previousObservationDigest,
+  request,
+  requestNonce,
+  sequence,
+  sessionBindingDigest
+}) {
+  const unsigned = {
+    schemaVersion: 1,
+    observer: {
+      contractDigest: STAGING_PHASE1_V2_OBSERVER_CONTRACT_DIGEST,
+      contractVersion: STAGING_PHASE1_V2_OBSERVER_CONTRACT_VERSION,
+      ...packageBinding
+    },
+    binding,
+    sessionBindingDigest,
+    observationId,
+    requestNonce,
+    phase,
+    sequence,
+    previousObservationDigest,
+    observedAt,
+    session: {
+      applicationName: request.applicationName,
+      backendPid: request.backendPid,
+      backendStart: request.backendStart,
+      databaseRunBindingDigest: request.databaseRunBindingDigest
+    },
+    evidence
+  };
+  return deepFreeze({
+    ...unsigned,
+    artifactDigest: sha256(canonicalJson(unsigned))
+  });
+}
+
+function productionControlEvidence(control, database, existingAuditor) {
+  return {
+    ...control.control,
+    expectedDatabaseAclDigest: database.databaseAclDigest,
+    providerAclRestorePlanDigest: database.providerAclRestorePlanDigest,
+    auditorApplicationName:
+      existingAuditor?.applicationName ?? database.applicationName,
+    auditorBackendPid: existingAuditor?.backendPid ?? database.backendPid,
+    auditorEvidenceDigest: database.evidenceDigest
+  };
+}
+
+function productionAdvisorEvidence(control, database, auditorSession) {
+  return {
+    security: control.advisors.security,
+    performance: control.advisors.performance,
+    databaseAclDigest: database.databaseAclDigest,
+    providerAclRestorePlanDigest: database.providerAclRestorePlanDigest,
+    auditorApplicationName: auditorSession.applicationName,
+    auditorBackendPid: auditorSession.backendPid,
+    auditorEvidenceDigest: database.evidenceDigest
+  };
+}
+
+function assertStableDatabaseAcl(pre, current) {
+  if (
+    current.databaseAclDigest !== pre.databaseAclDigest ||
+    current.providerAclRestorePlanDigest !==
+      pre.providerAclRestorePlanDigest
+  ) blocked("database_acl_drift");
+}
+
+async function observeControlPlane({
+  credential,
+  phase,
+  requestNonce,
+  reserveCall
+}) {
+  const names = CONTROL_PHASE_REQUESTS[phase];
+  if (!Array.isArray(names)) blocked("control_phase");
+  const deadlineAt = Date.now() + CONTROL_PHASE_TIMEOUT_MILLISECONDS;
+  const responses = {};
+  const audit = [];
+  for (const name of names) {
+    const remainingMilliseconds = deadlineAt - Date.now();
+    if (remainingMilliseconds <= 0) {
+      blocked("control_phase_timeout");
+    }
+    reserveCall();
+    const descriptor = CONTROL_REQUESTS[name];
+    const response = await requestControlJson({
+      credential,
+      descriptor,
+      requestNonce,
+      timeoutMilliseconds: Math.min(
+        CONTROL_TIMEOUT_MILLISECONDS, remainingMilliseconds
+      )
+    });
+    if (Date.now() > deadlineAt) blocked("control_phase_timeout");
+    responses[name] = response.value;
+    audit.push({
+      method: "GET",
+      path: descriptor.path,
+      requestNonce,
+      responseDigest: response.responseDigest,
+      serverDate: response.serverDate,
+      statusCode: 200
+    });
+  }
+  const completedAt = new Date().toISOString();
+  if (phase === "post-ddl-advisors") {
+    const advisors = {
+      security: parseAdvisorResponse(responses.security, "security"),
+      performance: parseAdvisorResponse(
+        responses.performance, "performance"
+      )
+    };
+    advisors.security.evidenceDigest = audit.find(
+      ({ path }) => path.includes("/advisors/security")
+    ).responseDigest;
+    advisors.performance.evidenceDigest = audit.find(
+      ({ path }) => path.includes("/advisors/performance")
+    ).responseDigest;
+    assertStagingPhase1V2AdvisorFreshness({
+      etag: null,
+      localRequestCompletedAt: completedAt,
+      providerMarker: null,
+      responseDate: audit.at(-1)?.serverDate ?? null
+    });
+    return deepFreeze({
+      advisors,
+      completedAt,
+      evidenceDigest: sha256(canonicalJson(audit))
+    });
+  }
+  const project = parseProjectResponse(responses.project);
+  const organization = parseOrganizationResponse(responses.organization);
+  const inventory = parseInventoryResponse(responses.inventory);
+  const security = parseAdvisorResponse(responses.security, "security");
+  const performance = parseAdvisorResponse(
+    responses.performance, "performance"
+  );
+  const responseDigest = (name) => audit.find(
+    ({ path }) => path === CONTROL_REQUESTS[name].path
+  ).responseDigest;
+  assertStagingPhase1V2BillingEvidence();
+  return deepFreeze({
+    completedAt,
+    evidenceDigest: sha256(canonicalJson(audit)),
+    control: {
+      projectName: project.name,
+      organizationName: organization.name,
+      status: project.status,
+      organizationPlan: organization.plan,
+      computeSize: inventory.computeSize,
+      billingEvidenceStatus: "billing_evidence_unproved",
+      postgresMajor: project.postgresMajor,
+      databaseName: "postgres",
+      securityAdvisorStatus: "completed",
+      securityBlockingFindingCount: security.blockingFindingCount,
+      securityEvidenceDigest: responseDigest("security"),
+      performanceAdvisorStatus: "completed",
+      performanceBlockingFindingCount: performance.blockingFindingCount,
+      performanceEvidenceDigest: responseDigest("performance"),
+      inventoryEvidenceDigest: responseDigest("inventory"),
+      controlRequestEvidenceDigest: sha256(canonicalJson(audit)),
+      protectedProjects: inventory.protectedProjects,
+      featureFlags: observeLauncherFeatureFlags()
+    }
+  });
+}
+
+async function requestControlJson({
+  credential,
+  descriptor,
+  requestNonce,
+  timeoutMilliseconds
+}) {
+  if (!Object.values(CONTROL_REQUESTS).includes(descriptor) ||
+      !UUID_PATTERN.test(requestNonce) ||
+      !Number.isSafeInteger(timeoutMilliseconds) ||
+      timeoutMilliseconds <= 0 ||
+      timeoutMilliseconds > CONTROL_TIMEOUT_MILLISECONDS) {
+    blocked("control_request");
+  }
+  const requestDeadlineAt = Date.now() + timeoutMilliseconds;
+  if (!Buffer.isBuffer(credential) || credential.length === 0 ||
+      credential.length > MAXIMUM_CONTROL_TOKEN_BYTES ||
+      credential.every((byte) => byte === 0)) blocked("control_auth_required");
+  let tokenText = credential.toString("utf8");
+  const addresses = await resolveControlAddresses(timeoutMilliseconds);
+  const transportTimeoutMilliseconds = requestDeadlineAt - Date.now();
+  if (transportTimeoutMilliseconds <= 0) blocked("control_transport");
+  const selected = addresses[0];
+  let authorization = `Bearer ${tokenText}`;
+  try {
+    return await new Promise((resolve, reject) => {
+      let settled = false;
+      let timer;
+      const chunks = [];
+      const wipeChunks = () => {
+        for (const chunk of chunks.splice(0)) chunk.fill(0);
+      };
+      const finish = (operation) => (value) => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) clearTimeout(timer);
+        wipeChunks();
+        operation(value);
+      };
+      const pass = finish(resolve);
+      const fail = finish(() => rejectObserver("control_transport"));
+      const request = httpsRequest({
+        agent: false,
+        headers: {
+          accept: "application/json",
+          authorization,
+          "user-agent": "trailmind-production-observer/2.0"
+        },
+        host: CONTROL_HOST,
+        lookup(_hostname, _options, callback) {
+          callback(null, selected.address, selected.family);
+        },
+        method: "GET",
+        maxHeaderSize: 16 * 1024,
+        minVersion: "TLSv1.2",
+        path: descriptor.path,
+        port: CONTROL_PORT,
+        protocol: "https:",
+        rejectUnauthorized: true,
+        servername: CONTROL_HOST,
+        setHost: true
+      }, (response) => {
+        try {
+          assertControlTls(response.socket, selected);
+          if (!validControlResponseMetadata({
+            contentEncoding: response.headers["content-encoding"],
+            contentLength: response.headers["content-length"],
+            contentType: response.headers["content-type"],
+            location: response.headers.location,
+            maximumBytes: descriptor.maximumBytes,
+            serverDate: response.headers.date,
+            statusCode: response.statusCode
+          })) {
+            response.destroy();
+            return fail();
+          }
+          const serverDate = exactServerDate(response.headers.date);
+          let total = 0;
+          response.on("data", (chunk) => {
+            if (settled) {
+              chunk.fill(0);
+              return;
+            }
+            total += chunk.length;
+            if (total > descriptor.maximumBytes) {
+              chunk.fill(0);
+              response.destroy();
+              fail();
+              return;
+            }
+            chunks.push(chunk);
+          });
+          response.on("end", () => {
+            if (settled) return;
+            const bytes = Buffer.concat(chunks, total);
+            try {
+              const value = parseStagingPhase1V2BoundedJson(bytes, {
+                maximumBytes: descriptor.maximumBytes
+              });
+              pass({
+                responseDigest: sha256(canonicalJson(value)),
+                serverDate,
+                value
+              });
+            } catch {
+              fail();
+            } finally {
+              bytes.fill(0);
+            }
+          });
+          response.on("error", fail);
+        } catch {
+          response.destroy();
+          fail();
+        }
+      });
+      request.on("error", fail);
+      request.end();
+      timer = setTimeout(() => {
+        request.destroy();
+        fail();
+      }, transportTimeoutMilliseconds);
+      timer.unref?.();
+    });
+  } finally {
+    authorization = "";
+    tokenText = "";
+  }
+}
+
+export function validateStagingPhase1V2ControlCredentialTypeFixture(value) {
+  try {
+    return validateStagingPhase1V2ControlCredentialDescriptor(value);
+  } catch (error) {
+    if (error instanceof StagingPhase1V2ProductionObserverContractError) {
+      blocked(error.code);
+    }
+    throw error;
+  }
+}
+
+function isRejectedControlCredential(value) {
+  // An opaque bearer string cannot prove its type, scopes, source, lifetime,
+  // or provider-enforced resource boundary. The dormant factory therefore
+  // rejects every raw string; only the separately validated descriptor
+  // contract can characterize a credential without turning syntax into proof.
+  return typeof value === "string";
+}
+
+function observeLauncherFeatureFlags() {
+  const snapshot = {};
+  for (const name of FLAG_NAMES) {
+    if (process.env[name] !== undefined) blocked("feature_flags_enabled");
+    snapshot[name] = false;
+  }
+  return snapshot;
+}
+
+export function validateStagingPhase1V2ControlResponseFixture(name, value) {
+  switch (name) {
+    case "project": return deepFreeze(parseProjectResponse(value));
+    case "organization": return deepFreeze(parseOrganizationResponse(value));
+    case "inventory": return deepFreeze(parseInventoryResponse(value));
+    case "billing":
+      return deepFreeze(validateStagingPhase1V2RestrictedBillingObservation(
+        value
+      ));
+    case "security":
+      return deepFreeze(parseAdvisorResponse(value, "security"));
+    case "performance":
+      return deepFreeze(parseAdvisorResponse(value, "performance"));
+    default: blocked("control_request");
+  }
+}
+
+export function parseStagingPhase1V2ControlJsonFixture(bytes, options) {
+  return parseStagingPhase1V2BoundedJson(bytes, options);
+}
+
+export function validateStagingPhase1V2ControlResponseMetadataFixture(value) {
+  if (!isExactObject(value, [
+    "contentEncoding", "contentLength", "contentType", "location",
+    "maximumBytes", "serverDate", "statusCode"
+  ]) || !validControlResponseMetadata(value)) blocked("control_transport");
+  return Object.freeze({
+    serverDate: exactServerDate(value.serverDate),
+    statusCode: value.statusCode
+  });
+}
+
+function validControlResponseMetadata({
+  contentEncoding, contentLength, contentType, location, maximumBytes,
+  serverDate, statusCode
+}) {
+  if (statusCode !== 200 || location !== undefined ||
+      contentEncoding !== undefined ||
+      !Number.isSafeInteger(maximumBytes) || maximumBytes <= 0 ||
+      !exactJsonContentType(contentType) ||
+      (contentLength !== undefined &&
+        (!/^(?:0|[1-9][0-9]{0,5})$/.test(contentLength) ||
+          Number(contentLength) > maximumBytes))) return false;
+  try {
+    exactServerDate(serverDate);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveControlAddresses(timeoutMilliseconds) {
+  let addresses;
+  let timer;
+  try {
+    addresses = await Promise.race([
+      dnsLookup(CONTROL_HOST, { all: true, verbatim: true }),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("bounded DNS timeout")),
+          timeoutMilliseconds
+        );
+        timer.unref?.();
+      })
+    ]);
+  } catch {
+    blocked("control_dns");
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+  if (!Array.isArray(addresses) || addresses.length === 0 ||
+      addresses.length > 16 || addresses.some(({ address, family }) =>
+        ![4, 6].includes(family) || isIP(address) !== family ||
+        !isPublicAddress(address, family))) blocked("control_dns");
+  return addresses;
+}
+
+function assertControlTls(socket, selected) {
+  let certificate;
+  let hostnameError;
+  try { certificate = socket?.getPeerCertificate?.(); } catch { /* reject */ }
+  try {
+    hostnameError = certificate
+      ? checkServerIdentity(CONTROL_HOST, certificate)
+      : new Error("missing certificate");
+  } catch {
+    hostnameError = new Error("hostname verification failed");
+  }
+  if (
+    socket?.encrypted !== true || socket?.authorized !== true ||
+    socket?.authorizationError != null || !certificate ||
+    Object.keys(certificate).length === 0 || hostnameError !== undefined ||
+    !["TLSv1.2", "TLSv1.3"].includes(socket?.getProtocol?.()) ||
+    socket?.remoteAddress?.toLowerCase?.() !==
+      selected.address.toLowerCase()
+  ) blocked("control_tls");
+}
+
+function parseProjectResponse(value) {
+  if (!isExactObject(value, [
+    "created_at", "database", "id", "name", "organization_id",
+    "organization_slug", "ref", "region", "status"
+  ]) || !isExactObject(value.database, [
+    "host", "postgres_engine", "release_channel", "version"
+  ]) || !boundedIdentifier(value.id) ||
+      !boundedIdentifier(value.organization_id) ||
+      value.ref !== STAGING_PHASE1_V2_TARGET.projectRef ||
+      value.organization_slug !== STAGING_PHASE1_V2_TARGET.organizationId ||
+      value.name !== STAGING_PHASE1_V2_TARGET.projectName ||
+      value.region !== STAGING_PHASE1_V2_TARGET.region ||
+      value.status !== STAGING_PHASE1_V2_TARGET.status ||
+      typeof value.database.host !== "string" ||
+      value.database.host !== STAGING_PHASE1_V2_DIRECT_HOST ||
+      typeof value.database.version !== "string" ||
+      !/^17(?:\.|$)/.test(value.database.version) ||
+      typeof value.database.postgres_engine !== "string" ||
+      value.database.postgres_engine.length === 0 ||
+      typeof value.database.release_channel !== "string" ||
+      value.database.release_channel.length === 0) blocked("control_project");
+  exactTimestamp(value.created_at);
+  return { name: value.name, status: value.status, postgresMajor: 17 };
+}
+
+function parseOrganizationResponse(value) {
+  if (!isExactObject(value, [
+    "allowed_release_channels", "id", "name", "opt_in_tags", "plan"
+  ]) || !boundedIdentifier(value.id) ||
+      value.name !== STAGING_PHASE1_V2_TARGET.organizationName ||
+      value.plan !== STAGING_PHASE1_V2_TARGET.organizationPlan ||
+      !Array.isArray(value.allowed_release_channels) ||
+      !Array.isArray(value.opt_in_tags)) blocked("control_organization");
+  return { name: value.name, plan: value.plan };
+}
+
+function parseInventoryResponse(value) {
+  if (!isExactObject(value, ["pagination", "projects"]) ||
+      !isExactObject(value.pagination, ["count", "limit", "offset"]) ||
+      !Array.isArray(value.projects) || value.projects.length > 100 ||
+      value.pagination.offset !== 0 || value.pagination.limit !== 100 ||
+      value.pagination.count !== value.projects.length) {
+    blocked("control_inventory");
+  }
+  const refs = new Set();
+  let target;
+  const protectedRefs = new Set(PROTECTED_PROJECTS.map(({ ref }) => ref));
+  for (const project of value.projects) {
+    if (!isExactObject(project, [
+      "cloud_provider", "databases", "inserted_at", "is_branch", "name",
+      "ref", "region", "status"
+    ]) || typeof project.ref !== "string" || refs.has(project.ref) ||
+        !Array.isArray(project.databases) || project.databases.length > 8) {
+      blocked("control_inventory");
+    }
+    for (const database of project.databases) {
+      if (!isObjectWithAllowedKeys(database, [
+        "cloud_provider", "identifier", "infra_compute_size", "region",
+        "status", "type"
+      ], [
+        "disk_last_modified_at", "disk_throughput_mbps", "disk_type",
+        "disk_volume_size_gb"
+      ]) || [
+        "cloud_provider", "identifier", "infra_compute_size", "region",
+        "status", "type"
+      ].some((field) => typeof database[field] !== "string" ||
+        database[field].length === 0)) blocked("control_inventory");
+    }
+    refs.add(project.ref);
+    exactTimestamp(project.inserted_at);
+    if (project.ref === STAGING_PHASE1_V2_TARGET.projectRef) target = project;
+  }
+  if ([...protectedRefs].some((projectRef) => !refs.has(projectRef))) {
+    blocked("control_inventory_protected");
+  }
+  if (!target || target.name !== STAGING_PHASE1_V2_TARGET.projectName ||
+      target.region !== STAGING_PHASE1_V2_TARGET.region ||
+      target.status !== STAGING_PHASE1_V2_TARGET.status ||
+      target.is_branch !== false) blocked("control_inventory_target");
+  const primary = target.databases.filter((database) =>
+    database?.type === "PRIMARY"
+  );
+  if (primary.length !== 1 || primary[0].infra_compute_size !==
+      STAGING_PHASE1_V2_TARGET.computeSize ||
+      primary[0].region !== STAGING_PHASE1_V2_TARGET.region ||
+      primary[0].status !== STAGING_PHASE1_V2_TARGET.status) {
+    blocked("control_inventory_compute");
+  }
+  return {
+    computeSize: primary[0].infra_compute_size,
+    protectedProjects: PROTECTED_PROJECTS
+  };
+}
+
+function parseAdvisorResponse(value, kind) {
+  try {
+    const classified = classifyStagingPhase1V2AdvisorResponse(value, kind);
+    return {
+      status: classified.status,
+      blockingFindingCount: classified.blockingFindingCount,
+      noticeCount: classified.noticeCount,
+      levelCounts: classified.levelCounts,
+      lintSetDigest: classified.lintSetDigest,
+      evidenceDigest: "0".repeat(64)
+    };
+  } catch (error) {
+    if (error instanceof StagingPhase1V2ProductionObserverContractError) {
+      if ([
+        "advisor_duplicate_lint_identity", "advisor_unknown_lint"
+      ].includes(error.code)) {
+        blocked(error.code);
+      }
+      blocked("advisor_response");
+    }
+    throw error;
+  }
+}
+
+function exactJsonContentType(value) {
+  return typeof value === "string" &&
+    /^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(value);
+}
+
+function boundedIdentifier(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= 128 &&
+    /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+function exactServerDate(value) {
+  if (typeof value !== "string") blocked("control_timestamp");
+  const parsed = new Date(value);
+  const age = Date.now() - parsed.getTime();
+  if (Number.isNaN(parsed.getTime()) || age < -60_000 ||
+      age > MAXIMUM_OBSERVATION_AGE_MILLISECONDS) {
+    blocked("control_timestamp");
+  }
+  return parsed.toISOString();
+}
+
+function assertFreshInternalTimestamp(value) {
+  const observed = exactTimestamp(value);
+  const age = Date.now() - observed.getTime();
+  if (age < 0 || age > MAXIMUM_OBSERVATION_AGE_MILLISECONDS) {
+    blocked("artifact_freshness");
+  }
+}
+
+function rejectObserver(code) {
+  throw new StagingPhase1V2MachineObserverError(code);
+}
+
+async function createDatabaseAuditor({
+  auditorCredentialFd,
+  caPath,
+  connection,
+  binding
+}) {
+  validateAuditorConnection(connection);
+  assertProtectedUnlinkedDescriptor(
+    auditorCredentialFd, MAXIMUM_PASSWORD_BYTES, "auditor_credential"
+  );
+  const password = readProtectedDescriptor({
+    fd: auditorCredentialFd,
+    maximumBytes: MAXIMUM_PASSWORD_BYTES,
+    label: "auditor_credential"
+  });
+  let passwordText = password.toString("utf8");
+  if (!validPasswordText(passwordText, password.length)) {
+    password.fill(0);
+    closeDescriptor(auditorCredentialFd);
+    blocked("auditor_credential_format");
+  }
+  let ca;
+  try {
+    ca = readFileSync(caPath);
+  } catch {
+    password.fill(0);
+    passwordText = "";
+    closeDescriptor(auditorCredentialFd);
+    blocked("auditor_ca");
+  }
+  const applicationName = AUDITOR_APPLICATION_PREFIX + sha256(canonicalJson({
+    attemptId: binding.attemptId,
+    runId: binding.runId
+  })).slice(0, 24);
+  let client;
+  try {
+    client = new AuditorChannelBindingClient({
+      application_name: applicationName,
+      connectionTimeoutMillis: AUDITOR_CONNECT_TIMEOUT_MILLISECONDS,
+      database: connection.database,
+      enableChannelBinding: true,
+      host: connection.host,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 5_000,
+      password: passwordText,
+      port: connection.port,
+      ssl: {
+        ca,
+        minVersion: "TLSv1.2",
+        rejectUnauthorized: true,
+        servername: connection.host
+      },
+      stream: new AuditorPinnedAddressSocket(connection.address),
+      user: connection.user
+    });
+    await client.connect();
+    assertAuditorTls(client, connection);
+  } catch {
+    try { await client?.end?.(); } catch { /* fail closed */ }
+    password.fill(0);
+    passwordText = "";
+    ca.fill(0);
+    closeDescriptor(auditorCredentialFd);
+    blocked("auditor_connect");
+  } finally {
+    password.fill(0);
+    passwordText = "";
+    ca.fill(0);
+    closeDescriptor(auditorCredentialFd);
+  }
+  if (client.connectionParameters) {
+    client.connectionParameters.password = undefined;
+    client.connectionParameters.ssl = false;
+  }
+  if ("password" in client) client.password = undefined;
+  let backendPid;
+  let disposed = false;
+
+  async function queryAllowed(name, values = []) {
+    if (disposed || !Object.hasOwn(AUDITOR_SQL, name)) {
+      blocked("auditor_sql_allowlist");
+    }
+    const expected = expectedAuditorParameters(name);
+    if (name === "cleanup") {
+      if (!Array.isArray(values) || values.length !== 2 ||
+          !/^trailmind_p1v2_[a-f0-9]{24}$/.test(values[0]) ||
+          !Number.isSafeInteger(values[1]) || values[1] <= 0) {
+        blocked("auditor_sql_parameters");
+      }
+    } else if (!sameJson(values, expected)) {
+      blocked("auditor_sql_parameters");
+    }
+    let result;
+    try {
+      assertAuditorTls(client, connection);
+      result = await client.query(AUDITOR_SQL[name], values);
+      assertAuditorTls(client, connection);
+    } catch (error) {
+      if (error instanceof StagingPhase1V2MachineObserverError) throw error;
+      blocked("auditor_query");
+    }
+    if (!Number.isInteger(client.processID) || client.processID <= 0 ||
+        (backendPid !== undefined && client.processID !== backendPid)) {
+      blocked("auditor_pid");
+    }
+    return result;
+  }
+
+  await queryAllowed("begin");
+  await queryAllowed("timeouts", [
+    `${AUDITOR_STATEMENT_TIMEOUT_MILLISECONDS}ms`,
+    `${AUDITOR_LOCK_TIMEOUT_MILLISECONDS}ms`,
+    `${AUDITOR_IDLE_TIMEOUT_MILLISECONDS}ms`
+  ]);
+  const identity = await attestAuditorIdentity({
+    applicationName,
+    backendPid,
+    client,
+    queryAllowed
+  });
+  backendPid = identity.backendPid;
+  const foundation = await queryAllowed("foundation", [
+    TRAILMIND_ROLES, TRAILMIND_SCHEMAS
+  ]);
+  if (foundation.rowCount !== 1 ||
+      foundation.rows[0]?.trailmind_role_count !== 0 ||
+      foundation.rows[0]?.trailmind_schema_count !== 0 ||
+      foundation.rows[0]?.trailmind_object_count !== 0 ||
+      foundation.rows[0]?.postgis_installed !== false) {
+    await disposeAuditor();
+    blocked("auditor_foundation_not_empty");
+  }
+
+  async function inspectAcl() {
+    await attestAuditorIdentity({
+      applicationName, backendPid, client, queryAllowed
+    });
+    const sharedAcl = normalizeRows((await queryAllowed("sharedAcl")).rows);
+    const providerAcl = normalizeRows((await queryAllowed(
+      "providerAcl", [TRAILMIND_ROLES]
+    )).rows);
+    const evidence = {
+      applicationName,
+      backendPid,
+      databaseAclDigest: sha256(canonicalJson(sharedAcl)),
+      providerAclRestorePlanDigest: sha256(canonicalJson(providerAcl)),
+      observedAt: new Date().toISOString()
+    };
+    return deepFreeze({
+      ...evidence,
+      evidenceDigest: sha256(canonicalJson(evidence))
+    });
+  }
+
+  async function proveCleanup(request) {
+    await attestAuditorIdentity({
+      applicationName, backendPid, client, queryAllowed
+    });
+    const result = await queryAllowed("cleanup", [
+      request.applicationName, request.backendPid
+    ]);
+    const row = result.rows[0] ?? {};
+    validateCleanupResult(result.rowCount, row);
+    await attestAuditorIdentity({
+      applicationName, backendPid, client, queryAllowed
+    });
+    return {
+      applicationName: request.applicationName,
+      backendPid: request.backendPid,
+      activeSessionCount: row.active_session_count,
+      idleSessionCount: row.idle_session_count,
+      authorizationBindingDigest: request.authorizationBindingDigest,
+      stagedReceiptDigest: request.stagedReceiptDigest,
+      auditorApplicationName: applicationName,
+      auditorBackendPid: backendPid,
+      auditorExcluded: true
+    };
+  }
+
+  async function disposeAuditor() {
+    if (disposed) return;
+    try { await client.query(AUDITOR_SQL.rollback); } catch { /* close wins */ }
+    disposed = true;
+    try { await client.end(); } catch { client.connection?.stream?.destroy?.(); }
+    if (client.connectionParameters) {
+      client.connectionParameters.password = undefined;
+      client.connectionParameters.ssl = false;
+    }
+    if ("password" in client) client.password = undefined;
+  }
+
+  const preflight = await inspectAcl();
+  return Object.freeze({
+    applicationName,
+    backendPid,
+    preflight,
+    inspectAcl,
+    proveCleanup,
+    dispose: disposeAuditor
+  });
+}
+
+function expectedAuditorParameters(name) {
+  switch (name) {
+    case "begin":
+    case "rollback":
+    case "identity":
+    case "membership":
+    case "sharedAcl":
+    case "tls":
+      return [];
+    case "timeouts":
+      return [
+        `${AUDITOR_STATEMENT_TIMEOUT_MILLISECONDS}ms`,
+        `${AUDITOR_LOCK_TIMEOUT_MILLISECONDS}ms`,
+        `${AUDITOR_IDLE_TIMEOUT_MILLISECONDS}ms`
+      ];
+    case "foundation": return [TRAILMIND_ROLES, TRAILMIND_SCHEMAS];
+    case "providerAcl": return [TRAILMIND_ROLES];
+    case "cleanup": return null;
+    default: blocked("auditor_sql_allowlist");
+  }
+}
+
+async function attestAuditorIdentity({
+  applicationName,
+  backendPid,
+  client,
+  queryAllowed
+}) {
+  const result = await queryAllowed("identity");
+  const row = result.rows[0] ?? {};
+  if (result.rowCount !== 1) blocked("auditor_identity");
+  const memberships = await queryAllowed("membership");
+  const tls = await queryAllowed("tls");
+  return validateAuditorIdentityRow({
+    applicationName,
+    backendPid,
+    clientPid: client.processID,
+    memberships: memberships.rows,
+    row,
+    tls: tls.rows
+  });
+}
+
+export function validateStagingPhase1V2AuditorIdentityFixture(value) {
+  try {
+    return validateStagingPhase1V2AuditorContract(value);
+  } catch (error) {
+    if (error instanceof StagingPhase1V2ProductionObserverContractError) {
+      blocked(error.code);
+    }
+    throw error;
+  }
+}
+
+function validateAuditorIdentityRow({
+  applicationName, backendPid, clientPid, memberships, row, tls
+}) {
+  if (row.database_name !== "postgres" ||
+      row.session_user_name !== AUDITOR_ROLE ||
+      row.current_user_name !== AUDITOR_ROLE ||
+      row.application_name !== applicationName ||
+      row.transaction_read_only !== "on" ||
+      row.search_path !== "pg_catalog" ||
+      !timeoutEquals(row.statement_timeout, 5_000) ||
+      !timeoutEquals(row.lock_timeout, 1_000) ||
+      !timeoutEquals(row.idle_timeout, 5_000) ||
+      row.rolcanlogin !== true || row.rolinherit !== false ||
+      row.rolsuper !== false || row.rolcreatedb !== false ||
+      row.rolcreaterole !== false || row.rolreplication !== false ||
+      row.rolbypassrls !== false || row.rolconnlimit !== 1 ||
+      !sameJson(memberships, [{
+        admin_option: false,
+        granted_role: "pg_read_all_stats",
+        inherit_option: false,
+        set_option: true
+      }]) || !Array.isArray(tls) || tls.length !== 1 ||
+      tls[0]?.ssl !== true ||
+      !["TLSv1.2", "TLSv1.3"].includes(tls[0]?.version) ||
+      !Number.isInteger(row.backend_pid) || row.backend_pid <= 0 ||
+      clientPid !== row.backend_pid ||
+      (backendPid !== undefined && row.backend_pid !== backendPid)) {
+    blocked("auditor_identity");
+  }
+  return { backendPid: row.backend_pid };
+}
+
+export function validateStagingPhase1V2CleanupResultFixture(value) {
+  if (!isExactObject(value, ["expected", "samples"])) {
+    blocked("cleanup_unproved");
+  }
+  try {
+    return validateStagingPhase1V2CleanupSamples(
+      value.samples, value.expected
+    );
+  } catch (error) {
+    if (error instanceof StagingPhase1V2ProductionObserverContractError) {
+      blocked(error.code);
+    }
+    throw error;
+  }
+}
+
+export function validateStagingPhase1V2TargetSessionFixture(value) {
+  if (!isExactObject(value, ["expected", "observed"])) {
+    blocked("auditor_visibility");
+  }
+  try {
+    return validateStagingPhase1V2TargetSession(
+      value.observed, value.expected
+    );
+  } catch (error) {
+    if (error instanceof StagingPhase1V2ProductionObserverContractError) {
+      blocked(error.code);
+    }
+    throw error;
+  }
+}
+
+function validateCleanupResult(rowCount, row) {
+  if (rowCount !== 1 || row.active_session_count !== 0 ||
+      row.idle_session_count !== 0 || row.exact_session_count !== 0 ||
+      !(row.auditor_excluded === null || row.auditor_excluded === true)) {
+    blocked("cleanup_sessions_present");
+  }
+}
+
+function validateAuditorConnection(value) {
+  if (!isExactObject(value, [
+    "address", "database", "host", "port", "user"
+  ]) || value.database !== "postgres" || value.port !== 5432 ||
+      value.host !== STAGING_PHASE1_V2_DIRECT_HOST ||
+      value.user !== AUDITOR_ROLE || isIP(value.address) !== 6 ||
+      !isPublicAddress(value.address, isIP(value.address))) {
+    blocked("auditor_connection");
+  }
+}
+
+function assertAuditorTls(client, connection) {
+  const stream = client.connection?.stream;
+  let certificate;
+  let hostnameError;
+  try { certificate = stream?.getPeerCertificate?.(); } catch { /* reject */ }
+  try {
+    hostnameError = certificate
+      ? checkServerIdentity(connection.host, certificate)
+      : new Error("missing certificate");
+  } catch {
+    hostnameError = new Error("hostname verification failed");
+  }
+  if (stream?.encrypted !== true || stream?.authorized !== true ||
+      stream?.authorizationError != null || !certificate ||
+      Object.keys(certificate).length === 0 || hostnameError !== undefined ||
+      !["TLSv1.2", "TLSv1.3"].includes(stream?.getProtocol?.()) ||
+      client.trailmindChannelBindingEstablished !== true ||
+      stream?.remoteAddress?.toLowerCase?.() !==
+        connection.address.toLowerCase()) blocked("auditor_tls");
+}
+
+class AuditorPinnedAddressSocket extends Socket {
+  constructor(address) {
+    super();
+    this.address = address;
+  }
+
+  connect(port, ignoredHost) {
+    if (!Number.isInteger(port) || port !== 5432 || !isIP(this.address)) {
+      blocked("auditor_socket");
+    }
+    return super.connect({ host: this.address, port });
+  }
 }
 
 function createSession({ binding, now, randomId, mutateArtifact, onObservation }) {
@@ -307,7 +1817,13 @@ function createSession({ binding, now, randomId, mutateArtifact, onObservation }
 
 function controlInvariants(evidence) {
   return {
+    computeSize: evidence.computeSize,
     expectedDatabaseAclDigest: evidence.expectedDatabaseAclDigest,
+    inventoryEvidenceDigest: evidence.inventoryEvidenceDigest,
+    organizationName: evidence.organizationName,
+    organizationPlan: evidence.organizationPlan,
+    postgresMajor: evidence.postgresMajor,
+    projectName: evidence.projectName,
     providerAclRestorePlanDigest: evidence.providerAclRestorePlanDigest
   };
 }
@@ -341,7 +1857,9 @@ function buildSyntheticArtifact({
     observedAt,
     session: {
       applicationName: request.applicationName,
-      backendPid: request.backendPid
+      backendPid: request.backendPid,
+      backendStart: request.backendStart,
+      databaseRunBindingDigest: request.databaseRunBindingDigest
     },
     evidence: syntheticEvidence(phase, request)
   };
@@ -370,8 +1888,13 @@ function syntheticEvidence(phase, request) {
       performanceAdvisorStatus: "completed",
       performanceBlockingFindingCount: 0,
       performanceEvidenceDigest: "b".repeat(64),
+      inventoryEvidenceDigest: "1".repeat(64),
+      controlRequestEvidenceDigest: "2".repeat(64),
       expectedDatabaseAclDigest: "c".repeat(64),
       providerAclRestorePlanDigest: "d".repeat(64),
+      auditorApplicationName: "trailmind_p1v2_auditor_synthetic",
+      auditorBackendPid: 51_241,
+      auditorEvidenceDigest: "3".repeat(64),
       protectedProjects: PROTECTED_PROJECTS,
       featureFlags: Object.fromEntries(FLAG_NAMES.map((name) => [name, false]))
     };
@@ -385,17 +1908,57 @@ function syntheticEvidence(phase, request) {
       performance: {
         status: "completed", blockingFindingCount: 0, noticeCount: 0,
         evidenceDigest: "f".repeat(64)
-      }
+      },
+      databaseAclDigest: "c".repeat(64),
+      providerAclRestorePlanDigest: "d".repeat(64),
+      auditorApplicationName: "trailmind_p1v2_auditor_synthetic",
+      auditorBackendPid: 51_241,
+      auditorEvidenceDigest: "4".repeat(64)
     };
   }
   return {
     applicationName: request.applicationName,
     backendPid: request.backendPid,
+    backendStart: request.backendStart,
     activeSessionCount: 0,
     idleSessionCount: 0,
     authorizationBindingDigest: request.authorizationBindingDigest,
-    stagedReceiptDigest: request.stagedReceiptDigest
+    databaseRunBindingDigest: request.databaseRunBindingDigest,
+    stagedReceiptDigest: request.stagedReceiptDigest,
+    auditorApplicationName: "trailmind_p1v2_auditor_synthetic",
+    auditorBackendPid: 51_241,
+    auditorExcluded: true,
+    cleanupSamples: syntheticCleanupSamples(request)
   };
+}
+
+function syntheticCleanupSamples(request) {
+  const first = new Date();
+  const build = (index, observedAt, statsSnapshotId) => ({
+    applicationName: request.applicationName,
+    auditorApplicationName: `trailmind_p1v2_auditor_${String(index).repeat(32)}`,
+    auditorBackendPid: 61_240 + index,
+    auditorBackendStart: observedAt.toISOString(),
+    auditorSelfExcluded: true,
+    backendPid: request.backendPid,
+    backendStart: request.backendStart,
+    clearSnapshot: true,
+    exactBackendInstanceCount: 0,
+    idleExactInstanceCount: 0,
+    matchingApplicationCount: 0,
+    observedAt: observedAt.toISOString(),
+    observedSessions: [],
+    samePidOtherInstanceCount: 0,
+    statsSnapshotId
+  });
+  return [
+    build(1, first, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+    build(
+      2,
+      new Date(first.getTime() + 250),
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    )
+  ];
 }
 
 function validateArtifact({
@@ -428,16 +1991,22 @@ function validateArtifact({
     !sameJson(artifact.binding, binding) ||
     !isExactObject(artifact.observer, [
       "contractDigest", "contractVersion", "packageDigest", "packageId",
-      "packageVersion", "trustMode"
+      "packageVersion", "sourceDigest", "trustMode"
     ]) ||
     artifact.observer.contractDigest !==
       STAGING_PHASE1_V2_OBSERVER_CONTRACT_DIGEST ||
     artifact.observer.contractVersion !==
       STAGING_PHASE1_V2_OBSERVER_CONTRACT_VERSION ||
     !sameJson(withoutContract(artifact.observer), packageBinding) ||
-    !isExactObject(artifact.session, ["applicationName", "backendPid"]) ||
+    !isExactObject(artifact.session, [
+      "applicationName", "backendPid", "backendStart",
+      "databaseRunBindingDigest"
+    ]) ||
     artifact.session.applicationName !== request.applicationName ||
     artifact.session.backendPid !== request.backendPid ||
+    artifact.session.backendStart !== request.backendStart ||
+    artifact.session.databaseRunBindingDigest !==
+      request.databaseRunBindingDigest ||
     !UUID_PATTERN.test(artifact.observationId) ||
     artifact.observationId === artifact.requestNonce ||
     usedIds.has(artifact.observationId) ||
@@ -464,8 +2033,11 @@ function validateEvidence(artifact, request) {
   if (["pre-control", "final-control"].includes(artifact.phase)) {
     const value = artifact.evidence;
     if (!isExactObject(value, [
-      "computeSize", "currency", "databaseName", "expectedDatabaseAclDigest",
+      "auditorApplicationName", "auditorBackendPid",
+      "auditorEvidenceDigest", "computeSize", "controlRequestEvidenceDigest",
+      "currency", "databaseName", "expectedDatabaseAclDigest",
       "featureFlags", "monthlyCostAmount", "nonzeroAddonCount",
+      "inventoryEvidenceDigest",
       "organizationName", "organizationPlan", "performanceAdvisorStatus",
       "performanceBlockingFindingCount", "performanceEvidenceDigest",
       "postgresMajor", "projectName", "protectedProjects",
@@ -487,8 +2059,15 @@ function validateEvidence(artifact, request) {
         value.performanceBlockingFindingCount !== 0 ||
         !DIGEST_PATTERN.test(value.securityEvidenceDigest) ||
         !DIGEST_PATTERN.test(value.performanceEvidenceDigest) ||
+        !DIGEST_PATTERN.test(value.inventoryEvidenceDigest) ||
+        !DIGEST_PATTERN.test(value.controlRequestEvidenceDigest) ||
         !DIGEST_PATTERN.test(value.expectedDatabaseAclDigest) ||
-        !DIGEST_PATTERN.test(value.providerAclRestorePlanDigest)) {
+        !DIGEST_PATTERN.test(value.providerAclRestorePlanDigest) ||
+        !DIGEST_PATTERN.test(value.auditorEvidenceDigest) ||
+        typeof value.auditorApplicationName !== "string" ||
+        !value.auditorApplicationName.startsWith(AUDITOR_APPLICATION_PREFIX) ||
+        !Number.isSafeInteger(value.auditorBackendPid) ||
+        value.auditorBackendPid <= 0) {
       blocked("control_evidence");
     }
     validateProtectedProjects(value.protectedProjects);
@@ -496,10 +2075,24 @@ function validateEvidence(artifact, request) {
     return;
   }
   if (artifact.phase === "post-ddl-advisors") {
-    if (!isExactObject(artifact.evidence, ["performance", "security"])) {
+    if (!isExactObject(artifact.evidence, [
+      "auditorApplicationName", "auditorBackendPid",
+      "auditorEvidenceDigest", "databaseAclDigest", "performance",
+      "providerAclRestorePlanDigest", "security"
+    ]) || !DIGEST_PATTERN.test(artifact.evidence.databaseAclDigest) ||
+        !DIGEST_PATTERN.test(
+          artifact.evidence.providerAclRestorePlanDigest
+        ) || !DIGEST_PATTERN.test(artifact.evidence.auditorEvidenceDigest) ||
+        typeof artifact.evidence.auditorApplicationName !== "string" ||
+        !artifact.evidence.auditorApplicationName.startsWith(
+          AUDITOR_APPLICATION_PREFIX
+        ) || !Number.isSafeInteger(artifact.evidence.auditorBackendPid) ||
+        artifact.evidence.auditorBackendPid <= 0) {
       blocked("advisor_evidence");
     }
-    for (const value of Object.values(artifact.evidence)) {
+    for (const value of [
+      artifact.evidence.security, artifact.evidence.performance
+    ]) {
       if (!isExactObject(value, [
         "blockingFindingCount", "evidenceDigest", "noticeCount", "status"
       ]) || value.status !== "completed" || value.blockingFindingCount !== 0 ||
@@ -514,36 +2107,62 @@ function validateEvidence(artifact, request) {
   const value = artifact.evidence;
   if (!isExactObject(value, [
     "activeSessionCount", "applicationName", "authorizationBindingDigest",
-    "backendPid", "idleSessionCount", "stagedReceiptDigest"
-  ]) || value.applicationName !== APPLICATION_NAME ||
-      value.applicationName !== request.applicationName ||
+    "auditorApplicationName", "auditorBackendPid", "auditorExcluded",
+    "backendPid", "backendStart", "databaseRunBindingDigest",
+    "cleanupSamples", "idleSessionCount", "stagedReceiptDigest"
+  ]) || value.applicationName !== request.applicationName ||
       value.backendPid !== request.backendPid ||
+      value.backendStart !== request.backendStart ||
+      value.databaseRunBindingDigest !== request.databaseRunBindingDigest ||
       value.activeSessionCount !== 0 || value.idleSessionCount !== 0 ||
       value.authorizationBindingDigest !== request.authorizationBindingDigest ||
       value.stagedReceiptDigest !== request.stagedReceiptDigest ||
       !DIGEST_PATTERN.test(value.authorizationBindingDigest) ||
-      !DIGEST_PATTERN.test(value.stagedReceiptDigest)) {
+      !DIGEST_PATTERN.test(value.stagedReceiptDigest) ||
+      typeof value.auditorApplicationName !== "string" ||
+      !value.auditorApplicationName.startsWith(AUDITOR_APPLICATION_PREFIX) ||
+      !Number.isSafeInteger(value.auditorBackendPid) ||
+      value.auditorBackendPid <= 0 || value.auditorExcluded !== true) {
+    blocked("cleanup_evidence");
+  }
+  try {
+    validateStagingPhase1V2CleanupSamples(value.cleanupSamples, {
+      applicationName: request.applicationName,
+      backendPid: request.backendPid,
+      backendStart: request.backendStart
+    });
+  } catch {
     blocked("cleanup_evidence");
   }
 }
 
 function validateRequest(request, expectedPhase) {
   if (!isExactObject(request, [
-    "applicationName", "authorizationBindingDigest", "backendPid", "phase",
+    "applicationName", "authorizationBindingDigest", "backendPid",
+    "backendStart", "databaseRunBindingDigest", "phase",
     "stagedReceiptDigest"
   ]) || request.phase !== expectedPhase) blocked("phase_order");
   const beforeConnection = request.phase === "pre-control";
   const cleanup = request.phase === "post-disconnect-cleanup";
   if (beforeConnection) {
     if (request.applicationName !== null || request.backendPid !== null ||
+        request.backendStart !== null ||
+        request.databaseRunBindingDigest !== null ||
         request.authorizationBindingDigest !== null ||
         request.stagedReceiptDigest !== null) blocked("session_binding");
-  } else if (request.applicationName !== APPLICATION_NAME ||
+  } else if (!/^trailmind_p1v2_[a-f0-9]{24}$/.test(
+    request.applicationName
+  ) ||
       !Number.isSafeInteger(request.backendPid) || request.backendPid <= 0 ||
-      (cleanup && (!DIGEST_PATTERN.test(request.authorizationBindingDigest) ||
-        !DIGEST_PATTERN.test(request.stagedReceiptDigest))) ||
-      (!cleanup && (request.authorizationBindingDigest !== null ||
-        request.stagedReceiptDigest !== null))) blocked("session_binding");
+      !DIGEST_PATTERN.test(request.databaseRunBindingDigest) ||
+      request.applicationName !== `trailmind_p1v2_${
+        request.databaseRunBindingDigest.slice(0, 24)
+      }` || !exactTimestamp(request.backendStart) ||
+      !DIGEST_PATTERN.test(request.authorizationBindingDigest) ||
+      (cleanup && !DIGEST_PATTERN.test(request.stagedReceiptDigest)) ||
+      (!cleanup && request.stagedReceiptDigest !== null)) {
+    blocked("session_binding");
+  }
 }
 
 function validateBinding(value) {
@@ -604,9 +2223,12 @@ function withoutKey(value, key) {
 }
 
 function exactTimestamp(value) {
-  if (typeof value !== "string") blocked("timestamp");
+  if (typeof value !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(?:\d{3}|\d{6})Z$/.test(value)) {
+    blocked("timestamp");
+  }
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString() !== value) {
+  if (Number.isNaN(parsed.getTime())) {
     blocked("timestamp");
   }
   return parsed;
@@ -639,6 +2261,16 @@ function isExactObject(value, keys) {
     sameJson(Object.keys(value).sort(), [...keys].sort());
 }
 
+function isObjectWithAllowedKeys(value, requiredKeys, optionalKeys) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const keys = Object.keys(value);
+  const allowed = new Set([...requiredKeys, ...optionalKeys]);
+  return requiredKeys.every((key) => Object.hasOwn(value, key)) &&
+    keys.every((key) => allowed.has(key));
+}
+
 function sameJson(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
@@ -655,6 +2287,107 @@ function walk(value, visitor) {
       walk(nested, visitor);
     }
   }
+}
+
+function assertProtectedUnlinkedDescriptor(fd, maximumBytes, label) {
+  try {
+    if (!Number.isSafeInteger(fd) || fd < 3) blocked(`${label}_fd`);
+    const metadata = fstatSync(fd);
+    if (!metadata.isFile() || metadata.isSymbolicLink?.() ||
+        metadata.uid !== process.geteuid() ||
+        (metadata.mode & 0o777) !== 0o600 || metadata.nlink !== 0 ||
+        metadata.size <= 0 || metadata.size > maximumBytes) {
+      blocked(`${label}_fd`);
+    }
+  } catch (error) {
+    if (error instanceof StagingPhase1V2MachineObserverError) throw error;
+    blocked(`${label}_fd`);
+  }
+}
+
+function readProtectedDescriptor({ fd, maximumBytes, label }) {
+  assertProtectedUnlinkedDescriptor(fd, maximumBytes, label);
+  const metadata = fstatSync(fd);
+  const output = Buffer.alloc(metadata.size);
+  try {
+    const count = readSync(fd, output, 0, output.length, null);
+    if (count !== output.length) blocked(`${label}_read`);
+    const after = fstatSync(fd);
+    if (after.dev !== metadata.dev || after.ino !== metadata.ino ||
+        after.size !== metadata.size || after.nlink !== 0 ||
+        after.mtimeMs !== metadata.mtimeMs ||
+        after.ctimeMs !== metadata.ctimeMs) blocked(`${label}_race`);
+    return output;
+  } catch (error) {
+    output.fill(0);
+    if (error instanceof StagingPhase1V2MachineObserverError) throw error;
+    blocked(`${label}_read`);
+  }
+}
+
+function closeDescriptor(fd) {
+  if (!Number.isSafeInteger(fd) || fd < 3) return;
+  try { closeSync(fd); } catch { /* owner may already have closed it */ }
+}
+
+function uniqueRandomId(used) {
+  const value = randomUUID();
+  if (!UUID_PATTERN.test(value) || used.has(value)) blocked("request_nonce");
+  return value;
+}
+
+function normalizeRows(rows) {
+  if (!Array.isArray(rows) || rows.length > 100_000) {
+    blocked("auditor_rows");
+  }
+  return rows.map((row) => Object.fromEntries(
+    Object.entries(row).sort(([left], [right]) => left.localeCompare(right))
+  ));
+}
+
+function settingListIncludes(value, expected) {
+  return typeof value === "string" && value.split(",")
+    .map((entry) => entry.trim()).includes(expected);
+}
+
+function timeoutEquals(value, milliseconds) {
+  return value === `${milliseconds}ms` ||
+    (milliseconds % 1_000 === 0 && value === `${milliseconds / 1_000}s`);
+}
+
+function validPasswordText(value, byteLengthValue) {
+  return typeof value === "string" && value.length > 0 &&
+    Buffer.byteLength(value, "utf8") === byteLengthValue &&
+    !/[\u0000-\u001f\u007f]/.test(value);
+}
+
+function isPublicAddress(address, family) {
+  if (family === 4) {
+    const parts = address.split(".").map(Number);
+    if (parts.length !== 4 || parts.some((part) =>
+      !Number.isInteger(part) || part < 0 || part > 255)) return false;
+    const [a, b, c] = parts;
+    return !(
+      a === 0 || a === 10 || a === 127 || a >= 224 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 0 && c === 0) ||
+      (a === 192 && b === 0 && c === 2) ||
+      (a === 192 && b === 168) || (a === 198 && b >= 18 && b <= 19) ||
+      (a === 198 && b === 51 && c === 100) ||
+      (a === 203 && b === 0 && c === 113)
+    );
+  }
+  if (family === 6) {
+    const normalized = address.toLowerCase();
+    return !(
+      normalized === "::" || normalized === "::1" ||
+      normalized.startsWith("fc") || normalized.startsWith("fd") ||
+      /^fe[89ab]/.test(normalized) || normalized.startsWith("2001:db8:") ||
+      normalized.startsWith("::ffff:")
+    );
+  }
+  return false;
 }
 
 function deepFreeze(value) {

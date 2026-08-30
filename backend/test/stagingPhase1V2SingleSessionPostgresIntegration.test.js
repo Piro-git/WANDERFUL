@@ -38,7 +38,6 @@ const socketPort = Number(process.env.PGPORT);
 const PROJECT = "mbvzwsrtqcrwhvykugcd";
 const POLICY = "supabase-postgis-isolation-v2";
 const PASSWORD = "test-only-password";
-const appName = "trailmind_phase1_v2_operator";
 let maintenance;
 let sharedAcl;
 let providerPlan;
@@ -310,25 +309,91 @@ async function runOperator({
     cleanupVerifier: {
       async proveSessionClosed(request) {
         events.push("cleanup:prove");
-        const result = await maintenance.query(`
-          SELECT pg_catalog.count(*)::integer AS backend_session_count,
-                 pg_catalog.count(*) FILTER (
-                   WHERE state = 'idle'
-                 )::integer AS idle_session_count
-            FROM pg_catalog.pg_stat_activity
-           WHERE application_name = $1
-        `, [appName]);
+        const samples = [];
+        for (let index = 0; index < 2; index += 1) {
+          await maintenance.query("SELECT pg_catalog.pg_stat_clear_snapshot()");
+          const result = await maintenance.query(`
+            SELECT pg_catalog.count(*) FILTER (
+                     WHERE pid = $1::integer
+                       AND application_name = $2::text
+                       AND backend_start = $3::timestamptz
+                   )::integer AS exact_backend_instance_count,
+                   pg_catalog.count(*) FILTER (
+                     WHERE application_name = $2::text
+                   )::integer AS matching_application_count,
+                   pg_catalog.count(*) FILTER (
+                     WHERE pid = $1::integer
+                       AND application_name = $2::text
+                       AND backend_start = $3::timestamptz
+                       AND state IN (
+                         'idle', 'idle in transaction',
+                         'idle in transaction (aborted)'
+                       )
+                   )::integer AS idle_exact_instance_count,
+                   pg_catalog.count(*) FILTER (
+                     WHERE pid = $1::integer AND (
+                       application_name IS DISTINCT FROM $2::text OR
+                       backend_start IS DISTINCT FROM $3::timestamptz
+                     )
+                   )::integer AS same_pid_other_instance_count
+              FROM pg_catalog.pg_stat_activity
+          `, [request.backendPid, request.applicationName,
+            request.backendStart]);
+          const observedAt = new Date();
+          samples.push({
+            applicationName: request.applicationName,
+            auditorApplicationName:
+              `trailmind_p1v2_auditor_${String(index + 1).repeat(32)}`,
+            auditorBackendPid: 61_241 + index,
+            auditorBackendStart: observedAt.toISOString(),
+            auditorSelfExcluded: true,
+            backendPid: request.backendPid,
+            backendStart: request.backendStart,
+            clearSnapshot: true,
+            ...result.rows[0],
+            observedAt: observedAt.toISOString(),
+            observedSessions: [],
+            statsSnapshotId: randomUUID()
+          });
+          if (index === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 250));
+          }
+        }
         const proof = {
           applicationName: request.applicationName,
           authorizationBindingDigest: request.authorizationBindingDigest,
           backendPid: request.backendPid,
-          backendSessionCount: result.rows[0].backend_session_count,
+          backendStart: request.backendStart,
+          backendSessionCount: samples[1].matching_application_count,
           candidateCommit: request.candidateCommit,
           candidateTree: request.candidateTree,
+          cleanupSamples: samples.map((sample) => ({
+            applicationName: sample.applicationName,
+            auditorApplicationName: sample.auditorApplicationName,
+            auditorBackendPid: sample.auditorBackendPid,
+            auditorBackendStart: sample.auditorBackendStart,
+            auditorSelfExcluded: sample.auditorSelfExcluded,
+            backendPid: sample.backendPid,
+            backendStart: sample.backendStart,
+            clearSnapshot: sample.clearSnapshot,
+            exactBackendInstanceCount: sample.exact_backend_instance_count,
+            idleExactInstanceCount: sample.idle_exact_instance_count,
+            matchingApplicationCount: sample.matching_application_count,
+            observedAt: sample.observedAt,
+            observedSessions: sample.observedSessions,
+            samePidOtherInstanceCount: sample.same_pid_other_instance_count,
+            statsSnapshotId: sample.statsSnapshotId
+          })),
           completionState: "session-closed",
-          idleSessionCount: result.rows[0].idle_session_count,
+          databaseRunBindingDigest: request.databaseRunBindingDigest,
+          idleSessionCount: samples[1].idle_exact_instance_count,
           observedAt: new Date().toISOString(),
           observerArtifactDigest: "7".repeat(64),
+          observerPackageDigest: "6".repeat(64),
+          observerPackageId: "trailmind.synthetic.test-observer",
+          observerPackageVersion: "1.0.0",
+          observerSourceDigest: "5".repeat(64),
+          observerTrustMode: "synthetic-test",
           operatorDigestsDigest: request.operatorDigestsDigest,
           projectRef: request.projectRef,
           runId: request.runId,
@@ -344,9 +409,11 @@ async function runOperator({
           applicationName: payload.applicationName,
           authorizationBindingDigest: payload.authorizationBindingDigest,
           backendPid: payload.backendPid,
+          backendStart: payload.backendStart,
           candidateCommit: payload.candidateCommit,
           candidateTree: payload.candidateTree,
           cleanupEvidenceDigest: payload.cleanupEvidenceDigest,
+          databaseRunBindingDigest: payload.databaseRunBindingDigest,
           operatorDigestsDigest: payload.operatorDigestsDigest,
           ordinal: 11,
           persistedAt: new Date().toISOString(),
@@ -1012,12 +1079,17 @@ function tlsBinding() {
 
 function credentialContainment() {
   return {
+    auditorReadOnlySessionRequired: true,
+    descriptorCount: 2,
     descriptorMinimum: 3,
     descriptorSameProcessOnly: true,
+    descriptorsDistinct: true,
     fileMode: "0600",
+    independentOpenDescriptions: true,
     intake: "interactive-tty-noecho",
     ownerUid: process.geteuid(),
     pathUnlinkedBeforeDatabase: true,
+    sameCredentialIdentity: false,
     singleLinkBeforeUnlink: true
   };
 }
@@ -1232,8 +1304,8 @@ async function assertNoAdapterSessions() {
     const result = await maintenance.query(`
       SELECT pg_catalog.count(*)::integer AS sessions
         FROM pg_catalog.pg_stat_activity
-       WHERE application_name = $1
-    `, [appName]);
+       WHERE application_name LIKE 'trailmind_p1v2_%'
+    `);
     if (result.rows[0].sessions === 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }

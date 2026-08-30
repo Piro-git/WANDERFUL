@@ -497,12 +497,17 @@ function tlsBinding(connection) {
 
 function credentialContainment() {
   return {
+    auditorReadOnlySessionRequired: true,
+    descriptorCount: 2,
     descriptorMinimum: 3,
     descriptorSameProcessOnly: true,
+    descriptorsDistinct: true,
     fileMode: "0600",
+    independentOpenDescriptions: true,
     intake: "interactive-tty-noecho",
     ownerUid: process.geteuid(),
     pathUnlinkedBeforeDatabase: true,
+    sameCredentialIdentity: false,
     singleLinkBeforeUnlink: true
   };
 }

@@ -7,7 +7,6 @@ import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
 import {
   readStagingPhase1V2CandidateBindings,
-  STAGING_PHASE1_V2_APPLICATION_NAME,
   STAGING_PHASE1_V2_DIRECT_HOST,
   STAGING_PHASE1_V2_LIVE_BOUNDARY_PACKAGE_VERSION
 } from "../src/operations/stagingPhase1V2Admission.js";
@@ -21,6 +20,9 @@ import {
 import {
   SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2
 } from "../src/operations/stagingMigrationPolicy.js";
+import {
+  deriveStagingPhase1V2DatabaseRunBinding
+} from "../src/operations/stagingPhase1V2ProductionObserverContract.js";
 
 const NOW = new Date(Date.now() + 60_000);
 NOW.setMilliseconds(0);
@@ -29,6 +31,7 @@ const CANDIDATE_TREE = "b".repeat(40);
 const PROJECT = "mbvzwsrtqcrwhvykugcd";
 const POLICY = "supabase-postgis-isolation-v2";
 const PID = 41_241;
+const BACKEND_START = "2026-08-29T09:59:00.000Z";
 const RUNTIME_FUNCTIONS = [
   "trailmind_runtime_outdoor_research_highlights_v1",
   "trailmind_runtime_outdoor_research_route_assertions_v1",
@@ -103,7 +106,8 @@ describe("staging Phase 1 V2 one-session adapter", () => {
     assert.equal(config.host, STAGING_PHASE1_V2_DIRECT_HOST);
     assert.equal(config.port, 5432);
     assert.equal(config.database, "postgres");
-    assert.equal(config.application_name, STAGING_PHASE1_V2_APPLICATION_NAME);
+    assert.match(config.application_name, /^trailmind_p1v2_[a-f0-9]{24}$/);
+    assert.notEqual(config.application_name, "trailmind_phase1_v2_operator");
     assert.equal(config.enableChannelBinding, true);
     assert.equal(config.ssl.rejectUnauthorized, true);
     assert.equal(config.ssl.servername, STAGING_PHASE1_V2_DIRECT_HOST);
@@ -277,7 +281,14 @@ describe("staging Phase 1 V2 one-session adapter", () => {
       deferPreSnapshot: new Promise((resolve) => { release = resolve; })
     });
     const admission = fakeAdmission();
-    const client = new Client({});
+    const client = new Client({
+      application_name: deriveStagingPhase1V2DatabaseRunBinding({
+        authorizationBindingDigest: admission.authorizationBindingDigest,
+        candidateCommit: admission.candidateCommit,
+        projectRef: admission.projectRef,
+        runId: admission.runId
+      }).applicationName
+    });
     const session = createStagingPhase1V2SingleSessionDependencies({
       admission,
       client,
@@ -506,7 +517,7 @@ function fakeClientClass(options) {
       const sql = String(text);
       if (sql.includes("phase1-v2:identity")) {
         if (options.failIdentity) throw options.failIdentity;
-        return result(identityRow());
+        return result(identityRow(this.config.application_name));
       }
       if (sql.includes("phase1-v2:timeouts")) return result({ ok: true });
       if (sql.includes("phase1-v2:session-attestation")) {
@@ -521,7 +532,8 @@ function fakeClientClass(options) {
           database_name: "postgres",
           session_user: "postgres",
           current_user: "postgres",
-          application_name: STAGING_PHASE1_V2_APPLICATION_NAME,
+          application_name: this.config.application_name,
+          backend_start: BACKEND_START,
           is_superuser: "off",
           statement_timeout: "30s",
           lock_timeout: "5s",
@@ -625,7 +637,9 @@ function fakeClientClass(options) {
       if (sql.includes("phase1-v2:final-snapshot")) return result(finalSnapshotRow());
       if (sql.includes("phase1-v2:cleanup-attestation")) {
         return result({
+          application_name: this.config.application_name,
           backend_pid: PID,
+          backend_start: BACKEND_START,
           exact_session: true,
           exact_current: true,
           no_advisory_locks: true
@@ -690,17 +704,25 @@ function boundaries(events, { failPostAdvisors = false } = {}) {
           applicationName: request.applicationName,
           authorizationBindingDigest: request.authorizationBindingDigest,
           backendPid: request.backendPid,
+          backendStart: request.backendStart,
           backendSessionCount: 0,
           candidateCommit: request.candidateCommit,
           candidateTree: request.candidateTree,
           completionState: "session-closed",
+          databaseRunBindingDigest: request.databaseRunBindingDigest,
           idleSessionCount: 0,
           observedAt: NOW.toISOString(),
           observerArtifactDigest: "7".repeat(64),
+          observerPackageDigest: "6".repeat(64),
+          observerPackageId: "trailmind.synthetic.test-observer",
+          observerPackageVersion: "1.0.0",
+          observerSourceDigest: "5".repeat(64),
+          observerTrustMode: "synthetic-test",
           operatorDigestsDigest: request.operatorDigestsDigest,
           projectRef: request.projectRef,
           runId: request.runId,
-          stagedReceiptDigest: request.stagedReceiptDigest
+          stagedReceiptDigest: request.stagedReceiptDigest,
+          cleanupSamples: cleanupSamples(request)
         };
         return { ...proof, evidenceDigest: canonicalAclDigest(proof) };
       }
@@ -712,9 +734,11 @@ function boundaries(events, { failPostAdvisors = false } = {}) {
           applicationName: payload.applicationName,
           authorizationBindingDigest: payload.authorizationBindingDigest,
           backendPid: payload.backendPid,
+          backendStart: payload.backendStart,
           candidateCommit: payload.candidateCommit,
           candidateTree: payload.candidateTree,
           cleanupEvidenceDigest: payload.cleanupEvidenceDigest,
+          databaseRunBindingDigest: payload.databaseRunBindingDigest,
           operatorDigestsDigest: payload.operatorDigestsDigest,
           ordinal: 11,
           persistedAt: NOW.toISOString(),
@@ -840,12 +864,17 @@ function tlsBinding() {
 
 function credentialContainment() {
   return {
+    auditorReadOnlySessionRequired: true,
+    descriptorCount: 2,
     descriptorMinimum: 3,
     descriptorSameProcessOnly: true,
+    descriptorsDistinct: true,
     fileMode: "0600",
+    independentOpenDescriptions: true,
     intake: "interactive-tty-noecho",
     ownerUid: process.geteuid(),
     pathUnlinkedBeforeDatabase: true,
+    sameCredentialIdentity: false,
     singleLinkBeforeUnlink: true
   };
 }
@@ -944,8 +973,10 @@ function controlPlaneSnapshot() {
   };
 }
 
-function identityRow() {
+function identityRow(applicationName) {
   return {
+    application_name: applicationName,
+    backend_start: BACKEND_START,
     database_name: "postgres",
     session_user: "postgres",
     current_user: "postgres",
@@ -967,6 +998,34 @@ function identityRow() {
     supabase_admin_superuser: true,
     postgres_cannot_set_supabase_admin: true
   };
+}
+
+function cleanupSamples(request) {
+  const sample = (index, observedAt, statsSnapshotId) => ({
+    applicationName: request.applicationName,
+    auditorApplicationName: `trailmind_p1v2_auditor_${String(index).repeat(32)}`,
+    auditorBackendPid: 61_240 + index,
+    auditorBackendStart: observedAt,
+    auditorSelfExcluded: true,
+    backendPid: request.backendPid,
+    backendStart: request.backendStart,
+    clearSnapshot: true,
+    exactBackendInstanceCount: 0,
+    idleExactInstanceCount: 0,
+    matchingApplicationCount: 0,
+    observedAt,
+    observedSessions: [],
+    samePidOtherInstanceCount: 0,
+    statsSnapshotId
+  });
+  return [
+    sample(1, NOW.toISOString(), "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+    sample(
+      2,
+      new Date(NOW.getTime() + 250).toISOString(),
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    )
+  ];
 }
 
 function preSnapshotRow() {

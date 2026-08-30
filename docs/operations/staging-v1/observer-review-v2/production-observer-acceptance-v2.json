@@ -1,0 +1,758 @@
+{
+  "acceptanceState": "blocked",
+  "allowedClaims": [
+    "At the recorded observation time, the Supabase Management API reported the staging project compute size as nano.",
+    "At the recorded observation time, the selected_addons response contained no selected add-on whose published numeric price amount was positive.",
+    "The billing observation is not an invoice and does not prove an exact zero-dollar organization balance or amount due.",
+    "A valid Ed25519 signature proves that the accepted key holder signed the canonical artifact bytes and that those bytes have not changed since signing.",
+    "A successful strict direct libpq connection proves verify-full TLS, SCRAM-SHA-256 authentication, and required channel binding for that observed connection only.",
+    "Advisor output is diagnostic and has unproven freshness relative to the Phase 1 V2 DDL."
+  ],
+  "architecture": {
+    "controlPlaneReader": "one staging-only fine-grained access-token principal with the exact accepted permissions and a literal request allowlist",
+    "databaseAuditor": "one pre-provisioned direct-login PostgreSQL role with only a non-inheriting, non-admin, settable pg_read_all_stats membership and no TrailMind or generic mutation privileges",
+    "mutationAuthority": "a separately authorized database identity that never receives the auditor credential or signing key",
+    "signer": "one-run Ed25519 key delivered through a protected descriptor and pinned by reviewed SPKI SHA-256 before factory reachability",
+    "staticAdmission": "digest-pinned pre/post SQL plus a separately reviewed independent read-only catalog/security assertion program and expected manifest",
+    "trustSeparationRequired": true
+  },
+  "admissionLevels": {
+    "production_admission": {
+      "advisorCausalFreshness": "required_and_unproved",
+      "exactBillingAndUsage": "required_and_unavailable",
+      "factoryRegistrationAllowed": false,
+      "providerEnforcedProjectIsolation": "required_and_unproved",
+      "purpose": "closed-beta or production admission",
+      "requiredPins": "all five unmetPins",
+      "state": "blocked"
+    },
+    "staging_initialization": {
+      "advisorCausalFreshness": "unproved_and_not_claimed",
+      "exactBillingAndUsage": "unavailable_and_not_claimed",
+      "factoryRegistrationAllowed": false,
+      "maximumRuns": 1,
+      "productAndProviderFlags": "disabled",
+      "purpose": "one empty internal disabled staging initialization",
+      "requiredPins": "all five unmetPins",
+      "state": "blocked"
+    }
+  },
+  "artifactContract": {
+    "acceptanceContractDigestRule": "lowercase hex SHA-256 of the exact committed UTF-8 contract file bytes",
+    "artifactSha256": "lowercase hex SHA-256 of RFC 8785 canonical unsigned artifact bytes",
+    "authenticityMeaning": "accepted key holder signed the canonical bytes",
+    "canonicalization": "RFC 8785 JSON Canonicalization Scheme over I-JSON",
+    "causalityMeaning": "only sequencing, independent nonces, exact transaction and migration receipts, post-commit static assertions, and two fresh cleanup samples may support causal claims",
+    "chainFields": [
+      "schemaVersion",
+      "runId",
+      "phase",
+      "phaseNonce",
+      "sequence",
+      "previousArtifactSha256",
+      "implementationCommit",
+      "implementationSourceSha256",
+      "acceptanceContractSha256",
+      "targetProjectRef",
+      "protectedProjectRefs",
+      "controlResponseSha256",
+      "databaseEvidenceSha256",
+      "observedAt",
+      "monotonicObservedNanoseconds"
+    ],
+    "durability": {
+      "directoryFsyncRequired": true,
+      "fileFsyncRequired": true,
+      "overwriteForbidden": true,
+      "writeMode": "create-exclusive temporary file, fsync, atomic rename, fsync parent directory"
+    },
+    "integrityMeaning": "artifact digest and signature detect later byte changes",
+    "key": {
+      "algorithm": "Ed25519",
+      "destruction": "after the one authorized run, revoke or delete the key in its store, close the descriptor, clear mutable buffers where supported, and report best-effort destruction without claiming physical erasure",
+      "keyId": null,
+      "privateKeyIntake": "protected already-open unlinked descriptor containing decrypted PKCS#8 or a protected signing handle",
+      "publicKeyEncoding": "DER SubjectPublicKeyInfo",
+      "requiredPinnedPublicKeySpkiSha256": null,
+      "rotation": "new key requires a new reviewed contract/source revision with a new literal key id, SPKI SHA-256, and validity window",
+      "runtimeKeyDiscoveryForbidden": true,
+      "trustOnFirstUseForbidden": true
+    },
+    "noSecretLogging": [
+      "no access token",
+      "no database password",
+      "no private key",
+      "no secret-bearing descriptor contents",
+      "no raw Authorization header",
+      "no connection URI",
+      "no raw provider response"
+    ],
+    "phases": [
+      "pre-control",
+      "post-ddl-static",
+      "final-control",
+      "cleanup"
+    ],
+    "signatureEncoding": "unpadded base64url raw 64-byte Ed25519 signature",
+    "signatureMessage": "UTF8('trailmind.production-observer.admission.v2\\n') concatenated with RFC 8785 canonical unsigned artifact bytes",
+    "truthMeaning": "none; signatures do not prove observations are true, fresh, or caused by the migration"
+  },
+  "auditorContract": {
+    "acceptedRoleName": "trailmind_phase1_v2_stats_auditor",
+    "auditPrivilegeActivation": {
+      "afterQuery": "RESET ROLE",
+      "allowedOnlyFor": "pg_stat_activity monitoring queries",
+      "beforeQuery": "SET LOCAL ROLE pg_read_all_stats"
+    },
+    "cleanup": {
+      "failurePolicy": "if owned objects or unexpected grants exist, set NOLOGIN and PASSWORD NULL, preserve evidence, and require manual review; do not REASSIGN OWNED or conceal the finding",
+      "ownerStatements": [
+        "ALTER ROLE trailmind_phase1_v2_stats_auditor NOLOGIN PASSWORD NULL",
+        "REVOKE pg_read_all_stats FROM trailmind_phase1_v2_stats_auditor",
+        "REVOKE CONNECT ON DATABASE postgres FROM trailmind_phase1_v2_stats_auditor",
+        "DROP ROLE trailmind_phase1_v2_stats_auditor"
+      ]
+    },
+    "cleanupObservation": {
+      "acceptedColumns": [
+        "pid",
+        "usename",
+        "application_name",
+        "client_addr",
+        "backend_start",
+        "state",
+        "xact_start",
+        "query_start"
+      ],
+      "minimumFreshSamples": 2,
+      "query": "SELECT pid, usename, application_name, client_addr::text AS client_addr, backend_start, state, xact_start, query_start FROM pg_catalog.pg_stat_activity WHERE datname = pg_catalog.current_database() AND (pid = ANY($1::integer[]) OR application_name = ANY($2::text[])) AND pid <> pg_catalog.pg_backend_pid() ORDER BY pid",
+      "requiredAbsence": "all mutation PIDs/application names and all prior auditor PIDs/application names",
+      "sampleApplicationNamesMustDiffer": true,
+      "sampleSessionsMustDiffer": true,
+      "samplesSeparatedByBoundedMonotonicInterval": true
+    },
+    "connection": {
+      "applicationNamePattern": "^trailmind_p1v2_auditor_[a-f0-9]{32}$",
+      "channel_binding": "require",
+      "connect_timeout": "10",
+      "dbname": "postgres",
+      "endpointKind": "direct_ipv6_only",
+      "fallbackAllowed": false,
+      "gssencmode": "disable",
+      "host": "db.mbvzwsrtqcrwhvykugcd.supabase.co",
+      "libpqMinimumMajor": 17,
+      "port": 5432,
+      "require_auth": "scram-sha-256",
+      "sslmode": "verify-full",
+      "sslrootcertSha256": null,
+      "transactionMode": "BEGIN TRANSACTION READ ONLY",
+      "user": "trailmind_phase1_v2_stats_auditor"
+    },
+    "credentialLifecycle": {
+      "creationAuthority": "separate database owner session before the migration",
+      "delivery": "protected already-open descriptor from an owner-controlled secret manager",
+      "environmentVariableForbidden": true,
+      "expiryProvisioning": "a separate owner issues ALTER ROLE trailmind_phase1_v2_stats_auditor VALID UNTIL with a safely quoted UTC timestamp between 1 and 120 minutes after issuance; runtime assertion must report credential_unexpired true",
+      "maximumValidityMinutes": 120,
+      "passwordProvisioning": "interactive PostgreSQL 17 psql \\password trailmind_phase1_v2_stats_auditor",
+      "processArgumentForbidden": true,
+      "rotationPerRunRequired": true,
+      "sameMutationSessionForbidden": true,
+      "supabaseMcpForbidden": true,
+      "supabasePatOrJitForbidden": true,
+      "supabaseServiceRoleKeyForbidden": true
+    },
+    "ownerProvisioningStatements": [
+      "CREATE ROLE trailmind_phase1_v2_stats_auditor LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 1 PASSWORD NULL",
+      "GRANT CONNECT ON DATABASE postgres TO trailmind_phase1_v2_stats_auditor",
+      "REVOKE CREATE, TEMPORARY ON DATABASE postgres FROM trailmind_phase1_v2_stats_auditor",
+      "GRANT pg_read_all_stats TO trailmind_phase1_v2_stats_auditor WITH ADMIN FALSE, INHERIT FALSE, SET TRUE"
+    ],
+    "requiredGlobalMutationAssertion": {
+      "acceptedResult": {
+        "has_generic_mutation_access": false
+      },
+      "query": "WITH target AS (SELECT rolname FROM pg_catalog.pg_roles WHERE rolname = 'trailmind_phase1_v2_stats_auditor'), non_system_schemas AS (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname <> 'information_schema' AND nspname !~ '^pg_' ), failures AS (SELECT 1 FROM target CROSS JOIN non_system_schemas WHERE pg_catalog.has_schema_privilege(target.rolname, non_system_schemas.oid, 'CREATE') UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_class relation ON true JOIN non_system_schemas schema_record ON schema_record.oid = relation.relnamespace WHERE relation.relkind IN ('r','p','v','m','f') AND pg_catalog.has_table_privilege(target.rolname, relation.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_class sequence_record ON true JOIN non_system_schemas schema_record ON schema_record.oid = sequence_record.relnamespace WHERE sequence_record.relkind = 'S' AND pg_catalog.has_sequence_privilege(target.rolname, sequence_record.oid, 'UPDATE') UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_proc routine ON true JOIN non_system_schemas schema_record ON schema_record.oid = routine.pronamespace WHERE routine.prosecdef AND pg_catalog.has_function_privilege(target.rolname, routine.oid, 'EXECUTE')) SELECT pg_catalog.count(*) > 0 AS has_generic_mutation_access FROM failures"
+    },
+    "requiredRoleAssertion": {
+      "acceptedResult": {
+        "blocked_membership_count": 0,
+        "can_connect": true,
+        "can_create_database_objects": false,
+        "can_create_or_use_trailmind_schemas": false,
+        "can_execute_trailmind_routines": false,
+        "can_mutate_trailmind_relations": false,
+        "can_read_trailmind_relations": false,
+        "can_use_temporary": false,
+        "can_use_trailmind_sequences": false,
+        "credential_unexpired": true,
+        "direct_memberships": [
+          {
+            "admin_option": false,
+            "inherit_option": false,
+            "role_name": "pg_read_all_stats",
+            "set_option": true
+          }
+        ],
+        "owned_object_count": 0,
+        "rolbypassrls": false,
+        "rolcanlogin": true,
+        "rolconnlimit": 1,
+        "rolcreatedb": false,
+        "rolcreaterole": false,
+        "rolinherit": false,
+        "rolreplication": false,
+        "rolsuper": false
+      },
+      "query": "WITH target AS (SELECT oid, rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication, rolconnlimit, rolvaliduntil, rolbypassrls FROM pg_catalog.pg_roles WHERE rolname = 'trailmind_phase1_v2_stats_auditor'), direct_memberships AS (SELECT granted.rolname AS role_name, membership.admin_option, membership.inherit_option, membership.set_option FROM pg_catalog.pg_auth_members membership JOIN target ON target.oid = membership.member JOIN pg_catalog.pg_roles granted ON granted.oid = membership.roleid ORDER BY granted.rolname), blocked_memberships AS (SELECT blocked.rolname FROM target CROSS JOIN pg_catalog.pg_roles blocked WHERE (blocked.rolname IN ('postgres','supabase_admin','service_role','authenticator','anon','authenticated','dashboard_user','pg_database_owner') OR blocked.rolname LIKE 'trailmind\\_%' ESCAPE '\\') AND blocked.rolname <> target.rolname AND pg_catalog.pg_has_role(target.rolname, blocked.rolname, 'MEMBER')), owned_objects AS (SELECT 1 FROM target JOIN pg_catalog.pg_database object ON object.datdba = target.oid UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_namespace object ON object.nspowner = target.oid UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_class object ON object.relowner = target.oid UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_proc object ON object.proowner = target.oid UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_type object ON object.typowner = target.oid UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_operator object ON object.oprowner = target.oid UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_collation object ON object.collowner = target.oid UNION ALL SELECT 1 FROM target JOIN pg_catalog.pg_conversion object ON object.conowner = target.oid), trailmind_schemas AS (SELECT oid, nspname FROM pg_catalog.pg_namespace WHERE nspname LIKE 'trailmind\\_%' ESCAPE '\\'), trailmind_relations AS (SELECT relation.oid, relation.relkind FROM pg_catalog.pg_class relation JOIN trailmind_schemas schema_record ON schema_record.oid = relation.relnamespace), trailmind_routines AS (SELECT routine.oid FROM pg_catalog.pg_proc routine JOIN trailmind_schemas schema_record ON schema_record.oid = routine.pronamespace) SELECT target.rolsuper, target.rolinherit, target.rolcreaterole, target.rolcreatedb, target.rolcanlogin, target.rolreplication, target.rolconnlimit, target.rolbypassrls, target.rolvaliduntil IS NOT NULL AND target.rolvaliduntil > pg_catalog.clock_timestamp() AS credential_unexpired, pg_catalog.has_database_privilege(target.rolname, pg_catalog.current_database(), 'CONNECT') AS can_connect, pg_catalog.has_database_privilege(target.rolname, pg_catalog.current_database(), 'CREATE') AS can_create_database_objects, pg_catalog.has_database_privilege(target.rolname, pg_catalog.current_database(), 'TEMPORARY') AS can_use_temporary, EXISTS (SELECT 1 FROM trailmind_schemas WHERE pg_catalog.has_schema_privilege(target.rolname, trailmind_schemas.oid, 'USAGE') OR pg_catalog.has_schema_privilege(target.rolname, trailmind_schemas.oid, 'CREATE')) AS can_create_or_use_trailmind_schemas, EXISTS (SELECT 1 FROM trailmind_relations WHERE trailmind_relations.relkind IN ('r','p','v','m','f') AND pg_catalog.has_table_privilege(target.rolname, trailmind_relations.oid, 'SELECT')) AS can_read_trailmind_relations, EXISTS (SELECT 1 FROM trailmind_relations WHERE trailmind_relations.relkind IN ('r','p','v','m','f') AND pg_catalog.has_table_privilege(target.rolname, trailmind_relations.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')) AS can_mutate_trailmind_relations, EXISTS (SELECT 1 FROM trailmind_relations WHERE trailmind_relations.relkind = 'S' AND pg_catalog.has_sequence_privilege(target.rolname, trailmind_relations.oid, 'USAGE,SELECT,UPDATE')) AS can_use_trailmind_sequences, EXISTS (SELECT 1 FROM trailmind_routines WHERE pg_catalog.has_function_privilege(target.rolname, trailmind_routines.oid, 'EXECUTE')) AS can_execute_trailmind_routines, (SELECT pg_catalog.count(*) FROM owned_objects) AS owned_object_count, (SELECT pg_catalog.count(*) FROM blocked_memberships) AS blocked_membership_count, COALESCE((SELECT pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('role_name', role_name, 'admin_option', admin_option, 'inherit_option', inherit_option, 'set_option', set_option) ORDER BY role_name) FROM direct_memberships), '[]'::jsonb) AS direct_memberships FROM target"
+    },
+    "roleMembership": {
+      "adminOption": false,
+      "grantedRole": "pg_read_all_stats",
+      "inheritOption": false,
+      "setOption": true
+    }
+  },
+  "billingEvidence": {
+    "acceptedResponseFields": [
+      "/selected_addons/*/type",
+      "/selected_addons/*/variant/id",
+      "/selected_addons/*/variant/name",
+      "/selected_addons/*/variant/price/description",
+      "/selected_addons/*/variant/price/type",
+      "/selected_addons/*/variant/price/interval",
+      "/selected_addons/*/variant/price/amount"
+    ],
+    "computeEvidence": {
+      "acceptedField": "/projects/*[ref=mbvzwsrtqcrwhvykugcd]/infra_compute_size",
+      "acceptedValue": "nano",
+      "sourceEndpointId": "organization-project-inventory"
+    },
+    "exactMonthlyCostProvable": false,
+    "malformedOrMissingPricePolicy": "block",
+    "positiveSelectedAddonPredicate": "there exists selected_addons[i].variant.price.amount that is a finite JSON number greater than 0",
+    "requiredSelectedAddonPredicateResult": false,
+    "strongestAllowedClaim": "At the recorded observation time, the Supabase Management API reported compute size nano and no selected add-on with a positive published numeric price amount; this is not an invoice or proof of an exact zero-dollar amount due.",
+    "unprovedComponents": [
+      "metered usage",
+      "hourly proration",
+      "credits",
+      "taxes",
+      "prior-period usage",
+      "organization-level charges",
+      "project-transfer billing",
+      "invoice timing"
+    ]
+  },
+  "blockingConditions": [
+    {
+      "category": "platform_limitation",
+      "id": "control-plane-project-isolation-unproved",
+      "state": "open",
+      "terminalFor": [
+        "closed_beta",
+        "production"
+      ]
+    },
+    {
+      "category": "code_gate",
+      "id": "restricted-billing-observation-validator",
+      "state": "closed",
+      "terminalFor": []
+    },
+    {
+      "category": "code_gate",
+      "id": "advisor-freshness-never-promoted-to-admission",
+      "state": "closed",
+      "terminalFor": []
+    },
+    {
+      "category": "code_gate",
+      "id": "independent-static-catalog-query-and-manifest-not-pinned",
+      "state": "open",
+      "terminalFor": [
+        "merge_as_corrected_observer",
+        "factory_reachability",
+        "live_staging_initialization"
+      ]
+    },
+    {
+      "category": "owner_operator_setup",
+      "id": "ed25519-public-key-not-pinned",
+      "state": "open",
+      "terminalFor": [
+        "factory_reachability",
+        "live_staging_initialization"
+      ]
+    },
+    {
+      "category": "owner_operator_setup",
+      "id": "direct-endpoint-ca-digest-not-pinned",
+      "state": "open",
+      "terminalFor": [
+        "factory_reachability",
+        "live_staging_initialization"
+      ]
+    },
+    {
+      "category": "code_gate",
+      "id": "distinct-least-privilege-auditor-contract",
+      "state": "closed",
+      "terminalFor": []
+    },
+    {
+      "category": "evidence_unavailable",
+      "id": "independent-cleanup-session-lifecycle-not-live-proven",
+      "state": "open",
+      "terminalFor": [
+        "factory_reachability",
+        "live_staging_initialization",
+        "closed_beta",
+        "production"
+      ]
+    },
+    {
+      "category": "platform_limitation",
+      "id": "exact-billing-and-usage-unavailable",
+      "state": "open",
+      "terminalFor": [
+        "closed_beta",
+        "production"
+      ]
+    },
+    {
+      "category": "platform_limitation",
+      "id": "advisor-causal-freshness-unavailable",
+      "state": "open",
+      "terminalFor": [
+        "closed_beta",
+        "production"
+      ]
+    }
+  ],
+  "codeGates": [
+    "replace synthesized billing values with the exact billing-addons endpoint and restricted claim",
+    "classify advisor output as diagnostic_unproven_freshness and remove it from admission",
+    "add and pin an independent read-only catalog/security assertion program and reviewed expected manifest",
+    "replace the postgres same-secret auditor with the exact least-privilege direct-login auditor contract",
+    "require verify-full TLS, SCRAM-SHA-256, required channel binding, and no connection fallback",
+    "require unique application names, backend_start binding, and two fresh cleanup samples",
+    "implement RFC 8785 and Ed25519 signed chained artifacts",
+    "pin reviewed source, contract, static-query, expected-manifest, CA, and public-key digests as literals",
+    "keep every production factory unregistered and unreachable until all gates pass",
+    "add fail-closed negative tests for every forbidden credential, endpoint, ref, downgrade, inference, replay, and privilege"
+  ],
+  "controlPlaneCredential": {
+    "acceptedCredentialType": "supabase_fine_grained_access_token",
+    "acceptedPermissions": [
+      "infra_add_ons_read",
+      "organization_admin_read",
+      "organization_projects_read",
+      "project_admin_read"
+    ],
+    "diagnosticOnlyOptionalPermissions": [
+      "advisors_read"
+    ],
+    "oauthApplicationAcceptedForDiagnosticReads": true,
+    "oauthApplicationAcceptedForBilling": false,
+    "oauthBillingRejectionReason": "current official OAuth scopes do not include billing or add-ons and the billing-addons endpoint documents no OAuth scope",
+    "protectedRefsMustBeInaccessibleToCredential": [
+      "bejvhhjbgtvctpsnlwid",
+      "cmkvbxppgofteoutfslp"
+    ],
+    "providerEnforcedProjectBindingRequired": "mbvzwsrtqcrwhvykugcd",
+    "providerEnforcedProjectBindingState": "unproved_on_current_free_organization",
+    "rejectedCredentialTypes": [
+      "broad personal access token",
+      "OAuth refresh token or unscoped OAuth access token",
+      "service_role key",
+      "anon key",
+      "Supabase MCP session",
+      "database owner credential"
+    ],
+    "requiredMaximumCredentialLifetimeMinutes": 60
+  },
+  "decisionDate": "2026-08-30",
+  "decisions": {
+    "production_admission": {
+      "state": "blocked",
+      "why": "exact billing, provider-enforced project isolation, causal advisor freshness, required pins, auditor proof, signing proof, and production review are unavailable"
+    },
+    "staging_initialization": {
+      "futureEligibility": "one empty internal disabled staging initialization only after every applicable code, static, pin, auditor, cleanup, and signing gate passes",
+      "state": "blocked",
+      "why": "five required pins and live auditor, cleanup, and signing proofs are unavailable"
+    }
+  },
+  "endpointContracts": [
+    {
+      "admissionUse": "project identity and database metadata",
+      "fineGrainedPermission": "project_admin_read",
+      "id": "project",
+      "method": "GET",
+      "oauthScopeDocumented": "projects:read",
+      "pathAndQuery": "/v1/projects/mbvzwsrtqcrwhvykugcd"
+    },
+    {
+      "admissionUse": "organization identity and plan metadata",
+      "fineGrainedPermission": "organization_admin_read",
+      "id": "organization",
+      "method": "GET",
+      "oauthScopeDocumented": "organizations:read",
+      "pathAndQuery": "/v1/organizations/wbnftkftyamxzvxsftda"
+    },
+    {
+      "admissionUse": "exact inventory, protected-ref detection, and infra_compute_size",
+      "fineGrainedPermission": "organization_projects_read",
+      "id": "organization-project-inventory",
+      "method": "GET",
+      "oauthScopeDocumented": "projects:read",
+      "pathAndQuery": "/v1/organizations/wbnftkftyamxzvxsftda/projects?limit=100&offset=0&sort=name_asc"
+    },
+    {
+      "admissionUse": "selected add-ons and published price metadata",
+      "fineGrainedPermission": "infra_add_ons_read",
+      "id": "billing-addons",
+      "method": "GET",
+      "oauthScopeDocumented": null,
+      "pathAndQuery": "/v1/projects/mbvzwsrtqcrwhvykugcd/billing/addons"
+    },
+    {
+      "admissionUse": "diagnostic only; never admission",
+      "deprecated": true,
+      "experimental": true,
+      "fineGrainedPermission": "advisors_read",
+      "id": "advisor-security",
+      "method": "GET",
+      "oauthScopeDocumented": "database:read",
+      "pathAndQuery": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/security?lint_type=sql"
+    },
+    {
+      "admissionUse": "diagnostic only; never admission",
+      "deprecated": true,
+      "experimental": true,
+      "fineGrainedPermission": "advisors_read",
+      "id": "advisor-performance",
+      "method": "GET",
+      "oauthScopeDocumented": "database:read",
+      "pathAndQuery": "/v1/projects/mbvzwsrtqcrwhvykugcd/advisors/performance"
+    }
+  ],
+  "endpointTransportPolicy": {
+    "acceptedHostname": "api.supabase.com",
+    "acceptedMethods": [
+      "GET"
+    ],
+    "bodiesForbidden": true,
+    "dnsAndTlsMustMatchAcceptedHostname": true,
+    "extraPaginationForbidden": true,
+    "maximumCalls": 14,
+    "pathNormalizationOrReencodingForbidden": true,
+    "redirectsAccepted": false,
+    "aggregatePhaseTimeoutSeconds": 20,
+    "requestTimeoutSeconds": 5,
+    "responseMaximumBytes": 262144
+  },
+  "evidenceStrength": {
+    "advisor": "diagnostic_unproven_freshness",
+    "artifactDigest": "integrity_only",
+    "billingAddons": "provider_reported_point_in_time_selection_and_price_metadata_not_invoice",
+    "controlPlaneIdentity": "provider_reported_point_in_time",
+    "ed25519Signature": "artifact_authenticity_and_integrity_not_truth_or_causality",
+    "independentCatalogAssertions": "post_commit_static_database_state_only",
+    "strictDirectDatabaseHandshake": "observed_connection_tls_authentication_and_channel_binding_only"
+  },
+  "forbiddenInferences": [
+    "monthly cost is exactly zero dollars",
+    "the organization invoice or balance due is zero dollars",
+    "no charge can occur",
+    "nano compute is proven by the selected-addons compute enum",
+    "a local URL allowlist proves a stolen credential cannot reach protected projects",
+    "an OAuth application can read billing add-ons",
+    "advisor retrieval time is advisor computation time",
+    "advisor lints were recomputed after this DDL",
+    "zero advisor lints proves production safety or performance",
+    "a valid artifact signature proves its factual contents",
+    "a SHA-256 field without a signature proves artifact authenticity",
+    "one pg_stat_activity sample proves durable cleanup",
+    "successful staging initialization approves closed beta or production",
+    "best-effort memory or key deletion proves physical erasure"
+  ],
+  "immutableTargets": {
+    "database": "postgres",
+    "organizationIdOrSlug": "wbnftkftyamxzvxsftda",
+    "organizationName": "Alibra AI",
+    "plan": "free",
+    "postgresMajor": 17,
+    "projectName": "TrailMind Outdoor Staging V1",
+    "projectRef": "mbvzwsrtqcrwhvykugcd",
+    "protectedProjects": [
+      {
+        "label": "production",
+        "ref": "bejvhhjbgtvctpsnlwid"
+      },
+      {
+        "label": "Planua",
+        "ref": "cmkvbxppgofteoutfslp"
+      }
+    ],
+    "region": "eu-central-1",
+    "reportedComputeSize": "nano"
+  },
+  "implementationReview": {
+    "baseCommit": "b59f432a1947154345f1629ecba50d14fcb1e7c8",
+    "correctionCommit": "68887cf9cd3e8ce28a05cd2ca7eb9e5d5ed5f8ac",
+    "capabilityPolicyCommit": "b8fdcc8539dc149fd0cfac783602073ae5567f24",
+    "adversarialAcceptanceCommit": "a38677e67b23916e27d7c8f594866ab746a60921",
+    "independentReviewCommit": "4821c9b29e070be53c0c22873cb7af124434b985",
+    "originMainInspected": "adea2c08540e87f0acd7eebb976c72eab8eb76c3",
+    "sourceDigests": {
+      "backend/src/operations/stagingPhase1V2Admission.js": "fd2ccbf7d5bf669a29660c5bf3a30058af115a41dee2e201e405e5588447d4c8",
+      "backend/src/operations/stagingPhase1V2LiveLauncher.js": "5158a7b2f0b464f0af6495c47631eed2c37327e73fb5ab954fbdf628a0c05b5f",
+      "backend/src/operations/stagingPhase1V2MachineObserver.js": "dfbcb95ed049e58218c59e1fec728947488fe45fbd72f77cb8e683704a631f96",
+      "backend/src/operations/stagingPhase1V2ProductionArtifacts.js": "6c6042c9fd675780ac3eb3859f1474a061a87cafa4033a3ee476db709cd9c158",
+      "backend/src/operations/stagingPhase1V2ProductionAuditor.js": "56af779bc9d79315c2d8891cb6a83814dc8324ffd8cb28ff4f67c8bc27060773",
+      "backend/src/operations/stagingPhase1V2ProductionObserverContract.js": "9c56f5aa51532f24d072c17809734e9900b6efccb4a236b81c205bff474c06e6",
+      "backend/src/operations/stagingPhase1V2SingleSessionAdapter.js": "1bdceb5bda09a3d525dc2f456fbcbda41d303131c8d0dccc4f40423efc276e49"
+    },
+    "stalenessGate": "not_superseded"
+  },
+  "officialSources": [
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-management-api-introduction",
+      "url": "https://supabase.com/docs/reference/api/introduction"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-management-api-openapi",
+      "url": "https://github.com/supabase/supabase/blob/master/apps/docs/spec/api_v1_openapi.json"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-project-addons",
+      "url": "https://supabase.com/docs/reference/api/v1-list-project-addons"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-oauth-scopes",
+      "url": "https://supabase.com/docs/guides/integrations/build-a-supabase-oauth-integration/oauth-scopes"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-access-control",
+      "url": "https://supabase.com/docs/guides/platform/access-control"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-database-advisors",
+      "url": "https://supabase.com/docs/guides/database/database-advisors"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-changelog",
+      "url": "https://supabase.com/changelog"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-billing",
+      "url": "https://supabase.com/docs/guides/platform/billing-on-supabase"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-invoice",
+      "url": "https://supabase.com/docs/guides/platform/your-monthly-invoice"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-credits",
+      "url": "https://supabase.com/docs/guides/platform/credits"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-project-transfer",
+      "url": "https://supabase.com/docs/guides/platform/project-transfer"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-database-connections",
+      "url": "https://supabase.com/docs/guides/database/connecting-to-postgres"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-custom-role-connection",
+      "url": "https://supabase.com/docs/guides/database/prisma"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-postgres-roles",
+      "url": "https://supabase.com/docs/guides/database/postgres/roles"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-ssl-enforcement",
+      "url": "https://supabase.com/docs/guides/platform/ssl-enforcement"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-psql",
+      "url": "https://supabase.com/docs/guides/database/psql"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "supabase-temporary-access",
+      "url": "https://supabase.com/docs/guides/platform/temporary-access"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-predefined-roles",
+      "url": "https://www.postgresql.org/docs/17/predefined-roles.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-monitoring-stats",
+      "url": "https://www.postgresql.org/docs/17/monitoring-stats.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-role-attributes",
+      "url": "https://www.postgresql.org/docs/17/role-attributes.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-grant",
+      "url": "https://www.postgresql.org/docs/17/sql-grant.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-role-membership",
+      "url": "https://www.postgresql.org/docs/17/role-membership.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-pg-roles",
+      "url": "https://www.postgresql.org/docs/17/view-pg-roles.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-privilege-functions",
+      "url": "https://www.postgresql.org/docs/17/functions-info.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-libpq-connect",
+      "url": "https://www.postgresql.org/docs/17/libpq-connect.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-scram",
+      "url": "https://www.postgresql.org/docs/17/sasl-authentication.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-libpq-envars",
+      "url": "https://www.postgresql.org/docs/17/libpq-envars.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-psql",
+      "url": "https://www.postgresql.org/docs/17/app-psql.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-alter-role",
+      "url": "https://www.postgresql.org/docs/17/sql-alterrole.html"
+    },
+    {
+      "accessed": "2026-08-30",
+      "id": "postgresql-17-revoke",
+      "url": "https://www.postgresql.org/docs/17/sql-revoke.html"
+    }
+  ],
+  "ownerOperatorGates": [
+    "provision and rotate the exact FGA reader out of band and prove provider-enforced staging-only reach",
+    "provision, rotate, expire, quarantine, and delete the auditor through a separate owner session",
+    "pin a reviewed CA SHA-256 and provide an IPv6-capable libpq 17 runner",
+    "generate the one-run Ed25519 key and pin its public SPKI SHA-256 through review",
+    "preserve signed setup, phase, and teardown receipts without secrets or raw provider responses"
+  ],
+  "platformLimitations": [
+    "no documented OAuth scope for billing add-ons",
+    "no documented fine-grained-token project resource binding sufficient to prove isolation in the current Free organization",
+    "project-scoped organization roles and Read-Only organization roles are documented for Team and Enterprise rather than Free",
+    "advisor responses expose no run id, computation timestamp, schema version, transaction marker, or causal DDL binding",
+    "no bounded official advisor rerun API or supported replacement was found in the current official surfaces",
+    "billing add-ons do not prove the exact invoice or amount due",
+    "Supavisor SCRAM channel binding is not established by the official sources reviewed"
+  ],
+  "schemaVersion": 2,
+  "staticGate": {
+    "advisorAdmissionRole": "none",
+    "advisorClassification": "diagnostic_unproven_freshness",
+    "independentCatalogAssertionProgramSha256": null,
+    "independentCatalogExecution": {
+      "expectedResultShape": "sorted array of unique assertion identifiers and boolean pass values with no unknown identifiers",
+      "mutationStatementsForbidden": true,
+      "requiredCoverage": [
+        "migration role attributes and memberships",
+        "schema and object owners",
+        "PostGIS extension namespace and ownership topology",
+        "schema, relation, sequence, routine, and default ACLs",
+        "RLS enabled and forced flags and exact policies",
+        "security-definer owner, fixed search_path, and execute ACL",
+        "constraint and index definitions",
+        "absence of unexpected TrailMind objects",
+        "auditor role and effective privilege assertions"
+      ],
+      "transaction": "BEGIN TRANSACTION READ ONLY",
+      "unknownAssertionPolicy": "block"
+    },
+    "independentExpectedManifestSha256": null,
+    "postMigrationSql": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql",
+      "sha256": "3945c51cf26ca178e2bb2d6bfa7ac49aa6cf1bbcb268bf68272216efce153456"
+    },
+    "preMigrationSql": {
+      "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql",
+      "sha256": "feb13b3f6ea6a538f6cd5223030fecca1cb0195bce3e0eb0204aed704ea0c16b"
+    },
+    "remainingRisks": [
+      "workload-dependent unused or duplicate indexes",
+      "query-plan regressions and data distribution",
+      "bloat and resource exhaustion",
+      "network exposure and provider configuration outside database catalogs",
+      "leaked credentials and SSL policy drift",
+      "backup and PITR state",
+      "future data-dependent RLS and application defects",
+      "evolving advisor rules"
+    ],
+    "supportedDecisionSurfaceAfterAllOtherGatesPass": "one empty staging initialization only"
+  },
+  "supabaseControlPlaneGates": [
+    "exact project, organization, region, PostgreSQL major, database, plan, and compute observations match immutable targets",
+    "SSL enforcement is enabled",
+    "provider-enforced reader principal cannot access either protected ref",
+    "billing-addons response validates and contains no selected add-on with a positive published numeric price",
+    "no control-plane observation is promoted into an invoice, causality, or future-state claim"
+  ],
+  "unmetPins": [
+    "artifactContract.key.keyId",
+    "artifactContract.key.requiredPinnedPublicKeySpkiSha256",
+    "auditorContract.connection.sslrootcertSha256",
+    "staticGate.independentCatalogAssertionProgramSha256",
+    "staticGate.independentExpectedManifestSha256"
+  ],
+  "validationContract": {
+    "changedPathsMustEqual": null,
+    "conflictMarkersForbidden": true,
+    "credentialPatternsForbidden": true,
+    "jsonDuplicateKeysForbidden": true,
+    "jsonMustParse": true,
+    "linkSchemesAllowed": [
+      "https"
+    ],
+    "placeholderLexemesForbidden": true,
+    "rawProviderResponsesForbidden": true,
+    "whitespaceErrorsForbidden": true
+  }
+}
