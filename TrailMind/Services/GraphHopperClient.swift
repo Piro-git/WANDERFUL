@@ -143,7 +143,7 @@ enum GraphHopperError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            "GraphHopper isn’t configured yet. Add your key to Configuration/Local.xcconfig."
+            "Route planning is unavailable because the routing service is not configured."
         case .invalidEndpoint:
             "The GraphHopper endpoint could not be created."
         case .invalidResponse:
@@ -152,7 +152,7 @@ enum GraphHopperError: LocalizedError, Sendable {
             "GraphHopper couldn’t find a walkable route between these points."
         case let .api(statusCode, message, hints):
             Self.isFlexibleModeMessage(statusCode: statusCode, message: message, hints: hints)
-                ? "Live loop routing needs GraphHopper flexible mode, which is not available on this API plan."
+                ? "Loop route planning needs GraphHopper flexible mode, which is not available on this API plan."
                 : "GraphHopper rejected the route request (status \(statusCode))."
         case let .network(message):
             message.localizedCaseInsensitiveContains("timed out")
@@ -1483,7 +1483,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             safetyNotes: [
                 SafetyNote(
                     title: "Review before use",
-                    message: "This live route still requires a check of current weather, closures, local rules and trail conditions.",
+                    message: "This routed result still requires a check of current weather, closures, local rules and trail conditions.",
                     severity: .caution
                 ),
                 SafetyNote(

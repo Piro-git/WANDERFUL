@@ -252,14 +252,14 @@ struct ProfilePreferencesView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Wanderful")
                     .font(.trailSection)
-                Text("A focused planner for real outdoor routes.")
+                Text("A focused planner for routed outdoor options.")
                     .font(.subheadline)
                     .foregroundStyle(theme.secondaryText)
             }
         }
         .padding(.vertical, 14)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Wanderful. A focused planner for real outdoor routes.")
+        .accessibilityLabel("Wanderful. A focused planner for routed outdoor options.")
         .accessibilityIdentifier(TrailMindAboutAccessibilityID.header)
     }
 

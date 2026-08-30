@@ -1,56 +1,50 @@
-# Owner Decisions V1
+# Owner decisions V1
 
-Status: **all unchecked decisions remain UNKNOWN and block any dependent submission field**
+Status: **unchecked items are not repository facts and must be recorded in the authorized release system**
 
-This checklist contains product/legal/account decisions an engineer must not fabricate.
-`OWNER_INPUTS_V1.json` is the machine-validated, deliberately unanswered companion template. A checkbox in this Markdown file is never sufficient evidence by itself. Record the decision maker, date, exact answer and independently reviewable evidence in the authorized release system; keep credentials, tax/banking records and private account material out of git.
+Do not put credentials, certificates, private profile contents, API keys, tax/banking records, or App Store Connect session data in this repository.
 
-## Minimum closure record
+## Before TestFlight
 
-For every checked item, the external record must contain: decision ID, accountable owner, UTC decision date, exact approved value, rationale, evidence reference, affected gate IDs, selected app version/build and reviewer. If any field is absent, keep the item unchecked and the gate blocked.
+- [ ] Approve the production GraphHopper routing gateway and operational owner.
+- [ ] Confirm the routing payload, logs, retention, deletion, incident contact, and rate-limit policy.
+- [ ] Confirm that provider secrets remain server-side and are not bundled in the app.
+- [ ] Approve the Apple Developer team and legal developer identity.
+- [ ] Confirm `com.trailmind.app` as the explicit App ID with production App Attest capability.
+- [ ] Confirm version/build `1.0 (1)` is available or approve a build-number increment.
+- [ ] Approve the signed-archive operator and validation evidence.
+- [ ] Approve internal TestFlight tester group and beta support contact.
+- [ ] Give explicit upload authority.
 
-## Apple and commercial identity
+## Before public App Review
 
-- [ ] `ASV1-006` — Confirm active Apple Developer team, exact legal entity/developer name, Account Holder and authorized release operator.
-- [ ] `ASV1-007` — Approve App Store Connect app record, immutable SKU, primary language and name-availability/right for **Wanderful**.
-- [ ] Confirm that `com.trailmind.app` remains the V1 bundle identifier despite the Wanderful shipping name; any change requires an explicit migration decision.
-- [ ] Approve `com.trailmind.app.staging` as the separate internal staging App ID and enable App Attest on both staging and production identifiers.
-- [ ] Approve copyright owner/year and applicable trader/business disclosures.
-- [ ] Confirm current agreements and any tax/banking prerequisites required for paid distribution; do not copy those records into this repository.
+- [ ] Confirm name availability and rights for **Wanderful**.
+- [ ] Approve copyright year/owner and rights to icon/art/code/other supplied assets.
+- [ ] Publish and approve the canonical HTTPS privacy policy.
+- [ ] Publish and approve the canonical HTTPS support page and monitored contact.
+- [ ] Approve final App Privacy answers, including production routing retention and the embedded Superwall Purchase History declaration.
+- [ ] Approve App Store Connect record, immutable SKU, primary language, and developer name.
+- [ ] Approve Navigation as the primary category and decide whether a secondary category is needed.
+- [ ] Complete age-rating, content-rights, storefront/availability, and export-compliance decisions.
+- [ ] Approve launch geography and any honest routing-coverage wording.
+- [ ] Approve the English metadata and final signed-build screenshots.
+- [ ] Approve review notes and deterministic reviewer route request.
+- [ ] Select manual/automatic/phased release behavior.
+- [ ] Give explicit App Review submission authority.
 
-## Product scope and positioning
+## V1 scope already fixed by the reviewed Release configuration
 
-- [ ] `ASV1-003` — Decide whether Superwall, paywalls, purchases and subscriptions are excluded from V1. Recommended current decision: exclude until separately configured, reviewed and proved.
-- [ ] `ASV1-008` — Approve primary category. Draft: Navigation. Approve or omit secondary Health & Fitness after regulated-device/discoverability review.
-- [ ] Approve geographic storefront availability and truthful route/backend coverage boundary; do not claim national/global evidence coverage.
-- [ ] Approve the metadata draft and forbidden-claims ledger (`ASV1-026`).
-- [ ] Decide whether optional voice transcription is marketable in V1 only after permission, accessibility and real-device proof.
+- [x] Research-guided planning, outdoor evidence, routable highlights, and remote intent are disabled.
+- [x] Supabase onboarding/profile sync is disabled; no V1 account is created.
+- [x] Superwall presentation, purchases, and subscriptions are disabled; native onboarding is used.
+- [x] V1 is a planning aid, not live navigation.
+- [x] Requested features are preferences, not guaranteed route facts.
 
-## Privacy, legal and safety
+Changing any checked scope item requires a new release, privacy, test, and metadata review.
 
-- [ ] `ASV1-004` — Approve legal owner/content and publish the real HTTPS privacy-policy URL.
-- [ ] `ASV1-005` — Approve a monitored public support contact and publish the real HTTPS support URL.
-- [ ] Decide whether to publish a marketing URL; omission is valid for V1.
-- [ ] `ASV1-002` — Approve final App Privacy answers only after onboarding/Supabase/Superwall/backend evidence.
-- [ ] `ASV1-009` — Obtain legal export/encryption classification and approve App Store answers/plist declaration, if applicable.
-- [ ] `ASV1-008` — Complete the current age-rating questionnaire; do not infer a rating.
-- [ ] `ASV1-023` — Approve content-rights declaration for name, icon/art, code, maps, routing/elevation data and onboarding assets.
-- [ ] Approve safety wording and confirm the app is not represented as emergency, medical, guaranteed-safe or live-navigation functionality.
+## Recommended non-blocking follow-up
 
-## Accounts, onboarding and deletion
+- [ ] Run the signed build on a physical iPhone, including optional voice permissions if voice is marketed.
+- [ ] Confirm production App Attest behavior operationally.
 
-- [x] Source fact, not an owner choice: integrated V1 creates no Supabase/anonymous/guest/user account and composes no remote profile sync.
-- [ ] Approve that remote Trail Profile sync remains excluded from V1; any future activation requires account/deletion/privacy review.
-- [ ] Approve the local profile fields and purposes: activity, comfort range, route shape, requested experiences and soft avoidances.
-- [ ] Approve the native onboarding behavior and any remaining human VoiceOver/rotor accessibility exceptions.
-
-## Release operations
-
-- [ ] Approve the supported production-backend environment and operational owner (`ASV1-011`).
-- [ ] Approve the physical-iPhone App Attest proof window and reviewer (`ASV1-010`).
-- [ ] Approve screenshot device/localization set after Stage B (`ASV1-015`).
-- [ ] Approve internal/external TestFlight groups, review account if required, pricing and release mode (manual/automatic/phased) only after all gates pass.
-- [ ] Approve storefront territories separately from technical backend coverage; record any territory exclusions and the customer-facing coverage wording.
-- [ ] Provide explicit authority before signing distribution, upload, TestFlight mutation or App Review submission.
-
-Record decisions in an access-controlled release system with decision maker, date, rationale and evidence. Do not insert private account data or credentials in this repository.
+These checks are recommended, but lack of a local physical App Attest proof is not a standalone V1 blocker in this package.

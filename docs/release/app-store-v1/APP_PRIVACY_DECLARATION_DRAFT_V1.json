@@ -1,40 +1,61 @@
 {
-  "schema_version": 1,
-  "source_baseline": "21f8450c976252210edf03389dc1b682d2440450",
-  "publication_state": "blocked_do_not_publish",
-  "tracking": "draft_no_owner_and_backend_review_required",
-  "data_not_collected": false,
-  "categories": [
+  "schema_version": 2,
+  "assessment_date": "2026-08-30",
+  "source_baseline": "adea2c08540e87f0acd7eebb976c72eab8eb76c3",
+  "publication_state": "provisional_do_not_publish",
+  "tracking": {
+    "draft_answer": false,
+    "tracking_domains_declared": false,
+    "final_owner_review_required": true
+  },
+  "linked_to_user": [
     {
-      "id": "device_id",
-      "state": "draft_yes_manifest_backend_retention_unproved",
-      "purpose": "app_functionality",
-      "linked": true,
-      "tracking": false
+      "category": "Identifiers",
+      "type": "Device ID",
+      "purpose": "App Functionality",
+      "basis": "First-party App Attest privacy-manifest declaration"
     },
     {
-      "id": "precise_location",
-      "state": "provisional_backend_linkage_retention_unproved",
-      "purpose": "app_functionality",
-      "source_boundary": "user-entered places are geocoded and route coordinates leave the device only after a reviewed backend is configured"
+      "category": "Location",
+      "type": "Precise Location",
+      "purpose": "App Functionality",
+      "basis": "Conservative classification for routed coordinates associated with device-scoped request protection"
     },
     {
-      "id": "other_user_content",
-      "state": "provisional_backend_payload_retention_unproved",
-      "purpose": "app_functionality",
-      "source_boundary": "the full typed prompt is parsed locally; selected structured routing constraints may leave the device only after a reviewed backend is configured"
-    },
-    {
-      "id": "purchase_history",
-      "state": "embedded_sdk_declaration_feature_disabled_owner_decision_required",
-      "purpose": "app_functionality_if_activated",
-      "source_boundary": "Superwall is linked but its key and feature flag are empty or false and V1 production onboarding does not construct or present its client"
-    },
-    {
-      "id": "diagnostics",
-      "state": "provisional_backend_and_sdk_logging_unproved",
-      "purpose": "unresolved",
-      "source_boundary": "no first-party analytics composition is release-reachable; production backend and third-party operational logging remain owner-dependent"
+      "category": "User Content",
+      "type": "Other User Content",
+      "purpose": "App Functionality",
+      "basis": "Conservative classification for structured route constraints; full typed prompt remains local"
     }
+  ],
+  "not_linked_to_user": [
+    {
+      "category": "Purchases",
+      "type": "Purchase History",
+      "purpose": "App Functionality",
+      "basis": "Embedded Superwall privacy manifest; V1 presentation and purchases are disabled"
+    }
+  ],
+  "not_declared_as_developer_collection": [
+    "Audio Data processed by Apple Speech without Wanderful retention",
+    "Name",
+    "Email Address",
+    "Contacts",
+    "User ID",
+    "Product Interaction",
+    "Diagnostics",
+    "Performance Data",
+    "Crash Data",
+    "Local Trail Profile and onboarding draft",
+    "Local saved routes",
+    "User-directed GPX sharing"
+  ],
+  "account_created": false,
+  "owner_inputs_required": [
+    "Production routing payload, logging, retention, deletion, processor, and access-control policy",
+    "Final treatment of embedded Superwall Purchase History declaration",
+    "Privacy policy URL and legal operator/contact",
+    "Exact signed-archive Xcode privacy report",
+    "Final no-tracking approval"
   ]
 }

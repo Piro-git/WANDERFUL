@@ -78,7 +78,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         app.buttons["onboarding.interest.views"].tap()
         continueButton.tap()
         XCTAssertTrue(
-            app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5),
+            app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5),
             "Continue should advance to the planning-safety step."
         )
 
@@ -157,7 +157,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             continueButton.tap()
         }
 
-        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5))
         continueButton.tap()
         XCTAssertTrue(
             app.staticTexts["Open by default, ready for your request"]
@@ -201,7 +201,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         noExperiences.tap()
         continueButton.tap()
 
-        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5))
         continueButton.tap()
         XCTAssertTrue(
             app.staticTexts["Meet the starting point for your adventures."]
@@ -244,7 +244,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             continueButton.tap()
         }
 
-        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5))
         XCTAssertTrue(waitUntilHittable(continueButton, in: app, maximumSwipes: 12))
         continueButton.tap()
         XCTAssertTrue(

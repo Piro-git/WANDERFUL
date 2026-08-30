@@ -1,68 +1,57 @@
-# App Review Notes V1
+# App Review notes V1
 
-Status: **selected local build/runtime path verified; production-backend and external facts remain provisional**
-Reviewer credentials: **not applicable; the integrated V1 source creates no account or sign-in**
+Status: **draft; use only after production routing works in the exact submitted build**
 
-## Draft notes for App Review
+Reviewer credentials: **Not required. Wanderful V1 has no account or sign-in.**
 
-Wanderful is an iPhone route-planning app for hiking, trail running and biking. It is a planning aid, not live or turn-by-turn navigation.
+## Draft review notes
 
-Suggested review path after the final build is selected:
+Wanderful is an iPhone route-planning app for hiking, trail running, and biking. It is a planning aid, not live or turn-by-turn navigation.
+
+Suggested review path:
 
 1. Launch Wanderful on an iPhone running iOS 26 or later.
-2. Complete the native onboarding path. Answers are optional planning defaults stored only on the iPhone and can later be edited, reset or deleted from Profile.
-3. Open Plan and enter a deterministic route request supplied in the final review notes.
-4. Generate route options, compare mapped geometry and route statistics, then open one detail view.
-5. Save the routed result, open Saved, and use Export GPX to present the system share sheet.
-6. If voice is included in the selected build, test it only after granting Microphone and Speech Recognition permission. Voice must be omitted from these notes if Stage B/physical-device proof does not pass.
+2. Complete or skip through native onboarding. Optional planning defaults are stored only on the iPhone and can be edited, reset, or deleted from Profile.
+3. Open Plan, choose Type instead, and enter `Ilsenburg to Schierke`.
+4. Build the route, compare mapped options and routing-response statistics, then open route detail.
+5. Save the routed result, open Saved, and use Export GPX to present the system share sheet. A share destination does not need to be selected.
+6. Open Profile → Privacy & data and Profile → Help & safety to review data and outdoor-planning boundaries.
 
-No demo account or bypass credential is required by the integrated V1 source. If the selected build later adds authentication, these notes must be replaced and the release owner must provide a durable review account and any special instructions in App Store Connect—not in this repository.
+Replace the deterministic request before submission if final production routing no longer supports it. Never submit a build whose core request ends in the current safe “couldn’t finish” state.
 
-## Provider and processing boundaries
+## Provider and feature boundaries
 
-- The full natural-language prompt is parsed locally in Release; no remote AI chat or route editing is offered.
-- User-entered place names are resolved using Apple geocoding.
-- Route coordinates and selected routing constraints are sent to Wanderful's configured backend, which requests route calculation from GraphHopper.
-- Map display uses Apple MapKit. Routing data is credited to GraphHopper/OpenStreetMap; elevation credits include Mapterhorn where applicable.
-- Research-guided planning, outdoor-evidence lookup and routable-highlight access are disabled by tracked Release defaults. Do not describe those capabilities as available.
-- The Trail Profile and onboarding draft stay on the device. Supabase onboarding sync is disabled and non-activatable in V1; no account is created.
-- Superwall remains a linked SDK dependency, but V1 production onboarding does not construct or present its client and the tracked key is empty. No purchase or subscription surface is claimed.
-- Production availability, App Attest enforcement and backend retention must be inserted here only after verified evidence. Blocker `ASV1-011`.
+- The full typed prompt is parsed locally; V1 has no remote AI chat or route editing.
+- Apple geocoding resolves typed place names.
+- Resolved coordinates and selected constraints go through Wanderful’s production routing gateway to GraphHopper.
+- Map display uses Apple MapKit. In-app attribution credits GraphHopper, OpenStreetMap/ODbL, and Mapterhorn where applicable.
+- Research-guided planning, outdoor evidence, routable highlights, remote intent, Supabase sync, and Superwall presentation are disabled.
+- Trail Profile and saved routes remain local. No account is created.
+- V1 contains no purchase, paywall, or subscription surface.
 
-## Safety and limitations
+## Safety boundary
 
-Wanderful does not guarantee that a route is safe, legal, open, passable, scenic or supplied with water. Route statistics are routing-response estimates. Requested preferences are not verified facts unless supported by mapped evidence. Reviewers and users should review the route and check current weather, access restrictions, trail conditions, local rules and water availability before starting.
+Wanderful does not guarantee that a route is safe, legal, open, passable, scenic, or supplied with water. Route statistics are routing-response estimates. Requested preferences remain preferences unless verified by mapped evidence. Users should review routes and check current weather, access restrictions, trail conditions, closures, local rules, and water availability before starting.
 
-The V1 build does not offer:
+V1 does not offer live navigation, offline maps, live weather/closure/water intelligence, location tracking, remote AI planning, accounts/cloud sync, or purchases.
 
-- live/turn-by-turn navigation or location tracking;
-- offline maps or offline route calculation;
-- live weather, closures, water or trail-condition intelligence;
-- guaranteed scenic quality, safety, legality or access;
-- remote AI chat or natural-language route editing;
-- a proved subscription or purchase offering;
-- national/global evidence coverage.
+## Permissions
 
-## Permission behavior
+- V1 does not request device Location permission. Users enter a place name.
+- Microphone and Speech Recognition are requested only if the user chooses optional voice transcription.
+- Apple Speech may process captured audio. Wanderful does not retain raw audio or send it to its backend.
+- Denial leaves typed planning available.
 
-- Wanderful does not request device Location permission on the audited baseline. Users enter a place name manually.
-- Microphone and Speech Recognition are requested only when the user invokes voice transcription. Apple servers process speech recognition; Wanderful's current disclosures say it does not retain raw audio or send raw audio to its backend.
-- Denial must leave typed planning available and must not trap the reviewer. Stage B verifies the exact behavior.
+Omit voice from review notes and screenshots unless the final signed build receives a physical-iPhone permission smoke test.
 
-## Account, onboarding and monetization boundary
+## Final owner insertions
 
-- First launch presents native onboarding after local profile state loads.
-- The user may leave planning defaults unknown. Completion persists a local versioned Trail Profile and removes the resumable draft.
-- Profile provides edit, reset and delete actions. Deletion covers the local Trail Profile/draft; no remote account or profile exists in V1.
-- Supabase remote sync/Auth code is dormant and cannot be composed by V1 bundle configuration.
-- No Superwall presentation, paywall, purchase, subscription or review credential is source-reachable in V1, and the selected Release has an empty Superwall key. The SDK resources/privacy manifest remain embedded. The owner's explicit V1 monetization exclusion remains a stop gate (`ASV1-003`).
+Before using these notes, add:
 
-## Final review-note attachments/checks
+- selected version/build;
+- production service region or maintenance limitation, if any;
+- working support contact and privacy-policy URL;
+- any required export-compliance note;
+- any information Apple specifically requests for the Navigation category.
 
-- Provide a real support contact and privacy-policy URL.
-- State the selected build number and deterministic request/expected state.
-- Explain any backend maintenance window or region restriction truthfully.
-- If Navigation remains the primary category, confirm whether Apple requests a geographic coverage file and provide it only from real coverage evidence.
-- Never provide production keys, internal credentials, secrets, source receipts or unsupported claims.
-
-Apple expects review access and clear explanations for non-obvious features and requires complete, accurate information. Source: [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/).
+Do not include production keys, private credentials, internal receipts, or unsupported claims.

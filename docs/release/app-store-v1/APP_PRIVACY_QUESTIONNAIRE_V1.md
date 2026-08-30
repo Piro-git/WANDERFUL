@@ -1,88 +1,71 @@
-# App Privacy Questionnaire V1
+# App Privacy questionnaire V1
 
-Status: **iOS onboarding and Release SDK-manifest delta reconciled; backend/legal answers remain provisional; do not publish in App Store Connect**
-Source baseline: `21f8450c976252210edf03389dc1b682d2440450`
-Assessment date: 2026-08-28
+Status: **provisional; do not publish until the production routing policy and owner decisions are final**
 
-Apple requires answers to cover the app and third-party partners, remain accurate for the current version, and be backed by a public privacy-policy URL. Source: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/). This draft deliberately does not convert unknown backend/App Attest retention or owner-unapproved SDK use into a “Data Not Collected” answer.
+Assessment date: 2026-08-30
 
-## Current source-backed data flow
+## Verified V1 data flow
 
-| Surface | Current source evidence | Questionnaire consequence |
-| --- | --- | --- |
-| Route prompt | Release uses the local parser; About states the full prompt is not sent to a remote AI service; current source and built-artifact checks pass | No remote-AI disclosure is supported; re-review if the selected build or flags change |
-| Place resolution | User-entered place names are sent to Apple geocoding | Disclose Apple processing in the privacy policy; determine whether this is reportable collection after legal review |
-| Route calculation | Tracked Production has no backend URL, so live remote routing is unavailable by default. If the owner later configures a reviewed backend, resolved coordinates and selected route constraints go to that backend and then GraphHopper | Precise Location and Other User Content remain provisional until the actual production payload, linkage and retention are proved |
-| Device location | No location usage key; About says Wanderful does not read device location | Do not claim device-GPS collection; verify built Info.plist and runtime |
-| Voice | Microphone audio is used for transcription; Speech purpose text says Apple servers process speech and Wanderful does not retain raw audio or send it to its backend | Audio Data is not asserted as developer collection; legal/privacy owner must confirm Apple-service treatment and actual runtime |
-| App Attest | The client and production entitlement are present, but no distributed physical-iPhone/backend proof exists. The first-party privacy manifest declares Device ID, linked to identity, for App Functionality, not tracking | Draft answer includes Identifiers → Device ID, linked, App Functionality, not tracking; collection/retention wording remains backend-dependent |
-| Saved routes | Protected local file store; excluded from backup | Local-only data is not App Privacy “collection”; integrated sync could change this |
-| GPX export | Protected temporary file, user-initiated system share, cleanup | User-directed transfer is not claimed as developer collection; Stage B verifies cleanup |
-| Research/evidence | Tracked Release flags are false | No research-guided/evidence data claim while disabled; built flags must confirm |
-| Trail Profile/onboarding | Optional activity, distance or duration range, route shape, requested experiences and soft avoidances are stored locally in versioned protected app storage | Local-only data is not App Privacy collection; no account, Auth session or remote sync is composed in V1 |
-| Supabase | SDK and dormant remote client are compiled, but `HikingPreferenceProfileSyncFactoryV1` unconditionally returns a no-op client and tracked sync/URL/key values are disabled/empty | No Supabase data transfer or anonymous account is Release-reachable in V1; built dependency/manifests still require inspection |
-| Purchases/Superwall | SDK exists, tracked key is empty, production native onboarding neither constructs nor presents `SuperwallOnboardingClient`; its Debug embedded manifest declares unlinked Purchase History for App Functionality | No V1 purchase path is source-reachable, but the embedded declaration must be reconciled with the selected Release and owner exclusion before answering Purchases |
-| Public legal/support links | Native Privacy & data and Help & safety destinations are reachable; external links appear only for strictly validated canonical HTTPS values. Tracked Production values are empty | Do not claim that a public policy/support page is hosted; G-019/G-020 remain blocked |
+- The full typed route prompt is parsed locally. Release does not send it to a remote AI service.
+- Place names are sent to Apple geocoding.
+- Once the production routing endpoint is configured, resolved coordinates and selected route constraints are sent to the Wanderful routing gateway, which uses GraphHopper.
+- The app does not request device Location permission in V1; the user enters a place name.
+- Optional voice input uses Apple Speech only after Microphone and Speech Recognition permission. Wanderful does not retain raw audio or send raw audio to its own backend.
+- Trail Profile data and saved routes are local protected files. V1 creates no account and composes no remote profile sync.
+- GPX export is user initiated through the system share sheet and uses a protected temporary file with cleanup.
+- App Attest supplies a device-scoped installation assertion for request protection. The first-party privacy manifest declares linked Device ID for App Functionality and no tracking.
+- Research/evidence, remote intent, Supabase sync, and Superwall presentation are disabled. The Superwall SDK remains linked and its embedded manifest declares unlinked Purchase History for App Functionality.
 
-## Draft App Store Connect answers
+## Provisional App Store Connect answers
 
 ### Tracking
 
-- **Does the app or its third-party partners use data for tracking?** Draft: **No**.
-- Evidence: first-party manifest says tracking is false and contains no tracking domains.
-- Built evidence: final Debug and Release first-party, Superwall and swift-crypto manifests all declare tracking false; no tracking domain was declared. Configured remote behavior and owner V1 monetization scope remain unproved.
-- Stop gate: selected-Release SDK manifests are inspected, but this answer cannot be published until the owner's Superwall V1 exclusion, backend behavior and any cross-company data linkage are approved. Blockers `ASV1-002`, `ASV1-003`, `ASV1-011`.
+- **Tracking:** No
+- **Tracking domains:** None declared by the built first-party, Superwall, or swift-crypto manifests
+- **Advertising/marketing purposes:** None in V1
 
 ### Data linked to the user
 
-| Apple data type | Draft selection | Purpose | Status/evidence needed |
+| Data type | Draft | Purpose | Final proof needed |
 | --- | --- | --- | --- |
-| Identifiers → Device ID | Yes | App Functionality | Source and built manifest agree; App Attest server storage/retention remains owner/backend-dependent |
-| Precise Location | Provisional | App Functionality | Typed/geocoded route coordinates leave the device; linkage and retention UNKNOWN |
-| Other User Content | Provisional | App Functionality | Structured route constraints may leave the device; exact payload/retention UNKNOWN |
-| User ID | No for V1 iOS onboarding | — | Production composition creates no account/Auth/session; reassess if the dormant Supabase client is ever activated |
-| Name, Email Address, Other Contact Info | No for V1 iOS onboarding | — | Onboarding collects no contact field and creates no account |
-| Purchases | Provisional | App Functionality if applicable | Native onboarding has no purchase/paywall path, but the embedded Superwall Release manifest declares unlinked Purchase History; owner exclusion must reconcile this before publication |
-| Product Interaction | No first-party onboarding collection | — | Typed onboarding event vocabulary has no recorder composed; embedded SDK and backend behavior still require inspection |
-| Crash Data, Performance Data, Other Diagnostic Data | Provisional | App Functionality/Analytics | No first-party analytics found; embedded SDK and backend logging UNKNOWN |
+| Identifiers → Device ID | Yes | App Functionality / request protection | Confirm production App Attest retention and deletion policy |
+| Precise Location | Conservative Yes | App Functionality / route calculation | Confirm exact routing payload, logs, retention, and access controls |
+| Other User Content | Conservative Yes for structured route constraints | App Functionality / route calculation | Confirm no full prompt leaves the device and document retained fields |
 
-No advertising, developer marketing, third-party advertising, or tracking purpose is supported by the current product description.
+The conservative “linked” classification reflects device-scoped request protection even though V1 has no visible account.
 
 ### Data not linked to the user
 
-No category is classified here yet. Backend pseudonymization, aggregation or prompt/coordinate de-identification has not been evidenced. “Not linked” must not be selected merely because the app has no visible sign-in screen. The machine-readable companion `APP_PRIVACY_DECLARATION_DRAFT_V1.json` deliberately keeps unresolved categories provisional and forbids a false-green no-collection answer.
+| Data type | Draft | Purpose | Reason |
+| --- | --- | --- | --- |
+| Purchases → Purchase History | Conservative Yes | App Functionality | Embedded Superwall manifest declares this category even though V1 does not present Superwall or a purchase surface |
 
-## Integrated onboarding / Supabase / Superwall delta
+The owner may remove this declaration only after proving that the exact submitted artifact and current Apple rules permit omission. Removing or activating the SDK requires a fresh manifest/privacy review.
 
-The terminal onboarding integration at `d610110…` establishes the following current V1 facts:
+### Not declared as developer collection in V1
 
-1. Optional fields are activity, comfortable distance or duration range, route shape, requested experiences and soft avoidances. No onboarding free text, name, email or contact information is collected.
-2. The profile and resumable draft are local. No Supabase anonymous sign-in, named account, user ID, remote profile or cloud sync is created.
-3. Production composition always chooses `NoOpHikingPreferenceProfileSyncClientV1`; no bundle value can activate the dormant Supabase implementation in V1.
-4. Profile deletion removes the local profile and draft. It is not Apple account deletion because no V1 account exists.
-5. The dormant event vocabulary is bounded and typed, but no recorder is composed; no onboarding analytics event is transmitted.
-6. Production first launch uses native onboarding. It does not construct or present the compiled Superwall client, and the tracked key is empty.
-7. Explicit request values override compatible profile defaults; an explicit no-preference suppresses a profile field. Preferences remain requests, not safety/scenery/access facts.
+- Audio Data: Apple Speech may process audio; Wanderful does not retain or send raw audio to its backend.
+- Name, email, contacts, User ID: no V1 account or contact form.
+- Product interaction, diagnostics, performance, crash data: no first-party analytics/crash recorder is composed in the audited Release.
+- Saved routes, Trail Profile, and onboarding draft: local-only protected storage is not developer collection.
+- GPX: user-directed sharing is not developer collection.
 
-The integration owner also reported a read-only production Supabase schema in `eu-central-1` with zero onboarding rows, forced RLS/owner policies, migration-history drift and no disposable-environment two-user dynamic RLS proof. Because V1 does not activate Supabase, those facts do not create a shipping data flow; they are activation blockers for any future sync release. Supabase documents that anonymous sign-in creates an authenticated user and that RLS must distinguish anonymous users where required. Sources: [Anonymous sign-ins](https://supabase.com/docs/guides/auth/auth-anonymous), [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security).
+## Account deletion
 
-## Account deletion decision
+Apple account deletion is not applicable because V1 creates no account. Profile provides edit, reset, and local delete. If Supabase Auth or any remote account/sync is later activated, the app and privacy package require a new deletion flow and review.
 
-The integrated V1 source creates no account, so Apple's in-app account-deletion requirement is not applicable to the current onboarding path. The app provides local Trail Profile deletion. If Supabase anonymous or named Auth is ever activated, Apple requires initiation of account deletion inside the app and local deletion alone becomes insufficient. Source: [Offering account deletion in your app](https://developer.apple.com/support/offering-account-deletion-in-your-app/).
+## Privacy policy requirements
 
-## Privacy policy consistency checklist
+The public policy must identify Wanderful’s legal operator and contact, explain Apple geocoding and Speech, GraphHopper routing, App Attest request protection, retention/logging/deletion for coordinates and constraints, local saves/Profile/GPX handling, user rights, and the absence of tracking. It must not describe disabled research, evidence, Supabase, Superwall, or AI features as active.
 
-The public policy and questionnaire must agree on:
+## Owner stop gate
 
-- purposes, linkage and retention for route coordinates and constraints;
-- Apple geocoding and Speech processing;
-- GraphHopper, Mapterhorn, Supabase and Superwall roles where active;
-- App Attest identifiers and fraud/security processing;
-- local saves, GPX export and user-directed sharing;
-- account/profile deletion and contact route;
-- international transfers, legal bases and user rights selected by counsel;
-- absence of tracking/advertising only if verified in the built app.
+Before publishing these answers:
 
-## Finalization stop gate
+1. document the production routing gateway’s exact payload, retention, logging, deletion, processors, and security purpose;
+2. reconcile the embedded Superwall Purchase History declaration;
+3. approve the final no-tracking assertion for the exact signed archive;
+4. publish the matching privacy policy at the canonical HTTPS URL;
+5. review the generated Xcode privacy report for the exact signed archive.
 
-Do not enter or publish these answers until backend/App Attest retention and linkage are owner-proved, the built Superwall Purchase History declaration and V1 exclusion are reconciled, and the public policy is live. The standalone Release manifests are locally reconciled; current unhosted policy copy is only drafting material. Any dependency change or activation of Supabase, Superwall, analytics, accounts or AI requires a new review before release.
+Physical App Attest proof is recommended operational QA, but it is not a standalone blocker in this V1 package.

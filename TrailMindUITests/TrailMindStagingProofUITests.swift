@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 
+@MainActor
 final class TrailMindStagingProofUITests: XCTestCase {
     private static let attachmentName =
         "TrailMind Outdoor Adventure Staging Proof Receipt v1"

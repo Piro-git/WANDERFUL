@@ -265,7 +265,7 @@ struct RoutingCoordinator: RoutingCoordinating {
             )
             let comparableSuggestions = combinedNormalization.suggestions
             let notice = comparableSuggestions.count >= loopSearchPolicy.minimumComparableSuggestionCount
-                ? "Wanderful found distinct real loop options from the same start for comparison."
+                ? "Wanderful found distinct routed loop options from the same start for comparison."
                 : nil
             return loopResult(
                 suggestions: comparableSuggestions,

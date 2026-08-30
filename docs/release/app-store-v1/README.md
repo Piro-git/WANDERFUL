@@ -1,107 +1,123 @@
-# Wanderful App Store Release Package V1
+# Wanderful App Store V1 release handoff
 
-Status: **NO-GO for public App Store release**
-Stage: **Stage C three-environment artifact verification complete; external distribution, legal, backend and physical-device gates open**
-Source baseline: `21f8450c976252210edf03389dc1b682d2440450`
-Audit date: 2026-08-28
-Shipping name: **Wanderful**
-Bundle identifier: `com.trailmind.app`
+Assessment date: 2026-08-30
 
-## Executive decision
+Audited base: `adea2c08540e87f0acd7eebb976c72eab8eb76c3` (`origin/main`)
 
-Wanderful is not ready for TestFlight or public submission. Current local evidence proves all three Simulator configurations, the complete deterministic non-live unit suite, the bounded relevant UI matrix, adaptive appearance/accessibility source contracts, exact lane identity and flags, built privacy manifests and fail-closed public-link slots. Physical-device App Attest, a live reviewed backend, hosted public legal/support pages, owner decisions, distribution signing and App Store Connect configuration remain unproved.
+Task branch: `codex/wanderful-app-store-v1-release-audit`
 
-The integrated matrix proves **25 of 50 applicable release gates (50.0%)**. This percentage measures independently evidenced gates, not files created. Simulator and generic-device-build proof never substitute for an archive, physical-device or distribution proof.
+Shipping identity: **Wanderful**, `com.trailmind.app`, version `1.0`, build `1`
 
-## Dependency order
+## Decision
 
-1. **Owner/legal decisions:** complete `OWNER_INPUTS_V1.json` only in the authorized release record: legal entity/team, record/SKU, V1 Superwall state, storefronts/pricing, categories, content rights, age rating, encryption/export, release strategy and public contacts.
-2. **Public assets:** legally review the repository drafts, publish real canonical HTTPS privacy and support pages, then configure their exact URLs. The native destinations and fail-closed external-link slots already exist; empty values must remain the default until hosting is real.
-3. **Backend and privacy proof:** prove the selected backend contract, App Attest enforcement, retention/logging/deletion and deployed flags; then reconcile the final App Privacy answers.
-4. **Physical-device proof:** verify production App Attest with a real iPhone and a TestFlight/App Store-distributed build. Simulator evidence is invalid for this gate.
-5. **Apple distribution:** configure the explicit App ID/capability, team, certificate and App Store profile; produce and validate a signed archive, then separately authorize upload, TestFlight and App Store Connect work.
+**The iOS Release surface is locally verified, but the repository is not yet ready to upload to TestFlight or submit to App Review.**
 
-## Truthful V1 product boundary
+Two blockers apply to TestFlight:
 
-Release-reachable claims may describe:
+1. Production core routing is unavailable. The tracked Release has an empty backend URL, direct GraphHopper is disabled, and the production gateway intentionally fails closed. This is the correct secret-safe behavior, but the app cannot deliver its core planning function until an owner-approved GraphHopper routing endpoint is configured and verified.
+2. No distributable signed archive can be created from the repository as supplied because `DEVELOPMENT_TEAM` is empty. The task did not inspect or modify certificates, provisioning profiles, or private signing material.
 
-- typed same-day hiking, trail-running and biking route requests;
-- point-to-point and loop route planning;
-- mapped route options with routing-response distance, estimated duration and elevation;
-- comparison before opening route detail;
-- local saving of verified routed results;
-- GPX export through the system share sheet;
-- optional voice transcription only after runtime permission and physical-device verification;
-- a local Trail Profile with optional planning defaults that can be edited, reset or deleted on the device.
+Public App Store submission additionally requires owner-approved public privacy/support URLs, final App Privacy answers, App Store Connect fields, legal/content-rights decisions, screenshots, and explicit upload/submission authority.
 
-Do not claim live navigation, offline maps, live weather, guaranteed access, water, safety or trail conditions, verified scenic quality without mapped evidence, AI chat/editing, nationwide/global evidence coverage, a purchase/subscription offering, or superiority over a competitor.
+The following are **not V1 blockers under the owner decision for this release**:
 
-Research-guided planning, outdoor evidence, routable-highlight access and Supabase onboarding sync are tracked as disabled. Production composition always selects a no-op profile-sync client in V1. The Superwall SDK remains a linked dependency, but production onboarding uses only the native host and does not construct or present its Superwall client. The current Release prompt parser is local; routing coordinates and constraints go to the configured backend for GraphHopper routing.
+- research-guided planning, outdoor evidence, routable highlights, and remote intent are off;
+- Supabase onboarding/profile sync is off and production composes the no-op sync path;
+- Superwall is off, has an empty key, and native onboarding is used;
+- physical App Attest proof was not available locally and is not used as a stop condition for this V1 audit.
+
+No upload, TestFlight mutation, App Store Connect mutation, backend change, provider change, or live GraphHopper/AI request occurred.
+
+## What V1 can truthfully claim
+
+After production routing is configured, the reviewed V1 surface supports:
+
+- typed hiking, trail-running, and biking route requests;
+- point-to-point and loop planning;
+- mapped route options with routing-response distance, estimated duration, and elevation;
+- comparison, route detail, local saves, and GPX export through the system share sheet;
+- optional Apple Speech transcription when the user invokes voice input;
+- a local Trail Profile that can be edited, reset, or deleted.
+
+V1 does not offer live or turn-by-turn navigation, offline maps, weather, closure/water intelligence, guaranteed safety/access/scenery, remote AI chat or route editing, accounts/cloud sync, subscriptions, or purchases.
+
+Requested preferences are not presented as verified route facts. Safety copy tells users to review the route and check weather, local rules, trail conditions, closures, and water availability.
+
+## Local verification record
+
+| Evidence | Result |
+| --- | --- |
+| Focused release-copy/config regressions | 7/7 passed |
+| Complete deterministic unit suite | 710/710 passed |
+| Explicit live-provider exclusions | 2 methods excluded by name; no live provider traffic |
+| Critical UI matrix | 9/9 passed |
+| Debug Simulator build | Passed |
+| Release Simulator build and launch | Passed on iPhone 17 Pro, iOS 26.5 |
+| Manual Release walkthrough | Home, Profile, Privacy & data, Help & safety, and safe retry/edit error state passed visual review |
+| Release artifact contract | 43/43 passed |
+| Artifact-verifier self-tests | 46 isolated cases plus stale-report recovery passed |
+| Unsigned generic-iOS Release archive | Passed; arm64 app and dSYM present; Xcode store bundle validation passed |
+| Signed distribution archive | Not attempted; Apple team/signing inputs are absent and out of task authority |
+| Physical iPhone run | Not available through the configured device workflow |
+
+The critical UI matrix covered onboarding, point-to-point output, three loop options, native privacy/help, clarification, recoverable retry, no-route recovery, save/reopen/delete, and GPX system handoff.
+
+The manually exercised Release planning request failed safely because production routing is unconfigured. It showed user-safe retry/edit controls and no developer configuration text. Runtime-log checks found zero GraphHopper, OpenAI, or Supabase endpoint hits.
+
+## Release configuration contract
+
+All protected Release feature flags are exactly `false`:
+
+- `DIRECT_GRAPHHOPPER_ENABLED`
+- `INSECURE_LOCAL_BACKEND_AUTH_ENABLED`
+- `IN_MEMORY_APP_ATTEST_ENABLED`
+- `OUTDOOR_EVIDENCE_ENABLED`
+- `REMOTE_INTENT_ENABLED`
+- `RESEARCH_GUIDED_PLANNING_ENABLED`
+- `ROUTABLE_HIGHLIGHT_ACCESS_ENABLED`
+- `SUPABASE_ONBOARDING_SYNC_ENABLED`
+- `SUPERWALL_ENABLED`
+
+Tracked service values for the production backend, Supabase URL/key, and Superwall key are empty. Privacy and support URL slots are empty and fail closed; the app retains complete native Privacy & data and Help & safety pages.
+
+Release uses the production App Attest entitlement. The first-party privacy manifest declares tracking `false`, linked Device ID for App Functionality, and required-reason File Timestamp/UserDefaults APIs. Embedded Superwall and swift-crypto manifests also declare tracking `false`; Superwall declares unlinked Purchase History for App Functionality even though its V1 surface is disabled. The final App Privacy form must reconcile that embedded declaration conservatively.
+
+## Corrections made in this audit
+
+- Replaced developer-only missing-key guidance with a user-safe routing-unavailable message.
+- Replaced “live” and “real route” overclaims with precise routed/mapped wording.
+- Updated release-surface regression tests and forbidden binary markers to prevent those strings returning.
+- Added an identity/version regression for Wanderful, `com.trailmind.app`, and `1.0 (1)`.
+- Added `@MainActor` to the staging UI-test class to remove Swift 6 actor-isolation warnings.
+
+## Exact owner actions
+
+### Required before any TestFlight upload
+
+1. Approve and configure the production GraphHopper routing endpoint used by the existing backend gateway. Keep provider secrets off-device. Verify point-to-point, loop, retry, and no-route behavior from the exact Release build.
+2. Select the Apple Developer team and App Store provisioning setup for `com.trailmind.app`, with the production App Attest capability matching `TrailMindRelease.entitlements`.
+3. Confirm that version/build `1.0 (1)` is unused in App Store Connect; increment the build only if required.
+4. Create a signed Release archive, validate it, run `scripts/verify-release-artifact.sh distribution-signed-archive <archive>`, and perform physical-iPhone smoke testing if a device is available.
+5. Give explicit upload authority. This repository audit does not grant it.
+
+### Required before public App Review submission
+
+1. Publish and configure canonical HTTPS privacy-policy and support URLs with a monitored contact.
+2. Approve the legal entity/developer name, rights to the Wanderful name and supplied assets, copyright, category, age rating, content-rights declaration, storefronts, and export-compliance answers.
+3. Finalize App Privacy answers against the actual production routing retention/logging policy and the embedded Superwall Purchase History declaration.
+4. Create/verify the App Store Connect record and SKU, then approve the metadata in `APP_STORE_METADATA_V1.md` and review notes in `APP_REVIEW_NOTES_V1.md`.
+5. Capture screenshots from the final signed Release build; do not show disabled features.
+6. Give explicit App Review submission authority.
 
 ## Package map
 
-- `RELEASE_GATE_MATRIX.md` — 50-gate authoritative matrix and completion calculation.
-- `APP_STORE_METADATA_V1.md` — constrained, truthful metadata draft.
-- `APP_PRIVACY_QUESTIONNAIRE_V1.md` — current answers and explicit onboarding/Supabase/Superwall deltas.
-- `APP_PRIVACY_DECLARATION_DRAFT_V1.json` — machine-readable provisional App Privacy answers that cannot be published yet.
-- `PRIVACY_POLICY_CONTENT_DRAFT_V1.md` — truthful unhosted policy-page content, separated into current and future/disabled behavior.
-- `SUPPORT_PAGE_CONTENT_DRAFT_V1.md` — truthful unhosted support-page content and safety boundaries.
-- `APP_REVIEW_NOTES_V1.md` — reviewer path and unavailable-feature disclosure.
-- `SCREENSHOT_CAPTURE_PLAN_V1.md` — real-device-size capture plan; no screenshots are generated here.
-- `PRIVACY_SUPPORT_URL_REQUIREMENTS_V1.md` — public URL, legal, contact, retention and deletion requirements.
-- `SIGNING_TESTFLIGHT_ARCHIVE_RUNBOOK_V1.md` — stop-gated path from team setup to review.
-- `APP_ATTEST_PHYSICAL_DEVICE_PROOF_V1.md` — bounded real-iPhone proof protocol.
-- `OWNER_DECISIONS_V1.md` — decisions an engineer must not fabricate.
-- `OWNER_INPUTS_V1.json` — bounded machine-readable owner checklist; every value remains unanswered by default.
-- `EXTERNAL_ASSET_AND_ACCOUNT_INVENTORY_V1.md` — known/unknown external dependencies.
-- `RELEASE_BLOCKERS_V1.json` — machine-readable blockers.
-- `SOURCE_EVIDENCE_MANIFEST_V1.json` — exact source hashes and official references.
+- `RELEASE_GATE_MATRIX.md` — current technical and owner gate status.
+- `RELEASE_BLOCKERS_V1.json` — machine-readable current blockers and follow-ups.
+- `APP_STORE_METADATA_V1.md` — truthful English metadata draft.
+- `APP_PRIVACY_QUESTIONNAIRE_V1.md` and `APP_PRIVACY_DECLARATION_DRAFT_V1.json` — provisional privacy answers.
+- `APP_REVIEW_NOTES_V1.md` — reviewer path once production routing is enabled.
+- `SIGNING_TESTFLIGHT_ARCHIVE_RUNBOOK_V1.md` — bounded owner-operated distribution procedure.
+- `OWNER_DECISIONS_V1.md` — exact non-engineering decisions still required.
+- `SCREENSHOT_CAPTURE_PLAN_V1.md`, `PRIVACY_POLICY_CONTENT_DRAFT_V1.md`, and `SUPPORT_PAGE_CONTENT_DRAFT_V1.md` — final-asset inputs.
 
-## Evidence policy
-
-- Historical release documents are context only, never proof of current completion.
-- A source-backed gate and its built-product counterpart are separate gates.
-- `Configuration/Local.xcconfig` and `backend/.env` are excluded from every inspection, hash, scan and artifact.
-- Unknown values remain `UNKNOWN`; no sample URL, email, Apple identifier, team, product, screenshot or approval state is valid production evidence.
-- The original source inventory was retrieved on 2026-08-23. Apple App Review, App Attest, App ID, upload and TestFlight requirements were rechecked on 2026-08-26; privacy, platform-version metadata, submission workflow and third-party SDK requirements were rechecked against official Apple pages on 2026-08-28.
-
-## Owner/archive prerequisite refresh — 2026-08-28
-
-- The dedicated worktree started clean at exact commit `21f8450c976252210edf03389dc1b682d2440450`. The initial fetch showed no advancement. A final fetch found `origin/main` at `a36c646…`; its changes are confined to the Supabase migration operator lane and do not overlap this App Store package/tooling scope, so this branch remains based on the audited application commit.
-- Focused release, privacy, public-link and accessibility tests passed **60/60**. The complete deterministic non-live unit suite passed **708/708** with only the two explicitly named live-provider methods excluded. All **7/7** completed methods in the relevant UI matrix passed; three CoreSimulator-interrupted attempts were rerun and no completed method failed.
-- The complete backend suite passed **1044/1044** with no skips; backend static validation and both release-package validators pass.
-- Debug, Staging and Release Simulator builds passed. The current Release artifact passes the hardened verifier **43/43**; its isolated regression suite passes **46 cases plus stale-report recovery**.
-- The verifier now binds Release public-link defaults, exact first- and third-party privacy manifests, version/build, dSYM, team, signing/profile/entitlements and source/tooling provenance. Fabricated owner answers, hosted-page claims, URLs, stale hashes and generic-build-as-archive claims are rejected.
-- A read-only signing preflight found zero valid identities, no provisioning-profile directory and no physical iPhone. The unsigned generic iPhoneOS build is retained only as a diagnostic; no `.xcarchive` was created and G-044 remains blocked.
-- Draft privacy-policy and support-page content is intentionally unhosted. The two configured URL values remain empty, and no owner, legal, App Store Connect, TestFlight or public-hosting fact was invented.
-- Historical Stage B and earlier Stage C evidence below remains immutable context and is not relabeled as this refresh's execution.
-
-## Stage B execution record
-
-- The clean isolated worktree selected `79c70f9…`; intervening commits were non-overlapping. The verified release correction is `8fce37f…`. The shared checkout was not changed.
-- The exact iPhone 17 Pro Simulator (`A9194E37-28A7-450E-9F30-95D0145D0486`) and one task-owned DerivedData directory were used. The device was never erased or deleted.
-- The focused suite passed **395/395**. The practical non-live unit target passed **672/672** in 177.6 seconds. The only exclusions were the two explicit live-provider evaluation methods named in the evidence manifest.
-- All **18/18** deterministic critical-path UI tests passed: six were previously proved and the remaining twelve passed in six bounded groups. Attempt 13 staging-proof tests were not authorized or run.
-- Standalone Debug and Release Simulator builds passed before and after the narrow corrections. The post-correction focused regression passed **4/4**.
-- Built Debug and Release products prove Wanderful/com.trailmind.app/1.0(1), iPhone family 1, iOS 26.0, truthful permission text, all four tracked flags false, local Release parsing, empty tracked Supabase/Superwall values, no exported URL scheme, valid signatures, valid first-party/Superwall/swift-crypto privacy manifests, and no forbidden local configuration or credential-pattern match.
-- The Release binary initially contained `FakeVoicePlanningService`, “Live trail geometry” and “trail-network data.” `8fce37f…` DEBUG-gates the fake and replaces the claims with narrower mapped/routed wording; the rebuilt Release contains none of the old symbols/strings. Focused tests pass.
-- The icon source was converted from an opaque RGBA file to RGB without changing pixel RGB data. The rebuilt compiled catalog reports AppIcon `Opaque=true`; the verifier now enforces that contract and passes **37/37** on Release. Its isolated fixture suite passes **25 cases plus stale-report recovery**.
-- Manual deterministic QA covered native onboarding, Home, profile create/edit/reset, clarification, safe error/retry, no-routes, three route choices, detail, save/reopen and GPX share handoff without selecting a destination. Reduce Motion and rapid list reuse remained responsive. Accessibility state exposed meaningful labels.
-- Dark Mode inspection proved the app remains forced light due to `.preferredColorScheme(.light)`. Accessibility XXXL inspection exposed clipping/hyphenation/overlap in route suggestions. Actual VoiceOver focus handoff remains unproved; source/focused tests do not replace that runtime check.
-- Route cards use bounded SwiftUI `Path` thumbnails rather than interactive maps: 512 thumbnail/4,096 map-point caps and cache capacity 48. No obvious rapid-scroll task explosion was observed.
-- After the exact task-owned DerivedData path was confirmed handle-free and removed, storage settled at 28,233,920 / 28,232,880 / 28,232,824 KiB. The Simulator was shut down, not erased or deleted; no pre-existing artifact was removed.
-- No archive was created because it was not necessary for the local artifact claims and would not prove distribution signing. No provider, backend, Supabase, Superwall, App Store Connect, TestFlight, upload or submission traffic or mutation occurred.
-
-## Stage C environment and release-artifact record — 2026-08-26
-
-- Debug, Staging and Release generic Simulator builds passed from one isolated worktree. The complete unit/UI test bundle compiled; tests were not executed because no Simulator was booted or booted by this task.
-- Built identities were exact: `Wanderful Local` / `com.trailmind.app.local` / local / App Attest development; `Wanderful Staging` / `com.trailmind.app.staging` / staging / App Attest production; `Wanderful` / `com.trailmind.app` / production / App Attest production.
-- All nine protected feature flags were `false` in all three products. Backend, Supabase and Superwall configuration values were empty. The production app therefore remains intentionally unavailable for live planning until the hosting lane supplies a reviewed canonical HTTPS URL.
-- The hardened verifier passed **41/41** checks against the built Release app and **38** isolated adversarial cases plus stale-report recovery. It now fails closed on wrong environment identity, missing or enabled flags, nonempty service configuration, placeholder values, release mocks/overclaims, missing attribution and malformed signing/entitlement evidence.
-- A pre-existing `PIPE_FAIL` defect could hide or falsely report large-binary marker matches. The verifier now performs literal in-memory marker checks; a large-binary regression case proves both required and forbidden markers behave deterministically. Generic `XCTest` and Superwall's dormant localhost test-mode string are not used as first-party release markers; linked XCTest frameworks, test bundles and Wanderful-owned test/mock markers remain prohibited.
-- A generic iPhoneOS Release build passed as a non-archive build diagnostic. No `.xcarchive` exists, so archive gate G-044 remains blocked; the diagnostic is not TestFlight, signing or App Store proof.
-- `security find-identity` found zero valid code-signing identities. Read-only device discovery found no connected iPhone. Therefore no signed archive, installation, physical App Attest, TestFlight or App Store Connect action was attempted.
-- The selected Release composition retains required GraphHopper, OpenStreetMap/ODbL and Mapterhorn attribution plus the planning-aid boundary. `FakeVoicePlanningService`, old “Live trail geometry”/“trail-network data” wording, guaranteed-safety/scenic claims and competitor-superiority claims are prohibited.
-- No backend, Supabase, GraphHopper, AI, Superwall or Apple network mutation occurred. `Configuration/Local.xcconfig`, clipboard data, private certificate material and secret values were not inspected.
-
-The machine-readable Stage C record is `APPLE_RELEASE_READINESS_AUDIT_V1.json`. Historical Stage B executed-test evidence remains preserved separately and is not relabeled as current execution.
+Older audit/evidence files in this directory are retained as historical records. They do not override this handoff or prove current signing, public hosting, TestFlight, or App Store Connect state.

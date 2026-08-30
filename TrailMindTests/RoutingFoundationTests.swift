@@ -306,7 +306,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertEqual(
             result.notice,
-            "Wanderful found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct routed loop options from the same start for comparison."
         )
     }
 
@@ -335,7 +335,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertEqual(
             result.notice,
-            "Wanderful found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct routed loop options from the same start for comparison."
         )
     }
 

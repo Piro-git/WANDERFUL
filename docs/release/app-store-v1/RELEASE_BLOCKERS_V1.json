@@ -1,323 +1,102 @@
 {
-  "schema_version": "1.0",
-  "package": "Wanderful App Store Release Package V1",
-  "assessed_at": "2026-08-28",
-  "source_baseline": "21f8450c976252210edf03389dc1b682d2440450",
-  "public_release_decision": "NO-GO",
-  "status_vocabulary": [
-    "open",
-    "resolved",
-    "candidate",
-    "optional"
-  ],
+  "schema_version": 2,
+  "assessment_date": "2026-08-30",
+  "source_baseline": "adea2c08540e87f0acd7eebb976c72eab8eb76c3",
+  "testflight_ready": false,
+  "app_store_ready": false,
   "blockers": [
     {
-      "id": "ASV1-001",
-      "severity": "P1",
-      "title": "Onboarding integration and exact data-flow report reconciled",
-      "owner": "onboarding integration owner",
-      "dependency": "none; integrated at d61011098afa5f53ec4cc8ab1b3503ac1111e04a",
-      "evidence": ["origin/main contains terminal onboarding commits 20526f9 and d610110", "production composition uses local profile storage and an unconditional no-op sync factory", "terminal owner report supplied exact fields, ownership, Auth/deletion/Superwall state and test results"],
-      "acceptance_criterion": "Integrated commit is on origin/main and its exact Release paths, fields, Auth behavior, deletion behavior, events, Superwall state and owned files are independently reconciled.",
-      "status": "resolved",
-      "blocking_public_release": false
+      "id": "WV1-001",
+      "scope": [
+        "testflight",
+        "app_store"
+      ],
+      "title": "Production core routing is unavailable",
+      "owner": "Product and routing service owner",
+      "evidence": "Release backend URL is empty, direct GraphHopper is false, and production fails closed.",
+      "closure": "Configure the approved GraphHopper routing gateway without shipping provider secrets and verify point-to-point, loop, retry, and no-route flows from the exact Release build."
     },
     {
-      "id": "ASV1-002",
-      "severity": "P1",
-      "title": "Final App Privacy answers are unproved",
-      "owner": "privacy owner",
-      "dependency": "ASV1-001, ASV1-003, ASV1-004, ASV1-011, ASV1-013",
-      "evidence": ["APP_PRIVACY_QUESTIONNAIRE_V1.md is explicitly provisional"],
-      "acceptance_criterion": "Published answers match the integrated app, all embedded SDKs, backend retention/linkage and live privacy policy, with no unknown data class.",
-      "status": "open",
-      "blocking_public_release": true
+      "id": "WV1-002",
+      "scope": [
+        "testflight",
+        "app_store"
+      ],
+      "title": "Distribution signing is not configured",
+      "owner": "Apple Developer Account Holder or Admin",
+      "evidence": "DEVELOPMENT_TEAM is empty. Only an unsigned arm64 generic-iOS archive was produced.",
+      "closure": "Select the correct team/App Store profile for com.trailmind.app, archive, validate, and pass distribution-signed-archive verification."
     },
     {
-      "id": "ASV1-003",
-      "severity": "P1",
-      "title": "Superwall and purchase scope is not final",
-      "owner": "product and onboarding owners",
-      "dependency": "owner V1 monetization decision",
-      "evidence": ["Package.resolved includes Superwall 4.16.1", "tracked and built SUPERWALL_API_KEY is empty", "production native onboarding does not construct or present SuperwallOnboardingClient", "Release embeds Superwall resources/privacy manifest but no configured purchase surface was observed"],
-      "acceptance_criterion": "Selected Release proves no reachable paywall/purchase/configuration, or products, disclosures, review data and privacy answers are separately completed.",
-      "status": "open",
-      "blocking_public_release": true
+      "id": "WV1-003",
+      "scope": [
+        "testflight",
+        "app_store"
+      ],
+      "title": "Upload authority has not been granted",
+      "owner": "Release owner",
+      "evidence": "The task explicitly prohibited upload, submission, and deployment.",
+      "closure": "Grant explicit authority after WV1-001 and WV1-002 close."
     },
     {
-      "id": "ASV1-004",
-      "severity": "P1",
-      "title": "Public privacy policy URL and approved hosted content are missing",
-      "owner": "legal, privacy and app owners",
-      "dependency": "real approved HTTPS policy URL and legal owner",
-      "evidence": ["native Privacy & data destination and strict optional external-link slot are implemented", "tracked production privacy URL is empty", "draft policy content is explicitly not hosted"],
-      "acceptance_criterion": "Reachable app-specific policy matches final data flows, is entered in App Store Connect and is easily accessible inside the selected build.",
-      "status": "open",
-      "blocking_public_release": true
+      "id": "WV1-004",
+      "scope": [
+        "app_store"
+      ],
+      "title": "Public privacy and support assets are not configured",
+      "owner": "Legal and support owner",
+      "evidence": "Release privacy and support URL slots are empty; native destinations remain available.",
+      "closure": "Publish canonical HTTPS pages with a monitored contact, legally approve them, and configure the exact URLs."
     },
     {
-      "id": "ASV1-005",
-      "severity": "P1",
-      "title": "Public support URL and contact are missing",
-      "owner": "support, legal and web owners",
-      "dependency": "real monitored contact and HTTPS page",
-      "evidence": ["native Help & safety destination and strict optional external-link slot are implemented", "tracked production support URL is empty", "support contact and hosted page remain UNKNOWN"],
-      "acceptance_criterion": "Reachable support page identifies Wanderful, provides a working monitored contact and meets legal/support content requirements.",
-      "status": "open",
-      "blocking_public_release": true
+      "id": "WV1-005",
+      "scope": [
+        "app_store"
+      ],
+      "title": "App Privacy answers are provisional",
+      "owner": "Privacy/legal and routing service owner",
+      "evidence": "Production routing retention/logging and the embedded Superwall Purchase History declaration need final reconciliation.",
+      "closure": "Approve the exact signed-artifact Xcode privacy report, production data policy, no-tracking answer, and matching public policy."
     },
     {
-      "id": "ASV1-006",
-      "severity": "P1",
-      "title": "Apple team, explicit App ID, certificate and profile are unproved",
-      "owner": "Apple Account Holder or Admin",
-      "dependency": "paid Apple Developer Program and account authority",
-      "evidence": ["DEVELOPMENT_TEAM is empty in source", "read-only local preflight found zero valid code-signing identities and no provisioning-profile directory", "Apple portal state was not inspected"],
-      "acceptance_criterion": "Active team/legal entity, explicit com.trailmind.app ID with App Attest, Apple Distribution identity and matching App Store profile are verified.",
-      "status": "open",
-      "blocking_public_release": true
+      "id": "WV1-006",
+      "scope": [
+        "app_store"
+      ],
+      "title": "App Store Connect and legal decisions are missing",
+      "owner": "Product owner, legal owner, and App Store Connect Account Holder",
+      "evidence": "Record/SKU, name rights, developer identity, copyright, category, age rating, content rights, storefronts, export compliance, and release mode are not repository facts.",
+      "closure": "Record and approve each value in the authorized release system."
     },
     {
-      "id": "ASV1-007",
-      "severity": "P1",
-      "title": "App Store Connect record, SKU and name availability are unknown",
-      "owner": "product and App Store owners",
-      "dependency": "App Store Connect authority and owner choices",
-      "evidence": ["no App Store Connect access or mutation was authorized"],
-      "acceptance_criterion": "A verified app record links the approved Wanderful name, primary language, immutable SKU and exact bundle ID.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-008",
-      "severity": "P1",
-      "title": "Age, categories, geography and legal storefront decisions are open",
-      "owner": "product and legal owners",
-      "dependency": "owner decisions and App Store Connect questionnaire",
-      "evidence": ["Navigation and Health & Fitness are drafts only", "age rating and availability are UNKNOWN"],
-      "acceptance_criterion": "Owner records final categories, current age-rating answers, storefront availability and applicable trader/EULA declarations.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-009",
-      "severity": "P1",
-      "title": "Encryption and export-compliance classification is missing",
-      "owner": "legal and security owners",
-      "dependency": "legal classification and final binary behavior",
-      "evidence": ["no owner-approved export answer or plist declaration was found"],
-      "acceptance_criterion": "Legal owner records App Store export answers/documentation and only then adds any accurate compliance declaration.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-010",
-      "severity": "P1",
-      "title": "Production App Attest lacks real-iPhone proof",
-      "owner": "iOS security and backend owners",
-      "dependency": "signed distributed build, physical iPhone and authorized backend proof window",
-      "evidence": ["Release source entitlement is production", "no valid physical-device receipt exists for the selected build"],
-      "acceptance_criterion": "APP_ATTEST_PHYSICAL_DEVICE_PROOF_V1.md passes valid, replay, tamper and missing-proof cases with independent redacted evidence.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-011",
-      "severity": "P1",
-      "title": "Production backend readiness and provider boundaries are unproved",
-      "owner": "backend, operations and privacy owners",
-      "dependency": "approved production environment evidence",
-      "evidence": ["tracked production backend URL is intentionally empty and the Release lane fails unavailable", "availability, deployed flags, App Attest enforcement, logging, retention and provider accounting are UNKNOWN"],
-      "acceptance_criterion": "Approved evidence proves availability, route contract, fail-closed App Attest, retention, rate limits, deployed flags and exact provider/data attribution.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-012",
-      "severity": "P1",
-      "title": "Stage B local Simulator verification is complete",
-      "owner": "iOS release owner",
-      "dependency": "none; completed with exclusive Xcode ownership and bounded storage",
-      "evidence": ["prerequisite task and independent preflight each supplied three settled readings above 16 GiB", "complete non-live unit target passed 672 tests with zero failures/skips in 177.6 seconds; only the two authorized live-provider methods were excluded", "all 18 deterministic critical-path UI tests passed; the remaining twelve passed in six bounded groups", "standalone Debug and Release Simulator builds passed before and after the correction", "manual deterministic onboarding/profile/planning/compare/detail/save/reopen/GPX/error/retry/accessibility flows were exercised without live traffic", "storage remained above the 10,485,760 KiB hard floor"],
-      "acceptance_criterion": "Focused and practical complete non-live tests, Debug/Release builds and the critical/error paths pass on the authorized iPhone 17 Pro Simulator with bounded DerivedData.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-013",
-      "severity": "P1",
-      "title": "Embedded SDK privacy manifests and signatures are inspected",
-      "owner": "iOS privacy and release owners",
-      "dependency": "none for the selected local Simulator products; re-open if dependencies change",
-      "evidence": ["final Debug and Release contain valid first-party, Superwall and swift-crypto privacy manifests", "Superwall declares unlinked Purchase History for App Functionality plus File Timestamp reason C617.1; swift-crypto declares no collection/access and tracking false", "no dynamic frameworks are embedded", "deep Debug and Release signature verification passed"],
-      "acceptance_criterion": "Selected build's app/framework manifests, required-reason APIs, signatures and combined privacy report are inspected and reconciled.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-014",
-      "severity": "P2",
-      "title": "Standalone Release app icon opacity and variants are proved locally",
-      "owner": "iOS release and brand owners",
-      "dependency": "asset-rights evidence remains under ASV1-023",
-      "evidence": ["source icon is 1024x1024 RGB with no alpha", "pixel RGB SHA-256 was unchanged by the RGBA-to-RGB correction", "final compiled catalog reports AppIcon Opaque=true", "compiled PNG alpha plane is uniformly 255", "release verifier enforces icon_opacity_contract and passes"],
-      "acceptance_criterion": "Built icons have accepted variants, no alpha/transparency or validation error, correct appearance and documented rights.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-015",
-      "severity": "P1",
-      "title": "Required App Store screenshots do not exist",
-      "owner": "product marketing and release owners",
-      "dependency": "verified selected build, fixture, devices and metadata",
-      "evidence": ["SCREENSHOT_CAPTURE_PLAN_V1.md is plan only"],
-      "acceptance_criterion": "One to ten truthful no-alpha screenshots per localization are captured at accepted sizes and match the selected Release build.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-016",
-      "severity": "P2",
-      "title": "Accessibility common-task evidence is pending",
-      "owner": "iOS accessibility and release owners",
-      "dependency": "integrated runtime and representative devices/settings",
-      "evidence": ["focused accessibility identifier/focus/Reduce Motion/contrast/layout tests passed", "deterministic light, dark, increased-contrast and accessibility XXXL UI matrix passed", "route comparison exposes one bounded accessible action", "actual runtime VoiceOver focus handoff and Voice Control remain unproved"],
-      "acceptance_criterion": "All common tasks pass the applicable accessibility criteria; any App Store accessibility claim is limited to proved support.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-017",
-      "severity": "P2",
-      "title": "Fake voice-planning code is excluded from Release",
-      "owner": "iOS release owner",
-      "dependency": "none; corrected at 8fce37f2c4db552a3a2ba8acad636fd0b80327ec",
-      "evidence": ["FakeVoicePlanningService and its preview usage are DEBUG-gated", "release-surface regression explicitly forbids the fake in Release source", "rebuilt Release binary contains no FakeVoicePlanningService string", "focused tests pass"],
-      "acceptance_criterion": "Artifact/runtime proof shows no shipping reachability or binary policy issue, or the smallest non-overlapping tested correction is made.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-018",
-      "severity": "P2",
-      "title": "Release verifier matches Wanderful and accepts embedded SDK manifests",
-      "owner": "iOS release tooling owner",
-      "dependency": "none; audited application baseline at 21f8450c976252210edf03389dc1b682d2440450",
-      "evidence": ["contract preserves CFBundleName TrailMind while expecting Wanderful display/permission text", "verifier requires exact first-party, Superwall and swift-crypto privacy manifests", "verifier enforces production identity/version, nine false flags, four empty services, two empty public-link defaults, owner-supplied expected Team ID, dSYM, signing/profile/entitlements, attribution and compiled icon opacity", "46 isolated adversarial cases plus stale-report recovery pass", "large Release binary marker checks are PIPE_FAIL-safe", "current Release Simulator artifact passes 43 of 43 checks"],
-      "acceptance_criterion": "Artifact verifier accepts the truthful Wanderful identity without weakening other checks; any mismatch is corrected with a focused tooling test.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-019",
-      "severity": "P2",
-      "title": "Provider copy uses evidence-bounded wording",
-      "owner": "iOS product truth owner",
-      "dependency": "none; corrected at 8fce37f2c4db552a3a2ba8acad636fd0b80327ec",
-      "evidence": ["initial Release binary contained Live trail geometry and trail-network data", "shipping copy now says Mapped route geometry, mapped routing data and routed geometry", "three focused wording tests pass", "rebuilt Release contains none of the old claims"],
-      "acceptance_criterion": "Copy is proved by exact response evidence for every reachable case or replaced with narrower truthful wording in a scoped tested change.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-020",
-      "severity": "P1",
-      "title": "Signed archive, validation, TestFlight and App Review gates are open",
-      "owner": "Apple release owner",
-      "dependency": "all local, legal, physical-device and Apple-account gates",
-      "evidence": ["no distribution archive, upload, TestFlight build or submission was authorized/performed", "unsigned generic iPhoneOS Release build passed only as an explicitly non-archive diagnostic"],
-      "acceptance_criterion": "Approved signed archive validates, selected TestFlight build passes QA, metadata/declarations are complete and owner authorizes submission.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-021",
-      "severity": "P2",
-      "title": "Reviewer access requires no credentials for integrated V1",
-      "owner": "onboarding and App Review owners",
-      "dependency": "none for current source; re-open if selected build changes authentication",
-      "evidence": ["production composition creates no account or Auth session", "native onboarding and local Trail Profile require no credentials"],
-      "acceptance_criterion": "Review notes truthfully state no credentials are needed, or a durable authorized review account and instructions are supplied outside git.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-022",
-      "severity": "P2",
-      "title": "Final App Review notes and path are pending",
-      "owner": "iOS release and App Review owners",
-      "dependency": "ASV1-011",
-      "evidence": ["APP_REVIEW_NOTES_V1.md reflects the locally proved native/no-account and deterministic build/runtime path", "production-backend availability, App Attest enforcement and retention remain provisional"],
-      "acceptance_criterion": "Notes match the selected build's onboarding, backend, permissions, account, monetization and deterministic reviewer path.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-023",
-      "severity": "P1",
-      "title": "Content and asset rights declaration is unproved",
-      "owner": "legal, brand and product owners",
-      "dependency": "rights inventory and deployed provider/data sources",
-      "evidence": ["source attribution exists", "ownership/licensing records were not inspected"],
-      "acceptance_criterion": "Owner documents rights for product name, icon/art, onboarding assets, code and exact map/routing/elevation sources and completes App Store declaration.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-024",
-      "severity": "P3",
-      "title": "Optional marketing and accessibility URLs are undecided",
-      "owner": "product and marketing owners",
-      "dependency": "owner choice and real build-matching public pages",
-      "evidence": ["metadata draft intentionally omits optional marketing URL"],
-      "acceptance_criterion": "Omit optional URLs or provide reachable app-specific pages with truthful claims.",
-      "status": "optional",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-025",
-      "severity": "P1",
-      "title": "Built identity, flags, permissions, entitlements and secret absence are proved locally",
-      "owner": "iOS release and security owners",
-      "dependency": "physical-device entitlement proof remains under ASV1-010",
-      "evidence": ["final Debug, Staging and Release Info.plist products prove exact lane identities, 1.0/1, iPhone family 1, iOS 26.0 and truthful purpose strings", "all nine protected feature flags are false", "tracked backend, Supabase, Superwall, privacy and support values are empty and Release parser is local", "bundles contain no forbidden local configuration/API-key Info key or credential-pattern match", "source maps local to development and staging/production to production App Attest; Simulator evidence does not prove physical App Attest", "secret-bearing local files were explicitly excluded"],
-      "acceptance_criterion": "Built products show exact identity/version/platform, expected purpose strings/entitlements/flags and no key, token, local configuration or forbidden endpoint material.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-026",
-      "severity": "P2",
-      "title": "Metadata lacks owner and selected-build approval",
-      "owner": "product, legal and release owners",
-      "dependency": "owner decisions",
-      "evidence": ["APP_STORE_METADATA_V1.md is a source-backed draft"],
-      "acceptance_criterion": "Limits, rights, categories, screenshots and every claim are approved and reconciled to Release-reachable behavior.",
-      "status": "open",
-      "blocking_public_release": true
-    },
-    {
-      "id": "ASV1-027",
-      "severity": "P2",
-      "title": "Adaptive light and dark appearance is locally corrected",
-      "owner": "iOS design and accessibility owners",
-      "dependency": "none for current audited baseline; re-open on theme or release-surface change",
-      "evidence": ["production no longer applies a forced color scheme", "adaptive and increased-contrast theme-role tests pass", "standard light and dark deterministic App Store visual paths pass"],
-      "acceptance_criterion": "Remove or justify the forced appearance, verify all release surfaces in Dark Mode, and pass contrast/readability regression without redesign drift.",
-      "status": "resolved",
-      "blocking_public_release": false
-    },
-    {
-      "id": "ASV1-028",
-      "severity": "P2",
-      "title": "Route suggestions support accessibility XXXL locally",
-      "owner": "iOS design and accessibility owners",
-      "dependency": "none for current audited baseline; re-open on route-card or suggestion-header layout change",
-      "evidence": ["route cards switch to an expanded accessibility layout", "header line limits are removed at accessibility sizes", "accessibility XXXL light/dark deterministic route paths pass and remain reachable"],
-      "acceptance_criterion": "Route suggestion cards remain legible, non-overlapping and operable at accessibility XXXL, with focused UI and visual regression coverage.",
-      "status": "resolved",
-      "blocking_public_release": false
+      "id": "WV1-007",
+      "scope": [
+        "app_store"
+      ],
+      "title": "Final screenshots are missing",
+      "owner": "Product marketing and release QA",
+      "evidence": "No final signed-build App Store screenshot set was created in this audit.",
+      "closure": "Capture only Release-reachable V1 surfaces from the final signed build."
     }
+  ],
+  "non_blocking_follow_ups": [
+    {
+      "id": "WV1-F01",
+      "title": "Physical iPhone smoke test",
+      "note": "No device was available through the configured workflow. Test routing and optional voice permissions on the signed build if a device is available."
+    },
+    {
+      "id": "WV1-F02",
+      "title": "Production App Attest operational proof",
+      "note": "Recommended after signing and routing configuration, but not a standalone stop condition for this V1 audit."
+    }
+  ],
+  "explicit_non_blockers": [
+    "Research-guided planning remains disabled",
+    "Outdoor evidence remains disabled",
+    "Remote intent remains disabled",
+    "Routable highlights remain disabled",
+    "Supabase onboarding/profile sync remains disabled",
+    "Superwall presentation and purchases remain disabled"
   ]
 }

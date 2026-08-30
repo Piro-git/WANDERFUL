@@ -1755,7 +1755,7 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         let flexibleModeNotice =
             "GraphHopper round trips need flexible mode on this API plan, so Wanderful built loop options from normal routed segments."
         let loopComparisonNotice =
-            "Wanderful found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct routed loop options from the same start for comparison."
         let cases: [
             (
                 name: String,

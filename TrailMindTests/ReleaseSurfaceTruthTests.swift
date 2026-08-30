@@ -70,7 +70,7 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("requested preferences"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("I don’t know yet"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("what you ask for later always wins"))
-        XCTAssertTrue(copy.localizedCaseInsensitiveContains("real route"))
+        XCTAssertTrue(copy.localizedCaseInsensitiveContains("routed option"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("distance, time and elevation"))
         XCTAssertFalse(copy.localizedCaseInsensitiveContains("a few optional answers"))
     }
@@ -125,6 +125,47 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         ] {
             XCTAssertTrue(sharedConfiguration.contains(setting), "Missing disabled setting: \(setting)")
         }
+    }
+
+    func testShippingIdentityUsesWanderfulPublicNameAndCurrentVersion() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let productionConfiguration = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "Configuration/Production.xcconfig"
+            ),
+            encoding: .utf8
+        )
+        let project = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind.xcodeproj/project.pbxproj"
+            ),
+            encoding: .utf8
+        )
+        let contractData = try Data(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "scripts/release-contract.json"
+            )
+        )
+        let contract = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: contractData) as? [String: Any]
+        )
+        let product = try XCTUnwrap(contract["product"] as? [String: Any])
+
+        XCTAssertTrue(productionConfiguration.contains("TRAILMIND_DISPLAY_NAME = Wanderful"))
+        XCTAssertFalse(productionConfiguration.contains("TRAILMIND_DISPLAY_NAME = TrailMind"))
+        XCTAssertTrue(
+            productionConfiguration.contains(
+                "TRAILMIND_PRODUCT_BUNDLE_IDENTIFIER = com.trailmind.app"
+            )
+        )
+        XCTAssertEqual(product["display_name"] as? String, "Wanderful")
+        XCTAssertEqual(product["bundle_identifier"] as? String, "com.trailmind.app")
+        XCTAssertEqual(product["marketing_version"] as? String, "1.0")
+        XCTAssertEqual(product["build_number"] as? String, "1")
+        XCTAssertTrue(project.contains("MARKETING_VERSION = 1.0;"))
+        XCTAssertTrue(project.contains("CURRENT_PROJECT_VERSION = 1;"))
     }
 
     func testReleaseUsesAdaptiveAppearanceAndEmptyPublicLinkDefaults() throws {
