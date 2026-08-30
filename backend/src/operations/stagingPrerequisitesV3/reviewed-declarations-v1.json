@@ -7,7 +7,7 @@
     "catalog.extensions",
     "catalog.functions",
     "catalog.indexes",
-    "catalog.migration_ledger_001_008",
+    "catalog.migration_ledger_supabase_phase1_v2",
     "catalog.policies",
     "catalog.relation_acls",
     "catalog.relations",
@@ -47,7 +47,7 @@
     "trailmind_app.outdoor_evidence_relation_members_segment_region_fk",
     "trailmind_app.outdoor_evidence_trail_segments_import_region_fk"
   ],
-  "contractId": "trailmind.staging.prerequisites.v3.catalog.001-008",
+  "contractId": "trailmind.staging.prerequisites.v3.catalog.supabase-phase1-v2",
   "digestAlgorithm": "sha256",
   "extensions": [
     {
@@ -136,6 +136,10 @@
     "trailmind_app.outdoor_research_sources_category_lifecycle_idx",
     "trailmind_app.outdoor_research_sources_refresh_idx"
   ],
+  "migrationProfile": {
+    "profileId": "supabase_phase1_v2",
+    "schemaVersion": 1
+  },
   "migrations": [
     {"id":"001","path":"backend/migrations/001_app_attest.sql","sha256":"f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16"},
     {"id":"002","path":"backend/migrations/002_outdoor_evidence.sql","sha256":"750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d"},
@@ -144,7 +148,8 @@
     {"id":"005","path":"backend/migrations/005_outdoor_research_projection_geometry.sql","sha256":"945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8"},
     {"id":"006","path":"backend/migrations/006_outdoor_route_membership_point_index.sql","sha256":"13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4"},
     {"id":"007","path":"backend/migrations/007_routable_highlight_access_geography_index.sql","sha256":"d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7"},
-    {"id":"008","path":"backend/migrations/008_outdoor_research_runtime_read_contract.sql","sha256":"e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32"}
+    {"id":"009","path":"backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql","sha256":"92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"},
+    {"id":"010","path":"backend/migrations/010_bounded_outdoor_import_schema_provisioning.sql","sha256":"62f23c605654fc3e58661646d376bf68cca8e95c0e9354dc9da6d77c765ef467"}
   ],
   "policyTemplates": [
     {"command":"INSERT","name":"app_security_runtime_insert","roles":["app_security_runtime_role"],"tables":["app_attest_challenges","app_attest_keys","app_attest_provider_leases","app_attest_rate_windows","app_attest_request_ids","app_attest_route_sessions"]},
@@ -214,6 +219,18 @@
     {"allowedOwners":["postgres"],"name":"trailmind_gis"}
   ],
   "sourceFiles": [
+    {"path":"backend/src/operations/stagingPhase1V2ProductionObserverContract.js","sha256":"517ef7af4d23670b4563520683418ca6d4bb950a095ef192209f447eb6e49c34"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/admissionEvidence.js","sha256":"acdb311c97155aca2c9eabc2517ad7ca9553f413233af4d7231963bce6647061"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/caPin.js","sha256":"43b75ceabd263014077a025eee17e7dcbc85ace5010396ba9fcfd6a5019dbf51"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/canonicalJson.js","sha256":"ba33611d74b1c4eae24545df62e60df91b4ee30f4ac03b7b39461747b12d1f35"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/catalogAssertion.js","sha256":"1f75ff56be0a0a101661417b77027c147ab45c40929e473f313b83a8fa075650"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/constants.js","sha256":"9d9fce632d0e03a7b8f45ff9b24b5896a2438b52e185101be1de1bbc0cafbca9"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/expectedManifest.js","sha256":"3d4c2b9815a9a21ee3135f4974ef7988cf4fdf15b53199055585bb1bccc18d5b"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/independentSessionProof.js","sha256":"5c9134495b6cc1eab7632de68cdd0540901eda46c46bfe530ad63b4e87574c14"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/migrationProfiles.js","sha256":"a674ab764630e8e905b86f9127c712483948335a77cbff4d45c76b76b66a49e8"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/readiness.js","sha256":"05c98eb4d5533cba0580d6dda55490dc736b37c7846b60ae74043218443898ce"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/safeFiles.js","sha256":"8b67befdf8a51a7a219c10445311c26e5afdc692a1e6f475a7ea60e302cb65cb"},
+    {"path":"backend/src/operations/stagingPrerequisitesV3/signing.js","sha256":"580242bc34d57ec30e90061651534ee019c55d5350160d60153deb208d023681"},
     {"path":"docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql","sha256":"3945c51cf26ca178e2bb2d6bfa7ac49aa6cf1bbcb268bf68272216efce153456"},
     {"path":"docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql","sha256":"feb13b3f6ea6a538f6cd5223030fecca1cb0195bce3e0eb0204aed704ea0c16b"}
   ],

@@ -4,10 +4,13 @@ Status: **offline candidate; not ready for live admission**
 
 Target name: `TrailMind Outdoor Staging V1`
 
-This package prepares five trust pins without accessing Supabase, a provider
-API, a remote database, a credential store, or a deployment surface. It does
-not authorize an initialization. The production observer and its existing
-tests are outside this package and are not modified.
+This integrated package prepares five trust pins without accessing Supabase, a
+provider API, a remote database, a credential store, or a deployment surface.
+The no-argument observer remains blocked. An explicit evidence adapter can
+admit only one empty, internal, feature-disabled staging initialization after
+all reviewed pins, source-bound digests, CA, signature, Git/run bindings, and
+three-session cleanup proof validate. It never admits production and never
+registers a production factory.
 
 ## What exists
 
@@ -19,10 +22,10 @@ tests are outside this package and are not modified.
   unknown, non-boolean, oversized, or query-error result blocks.
 - The expected-manifest compiler reads only allowlisted reviewed files in this
   repository. It verifies their exact SHA-256 values before compiling. The
-  reviewed declaration binds the requested historical ledger `001` through
-  `008`, required schemas, roles, functions, relations, named constraints,
-  required indexes, policies, RLS, ACL checks, PostGIS topology, and the
-  independent auditor contract.
+  reviewed declaration binds the fixed target to the exact
+  `supabase_phase1_v2` ledger (`001`–`007`, `009`, `010`), required schemas,
+  roles, functions, relations, named constraints, required indexes, policies,
+  RLS, ACL checks, PostGIS topology, and the independent auditor contract.
 - Ed25519 tooling generates candidate key material only in an explicit
   operator-owned directory outside the repository, derives a stable key ID
   from the public SPKI SHA-256, signs canonical receipts, and verifies against
@@ -44,7 +47,18 @@ tests are outside this package and are not modified.
   before the guarded drop phase.
 - The independent-session harness uses one primary auditor connection followed
   by two new cleanup connections with distinct application names, PIDs, and
-  transactions. It never substitutes two samples on one session.
+  transactions. Its receipt retains all three public session identities and
+  binds two zero-leak observations plus the bounded monotonic separation. It
+  never substitutes two samples on one session.
+- The observer evidence adapter consumes only an explicit reviewed-pins
+  contract, the repository-compiled target/profile manifest and catalog
+  program, an exact CA file, an Ed25519 envelope verified against the reviewed
+  public-key pin, a least-privilege auditor/session proof, immutable Git
+  commit/tree/run bindings, disabled flags, and restricted observations. It
+  requires an injected replay store and fails closed on any unknown field or
+  mismatch. A signature proves authenticity and integrity only; freshness is
+  separately bounded by the signed canonical observation time and truth still
+  depends on the independently reviewed assertion process.
 
 ## Candidate values and absent reviewed values
 
@@ -53,24 +67,56 @@ tests are outside this package and are not modified.
 | `artifactContract.key.keyId` | deliberately not generated | absent |
 | `artifactContract.key.requiredPinnedPublicKeySpkiSha256` | deliberately not generated | absent |
 | `auditorContract.connection.sslrootcertSha256` | requires an explicitly supplied CA file | absent |
-| `staticGate.independentCatalogAssertionProgramSha256` | `4986636d8750a024fa5ebece4da1eb02f767c4def1cb7a4ab1d210c778798ec6` | absent |
-| `staticGate.independentExpectedManifestSha256` | `8b0c8254578c183e0681e1aec5868bba5c1d72bd7ef01c81ed34ca68aab4cb26` | absent |
+| `staticGate.independentCatalogAssertionProgramSha256` | `1b2f1ad373b5fb2ef58b4b21fccf602d64360f6a99b7c79a4abd88c6d399b889` | absent |
+| `staticGate.independentExpectedManifestSha256` | `2a6a8e9f1caff83ef3fcb24d4f1373397732ed67ba899a38d4e4910ced7f6a00` | absent |
 
 These are candidate digests, not approved trust anchors. Recompute them from
 the reviewed commit. Never copy values from console output directly into an
 admission contract without independent source review and a separate review
 receipt.
 
-## Important migration-policy boundary
+The integrated dormant observer source manifest currently has candidate source
+digest `6ae3179cdf9f7c18bb751274a6d35158e52367d7b39da4585e94d9d74d88b840`
+and package digest
+`e5200338957937c0cf404d18ab265c23e66961d3a3a70785460e558a4662df79`.
+They cover the observer and admission-critical prerequisite sources but remain
+candidate values; the production package stays unregistered.
 
-The v3 declaration intentionally implements the requested ledger `001–008`.
-The current isolated Supabase Phase 1 V2 operator in this baseline instead
-declares `001–007 + 009 + 010`; migration `009` is mutually exclusive with
-historical `008`. This package does not edit or silently reconcile that
-separate operator. A future admission must use exactly one independently
-reviewed ledger and matching pre/post programs. Any mismatch remains
-`not_ready`; no adapter may waive it or generate an expected manifest from the
-live database.
+## Migration-profile boundary
+
+The package has two explicit schema-versioned profiles:
+
+- `generic_postgres_v1` is exactly migrations `001`–`008` and declares only
+  `generic_postgresql_only` compatibility. It cannot be selected for
+  `TrailMind Outdoor Staging V1`.
+- `supabase_phase1_v2` is exactly migrations `001`–`007`, `009`, and `010` and
+  is the only profile accepted for `TrailMind Outdoor Staging V1`.
+
+Migration `008` and either `009` or `010` in one ledger are a typed runtime
+boundary conflict. Mixing, omission, addition, reorder, duplicate, path drift,
+hash drift, schema-version drift, or fixed-target/profile mismatch blocks.
+The expected manifest is compiled only from the reviewed Supabase profile and
+matching V2 pre/post programs; it is never synthesized from a live catalog.
+
+## Current Supabase platform boundaries reviewed for this candidate
+
+- Supabase now ignores explicit extension-version clauses and installs the
+  project default extension version. The selected migrations do not rely on a
+  requested extension version; later live review must observe the installed
+  version rather than treating a version clause as a pin.
+- New-project Data API exposure is becoming opt-in. This package relies on
+  exact catalog ACL/RLS assertions and private schemas, never on automatic
+  `anon`, `authenticated`, or `service_role` grants.
+- Any future database connection must enforce TLS and verify the reviewed CA
+  and host (`sslmode=verify-full`). A TLS handshake or signature cannot replace
+  exact CA-pin and least-privilege role checks.
+- Temporary token-based database access remains a feature preview, is disabled
+  by default, requires SSL enforcement and role mapping, and is not operational
+  proof for this candidate. No admission path depends on it.
+- Production remains blocked on exact billing/usage, provider-enforced sibling
+  project isolation, causal Advisor freshness, and an independently reviewed
+  launcher/factory seam. Free/nano observations, no selected add-ons, response
+  shape, and signatures never satisfy those gates.
 
 ## Offline preparation
 
@@ -157,15 +203,19 @@ ledger or any product relation.
 3. In a later authorized ceremony, review the public SPKI and CA file through
    independent channels. Confirm the key ID is derived from the reviewed SPKI
    digest.
-4. Create one immutable review receipt per pin. A review receipt contains only
-   `pinPath`, a safe `reviewId`, and the SHA-256 of the independent review
-   evidence. It contains no key, certificate bytes, credential, or provider
-   response.
+4. Create one immutable review receipt per pin. Each receipt binds an exact
+   `artifact.pinPath` and `artifact.pinValue`, a safe `reviewId`, and a distinct
+   `reviewer.reviewerId`. The reviewer identity digest is recomputed from that
+   identity, and `reviewSha256` is recomputed from the complete unsigned receipt.
+   All five artifact paths, review IDs, reviewer identities, reviewer digests,
+   and receipt digests must be distinct and ordered by pin path. Receipts contain
+   no key, certificate bytes, credential, or provider response.
 5. In a new reviewed commit, replace the null values in
    `reviewed-pins-v1.json` and add all five ordered review receipts. Never
    populate a pin from runtime discovery or trust-on-first-use.
 6. Rerun readiness. `offline_prerequisites_ready` means only that this offline
-   package and all review receipts agree. It is not live approval.
+   package and all review receipts agree. It is not live approval and does not
+   populate the five committed null defaults automatically.
 
 ## Future live admission
 
@@ -187,8 +237,9 @@ does none of them.
    its canonical result with the reviewed expected manifest. Unknown or false
    assertions block.
 5. Sign a strict receipt binding schema version, run ID, candidate commit/tree,
-   program digest, manifest digest, auditor role/application/PID/session digest,
-   result digest, and canonical observation time. Verify before interpreting.
+   target/profile, exact CA digest, program digest, manifest digest, auditor
+   role/application/PID/session digest, catalog result, complete evidence-bundle
+   digest, and canonical observation time. Verify before interpreting.
 6. Disconnect mutation and primary-auditor sessions. Use two new auditor
    connections and fresh read-only transactions to prove two zero-row cleanup
    observations separated by a bounded monotonic interval.
@@ -217,3 +268,5 @@ production workload safety, or future schema behavior. Exact invoice/usage is
 an external limitation. Advisor responses still lack a causal freshness
 binding to the DDL, so signatures or static assertions do not establish causal
 Advisor freshness. These limitations remain false in every readiness receipt.
+The committed product, provider, insecure-transport, migration-execution, and
+production-admission flags remain disabled in every staging-admissible bundle.

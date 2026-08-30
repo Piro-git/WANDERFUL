@@ -1,4 +1,5 @@
 export * from "./auditorLifecycle.js";
+export * from "./admissionEvidence.js";
 export * from "./caPin.js";
 export * from "./canonicalJson.js";
 export * from "./catalogAssertion.js";
@@ -6,6 +7,7 @@ export * from "./constants.js";
 export * from "./errors.js";
 export * from "./expectedManifest.js";
 export * from "./independentSessionProof.js";
+export * from "./migrationProfiles.js";
 export * from "./readiness.js";
 export * from "./safeFiles.js";
 export * from "./signing.js";

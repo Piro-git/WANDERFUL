@@ -118,7 +118,7 @@ WITH manifest AS (
            value->'catalog'->'roleRules'
          ) AS source(item)
 ), checks AS (
-  SELECT 'catalog.migration_ledger_001_008'::text AS id,
+  SELECT 'catalog.migration_ledger_supabase_phase1_v2'::text AS id,
          COALESCE((
            SELECT pg_catalog.array_agg(ledger.version ORDER BY ledger.version)
              FROM ${AUDITOR_LEDGER_FUNCTION} ledger

@@ -75,24 +75,28 @@ describe("staging prerequisites v3 strict contracts", () => {
     const second = compileExpectedManifest({ repositoryRoot: ".." });
     assert.equal(first.sha256, second.sha256);
     assert.equal(first.canonical, second.canonical);
-    assert.equal(first.manifest.migrationLedger.length, 8);
+    assert.equal(first.manifest.migrationLedger.length, 9);
     assert.deepEqual(first.manifest.migrationLedger.map(({ id }) => id),
-      ["001", "002", "003", "004", "005", "006", "007", "008"]);
+      ["001", "002", "003", "004", "005", "006", "007", "009", "010"]);
+    assert.equal(first.manifest.migrationProfile.profileId,
+      "supabase_phase1_v2");
     assert.equal(first.manifest.assertions.length, ASSERTION_IDS.length);
   });
 
   it("fails closed when a reviewed source digest drifts or is unavailable", async () => {
     const directory = temporaryDirectory();
     const declaration = strictParseJson(await readFile(DEFAULT_DECLARATION_PATH));
-    declaration.migrations[0].sha256 = "0".repeat(64);
+    const originalSourceSha256 = declaration.sourceFiles[0].sha256;
+    declaration.sourceFiles[0].sha256 = "0".repeat(64);
     const path = join(directory, "declaration.json");
     await writeFile(path, `${canonicalJson(declaration)}\n`, { mode: 0o600 });
     assert.throws(
       () => compileExpectedManifest({ declarationPath: path, repositoryRoot: ".." }),
       hasCode("source_digest_drift")
     );
-    declaration.migrations[0].path =
-      "backend/migrations/001_unavailable.sql";
+    declaration.sourceFiles[0].sha256 = originalSourceSha256;
+    declaration.sourceFiles.at(-1).path =
+      "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2_UNAVAILABLE.sql";
     await writeFile(path, `${canonicalJson(declaration)}\n`, { mode: 0o600 });
     assert.throws(
       () => compileExpectedManifest({ declarationPath: path, repositoryRoot: ".." }),

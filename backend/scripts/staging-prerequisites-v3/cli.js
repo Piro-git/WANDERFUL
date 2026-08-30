@@ -77,8 +77,10 @@ async function main(argv) {
     output({
       candidateOnly: true,
       independentExpectedManifestSha256: compiled.sha256,
+      migrationProfileId: compiled.manifest.migrationProfile.profileId,
       outputWritten: Boolean(options["--output-file"]),
-      status: "candidate"
+      status: "candidate",
+      targetProjectName: compiled.manifest.targetProjectName
     });
     return;
   }

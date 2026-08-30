@@ -21,18 +21,20 @@ export const DEFAULT_REVIEWED_PINS_PATH = resolve(
 );
 
 export function buildReadinessContract({
+  reviewedPins,
   reviewedPinsPath = DEFAULT_REVIEWED_PINS_PATH,
   repositoryRoot = resolve(packageDirectory, "../../../../"),
   declarationPath
 } = {}) {
-  const bytes = readSafeRegularFile(resolve(reviewedPinsPath), {
-    maximumBytes: 32 * 1024
-  });
-  const pins = strictParseJson(bytes, { maximumBytes: 32 * 1024 });
+  const pins = reviewedPins === undefined
+    ? strictParseJson(readSafeRegularFile(resolve(reviewedPinsPath), {
+      maximumBytes: 32 * 1024
+    }), { maximumBytes: 32 * 1024 })
+    : strictParseJson(canonicalJson(reviewedPins), { maximumBytes: 32 * 1024 });
   validateReviewedPins(pins);
   const manifest = compileExpectedManifest({ declarationPath, repositoryRoot });
   const programSha256 = catalogAssertionProgramSha256();
-  const flattened = flattenPins(pins);
+  const flattened = flattenReviewedPins(pins);
   const missing = PIN_PATHS.filter((path) => flattened[path] === null);
   const issueCodes = [...missing.map((path) => `missing:${path}`)];
   if (flattened[PIN_PATHS[3]] !== null &&
@@ -47,7 +49,9 @@ export function buildReadinessContract({
       stableKeyId(flattened[PIN_PATHS[1]]) !== flattened[PIN_PATHS[0]]) {
     issueCodes.push("mismatch:artifactContract.key.keyId");
   }
-  const reviewedPaths = new Set(pins.reviewReceipts.map(({ pinPath }) => pinPath));
+  const reviewedPaths = new Set(pins.reviewReceipts.map(
+    ({ artifact }) => artifact.pinPath
+  ));
   for (const path of PIN_PATHS) {
     if (flattened[path] !== null && !reviewedPaths.has(path)) {
       issueCodes.push(`unreviewed:${path}`);
@@ -63,7 +67,9 @@ export function buildReadinessContract({
       artifactContractPublicKeySpkiSha256: null,
       auditorSslrootcertSha256: null,
       independentCatalogAssertionProgramSha256: programSha256,
-      independentExpectedManifestSha256: manifest.sha256
+      independentExpectedManifestSha256: manifest.sha256,
+      migrationProfileId: manifest.manifest.migrationProfile.profileId,
+      targetProjectName: manifest.manifest.targetProjectName
     },
     externalLimitations: {
       advisorCausalFreshnessEstablished: false,
@@ -102,7 +108,7 @@ export function validateReviewedPins(value) {
     "independentCatalogAssertionProgramSha256",
     "independentExpectedManifestSha256"
   ], "pins_static_keys");
-  const flattened = flattenPins(value);
+  const flattened = flattenReviewedPins(value);
   for (const path of PIN_PATHS) {
     const pin = flattened[path];
     if (pin === null) continue;
@@ -114,23 +120,52 @@ export function validateReviewedPins(value) {
   if (!Array.isArray(value.reviewReceipts) || value.reviewReceipts.length > 5) {
     blocked("review_receipts");
   }
-  value.reviewReceipts.forEach((receipt) => {
-    exactKeys(receipt, ["pinPath", "reviewId", "reviewSha256"], "review_receipt_keys");
-    if (!PIN_PATHS.includes(receipt.pinPath) ||
-        typeof receipt.reviewId !== "string" || !SAFE_ID.test(receipt.reviewId) ||
-        typeof receipt.reviewSha256 !== "string" || !HEX_64.test(receipt.reviewSha256)) {
-      blocked("review_receipt");
-    }
-  });
-  const paths = value.reviewReceipts.map(({ pinPath }) => pinPath);
+  value.reviewReceipts.forEach((receipt) => validateReviewReceipt(
+    receipt, flattened
+  ));
+  const paths = value.reviewReceipts.map(({ artifact }) => artifact.pinPath);
+  const reviewIds = value.reviewReceipts.map(({ reviewId }) => reviewId);
+  const reviewDigests = value.reviewReceipts.map(({ reviewSha256 }) =>
+    reviewSha256);
+  const reviewerIds = value.reviewReceipts.map(({ reviewer }) =>
+    reviewer.reviewerId);
+  const reviewerDigests = value.reviewReceipts.map(({ reviewer }) =>
+    reviewer.reviewerIdentitySha256);
   if (new Set(paths).size !== paths.length ||
+      new Set(reviewIds).size !== reviewIds.length ||
+      new Set(reviewDigests).size !== reviewDigests.length ||
+      new Set(reviewerIds).size !== reviewerIds.length ||
+      new Set(reviewerDigests).size !== reviewerDigests.length ||
       paths.some((path, index) => index > 0 && path <= paths[index - 1])) {
     blocked("review_receipt_order");
   }
   return value;
 }
 
-function flattenPins(value) {
+export function createReviewReceipt({
+  pinPath,
+  pinValue,
+  reviewId,
+  reviewerId
+}) {
+  const unsigned = {
+    artifact: { pinPath, pinValue },
+    reviewId,
+    reviewer: {
+      reviewerId,
+      reviewerIdentitySha256: reviewerIdentitySha256(reviewerId)
+    }
+  };
+  const receipt = {
+    ...unsigned,
+    reviewSha256: sha256Bytes(canonicalJson(unsigned))
+  };
+  validateReviewReceipt(receipt, { [pinPath]: pinValue });
+  return deepFreeze(receipt);
+}
+
+export function flattenReviewedPins(value) {
+  validateReviewedPinsShape(value);
   return {
     [PIN_PATHS[0]]: value.artifactContract.key.keyId,
     [PIN_PATHS[1]]: value.artifactContract.key.requiredPinnedPublicKeySpkiSha256,
@@ -138,6 +173,50 @@ function flattenPins(value) {
     [PIN_PATHS[3]]: value.staticGate.independentCatalogAssertionProgramSha256,
     [PIN_PATHS[4]]: value.staticGate.independentExpectedManifestSha256
   };
+}
+
+function validateReviewedPinsShape(value) {
+  if (!value || typeof value !== "object" || !value.artifactContract?.key ||
+      !value.auditorContract?.connection || !value.staticGate) {
+    blocked("pins_keys");
+  }
+}
+
+function validateReviewReceipt(receipt, flattened) {
+  exactKeys(receipt, [
+    "artifact", "reviewId", "reviewSha256", "reviewer"
+  ], "review_receipt_keys");
+  exactKeys(receipt.artifact, ["pinPath", "pinValue"],
+    "review_receipt_artifact_keys");
+  exactKeys(receipt.reviewer, ["reviewerId", "reviewerIdentitySha256"],
+    "review_receipt_reviewer_keys");
+  const { pinPath, pinValue } = receipt.artifact;
+  if (!PIN_PATHS.includes(pinPath) || flattened[pinPath] === null ||
+      pinValue !== flattened[pinPath] ||
+      typeof receipt.reviewId !== "string" || !SAFE_ID.test(receipt.reviewId) ||
+      typeof receipt.reviewer.reviewerId !== "string" ||
+      !SAFE_ID.test(receipt.reviewer.reviewerId) ||
+      receipt.reviewer.reviewerIdentitySha256 !==
+        reviewerIdentitySha256(receipt.reviewer.reviewerId) ||
+      typeof receipt.reviewSha256 !== "string" ||
+      !HEX_64.test(receipt.reviewSha256)) {
+    blocked("review_receipt");
+  }
+  const unsigned = {
+    artifact: receipt.artifact,
+    reviewId: receipt.reviewId,
+    reviewer: receipt.reviewer
+  };
+  if (receipt.reviewSha256 !== sha256Bytes(canonicalJson(unsigned))) {
+    blocked("review_receipt_digest");
+  }
+}
+
+function reviewerIdentitySha256(reviewerId) {
+  if (typeof reviewerId !== "string" || !SAFE_ID.test(reviewerId)) {
+    blocked("reviewer_identity");
+  }
+  return sha256Bytes(canonicalJson({ reviewerId }));
 }
 
 function validKeyIdOrNull(path, value) {

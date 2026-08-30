@@ -17,6 +17,12 @@ import {
   strictParseJson
 } from "./canonicalJson.js";
 import { blocked } from "./errors.js";
+import {
+  MIGRATION_PROFILE_SCHEMA_VERSION,
+  migrationProfile,
+  SUPABASE_PHASE1_PROFILE_ID,
+  validateMigrationProfileSelection
+} from "./migrationProfiles.js";
 import { readSafeRegularFile } from "./safeFiles.js";
 
 const packageDirectory = dirname(fileURLToPath(import.meta.url));
@@ -26,8 +32,9 @@ export const DEFAULT_DECLARATION_PATH = resolve(
 );
 const ROOT_KEYS = Object.freeze([
   "assertionIds", "auditor", "constraints", "contractId", "digestAlgorithm",
-  "extensions", "functions", "indexes", "migrations", "policyTemplates",
-  "relations", "roleRules", "schemas", "sourceFiles", "targetProjectName"
+  "extensions", "functions", "indexes", "migrationProfile", "migrations",
+  "policyTemplates", "relations", "roleRules", "schemas", "sourceFiles",
+  "targetProjectName"
 ]);
 
 export function compileExpectedManifest({
@@ -41,6 +48,7 @@ export function compileExpectedManifest({
     maximumBytes: LIMITS.manifestBytes
   });
   validateDeclaration(declaration);
+  const profile = migrationProfile(declaration.migrationProfile.profileId);
   verifySourceFiles(declaration, resolve(repositoryRoot));
   const policies = expandPolicyTemplates(declaration.policyTemplates);
   const manifest = {
@@ -60,6 +68,11 @@ export function compileExpectedManifest({
     declarationSha256: sha256Bytes(declarationBytes),
     digestAlgorithm: "sha256",
     migrationLedger: cloneJson(declaration.migrations),
+    migrationProfile: {
+      compatibility: profile.compatibility,
+      profileId: profile.profileId,
+      schemaVersion: profile.schemaVersion
+    },
     schemaVersion: EXPECTED_MANIFEST_SCHEMA_VERSION,
     sourceFiles: cloneJson(declaration.sourceFiles),
     targetProjectName: declaration.targetProjectName
@@ -76,8 +89,8 @@ export function compileExpectedManifest({
 export function validateExpectedManifest(manifest) {
   exactKeys(manifest, [
     "assertions", "auditor", "catalog", "contractId", "declarationSha256",
-    "digestAlgorithm", "migrationLedger", "schemaVersion", "sourceFiles",
-    "targetProjectName"
+    "digestAlgorithm", "migrationLedger", "migrationProfile", "schemaVersion",
+    "sourceFiles", "targetProjectName"
   ], "manifest_keys");
   if (manifest.schemaVersion !== EXPECTED_MANIFEST_SCHEMA_VERSION ||
       manifest.targetProjectName !== TARGET_PROJECT_NAME ||
@@ -98,7 +111,13 @@ export function validateExpectedManifest(manifest) {
     "manifest_assertion_order"
   );
   validateAuditor(manifest.auditor);
-  validateMigrations(manifest.migrationLedger);
+  validateProfileMetadata(manifest.migrationProfile);
+  validateMigrationProfileSelection({
+    migrations: manifest.migrationLedger,
+    profileId: manifest.migrationProfile.profileId,
+    schemaVersion: manifest.migrationProfile.schemaVersion,
+    targetProjectName: manifest.targetProjectName
+  });
   validateSources(manifest.sourceFiles);
   validateCatalog(manifest.catalog);
   if (Buffer.byteLength(canonicalJson(manifest)) > LIMITS.manifestBytes) {
@@ -120,7 +139,13 @@ function validateDeclaration(value) {
   }
   assertExactArray(value.assertionIds, ASSERTION_IDS, "declaration_assertions");
   validateAuditor(value.auditor);
-  validateMigrations(value.migrations);
+  validateProfileMetadata(value.migrationProfile, { declaration: true });
+  validateMigrationProfileSelection({
+    migrations: value.migrations,
+    profileId: value.migrationProfile.profileId,
+    schemaVersion: value.migrationProfile.schemaVersion,
+    targetProjectName: value.targetProjectName
+  });
   validateSources(value.sourceFiles);
   validateCatalog({
     constraints: value.constraints,
@@ -153,18 +178,19 @@ function validateAuditor(value) {
       membership.setOption !== true) blocked("auditor_memberships");
 }
 
-function validateMigrations(values) {
-  if (!Array.isArray(values) || values.length !== 8) blocked("migration_count");
-  values.forEach((item, index) => {
-    exactKeys(item, ["id", "path", "sha256"], "migration_keys");
-    const id = String(index + 1).padStart(3, "0");
-    if (item.id !== id || typeof item.path !== "string" ||
-        !item.path.startsWith(`backend/migrations/${id}_`) ||
-        !item.path.endsWith(".sql") || !HEX_64.test(item.sha256)) {
-      blocked("migration_identity");
-    }
-  });
-  assertSortedUnique(values.map(({ path }) => path), "migration_order");
+function validateProfileMetadata(value, { declaration = false } = {}) {
+  const keys = declaration
+    ? ["profileId", "schemaVersion"]
+    : ["compatibility", "profileId", "schemaVersion"];
+  exactKeys(value, keys, "migration_profile_metadata_keys");
+  if (value.schemaVersion !== MIGRATION_PROFILE_SCHEMA_VERSION ||
+      value.profileId !== SUPABASE_PHASE1_PROFILE_ID) {
+    blocked("migration_profile_metadata");
+  }
+  if (!declaration && value.compatibility !==
+      migrationProfile(value.profileId).compatibility) {
+    blocked("migration_profile_metadata");
+  }
 }
 
 function validateSources(values) {
@@ -174,12 +200,19 @@ function validateSources(values) {
   values.forEach((item) => {
     exactKeys(item, ["path", "sha256"], "source_file_keys");
     if (typeof item.path !== "string" || !HEX_64.test(item.sha256) ||
-        !item.path.startsWith("docs/operations/staging-v1/") ||
+        !isAdmissionSourcePath(item.path) ||
         item.path.includes("..") || item.path.includes("\\")) {
       blocked("source_file_identity");
     }
   });
   assertSortedUnique(values.map(({ path }) => path), "source_file_order");
+}
+
+function isAdmissionSourcePath(path) {
+  return path.startsWith("docs/operations/staging-v1/") ||
+    path.startsWith("backend/src/operations/stagingPrerequisitesV3/") ||
+    path ===
+      "backend/src/operations/stagingPhase1V2ProductionObserverContract.js";
 }
 
 function validateCatalog(catalog) {

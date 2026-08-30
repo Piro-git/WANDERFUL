@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
 import { TextDecoder } from "node:util";
+import {
+  validateStagingInitializationEvidence
+} from "./stagingPrerequisitesV3/admissionEvidence.js";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -160,48 +163,74 @@ export class StagingPhase1V2ProductionObserverContractError extends Error {
   }
 }
 
-export function evaluateStagingPhase1V2AdmissionLevel(level) {
+export function evaluateStagingPhase1V2AdmissionLevel(
+  level,
+  explicitEvidence,
+  evidenceDependencies = {}
+) {
   if (!STAGING_PHASE1_V2_ADMISSION_LEVELS.includes(level)) {
     blocked("admission_level");
   }
   const pins = STAGING_PHASE1_V2_PRODUCTION_OBSERVER_POLICY.pins;
   const blockers = [];
-  const requirePin = (name, value) => {
-    if (typeof value !== "string" || value.length === 0) {
-      blockers.push({ category: "unmet_pin", code: name });
+  let validatedEvidence;
+  if (explicitEvidence === undefined || explicitEvidence === null) {
+    const requirePin = (name, value) => {
+      if (typeof value !== "string" || value.length === 0) {
+        blockers.push({ category: "unmet_pin", code: name });
+      }
+    };
+    requirePin("artifact_key_id_unpinned", pins.artifactKeyId);
+    if (!DIGEST_PATTERN.test(pins.artifactPublicKeySpkiSha256 ?? "")) {
+      blockers.push({
+        category: "unmet_pin", code: "artifact_public_key_unpinned"
+      });
     }
-  };
-  requirePin("artifact_key_id_unpinned", pins.artifactKeyId);
-  if (!DIGEST_PATTERN.test(pins.artifactPublicKeySpkiSha256 ?? "")) {
+    if (!DIGEST_PATTERN.test(pins.auditorSslrootcertSha256 ?? "")) {
+      blockers.push({ category: "unmet_pin", code: "auditor_ca_unpinned" });
+    }
+    if (!DIGEST_PATTERN.test(
+      pins.independentCatalogAssertionProgramSha256 ?? ""
+    )) {
+      blockers.push({
+        category: "unmet_pin", code: "static_catalog_program_unpinned"
+      });
+    }
+    if (!DIGEST_PATTERN.test(
+      pins.independentExpectedManifestSha256 ?? ""
+    )) {
+      blockers.push({
+        category: "unmet_pin", code: "static_expected_manifest_unpinned"
+      });
+    }
     blockers.push({
-      category: "unmet_pin", code: "artifact_public_key_unpinned"
+      category: "evidence_unavailable", code: "auditor_proof_unavailable"
     });
-  }
-  if (!DIGEST_PATTERN.test(pins.auditorSslrootcertSha256 ?? "")) {
-    blockers.push({ category: "unmet_pin", code: "auditor_ca_unpinned" });
-  }
-  if (!DIGEST_PATTERN.test(
-    pins.independentCatalogAssertionProgramSha256 ?? ""
-  )) {
     blockers.push({
-      category: "unmet_pin", code: "static_catalog_program_unpinned"
+      category: "evidence_unavailable", code: "signing_proof_unavailable"
     });
-  }
-  if (!DIGEST_PATTERN.test(
-    pins.independentExpectedManifestSha256 ?? ""
-  )) {
     blockers.push({
-      category: "unmet_pin", code: "static_expected_manifest_unpinned"
+      category: "evidence_unavailable",
+      code: "cleanup_independent_sessions_unavailable"
     });
+  } else {
+    try {
+      validatedEvidence = validateStagingInitializationEvidence(
+        explicitEvidence,
+        {
+          ...evidenceDependencies,
+          consume: level === "staging_initialization"
+        }
+      );
+    } catch (error) {
+      blockers.push({
+        category: "evidence_invalid",
+        code: typeof error?.code === "string"
+          ? error.code
+          : "evidence_validation_failed"
+      });
+    }
   }
-
-  // No live auditor or signed artifact proof exists in this offline candidate.
-  blockers.push({ category: "evidence_unavailable", code: "auditor_proof_unavailable" });
-  blockers.push({ category: "evidence_unavailable", code: "signing_proof_unavailable" });
-  blockers.push({
-    category: "evidence_unavailable",
-    code: "cleanup_independent_sessions_unavailable"
-  });
 
   if (level === "production_admission") {
     blockers.push(
@@ -213,6 +242,10 @@ export function evaluateStagingPhase1V2AdmissionLevel(level) {
       {
         category: "platform_limitation",
         code: "advisor_causal_freshness_unproved"
+      },
+      {
+        category: "capability_unavailable",
+        code: "production_factory_unregistered"
       }
     );
   }
@@ -229,20 +262,32 @@ export function evaluateStagingPhase1V2AdmissionLevel(level) {
       advisorCausalFreshness: "unproved",
       exactInvoiceAmount: "unavailable",
       exactUsageAmount: "unavailable",
-      freePlan: "unobserved",
-      selectedPaidAddons: "unobserved"
+      freePlan: validatedEvidence ? "verified" : "unobserved",
+      selectedPaidAddons: validatedEvidence ? "verified_none" : "unobserved"
     },
-    factoryRegistrationAllowed: uniqueBlockers.length === 0,
+    factoryRegistrationAllowed: false,
+    initializationAllowed:
+      level === "staging_initialization" && uniqueBlockers.length === 0,
     productFlagsRequiredState: "disabled"
   });
 }
 
-export function assertStagingPhase1V2StagingInitializationAdmission() {
-  return assertAdmissionDecision("staging_initialization");
+export function assertStagingPhase1V2StagingInitializationAdmission(
+  explicitEvidence,
+  evidenceDependencies
+) {
+  return assertAdmissionDecision(
+    "staging_initialization", explicitEvidence, evidenceDependencies
+  );
 }
 
-export function assertStagingPhase1V2ProductionAdmission() {
-  return assertAdmissionDecision("production_admission");
+export function assertStagingPhase1V2ProductionAdmission(
+  explicitEvidence,
+  evidenceDependencies
+) {
+  return assertAdmissionDecision(
+    "production_admission", explicitEvidence, evidenceDependencies
+  );
 }
 
 export function assertStagingPhase1V2ProductionObserverCapabilities() {
@@ -598,8 +643,10 @@ export function validateStagingPhase1V2CleanupSamples(value, expected) {
   });
 }
 
-function assertAdmissionDecision(level) {
-  const decision = evaluateStagingPhase1V2AdmissionLevel(level);
+function assertAdmissionDecision(level, explicitEvidence, evidenceDependencies) {
+  const decision = evaluateStagingPhase1V2AdmissionLevel(
+    level, explicitEvidence, evidenceDependencies
+  );
   if (decision.status !== "admitted") {
     throw new StagingPhase1V2ProductionObserverContractError(
       `${level}_blocked`,

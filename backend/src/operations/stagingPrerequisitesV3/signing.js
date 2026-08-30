@@ -15,6 +15,7 @@ import {
   LIMITS,
   SIGNATURE_DOMAIN,
   SIGNED_RECEIPT_SCHEMA_VERSION,
+  TARGET_PROJECT_NAME,
   UUID
 } from "./constants.js";
 import {
@@ -24,6 +25,10 @@ import {
   strictParseJson
 } from "./canonicalJson.js";
 import { blocked } from "./errors.js";
+import {
+  MIGRATION_PROFILE_SCHEMA_VERSION,
+  SUPABASE_PHASE1_PROFILE_ID
+} from "./migrationProfiles.js";
 import { atomicWriteFile, readSafeRegularFile } from "./safeFiles.js";
 
 const PRIVATE_KEY_FILE = "trailmind-observer-ed25519.pk8";
@@ -227,13 +232,20 @@ export function writeSignedEnvelope(path, signed) {
 
 function validateUnsignedReceipt(value) {
   exactKeys(value, [
-    "auditorIdentity", "candidateGitCommit", "candidateGitTree",
-    "expectedManifestSha256", "observedAt", "programSha256", "result",
-    "runId", "schemaVersion"
+    "auditorIdentity", "auditorSslrootcertSha256", "candidateGitCommit",
+    "candidateGitTree", "catalogResultSha256", "expectedManifestSha256",
+    "migrationProfileId", "migrationProfileSchemaVersion", "observedAt",
+    "programSha256", "result", "runId", "schemaVersion",
+    "targetProjectName"
   ], "receipt_keys");
   if (value.schemaVersion !== SIGNED_RECEIPT_SCHEMA_VERSION ||
+      value.migrationProfileSchemaVersion !== MIGRATION_PROFILE_SCHEMA_VERSION ||
+      value.migrationProfileId !== SUPABASE_PHASE1_PROFILE_ID ||
+      value.targetProjectName !== TARGET_PROJECT_NAME ||
       !UUID.test(value.runId) || !HEX_40.test(value.candidateGitCommit) ||
       !HEX_40.test(value.candidateGitTree) ||
+      !HEX_64.test(value.auditorSslrootcertSha256) ||
+      !HEX_64.test(value.catalogResultSha256) ||
       !HEX_64.test(value.expectedManifestSha256) ||
       !HEX_64.test(value.programSha256) ||
       typeof value.observedAt !== "string" ||

@@ -119,13 +119,15 @@ async function runSessionProof({
     const result = {
       authorizationEligible,
       cleanupObservations: [
-        { applicationName: applications[1], zeroLeak: true },
-        { applicationName: applications[2], zeroLeak: true }
+        cleanupPublicIdentity(firstIdentity),
+        cleanupPublicIdentity(secondIdentity)
       ],
       primaryResultSha256: primaryResult.resultSha256,
       proofMode,
       proofSchemaVersion: 1,
+      sampleSeparationMilliseconds: Number(separation / 1_000_000n),
       sessionCount: 3,
+      sessionIdentities: identities.map(publicIdentity),
       snapshotsFresh: true,
       status: "pass"
     };
@@ -137,6 +139,22 @@ async function runSessionProof({
     if (error?.name === "StagingPrerequisitesV3Error") throw error;
     blocked("session_proof_failed");
   }
+}
+
+function publicIdentity(value) {
+  return {
+    applicationName: value.applicationName,
+    backendPid: value.backendPid,
+    sessionIdentitySha256: value.sessionIdentitySha256,
+    snapshotSha256: value.snapshotSha256
+  };
+}
+
+function cleanupPublicIdentity(value) {
+  return {
+    ...publicIdentity(value),
+    zeroLeak: true
+  };
 }
 
 async function runDisposableLocalAssertion(client) {

@@ -1,7 +1,7 @@
 export const PACKAGE_SCHEMA_VERSION = 3;
-export const EXPECTED_MANIFEST_SCHEMA_VERSION = 1;
-export const READINESS_SCHEMA_VERSION = 1;
-export const SIGNED_RECEIPT_SCHEMA_VERSION = 1;
+export const EXPECTED_MANIFEST_SCHEMA_VERSION = 2;
+export const READINESS_SCHEMA_VERSION = 2;
+export const SIGNED_RECEIPT_SCHEMA_VERSION = 2;
 export const TARGET_PROJECT_NAME = "TrailMind Outdoor Staging V1";
 export const AUDITOR_ROLE = "trailmind_phase1_v2_stats_auditor";
 export const AUDITOR_LEDGER_FUNCTION =
@@ -43,7 +43,7 @@ export const ASSERTION_IDS = Object.freeze([
   "catalog.extensions",
   "catalog.functions",
   "catalog.indexes",
-  "catalog.migration_ledger_001_008",
+  "catalog.migration_ledger_supabase_phase1_v2",
   "catalog.policies",
   "catalog.relation_acls",
   "catalog.relations",

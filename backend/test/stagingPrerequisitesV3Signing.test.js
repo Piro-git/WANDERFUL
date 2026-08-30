@@ -154,14 +154,19 @@ function validReceipt() {
       roleName: "trailmind_phase1_v2_stats_auditor",
       sessionIdentitySha256: "b".repeat(64)
     },
+    auditorSslrootcertSha256: "2".repeat(64),
     candidateGitCommit: "c".repeat(40),
     candidateGitTree: "d".repeat(40),
+    catalogResultSha256: "3".repeat(64),
     expectedManifestSha256: "e".repeat(64),
+    migrationProfileId: "supabase_phase1_v2",
+    migrationProfileSchemaVersion: 1,
     observedAt: "2026-08-30T12:00:00.000Z",
     programSha256: "f".repeat(64),
     result: { digest: "1".repeat(64), status: "pass" },
     runId: "11111111-1111-4111-8111-111111111111",
-    schemaVersion: 1
+    schemaVersion: 2,
+    targetProjectName: "TrailMind Outdoor Staging V1"
   };
 }
 
