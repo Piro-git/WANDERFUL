@@ -1,23 +1,32 @@
 # Secure Phase 1 V2 live launcher v1
 
-Status: fail-closed local boundary package. This document does not authorize a
-remote run, is not evidence that staging was admitted, and does not claim that
-the real admission is currently executable.
+Status: authenticated production observer implemented and locally verified.
+This document does not authorize a remote run, is not evidence that staging
+was observed or admitted, and is not a substitute for fresh credentials and a
+separately authorized attempt.
 
 ## Current production status
 
-The repository does not have a trustworthy authenticated implementation for
-Supabase control-plane, billing, advisor, protected-project, and independent
-post-disconnect session observations. The available authenticated capability
-exists outside this standalone Node.js process. This release therefore has no
-registered production observer.
+The repository now contains one internally constructed production observer.
+It uses the official Supabase Management API with a short-lived OAuth access
+token limited to `projects:read`, `organizations:read`, and `database:read`,
+plus an independent TLS-verified PostgreSQL auditor session. Personal access
+tokens (`sbp_`) are rejected because they inherit a user's privileges and are
+not the reviewed least-privilege credential for this operation.
 
-The live entry point stops with the bounded status `observer_required` before
-Git inspection, CA access, action authorization, password intake, attempt or
-envelope creation, DNS, sockets, database access, mutation, or receipt
-publication. Supplying an application callback, copied package metadata,
-synthetic preflight observer, manually populated object, or JSON file instead
-stops with `observer_untrusted`. There is no public observer-registration API.
+The singleton is trusted by private object identity and binds a digest of its
+checked-in source into its package identity and every machine artifact. There
+is no public registration API, dynamic module path, plugin directory,
+environment-selected implementation, generic transport, or callback capable
+of gaining production trust. Copied metadata and the synthetic observer remain
+non-authorizing. Live mode also rejects every dependency override and invokes
+only the checked-in admission and single-session mutation adapter; dependency
+injection remains available only to the zero-remote synthetic preflight.
+
+The implementation is structurally available, but this task performed no
+Management API request, database connection, credential retrieval, mutation,
+or real admission. A live attempt remains prohibited until the branch is
+independently integrated and a new attempt is explicitly authorized.
 
 Do not enter advisor counts, digests, timestamps, protected-project claims,
 final-state confirmations, or `SESSION_CLOSED` text at a TTY. Manual assertions
@@ -41,11 +50,12 @@ The boundary separates three authorities:
 
 1. The checked-in launcher pins the exact Git candidate, target, endpoint,
    TLS/CA policy, operator package, and authorization-envelope contract.
-2. A future separately reviewed machine observer must produce the technical
-   control-plane and cleanup observations. TTY input is never accepted as
-   evidence.
-3. After the observer passes, the launcher may authorize the exact action and
-   own password intake through a real no-echo TTY and unlinked descriptor.
+2. The internal machine observer produces authenticated control-plane,
+   advisor, database ACL, and independent cleanup observations. TTY input is
+   never accepted as evidence.
+3. Only after the pre-control Management API gate passes may the launcher read
+   the reviewed CA, authorize the exact action, and accept the database
+   password through a real no-echo TTY.
 
 The launcher has no generic SQL runner, project selector, host override,
 database URL, or migration-file override. The existing
@@ -54,10 +64,68 @@ mutation adapter.
 
 ## Machine-observer contract
 
-`stagingPhase1V2MachineObserver.js` defines the strict contract and the only
-future production trust-anchor registration point. A reviewed implementation
-must be installed inside that module/package; arbitrary application code
-cannot promote itself by copying a package ID or digest.
+`stagingPhase1V2MachineObserver.js` defines the strict contract and constructs
+the only production trust anchor. Arbitrary application code cannot promote
+itself by copying a package ID or digest.
+
+The control-plane transport is native HTTPS and has no injection seam. It is
+limited to 12 GET requests total, with no retry or redirect, to the exact
+`api.supabase.com` host and five reviewed endpoint shapes:
+
+- exact target project;
+- exact organization;
+- one bounded, complete organization-project inventory page;
+- exact target security advisors with `lint_type=sql`;
+- exact target performance advisors.
+
+DNS answers must all be public addresses. One resolved address is pinned to
+the TLS socket while SNI and certificate hostname verification remain bound to
+`api.supabase.com`. Only TLS 1.2 or 1.3, HTTP 200, current `Date`, exact JSON
+content type, bounded bodies, strict response schemas, a five-second per-call
+budget, and a true 20-second aggregate phase deadline are accepted. DNS is
+inside the same remaining request budget. Raw responses are discarded after
+their canonical digests are recorded.
+
+Supabase currently marks the advisor endpoints as experimental/deprecated.
+The observer uses their documented read-only `database:read` capability, but
+does not normalize away a platform change: an endpoint, status, or schema
+change is an observer failure that prevents admission until this reviewed
+package is updated.
+
+The control token is read only from an owner-owned, mode `0600`, unlinked
+inherited descriptor. It is never accepted through arguments, environment,
+clipboard, tracked files, URLs, or logs. Authentication, schema, freshness,
+target, organization, region, status, Free-plan, nano-compute, PostgreSQL 17,
+advisor, or protected-inventory ambiguity fails closed before mutation.
+Personal access tokens, publishable/secret API keys, and legacy `anon` or
+`service_role` JWTs are rejected. The credential gate does not assume that a
+Management API OAuth access token must be opaque: Supabase documents the
+scopes and bearer semantics, but not a stable token encoding. Least privilege
+therefore comes from the reviewed OAuth grant plus the observer's GET-only
+transport, not from an invented token prefix.
+
+The feature-flag evidence is sampled from the launcher process at each full
+control observation and rejects any defined deploy, import, provider, or
+insecure-local flag. Provider configuration is deliberately not inspected by
+this task; the evidence is precisely the local launcher containment state.
+
+The database observer is a second connection with a distinct run-bound
+`trailmind_p1v2_auditor_*` application name. It reuses the one-time database
+identity through a second independently opened descriptor created before the
+password file is unlinked; the mutating operator still has exactly one session.
+The auditor requires verify-full TLS, the pinned endpoint address, channel
+binding, PostgreSQL 17, the reviewed `postgres`/`supautils` platform identity,
+a stable distinct PID, `BEGIN READ ONLY`, transaction-local statement/lock/
+idle timeouts, and no advisory lock. It exposes no generic query method. Every
+query is selected from a static digest-published SQL manifest with exact
+parameters.
+
+Before mutation, the auditor proves the application foundation is empty and
+computes independent shared-ACL and provider restore-plan digests. Later
+observations reject ACL drift. After confirmed operator teardown and advisory
+lock release, the still-independent auditor queries `pg_stat_activity` for the
+exact mutating application name and PID, explicitly excludes itself, and must
+observe zero active and zero idle matching sessions.
 
 Each canonical observation is bounded to 32 KiB and binds:
 
@@ -99,9 +167,9 @@ npm run db:migrate:supabase-postgis-isolation-v2:preflight
 Preflight creates a synthetic task-owned CA and password and a pinned
 `synthetic-preflight` observer session. It exercises clean Git and candidate
 digests, CA/file protections, no-echo intake abstraction, exclusive password
-and envelope creation, descriptor unlink/closure, admission consumption, and
-all four observer phases. It then validates and deletes its task-owned
-artifacts.
+and envelope creation, two independent same-identity password descriptors,
+unlink/closure, admission consumption, and all four observer phases. It then
+validates and deletes its task-owned artifacts.
 
 The synthetic observer is explicitly non-authorizing, is tracked by private
 object identity, and is rejected by the production entry point. Preflight
@@ -114,7 +182,7 @@ race, observer-contract failure, or missing local OpenSSL fails locally.
 
 ## Live command and safe operator steps
 
-The eventual fixed command shape is:
+The fixed command shape for a separately authorized future attempt is:
 
 ```text
 npm run db:migrate:supabase-postgis-isolation-v2 -- \
@@ -123,33 +191,32 @@ npm run db:migrate:supabase-postgis-isolation-v2 -- \
   --address <exact-resolved-public-ip>
 ```
 
-Do not use it for a real attempt in this release: it intentionally returns
-`observer_required`. The safe steps now are:
+Do not use it as part of this implementation task. The safe next steps are:
 
 1. Run the zero-network preflight and independently review this package.
-2. Implement and review a machine observer through the pinned internal trust
-   anchor, with least-privilege authenticated read-only Supabase capabilities
-   and independent post-disconnect database session inspection.
-3. Add integration tests that prove the real observer emits the exact causal
-   sequence and cannot be substituted, replayed, or used cross-target.
+2. Independently integrate and review the internal production observer and
+   launcher branch without changing its target or trust boundary.
+3. Provision a short-lived OAuth access token from a reviewed Supabase OAuth
+   application that has only `projects:read`, `organizations:read`, and
+   `database:read`. Do not use a personal or service-role key.
 4. Obtain a fresh, separate authorization for one staging attempt only after
-   that observer implementation is reviewed and committed.
-5. For that later attempt, obtain a newly supplied official target-project CA
+   the integrated commit is clean and reviewed.
+5. For that attempt, obtain a newly supplied official target-project CA
    outside the repository as a canonical, owner-owned, single-link regular
    file with mode `0600`.
-6. Run the fixed command from a clean reviewed commit. The only TTY evidence
-   input will be the exact action authorization; the password will use the
-   no-echo prompt.
+6. Run the fixed command from the clean reviewed commit. The no-echo TTY reads
+   the scoped OAuth token first; only after authenticated pre-control passes
+   does it read the exact action authorization and database password.
 
-Never place the password in an argument, environment variable, pipe, tracked
-file, shell substitution, process argument, history, clipboard, Codex chat, or
-provider configuration. Never use `Configuration/Local.xcconfig` or
+Never place either credential in an argument, environment variable, pipe,
+tracked file, shell substitution, process argument, history, clipboard, Codex
+chat, or provider configuration. Never use `Configuration/Local.xcconfig` or
 `supabase/.temp` for this operation.
 
 ## Authorization, mutation, and terminal guarantees
 
-Once a reviewed observer is installed, every invocation will use distinct
-attempt, run, and authorization UUIDs. A fresh five-minute `O_EXCL` envelope
+Every invocation uses distinct attempt, run, and authorization UUIDs. A fresh
+five-minute `O_EXCL` envelope
 will bind the candidate commit/tree and clean-Git attestation; exact target,
 endpoint and TLS identity; CA digest and password-FD containment facts;
 operator/SQL/migration/capacity/lifecycle/dependency/package digests; observer
@@ -157,9 +224,11 @@ artifact and provider ACL restore-plan digests; and single-use issue/expiry
 identity. No unavailable field may be fabricated.
 
 The password file is exclusively created with mode `0600`, validated as an
-owner-owned single-link regular non-symlink, opened on a descriptor at least 3,
-and unlinked before database work. Password buffers are wiped and the
-descriptor is closed on every outcome.
+owner-owned single-link regular non-symlink, opened twice to two distinct file
+descriptors with independent open-file descriptions and the same device/inode,
+then unlinked before database work. Both descriptors are validated at link
+count zero. Password buffers are wiped and both descriptors are closed on
+success, failure, cancellation, and signal paths.
 
 The adapter preserves one TLS-verified session, stable PID, session advisory
 lock, bounded role transitions, reviewed migration order, cancellation latch,

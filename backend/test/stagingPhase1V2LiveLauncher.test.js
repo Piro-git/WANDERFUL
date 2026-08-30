@@ -11,9 +11,11 @@ import {
   lstatSync,
   linkSync,
   openSync,
+  readSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   symlinkSync,
   unlinkSync,
   writeSync
@@ -30,10 +32,6 @@ import {
   runStagingPhase1V2PreflightOnly,
   StagingPhase1V2LiveLauncherError
 } from "../src/operations/stagingPhase1V2LiveLauncher.js";
-import {
-  createSyntheticStagingPhase1V2ObserverFactory
-} from "../src/operations/stagingPhase1V2MachineObserver.js";
-
 const REPOSITORY_ROOT = realpathSync(new URL("../..", import.meta.url));
 const CANDIDATE = "10dd59adf4b12dec8288e261438331db78fff9b2";
 const CANDIDATE_TREE = "ae82c3e2e4693ae911587e3fbba2516469c9e4d2";
@@ -98,21 +96,26 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     }
     assert.deepEqual(timeout.rawModes, [true, false]);
     assert.equal(timeout.input.listenerCount("data"), 0);
+
+    const cancelled = fakeProcessStreams();
+    const cancellation = createNoEchoTtyAdapter(cancelled).readSecret(
+      "Secret: ", { maximumBytes: 64, timeoutMilliseconds: 1_000 }
+    );
+    setImmediate(() => cancelled.input.emit("data", Buffer.from([3])));
+    await assert.rejects(cancellation, fixed("cancelled"));
+    assert.deepEqual(cancelled.rawModes, [true, false]);
+    assert.equal(cancelled.input.listenerCount("data"), 0);
   });
 
   it("rejects non-TTY, piped, argument, environment and clipboard-style secret sources before adapter work", async () => {
-    let calls = 0;
     const base = {
       mode: "live",
       caPath: "/private/tmp/not-opened-ca.pem",
       endpointClass: "direct",
       address: "2606:4700:4700::1111"
     };
-    await assert.rejects(runStagingPhase1V2LiveLauncher(base, {
-      env: {}, tty: { isTTY: false },
-      runAuthorized: async () => { calls += 1; }
-    }), fixed("tty_required"));
-    assert.equal(calls, 0);
+    await assert.rejects(runStagingPhase1V2LiveLauncher(base),
+      fixed("tty_required"));
 
     for (const argv of [
       ["--password", SECRET],
@@ -123,92 +126,102 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     ]) assert.throws(() => parseLiveLauncherArguments(argv),
       /secret_input_source|arguments/);
 
-    await assert.rejects(runStagingPhase1V2LiveLauncher(base, {
-      env: { PGPASSWORD: SECRET }, tty: { isTTY: true },
-      runAuthorized: async () => { calls += 1; }
-    }), fixed("environment_secret_source"));
-    assert.equal(calls, 0);
+    const previous = process.env.PGPASSWORD;
+    process.env.PGPASSWORD = SECRET;
+    try {
+      await assert.rejects(runStagingPhase1V2LiveLauncher(base),
+        fixed("environment_secret_source"));
+    } finally {
+      if (previous === undefined) delete process.env.PGPASSWORD;
+      else process.env.PGPASSWORD = previous;
+    }
   });
 
-  it("requires the production observer before prompt, Git, CA, envelope, receipt, network, database or adapter work", async () => {
-    const root = await mkdtemp("/private/tmp/trailmind-observer-required-test.");
-    temporaryRoots.push(root);
+  it("rejects every production dependency override before prompt, Git, CA, database or adapter work", async () => {
     const calls = {
-      adapter: 0, database: 0, git: 0, io: 0, line: 0, network: 0, secret: 0
+      adapter: 0, injectedFactory: 0, line: 0, secret: 0
     };
-    const typedManualEvidence = {
+    const tty = {
       isTTY: true,
       async readLine() {
         calls.line += 1;
-        return "0";
+        throw new Error("must stop before action authorization");
       },
       async readSecret() {
         calls.secret += 1;
         return Buffer.from(SECRET);
       }
     };
-    await assert.rejects(runStagingPhase1V2LiveLauncher({
-      mode: "live",
-      caPath: join(root, "must-not-be-opened.pem"),
-      endpointClass: "direct",
-      address: "2606:4700:4700::1111"
-    }, {
-      env: {},
-      tty: typedManualEvidence,
-      temporaryBase: root,
-      observer: {
-        typedAdvisorCounts: [0, 0],
-        typedCleanup: "SESSION_CLOSED:41241:0:0"
-      },
-      gitInspection() { calls.git += 1; },
-      io: new Proxy({}, {
-        get() {
-          calls.io += 1;
-          return () => { throw new Error("must not perform file IO"); };
-        }
-      }),
-      networkCounter: calls.network,
-      databaseCounter: calls.database,
-      runAuthorized: async () => { calls.adapter += 1; }
-    }), fixed("observer_required"));
-    assert.deepEqual(calls, {
-      adapter: 0, database: 0, git: 0, io: 0, line: 0, network: 0, secret: 0
-    });
-    assert.deepEqual(readdirSync(root), []);
-  });
-
-  it("rejects arbitrary and synthetic observer packages before password or adapter work", async () => {
-    let secretReads = 0;
-    let adapterCalls = 0;
     const options = {
       mode: "live",
       caPath: "/private/tmp/must-not-be-opened.pem",
       endpointClass: "direct",
       address: "2606:4700:4700::1111"
     };
-    for (const observerPackage of [
-      {},
-      {
-        packageDigest: "a".repeat(64),
-        async inspectPre() { return { blockingFindingCount: 0 }; }
-      },
-      createSyntheticStagingPhase1V2ObserverFactory()
-    ]) {
-      await assert.rejects(runStagingPhase1V2LiveLauncher(options, {
-        env: {},
-        tty: {
-          isTTY: true,
-          async readSecret() {
-            secretReads += 1;
-            return Buffer.from(SECRET);
-          }
-        },
-        observerPackage,
-        runAuthorized: async () => { adapterCalls += 1; }
-      }), fixed("observer_untrusted"));
-    }
-    assert.equal(secretReads, 0);
-    assert.equal(adapterCalls, 0);
+    for (const overrides of [
+      { tty },
+      { env: {} },
+      { gitInspection: gitInspection() },
+      { observerPackage: { createSession() {
+        calls.injectedFactory += 1;
+      } } },
+      { runAuthorized: async () => { calls.adapter += 1; } },
+      Object.create(null)
+    ]) await assert.rejects(runStagingPhase1V2LiveLauncher(
+      options, overrides
+    ), fixed("production_dependency_override"));
+    assert.deepEqual(calls, {
+      adapter: 0, injectedFactory: 0, line: 0, secret: 0
+    });
+  });
+
+  it("does not permit a proxy to hide production dependency overrides", async () => {
+    let reads = 0;
+    const hidden = new Proxy({}, {
+      ownKeys() { return []; },
+      getPrototypeOf() { return null; },
+      get() { reads += 1; return () => {}; }
+    });
+    await assert.rejects(runStagingPhase1V2LiveLauncher({
+      mode: "live",
+      caPath: "/private/tmp/must-not-be-opened.pem",
+      endpointClass: "direct",
+      address: "2606:4700:4700::1111"
+    }, hidden), fixed("production_dependency_override"));
+    assert.equal(reads, 0);
+  });
+
+  it("uses only the internal observer and fixed single-session adapter", () => {
+    const launcher = readFileSync(join(
+      REPOSITORY_ROOT,
+      "backend/src/operations/stagingPhase1V2LiveLauncher.js"
+    ), "utf8");
+    assert.match(launcher,
+      /STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY/);
+    assert.match(launcher,
+      /await runAuthorizedStagingPhase1V2SingleSession\(/);
+    assert.doesNotMatch(launcher,
+      /dependencies\.(?:runAuthorized|adapterDependencies|observerPackage|observerFactory|controlTransport)/);
+  });
+
+  it("has no production factory, module-path or transport injection seam", () => {
+    const launcher = readFileSync(join(
+      REPOSITORY_ROOT,
+      "backend/src/operations/stagingPhase1V2LiveLauncher.js"
+    ), "utf8");
+    const observer = readFileSync(join(
+      REPOSITORY_ROOT,
+      "backend/src/operations/stagingPhase1V2MachineObserver.js"
+    ), "utf8");
+    assert.doesNotMatch(launcher,
+      /dependencies\.(?:observerPackage|observerFactory|controlTransport)/);
+    assert.doesNotMatch(observer,
+      /(?:register|promote)Production|import\s*\(/);
+    assert.deepEqual(observer.match(/process\.env\[[^\]]+\]/g), [
+      "process.env[name]"
+    ]);
+    assert.equal((observer.match(/productionFactories\.add\(/g) ?? []).length,
+      1);
   });
 
   it("keeps the production script on the pinned launcher with no generic boundary bypass", () => {
@@ -323,6 +336,18 @@ describe("staging Phase 1 V2 secure live launcher", () => {
       "synthetic-preflight-password", "utf8"
     );
     let secretReads = 0;
+    const credentialFds = [];
+    const baseIO = realIO();
+    const trackedIO = {
+      ...baseIO,
+      open(path, flags, mode) {
+        const fd = baseIO.open(path, flags, mode);
+        if (path.includes("credential-pair-")) {
+          credentialFds.push({ fd, path, state: fstatSync(fd) });
+        }
+        return fd;
+      }
+    };
     const result = await runStagingPhase1V2PreflightOnly({
       env: {},
       repositoryRoot: REPOSITORY_ROOT,
@@ -332,6 +357,7 @@ describe("staging Phase 1 V2 secure live launcher", () => {
       gitInspection: gitInspection(),
       networkCounter,
       databaseCounter,
+      io: trackedIO,
       tty: {
         isTTY: true,
         async readSecret(_prompt, options) {
@@ -354,6 +380,52 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     });
     assert.equal(secretReads, 1);
     assert.equal(syntheticPassword.every((byte) => byte === 0), true);
+    assert.equal(credentialFds.length, 2);
+    assert.notEqual(credentialFds[0].fd, credentialFds[1].fd);
+    assert.equal(credentialFds[0].path, credentialFds[1].path);
+    assert.equal(credentialFds[0].state.dev, credentialFds[1].state.dev);
+    assert.equal(credentialFds[0].state.ino, credentialFds[1].state.ino);
+    for (const { fd } of credentialFds) {
+      assert.throws(() => fstatSync(fd), { code: "EBADF" });
+    }
+    assert.equal(readdirSync(root).length, 0);
+  });
+
+  it("wipes and closes the first password descriptor when the independent auditor open fails", async () => {
+    const root = await mkdtemp("/private/tmp/trailmind-pair-fault-test.");
+    temporaryRoots.push(root);
+    const password = Buffer.from("synthetic-pair-failure-password");
+    const baseIO = realIO();
+    let firstFd;
+    let pairOpens = 0;
+    const io = {
+      ...baseIO,
+      open(path, flags, mode) {
+        if (path.includes("credential-pair-")) {
+          pairOpens += 1;
+          if (pairOpens === 2) throw new Error("controlled second open fault");
+        }
+        const fd = baseIO.open(path, flags, mode);
+        if (path.includes("credential-pair-")) firstFd = fd;
+        return fd;
+      }
+    };
+    await assert.rejects(runStagingPhase1V2PreflightOnly({
+      env: {},
+      gitInspection: gitInspection(),
+      io,
+      now: () => new Date(),
+      randomUUID: sequence(UUIDS),
+      repositoryRoot: REPOSITORY_ROOT,
+      temporaryBase: root,
+      tty: {
+        isTTY: true,
+        async readSecret() { return password; }
+      }
+    }), fixed("password_file"));
+    assert.equal(password.every((byte) => byte === 0), true);
+    assert.equal(pairOpens, 2);
+    assert.throws(() => fstatSync(firstFd), { code: "EBADF" });
     assert.equal(readdirSync(root).length, 0);
   });
 
@@ -384,7 +456,7 @@ describe("staging Phase 1 V2 secure live launcher", () => {
     const help = liveLauncherHelp();
     assert.equal(/postgres(?:ql)?:\/\/|PGPASSWORD|DATABASE_URL|password=/i
       .test(help), false);
-    assert.match(help, /observer_required/);
+    assert.match(help, /internal authenticated production observer/);
     assert.doesNotMatch(help, /enter.*advisor|type.*digest|session_closed/i);
   });
 });
@@ -424,9 +496,11 @@ function realIO() {
     fstat: fstatSync,
     lstat: lstatSync,
     open: openSync,
+    read: readSync,
     readFile: readFileSync,
     readdir: readdirSync,
     realpath: realpathSync,
+    rename: renameSync,
     unlink: unlinkSync,
     write: writeSync
   };

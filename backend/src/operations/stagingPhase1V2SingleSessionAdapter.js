@@ -1639,8 +1639,11 @@ function createSession({
         "applicationName", "authorizationBindingDigest", "backendPid",
         "backendSessionCount", "candidateCommit", "candidateTree",
         "completionState", "evidenceDigest", "idleSessionCount",
-        "observedAt", "observerArtifactDigest", "operatorDigestsDigest",
-        "projectRef", "runId", "stagedReceiptDigest"
+        "observedAt", "observerArtifactDigest", "observerPackageDigest",
+        "observerPackageId", "observerPackageVersion",
+        "observerSourceDigest", "observerTrustMode",
+        "operatorDigestsDigest", "projectRef", "runId",
+        "stagedReceiptDigest"
       ]) || cleanupProof.backendSessionCount !== 0 ||
       cleanupProof.idleSessionCount !== 0 ||
       cleanupProof.applicationName !== STAGING_PHASE1_V2_APPLICATION_NAME ||
@@ -1658,6 +1661,11 @@ function createSession({
         cleanupProof.observedAt, cleanupStartedAt, now()
       ) ||
       !/^[a-f0-9]{64}$/.test(cleanupProof.observerArtifactDigest) ||
+      !/^[a-f0-9]{64}$/.test(cleanupProof.observerPackageDigest) ||
+      !/^[a-f0-9]{64}$/.test(cleanupProof.observerSourceDigest) ||
+      typeof cleanupProof.observerPackageId !== "string" ||
+      typeof cleanupProof.observerPackageVersion !== "string" ||
+      typeof cleanupProof.observerTrustMode !== "string" ||
       !/^[a-f0-9]{64}$/.test(cleanupProof.evidenceDigest) ||
       canonicalAclDigest(withoutKey(cleanupProof, "evidenceDigest")) !==
         cleanupProof.evidenceDigest

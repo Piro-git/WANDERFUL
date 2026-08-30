@@ -42,18 +42,23 @@ import {
   runAuthorizedStagingPhase1V2SingleSession
 } from "./stagingPhase1V2SingleSessionAdapter.js";
 import {
+  attachStagingPhase1V2ProductionDatabaseAuditor,
   assertSyntheticStagingPhase1V2ObserverSession,
   createSyntheticStagingPhase1V2ObserverFactory,
   createSyntheticStagingPhase1V2ObserverSession,
+  disposeStagingPhase1V2ProductionObserverSession,
   machineCleanupEvidence,
   machineControlSnapshot,
   machinePostAdvisorEvidence,
   observeStagingPhase1V2MachinePhase,
+  prepareStagingPhase1V2ProductionPreControl,
   requireReviewedStagingPhase1V2ProductionObserverFactory,
+  STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY,
   StagingPhase1V2MachineObserverError
 } from "./stagingPhase1V2MachineObserver.js";
 
 const MAXIMUM_PASSWORD_BYTES = 1_024;
+const MAXIMUM_CONTROL_CREDENTIAL_BYTES = 8 * 1_024;
 const MAXIMUM_CA_BYTES = 256 * 1_024;
 const CA_MAXIMUM_AGE_MILLISECONDS = 5 * 60 * 1_000;
 const DEFAULT_PROMPT_TIMEOUT_MILLISECONDS = 60_000;
@@ -112,8 +117,9 @@ export function liveLauncherHelp() {
     "  node scripts/staging/phase1-v2-operator.js --ca-file <absolute-path> --endpoint <direct|session> --address <exact-ip>",
     "",
     "The live command accepts only the fixed TrailMind staging target.",
-    "Live execution is disabled until a reviewed machine observer is installed in this package.",
-    "Without it, execution stops with observer_required before authorization or password intake.",
+    "Live execution uses the internal authenticated production observer only.",
+    "A scoped read-only Supabase OAuth token and independent database auditor",
+    "are required before mutation.",
     "Preflight uses synthetic, non-authorizing observations and performs no network or database work.",
     "Connection URLs, host/user overrides, secret arguments, piped input, and transaction pooling are rejected."
   ].join("\n");
@@ -165,44 +171,47 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
     return runStagingPhase1V2PreflightOnly(dependencies);
   }
   if (options?.mode !== "live") blocked("mode");
-  const env = dependencies.env ?? process.env;
-  const tty = dependencies.tty ?? createProcessTty();
+  assertNoProductionDependencyOverrides(dependencies);
+  const env = process.env;
+  const tty = createProcessTty();
   assertSafeEnvironment(env);
   if (tty.isTTY !== true) blocked("tty_required");
   let observerFactory;
   try {
     observerFactory = requireReviewedStagingPhase1V2ProductionObserverFactory(
-      dependencies.observerPackage
+      STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
     );
   } catch (error) {
     throw sanitizeLauncherFailure(error);
   }
 
-  const now = dependencies.now ?? (() => new Date());
-  const repositoryRoot = resolve(dependencies.repositoryRoot ??
-    dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url))))));
-  const attemptId = (dependencies.randomUUID ?? randomUUID)();
-  const runId = (dependencies.randomUUID ?? randomUUID)();
-  const authorizationId = (dependencies.randomUUID ?? randomUUID)();
+  const now = () => new Date();
+  const repositoryRoot = resolve(
+    dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+  );
+  const attemptId = randomUUID();
+  const runId = randomUUID();
+  const authorizationId = randomUUID();
   assertDistinctIdentities({ attemptId, runId, authorizationId });
   const task = createAttemptDirectory({
     attemptId,
-    baseDirectory: dependencies.temporaryBase ?? tmpdir(),
+    baseDirectory: tmpdir(),
     repositoryRoot
   });
   const cancellation = createCancellation({
-    providedSignal: dependencies.signal,
-    signalSource: dependencies.signalSource ?? process
+    providedSignal: undefined,
+    signalSource: process
   });
   const signal = cancellation.signal;
   let secret;
+  let controlCredential;
   let credential;
+  let observerSession;
   let envelopePath;
   let adapterInvoked = false;
   try {
     const candidateBindings = readStagingPhase1V2CandidateBindings({
-      repositoryRoot,
-      gitInspection: dependencies.gitInspection
+      repositoryRoot
     });
     const observerBinding = Object.freeze({
       attemptId,
@@ -213,29 +222,75 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
       region: STAGING_PHASE1_V2_TARGET.region,
       runId
     });
-    const observerSession = observerFactory.createSession(observerBinding);
-    const preObservation = await observeStagingPhase1V2MachinePhase(
-      observerSession,
-      {
-        applicationName: null,
-        authorizationBindingDigest: null,
-        backendPid: null,
-        phase: "pre-control",
-        stagedReceiptDigest: null
-      }
+    secret = await tty.readSecret(
+      "Supabase read-only OAuth access token: ",
+      { maximumBytes: MAXIMUM_CONTROL_CREDENTIAL_BYTES, signal,
+        timeoutMilliseconds: boundedPromptTimeout(
+          undefined
+        ) }
+    );
+    validateSecretBuffer(secret, MAXIMUM_CONTROL_CREDENTIAL_BYTES);
+    controlCredential = createUnlinkedCredential({
+      directory: task.path,
+      password: secret,
+      maximumBytes: MAXIMUM_CONTROL_CREDENTIAL_BYTES,
+      io: undefined
+    });
+    secret.fill(0);
+    secret = undefined;
+    unlinkCredentialBeforeDatabase(controlCredential);
+    observerSession = observerFactory.createSession(observerBinding, {
+      controlCredentialFd: controlCredential.fd
+    });
+    const preRequest = Object.freeze({
+      applicationName: null,
+      authorizationBindingDigest: null,
+      backendPid: null,
+      phase: "pre-control",
+      stagedReceiptDigest: null
+    });
+    await prepareStagingPhase1V2ProductionPreControl(
+      observerSession, preRequest
     );
     const ca = inspectCertificateAuthority({
       path: options.caPath,
       repositoryRoot,
       now: exactDate(now()),
-      io: dependencies.io
+      io: undefined
     });
     const connection = liveConnection(options.endpointClass, options.address);
     const tls = tlsBinding(connection.host);
     await collectActionAuthorization({
       tty, now, signal,
-      promptTimeoutMilliseconds: dependencies.promptTimeoutMilliseconds
+      promptTimeoutMilliseconds: undefined
     });
+    secret = await tty.readSecret(
+      "Database password: ",
+      { maximumBytes: MAXIMUM_PASSWORD_BYTES, signal,
+        timeoutMilliseconds: boundedPromptTimeout(
+          undefined
+        ) }
+    );
+    validateSecretBuffer(secret, MAXIMUM_PASSWORD_BYTES);
+    credential = createUnlinkedCredentialPair({
+      directory: task.path,
+      password: secret,
+      io: undefined
+    });
+    secret.fill(0);
+    secret = undefined;
+    unlinkCredentialPairBeforeDatabase(credential);
+    await attachStagingPhase1V2ProductionDatabaseAuditor(
+      observerSession,
+      {
+        auditorCredentialFd: credential.auditorFd,
+        caPath: ca.path,
+        connection
+      }
+    );
+    const preObservation = await observeStagingPhase1V2MachinePhase(
+      observerSession, preRequest
+    );
     const boundaries = createStagingPhase1V2LiveBoundaryPackage({
       attemptDirectory: task.path,
       env,
@@ -248,21 +303,6 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
       candidateTree: candidateBindings.candidateTree
     });
     const controlObservationDigest = preObservation.artifactDigest;
-    secret = await tty.readSecret(
-      "Database password: ",
-      { maximumBytes: MAXIMUM_PASSWORD_BYTES, signal,
-        timeoutMilliseconds: boundedPromptTimeout(
-          dependencies.promptTimeoutMilliseconds
-        ) }
-    );
-    validateSecretBuffer(secret);
-    credential = createUnlinkedCredential({
-      directory: task.path,
-      password: secret,
-      io: dependencies.io
-    });
-    secret.fill(0);
-    secret = undefined;
     const credentialContainment = credentialContainmentBinding();
     const issuedAt = exactDate(now());
     const expiresAt = new Date(issuedAt.getTime() +
@@ -300,10 +340,9 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
     envelopePath = createAuthorizationEnvelope({
       directory: task.path,
       envelope,
-      io: dependencies.io
+      io: undefined
     });
-    revalidateCertificateAuthority(ca, dependencies.io);
-    unlinkCredentialBeforeDatabase(credential, dependencies.io);
+    revalidateCertificateAuthority(ca);
     const admissionRequest = Object.freeze({
       enabled: true,
       attemptId,
@@ -330,10 +369,9 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
       caPath: ca.path
     });
     adapterInvoked = true;
-    const runAuthorized = dependencies.runAuthorized ??
-      runAuthorizedStagingPhase1V2SingleSession;
-    const result = await runAuthorized({ admissionRequest, ...boundaries }, {
-      ...(dependencies.adapterDependencies ?? {}),
+    const result = await runAuthorizedStagingPhase1V2SingleSession({
+      admissionRequest, ...boundaries
+    }, {
       signal
     });
     return Object.freeze({
@@ -348,14 +386,16 @@ export async function runStagingPhase1V2LiveLauncher(options, dependencies = {})
   } finally {
     cancellation.dispose();
     secret?.fill?.(0);
-    closeCredential(credential, dependencies.io);
-    invalidateEnvelope(envelopePath, dependencies.io);
+    closeCredential(credential);
+    closeCredential(controlCredential);
+    await disposeStagingPhase1V2ProductionObserverSession(observerSession);
+    invalidateEnvelope(envelopePath);
     if (!adapterInvoked) {
       persistAttemptInvalidation({
         attemptDirectory: task.path,
         attemptId,
         now: exactDate(now()),
-        io: dependencies.io
+        io: undefined
       });
     }
   }
@@ -454,7 +494,7 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
       )
     });
     validateSecretBuffer(password);
-    credential = createUnlinkedCredential({
+    credential = createUnlinkedCredentialPair({
       directory: task.path, password, io: dependencies.io
     });
     password.fill(0);
@@ -496,7 +536,7 @@ export async function runStagingPhase1V2PreflightOnly(dependencies = {}) {
     const envelopePath = createAuthorizationEnvelope({
       directory: task.path, envelope, io: dependencies.io
     });
-    unlinkCredentialBeforeDatabase(credential, dependencies.io);
+    unlinkCredentialPairBeforeDatabase(credential, dependencies.io);
     admission = admitStagingPhase1V2Session({
       enabled: true,
       attemptId,
@@ -756,8 +796,13 @@ function createAttemptDirectory({ attemptId, baseDirectory, repositoryRoot }) {
   }
 }
 
-function createUnlinkedCredential({ directory, password, io = realIO() }) {
-  validateSecretBuffer(password);
+function createUnlinkedCredential({
+  directory,
+  password,
+  maximumBytes = MAXIMUM_PASSWORD_BYTES,
+  io = realIO()
+}) {
+  validateSecretBuffer(password, maximumBytes);
   const path = join(directory, `credential-${randomUUID()}`);
   let fd;
   try {
@@ -787,6 +832,63 @@ function createUnlinkedCredential({ directory, password, io = realIO() }) {
   }
 }
 
+function createUnlinkedCredentialPair({
+  directory,
+  password,
+  io = realIO()
+}) {
+  validateSecretBuffer(password, MAXIMUM_PASSWORD_BYTES);
+  const path = join(directory, `credential-pair-${randomUUID()}`);
+  let fd;
+  let auditorFd;
+  try {
+    fd = io.open(path, constants.O_RDWR | constants.O_CREAT |
+      constants.O_EXCL | (constants.O_NOFOLLOW ?? 0), 0o600);
+    if (!Number.isSafeInteger(fd) || fd < 3) blocked("password_fd");
+    let offset = 0;
+    while (offset < password.length) {
+      const written = io.write(
+        fd, password, offset, password.length - offset, offset
+      );
+      if (!Number.isInteger(written) || written <= 0) {
+        blocked("password_write");
+      }
+      offset += written;
+    }
+    io.fsync(fd);
+    const primary = io.fstat(fd);
+    const linked = io.lstat(path);
+    assertProtectedRegular(primary, "password_file", true);
+    if (!sameFileState(primary, linked) || primary.size !== password.length) {
+      blocked("password_file_race");
+    }
+    auditorFd = io.open(
+      path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)
+    );
+    if (!Number.isSafeInteger(auditorFd) || auditorFd < 3 ||
+        auditorFd === fd) blocked("auditor_password_fd");
+    const auditor = io.fstat(auditorFd);
+    if (!sameFileState(primary, auditor) || auditor.nlink !== 1) {
+      blocked("password_file_race");
+    }
+    return {
+      fd,
+      auditorFd,
+      path,
+      dev: primary.dev,
+      ino: primary.ino,
+      linked: true,
+      independentOpenDescriptions: true
+    };
+  } catch (error) {
+    if (auditorFd !== undefined) try { io.close(auditorFd); } catch { /* bounded */ }
+    if (fd !== undefined) try { io.close(fd); } catch { /* bounded */ }
+    try { io.unlink(path); } catch { /* O_EXCL path may not exist */ }
+    if (error instanceof StagingPhase1V2LiveLauncherError) throw error;
+    blocked("password_file");
+  }
+}
+
 function unlinkCredentialBeforeDatabase(credential, io = realIO()) {
   if (!credential?.linked) blocked("password_unlink");
   try {
@@ -807,6 +909,32 @@ function unlinkCredentialBeforeDatabase(credential, io = realIO()) {
   }
 }
 
+function unlinkCredentialPairBeforeDatabase(credential, io = realIO()) {
+  if (!credential?.linked || credential.independentOpenDescriptions !== true) {
+    blocked("password_unlink");
+  }
+  try {
+    const linked = io.lstat(credential.path);
+    const primary = io.fstat(credential.fd);
+    const auditor = io.fstat(credential.auditorFd);
+    if (!sameIdentity(credential, linked) ||
+        !sameFileState(linked, primary) ||
+        !sameFileState(linked, auditor) || credential.fd ===
+          credential.auditorFd) blocked("password_file_race");
+    io.unlink(credential.path);
+    credential.linked = false;
+    for (const fd of [credential.fd, credential.auditorFd]) {
+      const unlinked = io.fstat(fd);
+      if (unlinked.nlink !== 0 || !sameIdentity(credential, unlinked)) {
+        blocked("password_unlink");
+      }
+    }
+  } catch (error) {
+    if (error instanceof StagingPhase1V2LiveLauncherError) throw error;
+    blocked("password_unlink");
+  }
+}
+
 function closeCredential(credential, io = realIO()) {
   if (!credential) return;
   if (credential.linked) {
@@ -818,6 +946,9 @@ function closeCredential(credential, io = realIO()) {
     credential.linked = false;
   }
   try { io.close(credential.fd); } catch { /* admission consumes the FD */ }
+  if (credential.auditorFd !== undefined) {
+    try { io.close(credential.auditorFd); } catch { /* observer consumes it */ }
+  }
 }
 
 function createAuthorizationEnvelope({ directory, envelope, io = realIO() }) {
@@ -1098,12 +1229,17 @@ function tlsBinding(host) {
 
 function credentialContainmentBinding() {
   return Object.freeze({
+    auditorReadOnlySessionRequired: true,
+    descriptorCount: 2,
     descriptorMinimum: 3,
     descriptorSameProcessOnly: true,
+    descriptorsDistinct: true,
     fileMode: "0600",
+    independentOpenDescriptions: true,
     intake: "interactive-tty-noecho",
     ownerUid: process.geteuid(),
     pathUnlinkedBeforeDatabase: true,
+    sameCredentialIdentity: true,
     singleLinkBeforeUnlink: true
   });
 }
@@ -1263,6 +1399,14 @@ function assertSafeEnvironment(env) {
   }
 }
 
+function assertNoProductionDependencyOverrides(value) {
+  if (value === null || typeof value !== "object" ||
+      Object.getPrototypeOf(value) !== Object.prototype ||
+      Reflect.ownKeys(value).length !== 0) {
+    blocked("production_dependency_override");
+  }
+}
+
 function createCancellation({ providedSignal, signalSource }) {
   if (providedSignal) {
     return Object.freeze({ signal: providedSignal, dispose() {} });
@@ -1336,9 +1480,9 @@ function assertDescriptorClosed(fd, io = realIO()) {
   }
 }
 
-function validateSecretBuffer(value) {
+function validateSecretBuffer(value, maximumBytes = MAXIMUM_PASSWORD_BYTES) {
   if (!Buffer.isBuffer(value) || value.length === 0 ||
-      value.length > MAXIMUM_PASSWORD_BYTES) blocked("password_size");
+      value.length > maximumBytes) blocked("password_size");
   const text = value.toString("utf8");
   if (Buffer.byteLength(text, "utf8") !== value.length ||
       /[\u0000-\u001f\u007f]/.test(text)) blocked("password_format");

@@ -1,17 +1,32 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import {
+  chmodSync, closeSync, fstatSync, mkdtempSync, openSync, readFileSync,
+  rmSync, unlinkSync, writeSync
+} from "node:fs";
 import { describe, it } from "node:test";
 import {
   createSyntheticStagingPhase1V2ObserverFactory,
   createSyntheticStagingPhase1V2ObserverSession,
+  disposeStagingPhase1V2ProductionObserverSession,
   machineCleanupEvidence,
   machineControlSnapshot,
   machinePostAdvisorEvidence,
   observeStagingPhase1V2MachinePhase,
+  prepareStagingPhase1V2ProductionPreControl,
   requireReviewedStagingPhase1V2ProductionObserverFactory,
+  STAGING_PHASE1_V2_AUDITOR_SQL_MANIFEST,
+  STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST,
   STAGING_PHASE1_V2_OBSERVER_CONTRACT_DIGEST,
+  STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE,
+  STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY,
   STAGING_PHASE1_V2_SYNTHETIC_OBSERVER_PACKAGE,
-  StagingPhase1V2MachineObserverError
+  StagingPhase1V2MachineObserverError,
+  validateStagingPhase1V2AuditorIdentityFixture,
+  validateStagingPhase1V2CleanupResultFixture,
+  validateStagingPhase1V2ControlCredentialTypeFixture,
+  validateStagingPhase1V2ControlResponseFixture,
+  validateStagingPhase1V2ControlResponseMetadataFixture
 } from "../src/operations/stagingPhase1V2MachineObserver.js";
 
 const NOW = new Date("2026-08-29T10:00:00.000Z");
@@ -101,12 +116,323 @@ describe("staging Phase 1 V2 machine observer", () => {
       );
     }
     assert.throws(
+      () => requireReviewedStagingPhase1V2ProductionObserverFactory({
+        ...STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY,
+        packageBinding: STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE
+      }),
+      observerFailure("observer_untrusted")
+    );
+    assert.equal(
+      requireReviewedStagingPhase1V2ProductionObserverFactory(
+        STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
+      ),
+      STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
+    );
+    assert.throws(
       () => createSyntheticStagingPhase1V2ObserverSession({
         packageBinding: STAGING_PHASE1_V2_SYNTHETIC_OBSERVER_PACKAGE,
         createSession() {}
       }, binding()),
       observerFailure("synthetic_factory")
     );
+  });
+
+  it("pins the only production factory to this source and exact read-only manifests", () => {
+    const source = readFileSync(new URL(
+      "../src/operations/stagingPhase1V2MachineObserver.js", import.meta.url
+    ));
+    const sourceText = source.toString("utf8");
+    assert.equal(STAGING_PHASE1_V2_PRODUCTION_OBSERVER_PACKAGE.sourceDigest,
+      createHash("sha256").update(source).digest("hex"));
+    assert.doesNotMatch(sourceText, /response\.resume\(\)/);
+    assert.match(sourceText, /response\.destroy\(\)/);
+    assert.match(sourceText, /chunk\.fill\(0\)/);
+    assert.match(sourceText, /process\.env\[name\]/);
+    assert.deepEqual(STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST.transport, {
+      host: "api.supabase.com",
+      method: "GET",
+      port: 443,
+      protocol: "https:",
+      redirects: false,
+      retries: 0,
+      tlsMinimumVersion: "TLSv1.2",
+      verifyHostname: true
+    });
+    assert.equal(STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST.maximumCalls, 12);
+    assert.deepEqual(
+      STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST.requiredOAuthScopes,
+      ["database:read", "organizations:read", "projects:read"]
+    );
+    assert.equal(Object.values(
+      STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST.phases
+    ).flat().length, 12);
+    for (const requestBinding of Object.values(
+      STAGING_PHASE1_V2_CONTROL_REQUEST_MANIFEST.requests
+    )) {
+      assert.equal(requestBinding.method, "GET");
+      assert.match(requestBinding.path, /^\/v1\//);
+      assert.ok(requestBinding.maximumBytes <= 32 * 1_024);
+      assert.doesNotMatch(requestBinding.path,
+        /cmkvbxppgofteoutfslp|bejvhhjbgtvctpsnlwid/);
+    }
+    assert.deepEqual(Object.keys(STAGING_PHASE1_V2_AUDITOR_SQL_MANIFEST)
+      .sort(), [
+      "begin", "cleanup", "foundation", "identity", "providerAcl",
+      "rollback", "sharedAcl", "timeouts"
+    ]);
+    assert.equal(Object.values(STAGING_PHASE1_V2_AUDITOR_SQL_MANIFEST)
+      .every((digest) => /^[a-f0-9]{64}$/.test(digest)), true);
+  });
+
+  it("strictly validates current project, organization, inventory and advisor schemas", () => {
+    assert.deepEqual(validateStagingPhase1V2ControlResponseFixture(
+      "project", projectFixture()
+    ), {
+      name: "TrailMind Outdoor Staging V1",
+      postgresMajor: 17,
+      status: "ACTIVE_HEALTHY"
+    });
+    assert.deepEqual(validateStagingPhase1V2ControlResponseFixture(
+      "organization", organizationFixture()
+    ), { name: "Alibra AI", plan: "free" });
+    const inventory = validateStagingPhase1V2ControlResponseFixture(
+      "inventory", inventoryFixture()
+    );
+    assert.equal(inventory.computeSize, "nano");
+    assert.deepEqual(inventory.protectedProjects.map(({ ref }) => ref), [
+      "bejvhhjbgtvctpsnlwid", "cmkvbxppgofteoutfslp"
+    ]);
+    assert.deepEqual(validateStagingPhase1V2ControlResponseFixture(
+      "security", advisorFixture("SECURITY")
+    ), {
+      blockingFindingCount: 0,
+      evidenceDigest: "0".repeat(64),
+      noticeCount: 1,
+      status: "completed"
+    });
+    assert.equal(validateStagingPhase1V2ControlResponseMetadataFixture({
+      contentEncoding: undefined,
+      contentLength: "128",
+      contentType: "application/json; charset=utf-8",
+      location: undefined,
+      maximumBytes: 16 * 1_024,
+      serverDate: new Date().toUTCString(),
+      statusCode: 200
+    }).statusCode, 200);
+  });
+
+  it("rejects target substitution, inventory ambiguity, malformed advisors and stale transport evidence", () => {
+    for (const projectRef of [
+      "cmkvbxppgofteoutfslp", "bejvhhjbgtvctpsnlwid",
+      "aaaaaaaaaaaaaaaaaaaa"
+    ]) {
+      const project = projectFixture();
+      project.id = projectRef;
+      project.ref = projectRef;
+      assert.throws(() => validateStagingPhase1V2ControlResponseFixture(
+        "project", project
+      ), observerFailure("control_project"));
+    }
+    for (const mutate of [
+      (value) => { value.organization_slug = "another-organization"; },
+      (value) => { value.name = "TrailMind Production"; },
+      (value) => { value.region = "us-east-1"; },
+      (value) => { value.status = "INACTIVE"; },
+      (value) => { value.database.version = "16.9.0.001"; },
+      (value) => { value.database.host = "db.example.invalid"; }
+    ]) {
+      const project = projectFixture();
+      mutate(project);
+      assert.throws(() => validateStagingPhase1V2ControlResponseFixture(
+        "project", project
+      ), observerFailure("control_project"));
+    }
+    for (const mutate of [
+      (value) => { value.name = "Another organization"; },
+      (value) => { value.plan = "pro"; }
+    ]) {
+      const organization = organizationFixture();
+      mutate(organization);
+      assert.throws(() => validateStagingPhase1V2ControlResponseFixture(
+        "organization", organization
+      ), observerFailure("control_organization"));
+    }
+    for (const missingRef of [
+      PROJECT, "cmkvbxppgofteoutfslp", "bejvhhjbgtvctpsnlwid"
+    ]) {
+      const inventory = inventoryFixture();
+      inventory.projects = inventory.projects.filter(
+        ({ ref }) => ref !== missingRef
+      );
+      inventory.pagination.count = inventory.projects.length;
+      assert.throws(() => validateStagingPhase1V2ControlResponseFixture(
+        "inventory", inventory
+      ), (error) => error instanceof StagingPhase1V2MachineObserverError);
+    }
+    for (const mutate of [
+      (value) => { value.projects[0].databases[0].infra_compute_size = "small"; },
+      (value) => { value.projects[0].databases[0].status = "INACTIVE"; },
+      (value) => { value.projects[0].is_branch = true; },
+      (value) => { value.projects[0].region = "us-east-1"; }
+    ]) {
+      const inventory = inventoryFixture();
+      mutate(inventory);
+      assert.throws(() => validateStagingPhase1V2ControlResponseFixture(
+        "inventory", inventory
+      ), (error) => error instanceof StagingPhase1V2MachineObserverError);
+    }
+    const advisor = advisorFixture("SECURITY");
+    advisor.lints[0].categories = ["PERFORMANCE"];
+    assert.throws(() => validateStagingPhase1V2ControlResponseFixture(
+      "security", advisor
+    ), observerFailure("advisor_category"));
+    assert.throws(() => validateStagingPhase1V2ControlResponseMetadataFixture({
+      contentEncoding: undefined,
+      contentLength: undefined,
+      contentType: "application/json",
+      location: undefined,
+      maximumBytes: 16 * 1_024,
+      serverDate: new Date(Date.now() - 301_000).toUTCString(),
+      statusCode: 200
+    }), observerFailure("control_transport"));
+    for (const invalid of [
+      { contentType: "text/html", location: undefined, statusCode: 200 },
+      { contentType: "application/json", location: "/redirect",
+        statusCode: 302 },
+      { contentType: "application/json", location: undefined,
+        statusCode: 429 },
+      { contentEncoding: "gzip", contentType: "application/json",
+        location: undefined, statusCode: 200 },
+      { contentLength: "40000", contentType: "application/json",
+        location: undefined, statusCode: 200 }
+    ]) {
+      assert.throws(() => validateStagingPhase1V2ControlResponseMetadataFixture({
+        contentEncoding: undefined,
+        contentLength: undefined,
+        maximumBytes: 32 * 1_024,
+        ...invalid,
+        serverDate: new Date().toUTCString()
+      }), observerFailure("control_transport"));
+    }
+  });
+
+  it("contains rejected non-OAuth credential types in unlinked descriptors without remote work", async () => {
+    const root = mkdtempSync("/private/tmp/trailmind-control-fd-test.");
+    try {
+      const legacyServiceJwt = jwtFixture({
+        iss: "supabase", role: "service_role"
+      });
+      const rejected = [
+        "sbp_" + "do-not-log-this-token".repeat(3),
+        "sb_secret_" + "x".repeat(48),
+        "sb_publishable_" + "x".repeat(48),
+        legacyServiceJwt
+      ];
+      assert.deepEqual(validateStagingPhase1V2ControlCredentialTypeFixture(
+        "oauth_" + "x".repeat(64)
+      ), { accepted: true });
+      assert.deepEqual(validateStagingPhase1V2ControlCredentialTypeFixture(
+        jwtFixture({ scope: "projects:read organizations:read database:read" })
+      ), { accepted: true });
+      for (const token of rejected) {
+        assert.throws(
+          () => validateStagingPhase1V2ControlCredentialTypeFixture(token),
+          observerFailure("control_credential_type")
+        );
+      }
+      for (const [index, token] of rejected.entries()) {
+        const path = `${root}/credential-${index}`;
+        let fd;
+        let productionSession;
+        try {
+          fd = openSync(path, "wx+", 0o600);
+          chmodSync(path, 0o600);
+          writeSync(fd, Buffer.from(token));
+          unlinkSync(path);
+          assert.equal(fstatSync(fd).nlink, 0);
+          productionSession =
+            STAGING_PHASE1_V2_REVIEWED_PRODUCTION_OBSERVER_FACTORY
+              .createSession(binding(), { controlCredentialFd: fd });
+          let failure;
+          try {
+            await prepareStagingPhase1V2ProductionPreControl(
+              productionSession, request("pre-control")
+            );
+          } catch (error) {
+            failure = error;
+          }
+          assert.ok(observerFailure("control_credential_type")(failure));
+          assert.equal(failure.message.includes(token), false);
+        } finally {
+          await disposeStagingPhase1V2ProductionObserverSession(
+            productionSession
+          );
+          try { closeSync(fd); } catch { /* observer owns and closes it */ }
+        }
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("requires a stable, read-only PostgreSQL 17 Supabase auditor identity", () => {
+    const applicationName = "trailmind_p1v2_auditor_fixture";
+    const row = auditorIdentityFixture(applicationName);
+    assert.deepEqual(validateStagingPhase1V2AuditorIdentityFixture({
+      applicationName,
+      backendPid: undefined,
+      clientPid: row.backend_pid,
+      row
+    }), { backendPid: row.backend_pid });
+    for (const mutate of [
+      (value) => { value.transaction_read_only = "off"; },
+      (value) => { value.application_name = APPLICATION; },
+      (value) => { value.backend_pid += 1; },
+      (value) => { value.no_advisory_locks = false; },
+      (value) => { value.shared_preload_libraries = "pg_stat_statements"; },
+      (value) => { value.server_version_num = 160_000; },
+      (value) => { value.rolsuper = true; }
+    ]) {
+      const invalid = structuredClone(row);
+      mutate(invalid);
+      assert.throws(() => validateStagingPhase1V2AuditorIdentityFixture({
+        applicationName,
+        backendPid: row.backend_pid,
+        clientPid: row.backend_pid,
+        row: invalid
+      }), observerFailure("auditor_identity"));
+    }
+    assert.throws(() => validateStagingPhase1V2AuditorIdentityFixture({
+      applicationName,
+      backendPid: row.backend_pid + 1,
+      clientPid: row.backend_pid,
+      row
+    }), observerFailure("auditor_identity"));
+  });
+
+  it("accepts only independent cleanup 0/0 proof and rejects active, idle and self-proof cases", () => {
+    const clean = {
+      active_session_count: 0,
+      auditor_excluded: null,
+      exact_session_count: 0,
+      idle_session_count: 0
+    };
+    assert.deepEqual(validateStagingPhase1V2CleanupResultFixture({
+      row: clean, rowCount: 1
+    }), { activeSessionCount: 0, idleSessionCount: 0 });
+    for (const invalid of [
+      { ...clean, active_session_count: 1, exact_session_count: 1 },
+      { ...clean, idle_session_count: 1, exact_session_count: 1 },
+      { ...clean, auditor_excluded: false },
+      { ...clean, exact_session_count: 1 }
+    ]) {
+      assert.throws(() => validateStagingPhase1V2CleanupResultFixture({
+        row: invalid, rowCount: 1
+      }), observerFailure("cleanup_sessions_present"));
+    }
+    assert.throws(() => validateStagingPhase1V2CleanupResultFixture({
+      row: clean, rowCount: 0
+    }), observerFailure("cleanup_sessions_present"));
   });
 
   it("rejects manual control, advisor and cleanup assertions as untrusted artifacts", () => {
@@ -176,6 +502,10 @@ describe("staging Phase 1 V2 machine observer", () => {
       }, "artifact_binding"],
       ["trust-anchor-substitution", (artifact, { resealArtifact }) => {
         artifact.observer.packageDigest = "0".repeat(64);
+        return resealArtifact(artifact);
+      }, "artifact_binding"],
+      ["source-digest-substitution", (artifact, { resealArtifact }) => {
+        artifact.observer.sourceDigest = "0".repeat(64);
         return resealArtifact(artifact);
       }, "artifact_binding"],
       ["malformed", (artifact) => {
@@ -330,6 +660,123 @@ async function observeThroughFinal(observerSession) {
   await observeStagingPhase1V2MachinePhase(
     observerSession, request("final-control")
   );
+}
+
+function projectFixture() {
+  return {
+    created_at: NOW.toISOString(),
+    database: {
+      host: "db.mbvzwsrtqcrwhvykugcd.supabase.co",
+      postgres_engine: "17",
+      release_channel: "ga",
+      version: "17.4.1.001"
+    },
+    id: PROJECT,
+    name: "TrailMind Outdoor Staging V1",
+    organization_id: ORGANIZATION,
+    organization_slug: ORGANIZATION,
+    ref: PROJECT,
+    region: REGION,
+    status: "ACTIVE_HEALTHY"
+  };
+}
+
+function organizationFixture() {
+  return {
+    allowed_release_channels: ["ga"],
+    id: ORGANIZATION,
+    name: "Alibra AI",
+    opt_in_tags: [],
+    plan: "free"
+  };
+}
+
+function inventoryFixture() {
+  const database = (identifier, region = REGION, size = "nano") => ({
+    cloud_provider: "AWS",
+    disk_last_modified_at: null,
+    disk_throughput_mbps: null,
+    disk_type: null,
+    disk_volume_size_gb: null,
+    identifier,
+    infra_compute_size: size,
+    region,
+    status: "ACTIVE_HEALTHY",
+    type: "PRIMARY"
+  });
+  const project = (ref, name, region = REGION, size = "nano") => ({
+    cloud_provider: "AWS",
+    databases: [database(ref, region, size)],
+    inserted_at: NOW.toISOString(),
+    is_branch: false,
+    name,
+    ref,
+    region,
+    status: "ACTIVE_HEALTHY"
+  });
+  const projects = [
+    project(PROJECT, "TrailMind Outdoor Staging V1"),
+    project("bejvhhjbgtvctpsnlwid", "TrailMind Production"),
+    project("cmkvbxppgofteoutfslp", "Planua")
+  ];
+  return {
+    pagination: { count: projects.length, limit: 100, offset: 0 },
+    projects
+  };
+}
+
+function advisorFixture(category) {
+  return {
+    lints: [{
+      cache_key: `${category.toLowerCase()}-fixture`,
+      categories: [category],
+      description: "bounded fixture",
+      detail: "bounded fixture",
+      facing: "EXTERNAL",
+      level: "INFO",
+      name: "fixture_lint",
+      remediation: "review",
+      title: "Fixture"
+    }]
+  };
+}
+
+function auditorIdentityFixture(applicationName) {
+  return {
+    application_name: applicationName,
+    backend_pid: 51_241,
+    can_read_all_settings: true,
+    can_read_all_stats: true,
+    current_user: "postgres",
+    database_name: "postgres",
+    is_superuser: "off",
+    no_advisory_locks: true,
+    postgres_cannot_set_supabase_admin: true,
+    rolbypassrls: false,
+    rolcanlogin: true,
+    rolcreatedb: true,
+    rolcreaterole: true,
+    rolreplication: false,
+    rolsuper: false,
+    server_version_num: 170_004,
+    session_user: "postgres",
+    shared_preload_libraries: "supautils, pg_stat_statements",
+    supabase_admin_superuser: true,
+    supautils_legacy_superuser: null,
+    supautils_privileged_extensions: "postgis",
+    supautils_privileged_role: "postgres",
+    supautils_superuser: "supabase_admin",
+    transaction_read_only: "on"
+  };
+}
+
+function jwtFixture(payload) {
+  return [
+    Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" }))
+      .toString("base64url"),
+    Buffer.from(JSON.stringify(payload)).toString("base64url"),
+    "x".repeat(64)
+  ].join(".");
 }
 
 function observerFailure(code) {

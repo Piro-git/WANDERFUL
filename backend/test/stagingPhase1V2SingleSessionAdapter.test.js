@@ -697,6 +697,11 @@ function boundaries(events, { failPostAdvisors = false } = {}) {
           idleSessionCount: 0,
           observedAt: NOW.toISOString(),
           observerArtifactDigest: "7".repeat(64),
+          observerPackageDigest: "6".repeat(64),
+          observerPackageId: "trailmind.synthetic.test-observer",
+          observerPackageVersion: "1.0.0",
+          observerSourceDigest: "5".repeat(64),
+          observerTrustMode: "synthetic-test",
           operatorDigestsDigest: request.operatorDigestsDigest,
           projectRef: request.projectRef,
           runId: request.runId,
@@ -840,12 +845,17 @@ function tlsBinding() {
 
 function credentialContainment() {
   return {
+    auditorReadOnlySessionRequired: true,
+    descriptorCount: 2,
     descriptorMinimum: 3,
     descriptorSameProcessOnly: true,
+    descriptorsDistinct: true,
     fileMode: "0600",
+    independentOpenDescriptions: true,
     intake: "interactive-tty-noecho",
     ownerUid: process.geteuid(),
     pathUnlinkedBeforeDatabase: true,
+    sameCredentialIdentity: true,
     singleLinkBeforeUnlink: true
   };
 }

@@ -143,8 +143,10 @@ const TLS_KEYS = Object.freeze([
   "rejectUnauthorized", "serverNameVerification"
 ]);
 const CREDENTIAL_CONTAINMENT_KEYS = Object.freeze([
+  "auditorReadOnlySessionRequired", "descriptorCount",
   "descriptorMinimum", "descriptorSameProcessOnly", "fileMode",
-  "intake", "ownerUid", "pathUnlinkedBeforeDatabase",
+  "descriptorsDistinct", "independentOpenDescriptions", "intake",
+  "ownerUid", "pathUnlinkedBeforeDatabase", "sameCredentialIdentity",
   "singleLinkBeforeUnlink"
 ]);
 const GIT_ATTESTATION_KEYS = Object.freeze([
@@ -530,9 +532,14 @@ function validateCredentialContainment(value) {
   }
   if (
     value.intake !== "interactive-tty-noecho" ||
+    value.auditorReadOnlySessionRequired !== true ||
+    value.descriptorCount !== 2 ||
     value.descriptorMinimum !== 3 ||
     value.descriptorSameProcessOnly !== true ||
+    value.descriptorsDistinct !== true ||
+    value.independentOpenDescriptions !== true ||
     value.pathUnlinkedBeforeDatabase !== true ||
+    value.sameCredentialIdentity !== true ||
     value.singleLinkBeforeUnlink !== true ||
     value.fileMode !== "0600" ||
     value.ownerUid !== process.geteuid()
