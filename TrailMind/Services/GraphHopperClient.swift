@@ -1430,6 +1430,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             durationHours: durationHours,
             difficulty: routeDifficulty,
             path: coordinates,
+            routeInstructions: routeInstructions,
             verifiedCharacteristics: verifiedCharacteristics
         )
 

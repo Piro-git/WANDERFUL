@@ -156,6 +156,64 @@ struct RouteFactFingerprint: Hashable, Sendable {
     }
 }
 
+/// Binds the route geometry to the exact routing instructions that may be
+/// surfaced during foreground guidance. This is intentionally separate from
+/// `RouteFactFingerprint` so older saved routes remain viewable/exportable,
+/// while guidance can fail closed when its stronger integrity proof is absent.
+struct RouteGuidanceFingerprint: Hashable, Sendable {
+    let rawValue: String
+
+    init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+
+    static func make(
+        path: [GeoPoint],
+        instructions: [RouteInstruction]
+    ) -> RouteGuidanceFingerprint {
+        var hasher = StableRouteFactHasher()
+        hasher.combine("trailmind-route-guidance-v1")
+        hasher.combine(path.count)
+        for point in path {
+            combine(point, into: &hasher)
+        }
+        hasher.combine(instructions.count)
+        for instruction in instructions {
+            hasher.combine(instruction.text)
+            if let streetName = instruction.streetName {
+                hasher.combine(UInt8(1))
+                hasher.combine(streetName)
+            } else {
+                hasher.combine(UInt8(0))
+            }
+            hasher.combine(instruction.distanceMeters.bitPattern)
+            hasher.combine(instruction.durationSeconds.bitPattern)
+            hasher.combine(instruction.sign)
+            if let coordinate = instruction.coordinate {
+                hasher.combine(UInt8(1))
+                combine(coordinate, into: &hasher)
+            } else {
+                hasher.combine(UInt8(0))
+            }
+        }
+        return RouteGuidanceFingerprint(rawValue: String(hasher.value, radix: 16))
+    }
+
+    private static func combine(
+        _ point: GeoPoint,
+        into hasher: inout StableRouteFactHasher
+    ) {
+        hasher.combine(point.latitude.bitPattern)
+        hasher.combine(point.longitude.bitPattern)
+        if let elevationMeters = point.elevationMeters {
+            hasher.combine(UInt8(1))
+            hasher.combine(elevationMeters.bitPattern)
+        } else {
+            hasher.combine(UInt8(0))
+        }
+    }
+}
+
 private struct StableRouteFactHasher {
     private(set) var value: UInt64 = 14_695_981_039_346_656_037
 
@@ -186,12 +244,26 @@ struct RoutedRouteProvenance: Hashable, Sendable {
     let provider: RouteProviderIdentity
     let strategy: RouteRoutingStrategy
     let factFingerprint: RouteFactFingerprint
+    let guidanceFingerprint: RouteGuidanceFingerprint?
+
+    init(
+        provider: RouteProviderIdentity,
+        strategy: RouteRoutingStrategy,
+        factFingerprint: RouteFactFingerprint,
+        guidanceFingerprint: RouteGuidanceFingerprint? = nil
+    ) {
+        self.provider = provider
+        self.strategy = strategy
+        self.factFingerprint = factFingerprint
+        self.guidanceFingerprint = guidanceFingerprint
+    }
 
     func withStrategy(_ strategy: RouteRoutingStrategy) -> RoutedRouteProvenance {
         RoutedRouteProvenance(
             provider: provider,
             strategy: strategy,
-            factFingerprint: factFingerprint
+            factFingerprint: factFingerprint,
+            guidanceFingerprint: guidanceFingerprint
         )
     }
 }
@@ -212,6 +284,7 @@ enum RouteProvenance: Hashable, Sendable {
         durationHours: Double,
         difficulty: RouteDifficulty,
         path: [GeoPoint],
+        routeInstructions: [RouteInstruction] = [],
         verifiedCharacteristics: VerifiedRouteCharacteristics?
     ) -> RouteProvenance {
         .routed(
@@ -228,6 +301,10 @@ enum RouteProvenance: Hashable, Sendable {
                     difficulty: difficulty,
                     path: path,
                     verifiedCharacteristics: verifiedCharacteristics
+                ),
+                guidanceFingerprint: RouteGuidanceFingerprint.make(
+                    path: path,
+                    instructions: routeInstructions
                 )
             )
         )

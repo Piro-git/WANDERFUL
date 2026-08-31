@@ -207,10 +207,13 @@ final class PrivacyReleaseContentTests: XCTestCase {
         let builtInfo = try XCTUnwrap(Bundle.main.infoDictionary)
 
         for (label, info) in [("tracked", trackedInfo), ("built", builtInfo)] {
-            XCTAssertNil(
-                info["NSLocationWhenInUseUsageDescription"],
-                "The \(label) plist must not request unavailable location access."
+            XCTAssertEqual(
+                info["NSLocationWhenInUseUsageDescription"] as? String,
+                TrailMindPermissionCopy.locationWhenInUse,
+                "Unexpected \(label) When In Use location purpose."
             )
+            XCTAssertNil(info["NSLocationAlwaysUsageDescription"])
+            XCTAssertNil(info["NSLocationAlwaysAndWhenInUseUsageDescription"])
             XCTAssertEqual(
                 info["NSMicrophoneUsageDescription"] as? String,
                 TrailMindPermissionCopy.microphone,
@@ -229,22 +232,32 @@ final class PrivacyReleaseContentTests: XCTestCase {
 
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.deviceLocation"),
-            "Wanderful does not currently access your device's location. Enter a place name when choosing a route start."
+            "Wanderful uses your precise location only while Route Guidance is open to show your position and progress on the mapped route. Updates stop when guidance is paused, ended or the app leaves the foreground. Your position and track are not stored or sent."
         )
     }
 
-    func testShippingSourceHasNoDormantLocationAuthorizationOrTrackingSurface() throws {
-        let servicesSource = try source(relativePath: "TrailMind/Services/TrailServices.swift")
+    func testShippingLocationSurfaceStaysForegroundOnlyAndTrackFree() throws {
+        let locationSource = try source(
+            relativePath: "TrailMind/Services/RouteLocationService.swift"
+        )
+        let trackedInfo = try trackedInfoPlist()
+
+        XCTAssertTrue(locationSource.contains("requestWhenInUseAuthorization"))
+        XCTAssertTrue(locationSource.contains("startUpdatingLocation"))
+        XCTAssertTrue(locationSource.contains("stopUpdatingLocation"))
+        XCTAssertTrue(locationSource.contains("allowsBackgroundLocationUpdates = false"))
+        XCTAssertTrue(locationSource.contains("pausesLocationUpdatesAutomatically = true"))
+        XCTAssertNil(trackedInfo["UIBackgroundModes"])
 
         for forbiddenToken in [
-            "LocationService",
-            "CLLocationManager",
-            "requestWhenInUseAuthorization",
-            "startUpdatingLocation"
+            "requestAlwaysAuthorization",
+            "allowsBackgroundLocationUpdates = true",
+            "startMonitoringSignificantLocationChanges",
+            "startMonitoringVisits"
         ] {
             XCTAssertFalse(
-                servicesSource.contains(forbiddenToken),
-                "Shipping services must not retain unused location capability: \(forbiddenToken)"
+                locationSource.contains(forbiddenToken),
+                "Foreground guidance must not retain background location capability: \(forbiddenToken)"
             )
         }
     }
@@ -269,7 +282,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
         XCTAssertEqual(
             TrailMindAboutContent.planningBoundaryItems.map(\.detail),
             [
-                "Wanderful is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
+                "Route Guidance is a foreground planning aid, not full turn-by-turn navigation or a safety guarantee. Check signs, weather, trail conditions, closures, local rules and water availability.",
                 "Requested features are shown separately unless mapped route data verifies them."
             ]
         )

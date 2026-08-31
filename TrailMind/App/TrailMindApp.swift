@@ -107,10 +107,19 @@ struct TrailMindApp: App {
                         SuperwallOnboardingLoadingView()
                     case .appShell:
                         AppShellView(planner: uiTestComposition.planner)
+                    case .routeGuidance:
+                        RouteGuidanceView(
+                            route: uiTestComposition.guidanceRoute,
+                            dependencies: uiTestComposition.guidanceDependencies
+                        )
                     }
                 }
                 .environment(\.dynamicTypeSize, uiTestComposition.dynamicTypeSize)
                 .preferredColorScheme(uiTestComposition.colorScheme)
+                .environment(
+                    \.routeGuidanceDependencies,
+                    uiTestComposition.guidanceDependencies
+                )
             } else {
                 productionRootView
             }

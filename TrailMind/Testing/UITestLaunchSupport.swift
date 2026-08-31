@@ -8,6 +8,7 @@ struct UITestLaunchComposition {
         case onboarding
         case onboardingLoading
         case appShell
+        case routeGuidance
     }
 
     private enum Scenario: String {
@@ -20,6 +21,11 @@ struct UITestLaunchComposition {
         case researchPartial = "research-partial"
         case researchFallback = "research-fallback"
         case researchClarification = "research-clarification"
+        case guidance
+        case guidanceOffRoute = "guidance-off-route"
+        case guidanceComplete = "guidance-complete"
+        case guidanceDenied = "guidance-denied"
+        case guidanceDirect = "guidance-direct"
     }
 
     let startDestination: StartDestination
@@ -27,6 +33,8 @@ struct UITestLaunchComposition {
     let planner: PlannerViewModel
     let dynamicTypeSize: DynamicTypeSize
     let colorScheme: ColorScheme?
+    let guidanceDependencies: RouteGuidanceDependencies
+    let guidanceRoute: TrailRoute
 
     static func resolve(arguments: [String] = ProcessInfo.processInfo.arguments) -> UITestLaunchComposition? {
         let marker = "--trailmind-ui-testing"
@@ -52,7 +60,9 @@ struct UITestLaunchComposition {
 
         let routingBehavior: UITestRoutingCoordinator.Behavior = switch scenario {
         case .onboarding, .onboardingLoading, .core, .researchComplete, .researchPartial,
-             .researchFallback, .researchClarification:
+             .researchFallback, .researchClarification, .guidance,
+             .guidanceOffRoute, .guidanceComplete, .guidanceDenied,
+             .guidanceDirect:
             .success
         case .failOnce:
             .failOnce
@@ -70,14 +80,18 @@ struct UITestLaunchComposition {
             .fallback
         case .researchClarification:
             .clarification
-        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes:
+        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes,
+             .guidance, .guidanceOffRoute, .guidanceComplete,
+             .guidanceDenied, .guidanceDirect:
             .complete
         }
         let researchEnabled: Bool = switch scenario {
         case .researchComplete, .researchPartial, .researchFallback,
              .researchClarification:
             true
-        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes:
+        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes,
+             .guidance, .guidanceOffRoute, .guidanceComplete,
+             .guidanceDenied, .guidanceDirect:
             false
         }
         let savedRoutes = SavedRoutesModel(store: InMemorySavedRouteStore())
@@ -98,8 +112,12 @@ struct UITestLaunchComposition {
         case .onboarding: .onboarding
         case .onboardingLoading: .onboardingLoading
         case .core, .failOnce, .noRoutes, .researchComplete,
-             .researchPartial, .researchFallback, .researchClarification:
+             .researchPartial, .researchFallback, .researchClarification,
+             .guidance, .guidanceOffRoute, .guidanceComplete,
+             .guidanceDenied:
             .appShell
+        case .guidanceDirect:
+            .routeGuidance
         }
         let usesLightMode = arguments.contains("--trailmind-ui-light-mode")
         let usesDarkMode = arguments.contains("--trailmind-ui-dark-mode")
@@ -108,6 +126,37 @@ struct UITestLaunchComposition {
             "TrailMind UI testing accepts only one color-scheme override."
         )
 
+        let guidanceMode: UITestRouteGuidanceMode = switch scenario {
+        case .guidance, .guidanceDirect:
+            .normal
+        case .guidanceOffRoute:
+            .offRoute
+        case .guidanceComplete:
+            .complete
+        case .guidanceDenied:
+            .denied
+        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes,
+             .researchComplete, .researchPartial, .researchFallback,
+             .researchClarification:
+            .normal
+        }
+
+        guard let guidanceRoute = UITestRouteFactory.routes(
+            request: RoutePlanningRequest(
+                routeType: .pointToPoint,
+                startQuery: "Ilsenburg",
+                endQuery: "Schierke",
+                activityType: .hiking,
+                graphHopperProfile: "foot",
+                targetDistanceKm: nil,
+                targetDurationMinutes: nil,
+                difficulty: nil,
+                desiredFeatures: []
+            )
+        ).first else {
+            preconditionFailure("Route Guidance UI testing requires its deterministic route fixture.")
+        }
+
         return UITestLaunchComposition(
             startDestination: startDestination,
             appModel: appModel,
@@ -115,7 +164,11 @@ struct UITestLaunchComposition {
             dynamicTypeSize: arguments.contains("--trailmind-ui-accessibility-xxxl")
                 ? .accessibility5
                 : .large,
-            colorScheme: usesDarkMode ? .dark : (usesLightMode ? .light : nil)
+            colorScheme: usesDarkMode ? .dark : (usesLightMode ? .light : nil),
+            guidanceDependencies: UITestRouteGuidanceDependencies.make(
+                mode: guidanceMode
+            ),
+            guidanceRoute: guidanceRoute
         )
     }
 }
@@ -657,6 +710,7 @@ private enum UITestRouteFactory {
         path: [Coordinate],
         roadEvidence: RoadEvidenceProfile?
     ) -> TrailRoute {
+        let routeInstructions = instructions(for: path, routeType: routeType)
         let difficulty = RouteDifficulty.estimated(
             distanceKilometers: distance,
             elevationGainMeters: elevationGain
@@ -679,6 +733,7 @@ private enum UITestRouteFactory {
             durationHours: duration,
             difficulty: difficulty,
             path: path,
+            routeInstructions: routeInstructions,
             verifiedCharacteristics: verifiedCharacteristics
         )
         return TrailRoute(
@@ -707,8 +762,38 @@ private enum UITestRouteFactory {
             ],
             elevationProfile: path.compactMap(\.elevationMeters),
             path: path,
+            routeInstructions: routeInstructions,
             verifiedCharacteristics: verifiedCharacteristics
         )
+    }
+
+    private static func instructions(
+        for path: [Coordinate],
+        routeType: TrailRouteType
+    ) -> [RouteInstruction] {
+        guard path.count >= 4 else { return [] }
+        return [
+            RouteInstruction(
+                id: UUID(uuidString: "44444444-4444-4444-8444-444444444441")!,
+                text: routeType == .loop
+                    ? "Continue around the mapped loop"
+                    : "Continue on the mapped trail",
+                streetName: "Mapped route",
+                distanceMeters: 1_000,
+                durationSeconds: 900,
+                sign: 0,
+                coordinate: path[1]
+            ),
+            RouteInstruction(
+                id: UUID(uuidString: "44444444-4444-4444-8444-444444444442")!,
+                text: "Continue toward the mapped finish",
+                streetName: nil,
+                distanceMeters: 1_000,
+                durationSeconds: 900,
+                sign: 0,
+                coordinate: path[path.count - 2]
+            )
+        ]
     }
 
     private static func routeCharacteristics(
@@ -754,6 +839,127 @@ private enum UITestLaunchError: LocalizedError {
 
     var errorDescription: String? {
         "This prompt is not part of the deterministic UI-test contract."
+    }
+}
+
+private enum UITestRouteGuidanceMode: Equatable {
+    case normal
+    case offRoute
+    case complete
+    case denied
+}
+
+@MainActor
+private enum UITestRouteGuidanceDependencies {
+    static func make(mode: UITestRouteGuidanceMode) -> RouteGuidanceDependencies {
+        let location = UITestRouteLocationService(mode: mode)
+        let clock = UITestRouteGuidanceClock()
+        let screenAwake = UITestRouteScreenAwakeController()
+        return RouteGuidanceDependencies(
+            makeLocationService: { _ in location },
+            makeClock: { clock },
+            makeScreenAwakeController: { screenAwake }
+        )
+    }
+}
+
+@MainActor
+private final class UITestRouteLocationService: RouteLocationProviding {
+    private let mode: UITestRouteGuidanceMode
+    private var producerTask: Task<Void, Never>?
+    private var activeContinuation:
+        AsyncThrowingStream<RouteLocationSample, Error>.Continuation?
+    private(set) var authorization: RouteLocationAuthorization
+
+    init(mode: UITestRouteGuidanceMode) {
+        self.mode = mode
+        authorization = mode == .denied ? .denied : .notDetermined
+    }
+
+    func requestWhenInUseAuthorization() async -> RouteLocationAuthorization {
+        guard mode != .denied else { return .denied }
+        authorization = .authorized
+        return .authorized
+    }
+
+    func locationUpdates() -> AsyncThrowingStream<RouteLocationSample, Error> {
+        stopUpdatingLocation()
+        return AsyncThrowingStream { continuation in
+            activeContinuation = continuation
+            let samples = Self.samples(for: mode)
+            producerTask = Task { @MainActor in
+                for sample in samples {
+                    guard !Task.isCancelled else { return }
+                    continuation.yield(sample)
+                    try? await Task.sleep(for: .milliseconds(450))
+                }
+                do {
+                    try await Task.sleep(for: .seconds(3_600))
+                } catch {
+                    return
+                }
+            }
+            continuation.onTermination = { @Sendable [weak self] _ in
+                Task { @MainActor in
+                    self?.producerTask?.cancel()
+                    self?.producerTask = nil
+                }
+            }
+        }
+    }
+
+    func stopUpdatingLocation() {
+        producerTask?.cancel()
+        producerTask = nil
+        let continuation = activeContinuation
+        activeContinuation = nil
+        continuation?.finish()
+    }
+
+    private static func samples(
+        for mode: UITestRouteGuidanceMode
+    ) -> [RouteLocationSample] {
+        let start = Coordinate(latitude: 51.8640, longitude: 10.6785)
+        let firstInstruction = Coordinate(latitude: 51.8360, longitude: 10.6680)
+        let nearFinish = Coordinate(latitude: 51.7810, longitude: 10.6590)
+        let finish = Coordinate(latitude: 51.7669, longitude: 10.6642)
+        let offRoute = Coordinate(latitude: 51.8662, longitude: 10.6785)
+        let coordinates: [Coordinate] = switch mode {
+        case .normal, .denied:
+            [start, firstInstruction]
+        case .offRoute:
+            [start, offRoute, offRoute, offRoute]
+        case .complete:
+            [start, nearFinish, finish, finish]
+        }
+        let baseDate = Date()
+        return coordinates.enumerated().map { index, coordinate in
+            RouteLocationSample(
+                coordinate: coordinate,
+                horizontalAccuracyMeters: 5,
+                timestamp: baseDate.addingTimeInterval(Double(index))
+            )
+        }
+    }
+}
+
+@MainActor
+private final class UITestRouteGuidanceClock: RouteGuidanceClock {
+    func now() -> Date { Date() }
+
+    func sleep(seconds: TimeInterval) async throws {
+        try await Task.sleep(for: .seconds(seconds))
+    }
+}
+
+@MainActor
+private final class UITestRouteScreenAwakeController:
+    RouteScreenAwakeControlling
+{
+    private(set) var isGuidanceActive = false
+
+    func setGuidanceActive(_ isActive: Bool) {
+        isGuidanceActive = isActive
     }
 }
 #endif

@@ -16,6 +16,8 @@ struct TrailMindAboutCredit: Identifiable, Equatable, Sendable {
 }
 
 enum TrailMindPermissionCopy {
+    static let locationWhenInUse =
+        "Wanderful uses your precise location while Route Guidance is on to show your position and progress on the mapped route."
     static let microphone =
         "Wanderful uses the microphone to turn your spoken route request into text."
     static let appleSpeechServerDisclosure =
@@ -65,6 +67,12 @@ enum TrailMindAboutContent {
             title: "Local saved plans",
             detail: "New saves accept only verified routed results. Recovered legacy records remain labeled unverified.",
             symbol: "bookmark.fill"
+        ),
+        TrailMindAboutItem(
+            id: "about.capability.routeGuidance",
+            title: "Foreground Route Guidance",
+            detail: "For an intact verified route, show your position, progress and mapped routing instructions while Wanderful stays open.",
+            symbol: "location.north.circle.fill"
         )
     ]
 
@@ -78,8 +86,8 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.data.deviceLocation",
             title: "Device location",
-            detail: "Wanderful does not currently access your device's location. Enter a place name when choosing a route start.",
-            symbol: "location.slash.fill"
+            detail: "Wanderful uses your precise location only while Route Guidance is open to show your position and progress on the mapped route. Updates stop when guidance is paused, ended or the app leaves the foreground. Your position and track are not stored or sent.",
+            symbol: "location.fill"
         ),
         TrailMindAboutItem(
             id: "about.data.routing",
@@ -120,7 +128,7 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.boundary.review",
             title: "Review before starting",
-            detail: "Wanderful is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
+            detail: "Route Guidance is a foreground planning aid, not full turn-by-turn navigation or a safety guarantee. Check signs, weather, trail conditions, closures, local rules and water availability.",
             symbol: "checklist"
         ),
         TrailMindAboutItem(

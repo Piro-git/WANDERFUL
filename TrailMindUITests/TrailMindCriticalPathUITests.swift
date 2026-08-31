@@ -11,6 +11,11 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         case researchPartial = "research-partial"
         case researchFallback = "research-fallback"
         case researchClarification = "research-clarification"
+        case guidance
+        case guidanceOffRoute = "guidance-off-route"
+        case guidanceComplete = "guidance-complete"
+        case guidanceDenied = "guidance-denied"
+        case guidanceDirect = "guidance-direct"
     }
 
     private let pointToPointRouteID = "11111111-1111-4111-8111-111111111111"
@@ -701,6 +706,103 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     }
 
     @MainActor
+    func testRouteGuidanceStartPermissionPauseResumeAndEnd() {
+        let app = launch(.guidance)
+        openPointToPointRoute(in: app)
+
+        let purpose = element("route.guidancePermissionPurpose", in: app)
+        XCTAssertTrue(purpose.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            purpose.label.contains("only while the guidance screen is open")
+        )
+
+        let start = app.buttons["route.startGuidance"]
+        XCTAssertTrue(waitUntilHittable(start, in: app, maximumSwipes: 12))
+        XCTAssertTrue(
+            tap(start, until: element("guidance.screen", in: app), timeout: 8)
+        )
+
+        let pause = app.buttons["guidance.pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 8))
+        XCTAssertTrue(element("guidance.mapSummary", in: app).exists)
+        XCTAssertTrue(element("guidance.safety", in: app).exists)
+        captureScreen(named: "route-guidance-normal")
+
+        let resume = app.buttons["guidance.resume"]
+        XCTAssertTrue(
+            tap(pause, until: resume, timeout: 5),
+            "Pausing guidance should expose the resume control."
+        )
+        XCTAssertTrue(
+            tap(resume, until: app.buttons["guidance.pause"], timeout: 5),
+            "Resuming guidance should restore the pause control."
+        )
+
+        app.buttons["guidance.end"].tap()
+        // iOS 26 can expose the SwiftUI destructive alert action through both
+        // its legacy and modern accessibility representations.
+        let confirmation = app.alerts.buttons["End Route"].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.tap()
+        XCTAssertTrue(element("guidance.ended", in: app).waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testRouteGuidanceShowsAndCapturesOffRouteWarning() {
+        let app = launch(.guidanceOffRoute)
+        openPointToPointRoute(in: app)
+        startRouteGuidance(in: app)
+
+        let warning = element("guidance.offRouteWarning", in: app)
+        XCTAssertTrue(warning.waitForExistence(timeout: 8))
+        XCTAssertTrue(warning.label.contains("may be off route"))
+        XCTAssertTrue(warning.label.contains("Progress is paused"))
+        captureScreen(named: "route-guidance-off-route")
+    }
+
+    @MainActor
+    func testRouteGuidanceShowsExplicitCompletion() {
+        let app = launch(.guidanceComplete)
+        openPointToPointRoute(in: app)
+        startRouteGuidance(in: app)
+
+        let completion = element("guidance.completion", in: app)
+        XCTAssertTrue(completion.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Route complete"].exists)
+        XCTAssertTrue(app.buttons["guidance.done"].exists)
+        captureScreen(named: "route-guidance-completion")
+    }
+
+    @MainActor
+    func testRouteGuidanceDeniedPermissionSurfaceRemainsUsable() {
+        let deniedApp = launch(.guidanceDenied)
+        openPointToPointRoute(in: deniedApp)
+        startRouteGuidance(in: deniedApp)
+        XCTAssertTrue(
+            element("guidance.blocked", in: deniedApp)
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(deniedApp.buttons["guidance.openSettings"].exists)
+    }
+
+    @MainActor
+    func testRouteGuidanceAccessibilitySurfacesRemainUsable() {
+        let accessibleApp = launch(
+            .guidanceDirect,
+            extraArguments: accessibilityStressArguments
+        )
+
+        let pause = accessibleApp.buttons["guidance.pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 8))
+        XCTAssertGreaterThanOrEqual(pause.frame.height, 44)
+        XCTAssertTrue(element("guidance.mapSummary", in: accessibleApp).exists)
+        XCTAssertTrue(
+            element("guidance.safety", in: accessibleApp)
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
     private func launch(
         _ scenario: Scenario,
         extraArguments: [String] = []
@@ -774,10 +876,29 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         let example = app.buttons[identifier]
         XCTAssertTrue(example.waitForExistence(timeout: 5))
         XCTAssertTrue(waitUntilHittable(example, in: app, maximumSwipes: 4))
+        centerHomeExampleHorizontallyIfNeeded(example, in: app)
         XCTAssertTrue(
             tap(example, until: destination, timeout: 8),
             "The selected route example should enter its expected planning state."
         )
+    }
+
+    @MainActor
+    private func centerHomeExampleHorizontallyIfNeeded(
+        _ example: XCUIElement,
+        in app: XCUIApplication
+    ) {
+        guard app.scrollViews.count > 1 else { return }
+        let examplesCarousel = app.scrollViews.element(boundBy: 1)
+        let viewport = app.windows.firstMatch.frame
+
+        for _ in 0..<4 {
+            let midpoint = example.frame.midX
+            guard midpoint < viewport.minX || midpoint > viewport.maxX else {
+                return
+            }
+            examplesCarousel.swipeLeft()
+        }
     }
 
     @MainActor
@@ -810,6 +931,16 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(
             tap(routeLink, until: element("route.detail", in: app), timeout: 8),
             "The suggestion card should open its route detail."
+        )
+    }
+
+    @MainActor
+    private func startRouteGuidance(in app: XCUIApplication) {
+        let start = app.buttons["route.startGuidance"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(start, in: app, maximumSwipes: 12))
+        XCTAssertTrue(
+            tap(start, until: element("guidance.screen", in: app), timeout: 8)
         )
     }
 

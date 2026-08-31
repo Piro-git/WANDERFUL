@@ -786,6 +786,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
     let provider: String?
     let routingStrategy: String?
     let factFingerprint: String?
+    let guidanceFingerprint: String?
     let demoKind: String?
     let unverifiedReason: String?
 
@@ -796,6 +797,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
             provider = routed.provider.rawValue
             routingStrategy = routed.strategy.rawValue
             factFingerprint = routed.factFingerprint.rawValue
+            guidanceFingerprint = routed.guidanceFingerprint?.rawValue
             demoKind = nil
             unverifiedReason = nil
         case let .demo(demo):
@@ -803,6 +805,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
             provider = nil
             routingStrategy = nil
             factFingerprint = nil
+            guidanceFingerprint = nil
             demoKind = demo.rawValue
             unverifiedReason = nil
         case let .unverified(reason):
@@ -810,6 +813,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
             provider = nil
             routingStrategy = nil
             factFingerprint = nil
+            guidanceFingerprint = nil
             demoKind = nil
             unverifiedReason = reason.rawValue
         }
@@ -833,7 +837,10 @@ nonisolated private struct PersistedRouteProvenance: Codable {
                     RoutedRouteProvenance(
                         provider: provider,
                         strategy: routingStrategy,
-                        factFingerprint: RouteFactFingerprint(rawValue: factFingerprint)
+                        factFingerprint: RouteFactFingerprint(rawValue: factFingerprint),
+                        guidanceFingerprint: guidanceFingerprint.map(
+                            RouteGuidanceFingerprint.init(rawValue:)
+                        )
                     )
                 )
             case "demo":
@@ -841,6 +848,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
                     provider == nil,
                     routingStrategy == nil,
                     factFingerprint == nil,
+                    guidanceFingerprint == nil,
                     let demoKind,
                     let demoKind = RouteDemoKind(rawValue: demoKind),
                     unverifiedReason == nil
@@ -851,6 +859,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
                     provider == nil,
                     routingStrategy == nil,
                     factFingerprint == nil,
+                    guidanceFingerprint == nil,
                     demoKind == nil,
                     let unverifiedReason,
                     let unverifiedReason = UnverifiedRouteReason(rawValue: unverifiedReason)

@@ -58,6 +58,8 @@
 	<string>public.app-category.navigation</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Wanderful uses the microphone to turn your spoken route request into text.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Wanderful uses your precise location while Route Guidance is on to show your position and progress on the mapped route.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Apple Speech can send captured audio to Apple's servers for processing. Wanderful does not retain raw audio or send it to its own backend.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

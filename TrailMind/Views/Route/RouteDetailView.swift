@@ -240,10 +240,17 @@ struct RouteDetailPresentation: Equatable {
     }
 }
 
+private struct ActiveRouteGuidance: Identifiable {
+    let id = UUID()
+    let route: TrailRoute
+}
+
 struct RouteDetailView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
+    @Environment(\.routeGuidanceDependencies) private var guidanceDependencies
     @State private var exportFlow = GPXExportFlow()
+    @State private var activeGuidance: ActiveRouteGuidance?
     #if DEBUG
     @State private var showIntentQA = false
     #endif
@@ -278,6 +285,9 @@ struct RouteDetailView: View {
                     header
                     verificationNotice
                     RouteStatsRow(route: route)
+                    if guidanceEligibility.isEligible {
+                        guidanceStart
+                    }
                     researchEvidenceSummary
                     planningContext
                     researchFit
@@ -352,7 +362,63 @@ struct RouteDetailView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("route.gpxShareSheet")
         }
+        .fullScreenCover(item: $activeGuidance) { selection in
+            RouteGuidanceView(
+                route: selection.route,
+                dependencies: guidanceDependencies
+            )
+        }
         .accessibilityIdentifier("route.detail")
+    }
+
+    private var guidanceEligibility: RouteGuidanceEligibility {
+        RouteGuidanceEligibility(route: route)
+    }
+
+    private var guidanceStart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(
+                title: "Route Guidance",
+                subtitle: "Follow your verified mapped route while Wanderful is open."
+            )
+
+            Label(
+                "Uses your precise location only while the guidance screen is open. Your position and track aren’t stored or sent.",
+                systemImage: "location.fill"
+            )
+            .font(.footnote)
+            .foregroundStyle(theme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("route.guidancePermissionPurpose")
+
+            Label(
+                "Guidance is a planning aid, not a safety guarantee. Check signs, weather, trail conditions, and local rules.",
+                systemImage: "exclamationmark.shield.fill"
+            )
+            .font(.footnote)
+            .foregroundStyle(theme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                activeGuidance = ActiveRouteGuidance(route: route)
+            } label: {
+                Label("Start Route", systemImage: "location.north.fill")
+                    .font(.headline)
+                    .foregroundStyle(theme.onBrandPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .frame(minHeight: 54)
+                    .background(
+                        theme.brandFill,
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Start Route Guidance")
+            .accessibilityHint("Requests When In Use location permission if needed, then opens foreground guidance.")
+            .accessibilityIdentifier("route.startGuidance")
+        }
+        .trailCard()
     }
 
     @ViewBuilder
