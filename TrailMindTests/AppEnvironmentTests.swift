@@ -280,9 +280,11 @@ final class AppEnvironmentTests: XCTestCase {
         XCTAssertEqual(configuration.backend, .unavailable)
         XCTAssertEqual(configuration.supabaseOnboarding, .unavailable)
         XCTAssertEqual(configuration.superwall, .unavailable)
+        XCTAssertEqual(configuration.monetization, .unavailable)
         XCTAssertFalse(configuration.diagnostics.backendAvailable)
         XCTAssertFalse(configuration.diagnostics.supabaseOnboardingAvailable)
         XCTAssertFalse(configuration.diagnostics.superwallAvailable)
+        XCTAssertFalse(configuration.diagnostics.monetizationAvailable)
         XCTAssertTrue(
             OutdoorAdventurePlanningClientFactory.makeDefault(
                 configuration: configuration
@@ -350,6 +352,77 @@ final class AppEnvironmentTests: XCTestCase {
             XCTAssertTrue(configuration.features.allControlledFlagsAreFalse)
             XCTAssertEqual(configuration.features.invalidKeys, [featureKeys[0]])
         }
+    }
+
+    func testMonetizationRequiresFlagProductsAndLegalDestinationsTogether() throws {
+        let configured = try resolve(configuredPremiumEntries(for: .local), as: .local)
+        XCTAssertTrue(configured.features.monetization)
+        XCTAssertTrue(configured.monetization.isAvailable)
+        XCTAssertTrue(configured.diagnostics.monetizationAvailable)
+        XCTAssertEqual(
+            configured.monetization.configuredValue?.productIdentifiers,
+            ["app.wanderful.premium.monthly", "app.wanderful.premium.annual"]
+        )
+
+        var missingProduct = configuredPremiumEntries(for: .local)
+        missingProduct = replacing(
+            missingProduct,
+            WanderfulAppConfiguration.premiumAnnualProductKey,
+            ""
+        )
+        XCTAssertFalse(try resolve(missingProduct, as: .local).monetization.isAvailable)
+
+        var missingTerms = configuredPremiumEntries(for: .local)
+        missingTerms = replacing(
+            missingTerms,
+            WanderfulAppConfiguration.premiumTermsOfUseKey,
+            ""
+        )
+        XCTAssertFalse(try resolve(missingTerms, as: .local).monetization.isAvailable)
+    }
+
+    func testMonetizationRejectsDuplicatePlaceholderAndSuperwallConflicts() throws {
+        var duplicate = configuredPremiumEntries(for: .local)
+        duplicate = replacing(
+            duplicate,
+            WanderfulAppConfiguration.premiumAnnualProductKey,
+            "app.wanderful.premium.monthly"
+        )
+        XCTAssertFalse(try resolve(duplicate, as: .local).monetization.isAvailable)
+
+        var placeholder = configuredPremiumEntries(for: .local)
+        placeholder = replacing(
+            placeholder,
+            WanderfulAppConfiguration.premiumMonthlyProductKey,
+            "app.wanderful.placeholder.monthly"
+        )
+        XCTAssertFalse(try resolve(placeholder, as: .local).monetization.isAvailable)
+
+        var conflict = configuredPremiumEntries(for: .local)
+        conflict = replacing(conflict, "SUPERWALL_ENABLED", "true")
+        XCTAssertEqual(
+            try resolve(conflict, as: .local).monetization,
+            .invalid(.identityMismatch)
+        )
+    }
+
+    func testProductIdentifiersCannotActivateStoreWhileFlagIsFalse() throws {
+        var entries = validEntries(for: .local)
+        entries = replacing(
+            entries,
+            WanderfulAppConfiguration.premiumMonthlyProductKey,
+            "app.wanderful.premium.monthly"
+        )
+        entries = replacing(
+            entries,
+            WanderfulAppConfiguration.premiumAnnualProductKey,
+            "app.wanderful.premium.annual"
+        )
+
+        let configuration = try resolve(entries, as: .local)
+        XCTAssertFalse(configuration.features.monetization)
+        XCTAssertFalse(configuration.monetization.isAvailable)
+        XCTAssertFalse(configuration.diagnostics.monetizationAvailable)
     }
 
     func testRuntimeStateCannotChangeEnvironmentOrRevealSensitiveDiagnostics() throws {
@@ -490,7 +563,8 @@ final class AppEnvironmentTests: XCTestCase {
             "INSECURE_LOCAL_BACKEND_AUTH_ENABLED",
             "IN_MEMORY_APP_ATTEST_ENABLED",
             "SUPABASE_ONBOARDING_SYNC_ENABLED",
-            "SUPERWALL_ENABLED"
+            "SUPERWALL_ENABLED",
+            "MONETIZATION_ENABLED"
         ]
     }
 
@@ -504,7 +578,8 @@ final class AppEnvironmentTests: XCTestCase {
             flags.insecureLocalBackendAuthorization,
             flags.inMemoryAppAttest,
             flags.supabaseOnboardingSync,
-            flags.superwall
+            flags.superwall,
+            flags.monetization
         ].count(where: { $0 })
     }
 
@@ -523,8 +598,40 @@ final class AppEnvironmentTests: XCTestCase {
             (WanderfulAppConfiguration.backendURLKey, ""),
             (WanderfulAppConfiguration.supabaseURLKey, ""),
             (WanderfulAppConfiguration.supabaseKeyKey, ""),
-            (WanderfulAppConfiguration.superwallKey, "")
+            (WanderfulAppConfiguration.superwallKey, ""),
+            (WanderfulAppConfiguration.premiumMonthlyProductKey, ""),
+            (WanderfulAppConfiguration.premiumAnnualProductKey, ""),
+            (WanderfulAppConfiguration.premiumPrivacyPolicyKey, ""),
+            (WanderfulAppConfiguration.premiumTermsOfUseKey, "")
         ] + featureKeys.map { ($0, "false" as Any) }
+    }
+
+    private func configuredPremiumEntries(
+        for environment: WanderfulEnvironment
+    ) -> [(String, Any)] {
+        var entries = validEntries(for: environment)
+        entries = replacing(entries, "MONETIZATION_ENABLED", "true")
+        entries = replacing(
+            entries,
+            WanderfulAppConfiguration.premiumMonthlyProductKey,
+            "app.wanderful.premium.monthly"
+        )
+        entries = replacing(
+            entries,
+            WanderfulAppConfiguration.premiumAnnualProductKey,
+            "app.wanderful.premium.annual"
+        )
+        entries = replacing(
+            entries,
+            WanderfulAppConfiguration.premiumPrivacyPolicyKey,
+            "https://wanderful.app/privacy"
+        )
+        entries = replacing(
+            entries,
+            WanderfulAppConfiguration.premiumTermsOfUseKey,
+            "https://wanderful.app/terms"
+        )
+        return entries
     }
 
     private func configuredBackendEntries(

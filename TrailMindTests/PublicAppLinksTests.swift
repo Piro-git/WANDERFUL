@@ -56,7 +56,9 @@ final class PublicAppLinksTests: XCTestCase {
             infoDictionary: [
                 PublicAppLinkKind.privacyPolicy.rawValue:
                     "https://wanderful.app/privacy",
-                PublicAppLinkKind.support.rawValue: ""
+                PublicAppLinkKind.support.rawValue: "",
+                PublicAppLinkKind.termsOfUse.rawValue:
+                    "https://wanderful.app/terms"
             ]
         )
 
@@ -65,5 +67,9 @@ final class PublicAppLinksTests: XCTestCase {
             URL(string: "https://wanderful.app/privacy")
         )
         XCTAssertEqual(links.support, .unavailable)
+        XCTAssertEqual(
+            links.termsOfUse.url,
+            URL(string: "https://wanderful.app/terms")
+        )
     }
 }

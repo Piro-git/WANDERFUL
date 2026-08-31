@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfilePreferencesView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
+    @Environment(PremiumAccessStore.self) private var premiumAccess
     @State private var isEditingTrailProfile = false
     @State private var isConfirmingReset = false
     @State private var isConfirmingDelete = false
@@ -104,6 +105,16 @@ struct ProfilePreferencesView: View {
                         .accessibilityIdentifier("about.data.footer")
                 }
 
+                if premiumAccess.isAvailable {
+                    Section {
+                        PremiumSubscriptionControlsView()
+                    } header: {
+                        Text("Premium subscription")
+                    } footer: {
+                        Text("Purchases and subscription management are handled by Apple.")
+                    }
+                }
+
                 Section {
                     NavigationLink {
                         AboutInformationDestinationView(
@@ -172,6 +183,17 @@ struct ProfilePreferencesView: View {
                         )
                     }
                     .accessibilityIdentifier(TrailMindAboutAccessibilityID.helpAndSafety)
+
+                    if let termsURL = publicLinks.termsOfUse.url {
+                        Link(destination: termsURL) {
+                            destinationRow(
+                                title: "Terms of Use",
+                                detail: "Read Wanderful's published terms.",
+                                symbol: "doc.text.fill"
+                            )
+                        }
+                        .accessibilityIdentifier("about.termsOfUse")
+                    }
                 } header: {
                     Text("Help & legal")
                 } footer: {

@@ -154,7 +154,7 @@ contract_is_valid() {
     (.environment.name == "production") and
     (.environment.app_attest_info_key == "TRAILMIND_APP_ATTEST_ENVIRONMENT") and
     (.environment.app_attest_environment == "production") and
-    (.feature_flags | type == "object" and length == 9) and
+    (.feature_flags | type == "object" and length == 10) and
     (.feature_flags | keys | sort) == ([
       "DIRECT_GRAPHHOPPER_ENABLED",
       "INSECURE_LOCAL_BACKEND_AUTH_ENABLED",
@@ -164,17 +164,26 @@ contract_is_valid() {
       "RESEARCH_GUIDED_PLANNING_ENABLED",
       "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
       "SUPABASE_ONBOARDING_SYNC_ENABLED",
-      "SUPERWALL_ENABLED"
+      "SUPERWALL_ENABLED",
+      "MONETIZATION_ENABLED"
     ] | sort) and
     (.feature_flags | all(to_entries[]; .value == "false")) and
-    (.service_configuration | type == "object" and length == 4) and
+    (.service_configuration | type == "object" and length == 6) and
     (.service_configuration | all(to_entries[]; .value == "")) and
-    (.public_link_configuration | type == "object" and length == 2) and
+    (.public_link_configuration | type == "object" and length == 3) and
     (.public_link_configuration | keys | sort) == ([
       "WANDERFUL_PRIVACY_POLICY_URL",
-      "WANDERFUL_SUPPORT_URL"
+      "WANDERFUL_SUPPORT_URL",
+      "WANDERFUL_TERMS_OF_USE_URL"
     ] | sort) and
     (.public_link_configuration | all(to_entries[]; .value == "")) and
+    (.monetization.feature_flag_info_key == "MONETIZATION_ENABLED") and
+    (.monetization.superwall_flag_info_key == "SUPERWALL_ENABLED") and
+    (.monetization.monthly_product_info_key == "WANDERFUL_PREMIUM_MONTHLY_PRODUCT_ID") and
+    (.monetization.annual_product_info_key == "WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID") and
+    (.monetization.privacy_policy_info_key == "WANDERFUL_PRIVACY_POLICY_URL") and
+    (.monetization.terms_of_use_info_key == "WANDERFUL_TERMS_OF_USE_URL") and
+    (.monetization.required_binary_markers | type == "array" and length == 2) and
     (.distribution.expected_team_identifier_environment_variable ==
       "TRAILMIND_EXPECTED_TEAM_IDENTIFIER") and
     (.platforms["simulator-app"].allowed_architectures | type == "array" and length > 0) and
@@ -325,6 +334,35 @@ validate_info_contract() {
     record_pass "public_link_configuration_contract"
   else
     record_failure "public_link_configuration_contract"
+  fi
+
+  if print -r -- "$info_json" | jq -e \
+      --slurpfile contract "$RELEASE_VERIFIER_CONTRACT" '
+      $contract[0].monetization as $m |
+      . as $info |
+      ($info[$m.feature_flag_info_key] == "false" and
+       $info[$m.superwall_flag_info_key] == "false" and
+       $info[$m.monthly_product_info_key] == "" and
+       $info[$m.annual_product_info_key] == "") or
+      ($info[$m.feature_flag_info_key] == "true" and
+       $info[$m.superwall_flag_info_key] == "false" and
+       ($info[$m.monthly_product_info_key] | type == "string" and
+        test("^[A-Za-z0-9][A-Za-z0-9._-]{1,253}[A-Za-z0-9]$") and
+        contains(".")) and
+       ($info[$m.annual_product_info_key] | type == "string" and
+        test("^[A-Za-z0-9][A-Za-z0-9._-]{1,253}[A-Za-z0-9]$") and
+        contains(".")) and
+       $info[$m.monthly_product_info_key] != $info[$m.annual_product_info_key] and
+       ($info[$m.privacy_policy_info_key] | type == "string" and
+        test("^https://[a-z0-9][a-z0-9.-]+\\.[a-z]{2,}(/[^?#]*)?$") and
+        (ascii_downcase | contains("placeholder") | not)) and
+       ($info[$m.terms_of_use_info_key] | type == "string" and
+        test("^https://[a-z0-9][a-z0-9.-]+\\.[a-z]{2,}(/[^?#]*)?$") and
+        (ascii_downcase | contains("placeholder") | not)))
+    ' >/dev/null 2>&1; then
+    record_pass "monetization_configuration_contract"
+  else
+    record_failure "monetization_configuration_contract"
   fi
 
   forbidden_value_markers="$(jq -c '.forbidden_info_value_markers' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || forbidden_value_markers='[]'
@@ -550,6 +588,20 @@ validate_binary() {
     record_pass "required_attribution_markers"
   else
     record_failure "required_attribution_markers"
+  fi
+
+  required_markers_valid=true
+  while IFS= read -r marker; do
+    [[ -z "$marker" ]] && continue
+    if [[ "$binary_strings" != *"$marker"* ]]; then
+      required_markers_valid=false
+      break
+    fi
+  done < <(jq -r '.monetization.required_binary_markers[]' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)
+  if [[ "$required_markers_valid" == true ]]; then
+    record_pass "monetization_management_paths"
+  else
+    record_failure "monetization_management_paths"
   fi
 
   if grep -Eq -- \

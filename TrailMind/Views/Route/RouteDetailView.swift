@@ -243,6 +243,7 @@ struct RouteDetailPresentation: Equatable {
 struct RouteDetailView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
+    @Environment(PremiumAccessStore.self) private var premiumAccess
     @State private var exportFlow = GPXExportFlow()
     #if DEBUG
     @State private var showIntentQA = false
@@ -300,6 +301,9 @@ struct RouteDetailView: View {
                     if presentation.allowsProductionActions {
                         export
                     }
+                    if premiumAccess.canOfferPremium(after: route) {
+                        PremiumInvitationView(route: route)
+                    }
                 }
                 .padding(TrailSpacing.page)
             }
@@ -352,7 +356,20 @@ struct RouteDetailView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("route.gpxShareSheet")
         }
+        .sheet(item: premiumPaywallBinding) { _ in
+            PremiumPaywallView()
+        }
+        .task(id: route.id) {
+            premiumAccess.recordVerifiedRouteViewed(route)
+        }
         .accessibilityIdentifier("route.detail")
+    }
+
+    private var premiumPaywallBinding: Binding<PremiumPaywallPresentation?> {
+        Binding(
+            get: { premiumAccess.presentedPaywall },
+            set: { premiumAccess.presentedPaywall = $0 }
+        )
     }
 
     @ViewBuilder

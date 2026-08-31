@@ -5,6 +5,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         case onboarding
         case onboardingLoading = "onboarding-loading"
         case core
+        case premium
         case failOnce = "fail-once"
         case noRoutes = "no-routes"
         case researchComplete = "research-complete"
@@ -263,6 +264,101 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(app.buttons["route.saveToggle"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["route.exportGPX"].waitForExistence(timeout: 5))
         XCTAssertFalse(element("route.unverifiedNotice", in: app).exists)
+    }
+
+    @MainActor
+    func testMonetizationDisabledLeavesGuestFlowAndProfileUnchanged() {
+        let app = launch(.core)
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        openPointToPointRoute(in: app)
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        let profile = app.tabBars.buttons["Profile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        profile.tap()
+        XCTAssertFalse(element("premium.profile.status", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.profile.restore"].exists)
+        XCTAssertFalse(app.buttons["premium.profile.manage"].exists)
+    }
+
+    @MainActor
+    func testPremiumAppearsOnlyAfterVerifiedRouteAndHasRequiredControls() {
+        let app = launch(.premium)
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        tapHomeExample(
+            "home.example.pointToPoint",
+            in: app,
+            until: element("planning.suggestions", in: app)
+        )
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        let routeLink = routeAction(titled: "Ilsenburg to Schierke Route", in: app)
+        XCTAssertTrue(routeLink.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            tap(routeLink, until: element("route.detail", in: app), timeout: 8)
+        )
+
+        let premiumEntry = app.buttons["premium.entry"]
+        XCTAssertTrue(waitUntilHittable(premiumEntry, in: app, maximumSwipes: 18))
+        premiumEntry.tap()
+
+        XCTAssertTrue(element("premium.paywall", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(element("premium.product.monthly", in: app).waitForExistence(timeout: 8))
+        XCTAssertTrue(element("premium.product.annual", in: app).exists)
+        XCTAssertTrue(app.buttons["premium.subscribe.monthly"].exists)
+        XCTAssertTrue(app.buttons["premium.subscribe.annual"].exists)
+
+        let close = app.buttons["premium.close"]
+        XCTAssertTrue(close.exists)
+        XCTAssertTrue(waitUntilHittable(app.buttons["premium.restore"], in: app, maximumSwipes: 12))
+        XCTAssertTrue(app.buttons["premium.manage"].exists)
+        XCTAssertTrue(app.links["premium.privacy"].exists)
+        XCTAssertTrue(app.links["premium.terms"].exists)
+        XCTAssertTrue(element("premium.renewalDisclosure", in: app).exists)
+
+        close.tap()
+        XCTAssertTrue(element("route.detail", in: app).waitForExistence(timeout: 5))
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+    }
+
+    @MainActor
+    func testPremiumPaywallRemainsReachableAtAccessibilityXXXL() {
+        let app = launch(
+            .premium,
+            extraArguments: [
+                "--trailmind-ui-accessibility-xxxl",
+                "--trailmind-ui-dark-mode",
+                "-UIAccessibilityDarkerSystemColorsEnabled",
+                "YES",
+                "-UIAccessibilityReduceMotionEnabled",
+                "YES"
+            ]
+        )
+        openPointToPointRoute(in: app)
+        let premiumEntry = app.buttons["premium.entry"]
+        XCTAssertTrue(waitUntilHittable(premiumEntry, in: app, maximumSwipes: 24))
+        premiumEntry.tap()
+
+        XCTAssertTrue(element("premium.paywall", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            waitUntilHittable(
+                app.buttons["premium.subscribe.annual"],
+                in: app,
+                maximumSwipes: 20
+            )
+        )
+        XCTAssertTrue(
+            waitUntilHittable(app.buttons["premium.restore"], in: app, maximumSwipes: 20)
+        )
+        XCTAssertTrue(app.buttons["premium.manage"].exists)
+        captureScreen(named: "premium-accessibility-xxxl-dark")
     }
 
     @MainActor

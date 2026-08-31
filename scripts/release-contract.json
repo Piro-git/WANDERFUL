@@ -36,17 +36,33 @@
     "RESEARCH_GUIDED_PLANNING_ENABLED": "false",
     "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": "false",
     "SUPABASE_ONBOARDING_SYNC_ENABLED": "false",
-    "SUPERWALL_ENABLED": "false"
+    "SUPERWALL_ENABLED": "false",
+    "MONETIZATION_ENABLED": "false"
   },
   "service_configuration": {
     "INTENT_BACKEND_BASE_URL": "",
     "SUPABASE_PROJECT_URL": "",
     "SUPABASE_PUBLISHABLE_KEY": "",
-    "SUPERWALL_API_KEY": ""
+    "SUPERWALL_API_KEY": "",
+    "WANDERFUL_PREMIUM_MONTHLY_PRODUCT_ID": "",
+    "WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID": ""
   },
   "public_link_configuration": {
     "WANDERFUL_PRIVACY_POLICY_URL": "",
-    "WANDERFUL_SUPPORT_URL": ""
+    "WANDERFUL_SUPPORT_URL": "",
+    "WANDERFUL_TERMS_OF_USE_URL": ""
+  },
+  "monetization": {
+    "feature_flag_info_key": "MONETIZATION_ENABLED",
+    "superwall_flag_info_key": "SUPERWALL_ENABLED",
+    "monthly_product_info_key": "WANDERFUL_PREMIUM_MONTHLY_PRODUCT_ID",
+    "annual_product_info_key": "WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID",
+    "privacy_policy_info_key": "WANDERFUL_PRIVACY_POLICY_URL",
+    "terms_of_use_info_key": "WANDERFUL_TERMS_OF_USE_URL",
+    "required_binary_markers": [
+      "Restore purchases",
+      "Manage subscription"
+    ]
   },
   "distribution": {
     "expected_team_identifier_environment_variable": "TRAILMIND_EXPECTED_TEAM_IDENTIFIER"
@@ -203,6 +219,8 @@
     "better than Komoot",
     "example.com/privacy",
     "example.com/support",
+    "test.app.wanderful.premium",
+    "local.storekit.test",
     "TrailMindTests",
     "TrailMindUITests"
   ]

@@ -28,6 +28,8 @@
 	<string>$(INSECURE_LOCAL_BACKEND_AUTH_ENABLED)</string>
 	<key>IN_MEMORY_APP_ATTEST_ENABLED</key>
 	<string>$(IN_MEMORY_APP_ATTEST_ENABLED)</string>
+	<key>MONETIZATION_ENABLED</key>
+	<string>$(MONETIZATION_ENABLED)</string>
 	<key>OUTDOOR_EVIDENCE_ENABLED</key>
 	<string>$(OUTDOOR_EVIDENCE_ENABLED)</string>
 	<key>RESEARCH_GUIDED_PLANNING_ENABLED</key>
@@ -54,6 +56,12 @@
 	<string>$(WANDERFUL_PRIVACY_POLICY_URL)</string>
 	<key>WANDERFUL_SUPPORT_URL</key>
 	<string>$(WANDERFUL_SUPPORT_URL)</string>
+	<key>WANDERFUL_TERMS_OF_USE_URL</key>
+	<string>$(WANDERFUL_TERMS_OF_USE_URL)</string>
+	<key>WANDERFUL_PREMIUM_MONTHLY_PRODUCT_ID</key>
+	<string>$(WANDERFUL_PREMIUM_MONTHLY_PRODUCT_ID)</string>
+	<key>WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID</key>
+	<string>$(WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
 	<key>NSMicrophoneUsageDescription</key>

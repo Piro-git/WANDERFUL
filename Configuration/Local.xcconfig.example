@@ -18,3 +18,13 @@
 // In xcconfig, // begins a comment. Preserve the second HTTPS slash with the
 // empty-substitution form https:/$()/… when a reviewed value is supplied.
 // Do not add placeholder destinations.
+// LOCAL_PRIVACY_POLICY_URL =
+// LOCAL_TERMS_OF_USE_URL =
+// LOCAL_SUPPORT_URL =
+
+// StoreKit product identifiers are owner-provided public values. Keep them
+// unset until matching App Store Connect subscriptions and reviewed legal
+// pages exist. Development keeps MONETIZATION_ENABLED protected false; use the
+// test-only StoreKit scheme scenario for local purchase QA.
+// LOCAL_PREMIUM_MONTHLY_PRODUCT_ID =
+// LOCAL_PREMIUM_ANNUAL_PRODUCT_ID =

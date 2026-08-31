@@ -121,7 +121,8 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
             "DIRECT_GRAPHHOPPER_ENABLED = false",
             "INSECURE_LOCAL_BACKEND_AUTH_ENABLED = false",
             "IN_MEMORY_APP_ATTEST_ENABLED = false",
-            "SUPERWALL_ENABLED = false"
+            "SUPERWALL_ENABLED = false",
+            "MONETIZATION_ENABLED = false"
         ] {
             XCTAssertTrue(sharedConfiguration.contains(setting), "Missing disabled setting: \(setting)")
         }
@@ -189,10 +190,19 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         for emptySetting in [
             "LOCAL_PRIVACY_POLICY_URL =",
             "LOCAL_SUPPORT_URL =",
+            "LOCAL_TERMS_OF_USE_URL =",
+            "LOCAL_PREMIUM_MONTHLY_PRODUCT_ID =",
+            "LOCAL_PREMIUM_ANNUAL_PRODUCT_ID =",
             "STAGING_PRIVACY_POLICY_URL =",
             "STAGING_SUPPORT_URL =",
+            "STAGING_TERMS_OF_USE_URL =",
+            "STAGING_PREMIUM_MONTHLY_PRODUCT_ID =",
+            "STAGING_PREMIUM_ANNUAL_PRODUCT_ID =",
             "PRODUCTION_PRIVACY_POLICY_URL =",
-            "PRODUCTION_SUPPORT_URL ="
+            "PRODUCTION_SUPPORT_URL =",
+            "PRODUCTION_TERMS_OF_USE_URL =",
+            "PRODUCTION_PREMIUM_MONTHLY_PRODUCT_ID =",
+            "PRODUCTION_PREMIUM_ANNUAL_PRODUCT_ID ="
         ] {
             XCTAssertTrue(
                 sharedConfiguration.contains(emptySetting),
@@ -222,6 +232,41 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertTrue(sharedConfiguration.contains("https:/$()/…"))
         XCTAssertFalse(localExample.contains("LOCAL_PRIVACY_POLICY_URL = https:"))
         XCTAssertFalse(localExample.contains("LOCAL_SUPPORT_URL = https:"))
+        XCTAssertFalse(localExample.contains("LOCAL_TERMS_OF_USE_URL = https:"))
+    }
+
+    func testProductionPremiumFoundationIsDisabledAndTestCatalogIsDebugOnly() async throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sharedConfiguration = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "Configuration/Shared.xcconfig"
+            ),
+            encoding: .utf8
+        )
+        let premiumSource = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind/Services/PremiumAccess.swift"
+            ),
+            encoding: .utf8
+        )
+        let releasePremiumSource = sourceExcludingDebugBlocks(
+            premiumSource.replacingOccurrences(
+                of: "#if DEBUG && targetEnvironment(simulator)",
+                with: "#if DEBUG"
+            )
+        )
+
+        XCTAssertTrue(sharedConfiguration.contains("MONETIZATION_ENABLED = false"))
+        XCTAssertFalse(releasePremiumSource.contains("test.app.wanderful.premium"))
+        XCTAssertFalse(releasePremiumSource.contains("local.storekit.test"))
+
+        let store = PremiumAccessFactory.makeProduction(appConfiguration: nil)
+        await store.start()
+        XCTAssertEqual(store.accessState, .disabled)
+        XCTAssertFalse(store.isAvailable)
+        XCTAssertTrue(store.products.isEmpty)
     }
 
     func testRouteSuggestionsExposeOneCompleteOuterAccessibilityAction() throws {

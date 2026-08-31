@@ -303,6 +303,7 @@ make_app_fixture() {
   plutil -convert xml1 "$app_path/swift-crypto_Crypto.bundle/PrivacyInfo.xcprivacy"
   print -r -- 'SYNTHETIC WANDERFUL RELEASE EXECUTABLE' > "$app_path/TrailMind"
   jq -r '.required_binary_markers[]' "$CONTRACT" >> "$app_path/TrailMind"
+  jq -r '.monetization.required_binary_markers[]' "$CONTRACT" >> "$app_path/TrailMind"
   chmod +x "$app_path/TrailMind"
   print -r -- 'ASSET CATALOG' > "$app_path/Assets.car"
   print -rn -- 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC' |
@@ -475,6 +476,25 @@ enabled_superwall_app="$(clone_simulator_fixture enabled-superwall)"
 expect_status 1 "$VERIFIER" simulator-app "$enabled_superwall_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
 
+enabled_monetization_without_owner_inputs_app="$(clone_simulator_fixture enabled-monetization-without-owner-inputs)"
+/usr/libexec/PlistBuddy -c 'Set :MONETIZATION_ENABLED true' "$enabled_monetization_without_owner_inputs_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$enabled_monetization_without_owner_inputs_app"
+assert_report '
+  .final_status == "failed" and
+  (.failed_check_ids | index("feature_flag_contract") != null) and
+  (.failed_check_ids | index("monetization_configuration_contract") != null)
+'
+
+conflicting_monetization_app="$(clone_simulator_fixture conflicting-monetization)"
+/usr/libexec/PlistBuddy -c 'Set :MONETIZATION_ENABLED true' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :SUPERWALL_ENABLED true' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_PREMIUM_MONTHLY_PRODUCT_ID app.wanderful.premium.monthly' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID app.wanderful.premium.annual' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_PRIVACY_POLICY_URL https://wanderful.app/privacy' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_TERMS_OF_USE_URL https://wanderful.app/terms' "$conflicting_monetization_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$conflicting_monetization_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("monetization_configuration_contract") != null)'
+
 missing_flag_app="$(clone_simulator_fixture missing-flag)"
 /usr/libexec/PlistBuddy -c 'Delete :OUTDOOR_EVIDENCE_ENABLED' "$missing_flag_app/Info.plist"
 expect_status 1 "$VERIFIER" simulator-app "$missing_flag_app"
@@ -555,6 +575,11 @@ debug_marker_app="$(clone_simulator_fixture debug-marker)"
 print -r -- '--trailmind-ui-testing' >> "$debug_marker_app/TrailMind"
 expect_status 1 "$VERIFIER" simulator-app "$debug_marker_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
+
+missing_monetization_path_app="$(clone_simulator_fixture missing-monetization-path)"
+sed -i '' '/Restore purchases/d' "$missing_monetization_path_app/TrailMind"
+expect_status 1 "$VERIFIER" simulator-app "$missing_monetization_path_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("monetization_management_paths") != null)'
 
 large_debug_marker_app="$(clone_simulator_fixture large-debug-marker)"
 print -r -- '--trailmind-ui-testing' >> "$large_debug_marker_app/TrailMind"

@@ -95,6 +95,7 @@ nonisolated enum WanderfulServiceConfigurationIssue: String, Error, Equatable, S
     case missingExpectedIdentity
     case identityMismatch
     case invalidPublicClientKey
+    case invalidProductIdentifier
     case prohibitedSecretKey
 }
 
@@ -125,6 +126,17 @@ nonisolated struct WanderfulSuperwallConfiguration: Equatable, Sendable {
     let publicSDKKey: String
 }
 
+nonisolated struct WanderfulPremiumConfiguration: Equatable, Sendable {
+    let monthlyProductIdentifier: String
+    let annualProductIdentifier: String
+    let privacyPolicyURL: URL
+    let termsOfUseURL: URL
+
+    var productIdentifiers: Set<String> {
+        [monthlyProductIdentifier, annualProductIdentifier]
+    }
+}
+
 nonisolated struct WanderfulFeatureFlags: Equatable, Sendable {
     let outdoorEvidence: Bool
     let researchGuidedPlanning: Bool
@@ -135,6 +147,7 @@ nonisolated struct WanderfulFeatureFlags: Equatable, Sendable {
     let inMemoryAppAttest: Bool
     let supabaseOnboardingSync: Bool
     let superwall: Bool
+    let monetization: Bool
     let invalidKeys: [String]
 
     static let disabled = Self(
@@ -147,13 +160,14 @@ nonisolated struct WanderfulFeatureFlags: Equatable, Sendable {
         inMemoryAppAttest: false,
         supabaseOnboardingSync: false,
         superwall: false,
+        monetization: false,
         invalidKeys: []
     )
 
     var allControlledFlagsAreFalse: Bool {
         !outdoorEvidence && !researchGuidedPlanning && !routableHighlightAccess &&
             !remoteIntent && !directGraphHopper && !insecureLocalBackendAuthorization &&
-            !inMemoryAppAttest && !supabaseOnboardingSync && !superwall
+            !inMemoryAppAttest && !supabaseOnboardingSync && !superwall && !monetization
     }
 }
 
@@ -162,6 +176,7 @@ nonisolated struct WanderfulEnvironmentDiagnostics: Equatable, Sendable {
     let backendAvailable: Bool
     let supabaseOnboardingAvailable: Bool
     let superwallAvailable: Bool
+    let monetizationAvailable: Bool
     let researchGuidedPlanningAvailable: Bool
     let outdoorEvidenceAvailable: Bool
 
@@ -225,11 +240,16 @@ nonisolated struct WanderfulAppConfiguration: Equatable, Sendable {
     static let supabaseURLKey = "SUPABASE_PROJECT_URL"
     static let supabaseKeyKey = "SUPABASE_PUBLISHABLE_KEY"
     static let superwallKey = "SUPERWALL_API_KEY"
+    static let premiumMonthlyProductKey = "WANDERFUL_PREMIUM_MONTHLY_PRODUCT_ID"
+    static let premiumAnnualProductKey = "WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID"
+    static let premiumPrivacyPolicyKey = "WANDERFUL_PRIVACY_POLICY_URL"
+    static let premiumTermsOfUseKey = "WANDERFUL_TERMS_OF_USE_URL"
 
     let signedIdentity: WanderfulLaneIdentityPolicy
     let backend: WanderfulServiceConfiguration<WanderfulBackendConfiguration>
     let supabaseOnboarding: WanderfulServiceConfiguration<WanderfulSupabaseConfiguration>
     let superwall: WanderfulServiceConfiguration<WanderfulSuperwallConfiguration>
+    let monetization: WanderfulServiceConfiguration<WanderfulPremiumConfiguration>
     let features: WanderfulFeatureFlags
 
     var environment: WanderfulEnvironment { signedIdentity.environment }
@@ -245,6 +265,7 @@ nonisolated struct WanderfulAppConfiguration: Equatable, Sendable {
             // V1 deliberately has no activatable remote onboarding client.
             supabaseOnboardingAvailable: false,
             superwallAvailable: features.superwall && superwall.isAvailable,
+            monetizationAvailable: features.monetization && monetization.isAvailable,
             researchGuidedPlanningAvailable:
                 features.researchGuidedPlanning && backendAvailable,
             outdoorEvidenceAvailable: features.outdoorEvidence && backendAvailable
@@ -280,12 +301,14 @@ nonisolated struct WanderfulAppConfiguration: Equatable, Sendable {
             throw WanderfulEnvironmentConfigurationError.appAttestEnvironmentMismatch
         }
 
+        let features = resolveFeatures(input: input)
         return Self(
             signedIdentity: signedIdentity,
             backend: resolveBackend(input: input, policy: signedIdentity.backend),
             supabaseOnboarding: resolveSupabase(input: input, policy: signedIdentity.supabase),
             superwall: resolveSuperwall(input: input),
-            features: resolveFeatures(input: input)
+            monetization: resolveMonetization(input: input, features: features),
+            features: features
         )
     }
 
@@ -405,6 +428,75 @@ nonisolated struct WanderfulAppConfiguration: Equatable, Sendable {
             : .invalid(.invalidPublicClientKey)
     }
 
+    private static func resolveMonetization(
+        input: WanderfulConfigurationInput,
+        features: WanderfulFeatureFlags
+    ) -> WanderfulServiceConfiguration<WanderfulPremiumConfiguration> {
+        let identifiers = serviceValues(
+            input: input,
+            keys: [premiumMonthlyProductKey, premiumAnnualProductKey]
+        )
+        guard case let .success(rawIdentifiers) = identifiers else {
+            return .invalid(identifiers.failure ?? .incompleteConfiguration)
+        }
+
+        // Product identifiers never activate a store on their own. Keeping them
+        // empty while the single signed feature flag is false prevents a local
+        // StoreKit test catalog from becoming a Release product configuration.
+        guard features.monetization else {
+            return rawIdentifiers.allSatisfy(\.isEmpty)
+                ? .unavailable
+                : .invalid(.incompleteConfiguration)
+        }
+        guard !features.superwall else { return .invalid(.identityMismatch) }
+        guard rawIdentifiers.allSatisfy(validProductIdentifier),
+              Set(rawIdentifiers).count == rawIdentifiers.count
+        else {
+            return .invalid(.invalidProductIdentifier)
+        }
+
+        let privacyValue = input.serviceString(premiumPrivacyPolicyKey)
+        let termsValue = input.serviceString(premiumTermsOfUseKey)
+        guard case let .success(rawPrivacyURL) = privacyValue,
+              case let .success(rawTermsURL) = termsValue
+        else {
+            return .invalid(.incompleteConfiguration)
+        }
+        guard case let .configured(privacyPolicyURL) =
+                WanderfulPublicLinks.configuration(value: rawPrivacyURL),
+              case let .configured(termsOfUseURL) =
+                WanderfulPublicLinks.configuration(value: rawTermsURL)
+        else {
+            return .invalid(.malformedURL)
+        }
+
+        return .configured(
+            WanderfulPremiumConfiguration(
+                monthlyProductIdentifier: rawIdentifiers[0],
+                annualProductIdentifier: rawIdentifiers[1],
+                privacyPolicyURL: privacyPolicyURL,
+                termsOfUseURL: termsOfUseURL
+            )
+        )
+    }
+
+    private static func validProductIdentifier(_ value: String) -> Bool {
+        guard (3...255).contains(value.utf8.count),
+              value.contains("."),
+              value.first != ".",
+              value.last != ".",
+              !value.contains(".."),
+              !value.localizedCaseInsensitiveContains("placeholder"),
+              !value.localizedCaseInsensitiveContains("your_")
+        else {
+            return false
+        }
+        return value.utf8.allSatisfy {
+            (48...57).contains($0) || (65...90).contains($0) ||
+                (97...122).contains($0) || $0 == 45 || $0 == 46 || $0 == 95
+        }
+    }
+
     private static func resolveFeatures(
         input: WanderfulConfigurationInput
     ) -> WanderfulFeatureFlags {
@@ -417,7 +509,8 @@ nonisolated struct WanderfulAppConfiguration: Equatable, Sendable {
             "INSECURE_LOCAL_BACKEND_AUTH_ENABLED",
             "IN_MEMORY_APP_ATTEST_ENABLED",
             "SUPABASE_ONBOARDING_SYNC_ENABLED",
-            "SUPERWALL_ENABLED"
+            "SUPERWALL_ENABLED",
+            "MONETIZATION_ENABLED"
         ]
         var values: [String: Bool] = [:]
         var invalid: [String] = []
@@ -444,6 +537,7 @@ nonisolated struct WanderfulAppConfiguration: Equatable, Sendable {
             inMemoryAppAttest: values[keys[6]] ?? false,
             supabaseOnboardingSync: values[keys[7]] ?? false,
             superwall: values[keys[8]] ?? false,
+            monetization: values[keys[9]] ?? false,
             invalidKeys: invalid.sorted()
         )
     }

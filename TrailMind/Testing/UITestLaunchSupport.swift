@@ -14,6 +14,7 @@ struct UITestLaunchComposition {
         case onboarding
         case onboardingLoading = "onboarding-loading"
         case core
+        case premium
         case failOnce = "fail-once"
         case noRoutes = "no-routes"
         case researchComplete = "research-complete"
@@ -25,6 +26,7 @@ struct UITestLaunchComposition {
     let startDestination: StartDestination
     let appModel: AppModel
     let planner: PlannerViewModel
+    let premiumAccess: PremiumAccessStore
     let dynamicTypeSize: DynamicTypeSize
     let colorScheme: ColorScheme?
 
@@ -51,7 +53,7 @@ struct UITestLaunchComposition {
         }
 
         let routingBehavior: UITestRoutingCoordinator.Behavior = switch scenario {
-        case .onboarding, .onboardingLoading, .core, .researchComplete, .researchPartial,
+        case .onboarding, .onboardingLoading, .core, .premium, .researchComplete, .researchPartial,
              .researchFallback, .researchClarification:
             .success
         case .failOnce:
@@ -70,14 +72,14 @@ struct UITestLaunchComposition {
             .fallback
         case .researchClarification:
             .clarification
-        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes:
+        case .onboarding, .onboardingLoading, .core, .premium, .failOnce, .noRoutes:
             .complete
         }
         let researchEnabled: Bool = switch scenario {
         case .researchComplete, .researchPartial, .researchFallback,
              .researchClarification:
             true
-        case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes:
+        case .onboarding, .onboardingLoading, .core, .premium, .failOnce, .noRoutes:
             false
         }
         let savedRoutes = SavedRoutesModel(store: InMemorySavedRouteStore())
@@ -97,7 +99,7 @@ struct UITestLaunchComposition {
         let startDestination: StartDestination = switch scenario {
         case .onboarding: .onboarding
         case .onboardingLoading: .onboardingLoading
-        case .core, .failOnce, .noRoutes, .researchComplete,
+        case .core, .premium, .failOnce, .noRoutes, .researchComplete,
              .researchPartial, .researchFallback, .researchClarification:
             .appShell
         }
@@ -112,6 +114,9 @@ struct UITestLaunchComposition {
             startDestination: startDestination,
             appModel: appModel,
             planner: planner,
+            premiumAccess: scenario == .premium
+                ? PremiumAccessFactory.makeStoreKitTest()
+                : PremiumAccessFactory.makeProduction(appConfiguration: nil),
             dynamicTypeSize: arguments.contains("--trailmind-ui-accessibility-xxxl")
                 ? .accessibility5
                 : .large,

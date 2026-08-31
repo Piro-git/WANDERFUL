@@ -6,6 +6,7 @@ struct TrailMindApp: App {
     @State private var theme = TrailTheme()
     @State private var appModel: AppModel
     @State private var productionPlanner: PlannerViewModel
+    @State private var premiumAccess: PremiumAccessStore
     @State private var sessionStartup = TrailMindSessionStartupState()
     #if DEBUG
     private let stagingProofComposition:
@@ -39,6 +40,14 @@ struct TrailMindApp: App {
         resolvedAppModel = Self.makeProductionAppModel()
         #endif
         _appModel = State(initialValue: resolvedAppModel)
+        #if DEBUG && targetEnvironment(simulator)
+        _premiumAccess = State(
+            initialValue: uiTestComposition?.premiumAccess ??
+                PremiumAccessFactory.makeProduction()
+        )
+        #else
+        _premiumAccess = State(initialValue: PremiumAccessFactory.makeProduction())
+        #endif
         _productionPlanner = State(
             initialValue: PlannerViewModel(
                 hikingProfileProvider: { [weak resolvedAppModel] in
@@ -65,7 +74,11 @@ struct TrailMindApp: App {
             }
             .environment(theme)
             .environment(appModel)
+            .environment(premiumAccess)
             .tint(theme.forestBright)
+            .task {
+                await premiumAccess.start()
+            }
             .task {
                 async let hikingProfileLoad: Void = appModel.loadHikingProfileStateIfNeeded()
                 if sessionStartup.claimGPXRecovery() {
