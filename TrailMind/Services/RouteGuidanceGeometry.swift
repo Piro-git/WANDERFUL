@@ -19,6 +19,16 @@ struct RouteGuidancePolicy: Equatable, Sendable {
     let completionDistanceMeters: Double
     let completionSampleCount: Int
     let noUpdateTimeoutSeconds: TimeInterval
+    /// `CLLocation.timestamp` is when a fix was determined, not when its
+    /// delegate callback was delivered. Core Location can therefore deliver a
+    /// cached fix when updates start. A fix up to 15 seconds old remains useful
+    /// for initial foreground orientation; anything older cannot drive state.
+    let maximumLocationSampleAgeSeconds: TimeInterval
+    /// Core Location timestamps and `Date` share wall-clock time. A small,
+    /// bounded allowance avoids rejecting a valid fix during clock rounding or
+    /// synchronization, while preventing materially future-dated samples from
+    /// poisoning the session's monotonic timestamp watermark.
+    let maximumLocationSampleFutureSkewSeconds: TimeInterval
 
     static let v1 = RouteGuidancePolicy(
         maximumReliableHorizontalAccuracyMeters: 50,
@@ -32,7 +42,9 @@ struct RouteGuidancePolicy: Equatable, Sendable {
         instructionMaximumSnapDistanceMeters: 50,
         completionDistanceMeters: 35,
         completionSampleCount: 2,
-        noUpdateTimeoutSeconds: 30
+        noUpdateTimeoutSeconds: 30,
+        maximumLocationSampleAgeSeconds: 15,
+        maximumLocationSampleFutureSkewSeconds: 5
     )
 }
 
@@ -108,6 +120,59 @@ struct RouteLocationSample: Equatable, Sendable {
             (-180...180).contains(coordinate.longitude) &&
             horizontalAccuracyMeters.isFinite &&
             horizontalAccuracyMeters >= 0
+    }
+}
+
+enum RouteLocationSampleTemporalRejection: Equatable, Sendable {
+    case invalidTimestamp
+    case stale
+    case futureDated
+    case nonMonotonic
+}
+
+enum RouteLocationSampleTemporalDecision: Equatable, Sendable {
+    case accepted
+    case rejected(RouteLocationSampleTemporalRejection)
+}
+
+/// Admits only fresh, plausibly timed, strictly increasing Core Location fixes.
+///
+/// This gate must run before any navigation-visible mutation. A rejection does
+/// not advance `lastAcceptedTimestamp`, so bad samples cannot affect the fate
+/// of a later valid fix.
+struct RouteLocationSampleTemporalGate: Equatable, Sendable {
+    private(set) var lastAcceptedTimestamp: Date?
+
+    mutating func evaluate(
+        _ sample: RouteLocationSample,
+        receivedAt: Date,
+        policy: RouteGuidancePolicy = .v1
+    ) -> RouteLocationSampleTemporalDecision {
+        guard receivedAt.timeIntervalSinceReferenceDate.isFinite,
+              sample.timestamp.timeIntervalSinceReferenceDate.isFinite
+        else {
+            return .rejected(.invalidTimestamp)
+        }
+
+        let age = receivedAt.timeIntervalSince(sample.timestamp)
+        guard age <= policy.maximumLocationSampleAgeSeconds else {
+            return .rejected(.stale)
+        }
+        guard age >= -policy.maximumLocationSampleFutureSkewSeconds else {
+            return .rejected(.futureDated)
+        }
+        if let lastAcceptedTimestamp,
+           sample.timestamp <= lastAcceptedTimestamp
+        {
+            return .rejected(.nonMonotonic)
+        }
+
+        lastAcceptedTimestamp = sample.timestamp
+        return .accepted
+    }
+
+    mutating func reset() {
+        lastAcceptedTimestamp = nil
     }
 }
 
@@ -514,6 +579,10 @@ struct RouteLocationStalenessMonitor: Equatable, Sendable {
 
     mutating func recordUpdate(at date: Date) {
         lastUpdateAt = date
+    }
+
+    mutating func reset() {
+        lastUpdateAt = nil
     }
 
     func isDelayed(

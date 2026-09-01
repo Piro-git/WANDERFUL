@@ -50,6 +50,10 @@ struct RouteGuidanceView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
                 model.appDidEnterBackground()
+            } else if newPhase == .active {
+                Task {
+                    await model.appDidBecomeActive()
+                }
             }
         }
         .onChange(of: model.latestLocation?.coordinate) { _, coordinate in

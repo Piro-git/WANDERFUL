@@ -15,6 +15,8 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         case guidanceOffRoute = "guidance-off-route"
         case guidanceComplete = "guidance-complete"
         case guidanceDenied = "guidance-denied"
+        case guidanceReduced = "guidance-reduced"
+        case guidanceRestricted = "guidance-restricted"
         case guidanceDirect = "guidance-direct"
     }
 
@@ -750,8 +752,6 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     @MainActor
     func testRouteGuidanceShowsAndCapturesOffRouteWarning() {
         let app = launch(.guidanceOffRoute)
-        openPointToPointRoute(in: app)
-        startRouteGuidance(in: app)
 
         let warning = element("guidance.offRouteWarning", in: app)
         XCTAssertTrue(warning.waitForExistence(timeout: 8))
@@ -763,8 +763,6 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     @MainActor
     func testRouteGuidanceShowsExplicitCompletion() {
         let app = launch(.guidanceComplete)
-        openPointToPointRoute(in: app)
-        startRouteGuidance(in: app)
 
         let completion = element("guidance.completion", in: app)
         XCTAssertTrue(completion.waitForExistence(timeout: 8))
@@ -776,13 +774,44 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     @MainActor
     func testRouteGuidanceDeniedPermissionSurfaceRemainsUsable() {
         let deniedApp = launch(.guidanceDenied)
-        openPointToPointRoute(in: deniedApp)
-        startRouteGuidance(in: deniedApp)
         XCTAssertTrue(
             element("guidance.blocked", in: deniedApp)
                 .waitForExistence(timeout: 5)
         )
         XCTAssertTrue(deniedApp.buttons["guidance.openSettings"].exists)
+        XCTAssertTrue(deniedApp.buttons["guidance.done"].exists)
+    }
+
+    @MainActor
+    func testRouteGuidanceReducedAndRestrictedPermissionActionsAreTruthfulAndAccessible() {
+        let reducedApp = launch(
+            .guidanceReduced,
+            extraArguments: accessibilityStressArguments
+        )
+        let reducedBlock = element("guidance.blocked", in: reducedApp)
+        XCTAssertTrue(reducedBlock.waitForExistence(timeout: 8))
+        XCTAssertTrue(reducedBlock.label.contains("Precise Location is off"))
+        let openSettings = reducedApp.buttons["guidance.openSettings"]
+        let reducedDone = reducedApp.buttons["guidance.done"]
+        XCTAssertTrue(openSettings.exists)
+        XCTAssertTrue(reducedDone.exists)
+        XCTAssertGreaterThanOrEqual(openSettings.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(reducedDone.frame.height, 44)
+        reducedApp.terminate()
+
+        let restrictedApp = launch(
+            .guidanceRestricted,
+            extraArguments: accessibilityStressArguments
+        )
+        let restrictedBlock = element("guidance.blocked", in: restrictedApp)
+        XCTAssertTrue(restrictedBlock.waitForExistence(timeout: 8))
+        XCTAssertTrue(
+            restrictedBlock.label.contains("Location access is restricted")
+        )
+        XCTAssertFalse(restrictedApp.buttons["guidance.openSettings"].exists)
+        let restrictedDone = restrictedApp.buttons["guidance.done"]
+        XCTAssertTrue(restrictedDone.exists)
+        XCTAssertGreaterThanOrEqual(restrictedDone.frame.height, 44)
     }
 
     @MainActor
@@ -931,16 +960,6 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(
             tap(routeLink, until: element("route.detail", in: app), timeout: 8),
             "The suggestion card should open its route detail."
-        )
-    }
-
-    @MainActor
-    private func startRouteGuidance(in app: XCUIApplication) {
-        let start = app.buttons["route.startGuidance"]
-        XCTAssertTrue(start.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitUntilHittable(start, in: app, maximumSwipes: 12))
-        XCTAssertTrue(
-            tap(start, until: element("guidance.screen", in: app), timeout: 8)
         )
     }
 

@@ -25,6 +25,8 @@ struct UITestLaunchComposition {
         case guidanceOffRoute = "guidance-off-route"
         case guidanceComplete = "guidance-complete"
         case guidanceDenied = "guidance-denied"
+        case guidanceReduced = "guidance-reduced"
+        case guidanceRestricted = "guidance-restricted"
         case guidanceDirect = "guidance-direct"
     }
 
@@ -62,7 +64,7 @@ struct UITestLaunchComposition {
         case .onboarding, .onboardingLoading, .core, .researchComplete, .researchPartial,
              .researchFallback, .researchClarification, .guidance,
              .guidanceOffRoute, .guidanceComplete, .guidanceDenied,
-             .guidanceDirect:
+             .guidanceReduced, .guidanceRestricted, .guidanceDirect:
             .success
         case .failOnce:
             .failOnce
@@ -82,7 +84,8 @@ struct UITestLaunchComposition {
             .clarification
         case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes,
              .guidance, .guidanceOffRoute, .guidanceComplete,
-             .guidanceDenied, .guidanceDirect:
+             .guidanceDenied, .guidanceReduced, .guidanceRestricted,
+             .guidanceDirect:
             .complete
         }
         let researchEnabled: Bool = switch scenario {
@@ -91,7 +94,8 @@ struct UITestLaunchComposition {
             true
         case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes,
              .guidance, .guidanceOffRoute, .guidanceComplete,
-             .guidanceDenied, .guidanceDirect:
+             .guidanceDenied, .guidanceReduced, .guidanceRestricted,
+             .guidanceDirect:
             false
         }
         let savedRoutes = SavedRoutesModel(store: InMemorySavedRouteStore())
@@ -113,10 +117,10 @@ struct UITestLaunchComposition {
         case .onboardingLoading: .onboardingLoading
         case .core, .failOnce, .noRoutes, .researchComplete,
              .researchPartial, .researchFallback, .researchClarification,
-             .guidance, .guidanceOffRoute, .guidanceComplete,
-             .guidanceDenied:
+             .guidance:
             .appShell
-        case .guidanceDirect:
+        case .guidanceOffRoute, .guidanceComplete, .guidanceDenied,
+             .guidanceReduced, .guidanceRestricted, .guidanceDirect:
             .routeGuidance
         }
         let usesLightMode = arguments.contains("--trailmind-ui-light-mode")
@@ -135,6 +139,10 @@ struct UITestLaunchComposition {
             .complete
         case .guidanceDenied:
             .denied
+        case .guidanceReduced:
+            .reducedAccuracy
+        case .guidanceRestricted:
+            .restricted
         case .onboarding, .onboardingLoading, .core, .failOnce, .noRoutes,
              .researchComplete, .researchPartial, .researchFallback,
              .researchClarification:
@@ -847,6 +855,8 @@ private enum UITestRouteGuidanceMode: Equatable {
     case offRoute
     case complete
     case denied
+    case reducedAccuracy
+    case restricted
 }
 
 @MainActor
@@ -873,11 +883,29 @@ private final class UITestRouteLocationService: RouteLocationProviding {
 
     init(mode: UITestRouteGuidanceMode) {
         self.mode = mode
-        authorization = mode == .denied ? .denied : .notDetermined
+        authorization = switch mode {
+        case .denied:
+            .denied
+        case .reducedAccuracy:
+            .reducedAccuracy
+        case .restricted:
+            .restricted
+        case .normal, .offRoute, .complete:
+            .notDetermined
+        }
     }
 
     func requestWhenInUseAuthorization() async -> RouteLocationAuthorization {
-        guard mode != .denied else { return .denied }
+        switch mode {
+        case .denied:
+            return .denied
+        case .reducedAccuracy:
+            return .reducedAccuracy
+        case .restricted:
+            return .restricted
+        case .normal, .offRoute, .complete:
+            break
+        }
         authorization = .authorized
         return .authorized
     }
@@ -925,7 +953,7 @@ private final class UITestRouteLocationService: RouteLocationProviding {
         let finish = Coordinate(latitude: 51.7669, longitude: 10.6642)
         let offRoute = Coordinate(latitude: 51.8662, longitude: 10.6785)
         let coordinates: [Coordinate] = switch mode {
-        case .normal, .denied:
+        case .normal, .denied, .reducedAccuracy, .restricted:
             [start, firstInstruction]
         case .offRoute:
             [start, offRoute, offRoute, offRoute]

@@ -44,6 +44,8 @@ final class RouteGuidanceModel {
     @ObservationIgnored private var engine: RouteGuidanceEngine?
     @ObservationIgnored private var stalenessMonitor =
         RouteLocationStalenessMonitor()
+    @ObservationIgnored private var temporalGate =
+        RouteLocationSampleTemporalGate()
     @ObservationIgnored private var updatesTask: Task<Void, Never>?
     @ObservationIgnored private var noUpdateTask: Task<Void, Never>?
 
@@ -64,6 +66,10 @@ final class RouteGuidanceModel {
     }
 
     var isActivelyGuiding: Bool { phase == .guiding }
+
+    var lastAcceptedLocationTimestamp: Date? {
+        temporalGate.lastAcceptedTimestamp
+    }
 
     var remainingDistanceLabel: String {
         guard let metrics = snapshot?.metrics else { return route.distanceLabel }
@@ -108,6 +114,7 @@ final class RouteGuidanceModel {
             return
         }
         guard phase == .starting || isRetryablePhase else { return }
+        resetTemporalState()
         phase = .starting
         let authorization: RouteLocationAuthorization
         if locationService.authorization == .notDetermined {
@@ -132,7 +139,7 @@ final class RouteGuidanceModel {
 
     func end() {
         guard phase != .ended else { return }
-        stopMonitoring()
+        stopMonitoring(resetTemporalState: true)
         phase = .ended
     }
 
@@ -147,8 +154,19 @@ final class RouteGuidanceModel {
         stopMonitoring()
     }
 
+    func appDidBecomeActive() async {
+        guard case let .blocked(reason) = phase else { return }
+        switch reason {
+        case .permissionDenied, .preciseLocationRequired,
+             .locationServicesDisabled:
+            await retry()
+        case .routeUnavailable, .permissionRestricted:
+            return
+        }
+    }
+
     func shutdown() {
-        stopMonitoring()
+        stopMonitoring(resetTemporalState: true)
     }
 
     private var isRetryablePhase: Bool {
@@ -165,14 +183,19 @@ final class RouteGuidanceModel {
         case .authorized:
             beginMonitoring()
         case .notDetermined:
+            stopMonitoring(resetTemporalState: true)
             phase = .failed(message: "Location permission was not completed. Try again when you’re ready.")
         case .reducedAccuracy:
+            stopMonitoring(resetTemporalState: true)
             phase = .blocked(.preciseLocationRequired)
         case .denied:
+            stopMonitoring(resetTemporalState: true)
             phase = .blocked(.permissionDenied)
         case .restricted:
+            stopMonitoring(resetTemporalState: true)
             phase = .blocked(.permissionRestricted)
         case .servicesDisabled:
+            stopMonitoring(resetTemporalState: true)
             phase = .blocked(.locationServicesDisabled)
         }
     }
@@ -217,8 +240,15 @@ final class RouteGuidanceModel {
 
     private func receive(_ sample: RouteLocationSample) {
         guard phase == .guiding, sample.hasUsableCoordinate else { return }
+        let receivedAt = clock.now()
+        guard temporalGate.evaluate(
+            sample,
+            receivedAt: receivedAt,
+            policy: policy
+        ) == .accepted else { return }
+
         latestLocation = sample
-        stalenessMonitor.recordUpdate(at: clock.now())
+        stalenessMonitor.recordUpdate(at: receivedAt)
         isLocationDelayed = false
         restartNoUpdateTimer()
 
@@ -228,7 +258,7 @@ final class RouteGuidanceModel {
         guard let nextSnapshot else { return }
         snapshot = nextSnapshot
         if nextSnapshot.isComplete {
-            stopMonitoring()
+            stopMonitoring(resetTemporalState: true)
             phase = .completed
         }
     }
@@ -240,11 +270,7 @@ final class RouteGuidanceModel {
             do {
                 try await clock.sleep(seconds: policy.noUpdateTimeoutSeconds)
                 try Task.checkCancellation()
-                guard phase == .guiding else { return }
-                isLocationDelayed = stalenessMonitor.isDelayed(
-                    at: clock.now(),
-                    timeoutSeconds: policy.noUpdateTimeoutSeconds
-                )
+                refreshLocationDelayState()
             } catch is CancellationError {
                 return
             } catch {
@@ -253,7 +279,15 @@ final class RouteGuidanceModel {
         }
     }
 
-    private func stopMonitoring() {
+    func refreshLocationDelayState() {
+        guard phase == .guiding else { return }
+        isLocationDelayed = stalenessMonitor.isDelayed(
+            at: clock.now(),
+            timeoutSeconds: policy.noUpdateTimeoutSeconds
+        )
+    }
+
+    private func stopMonitoring(resetTemporalState: Bool = false) {
         updatesTask?.cancel()
         updatesTask = nil
         noUpdateTask?.cancel()
@@ -261,10 +295,18 @@ final class RouteGuidanceModel {
         locationService.stopUpdatingLocation()
         screenAwakeController.setGuidanceActive(false)
         isLocationDelayed = false
+        if resetTemporalState {
+            self.resetTemporalState()
+        }
+    }
+
+    private func resetTemporalState() {
+        temporalGate.reset()
+        stalenessMonitor.reset()
     }
 
     private func handleLocationServiceError(_ error: RouteLocationServiceError) {
-        stopMonitoring()
+        stopMonitoring(resetTemporalState: true)
         switch error {
         case .permissionDenied:
             phase = .blocked(.permissionDenied)
@@ -282,7 +324,7 @@ final class RouteGuidanceModel {
     }
 
     private func failLocationUpdates(message: String) {
-        stopMonitoring()
+        stopMonitoring(resetTemporalState: true)
         phase = .failed(message: message)
     }
 

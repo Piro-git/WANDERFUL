@@ -264,6 +264,159 @@ final class RouteGuidanceGeometryTests: XCTestCase {
 }
 
 @MainActor
+final class RouteLocationSampleTemporalGateTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_000)
+
+    func testExactAgeAndFutureBoundariesAreAccepted() {
+        var ageGate = RouteLocationSampleTemporalGate()
+        let exactAge = timestampedSample(
+            at: now.addingTimeInterval(
+                -RouteGuidancePolicy.v1.maximumLocationSampleAgeSeconds
+            )
+        )
+        XCTAssertEqual(
+            ageGate.evaluate(exactAge, receivedAt: now),
+            .accepted
+        )
+
+        var futureGate = RouteLocationSampleTemporalGate()
+        let exactFuture = timestampedSample(
+            at: now.addingTimeInterval(
+                RouteGuidancePolicy.v1.maximumLocationSampleFutureSkewSeconds
+            )
+        )
+        XCTAssertEqual(
+            futureGate.evaluate(exactFuture, receivedAt: now),
+            .accepted
+        )
+    }
+
+    func testCachedSampleBeyondAgeBoundaryIsRejectedWithoutWatermark() {
+        var gate = RouteLocationSampleTemporalGate()
+        let stale = timestampedSample(
+            at: now.addingTimeInterval(
+                -RouteGuidancePolicy.v1.maximumLocationSampleAgeSeconds - 0.001
+            )
+        )
+
+        XCTAssertEqual(
+            gate.evaluate(stale, receivedAt: now),
+            .rejected(.stale)
+        )
+        XCTAssertNil(gate.lastAcceptedTimestamp)
+    }
+
+    func testSampleBeyondFutureSkewBoundaryIsRejectedWithoutWatermark() {
+        var gate = RouteLocationSampleTemporalGate()
+        let future = timestampedSample(
+            at: now.addingTimeInterval(
+                RouteGuidancePolicy.v1.maximumLocationSampleFutureSkewSeconds
+                    + 0.001
+            )
+        )
+
+        XCTAssertEqual(
+            gate.evaluate(future, receivedAt: now),
+            .rejected(.futureDated)
+        )
+        XCTAssertNil(gate.lastAcceptedTimestamp)
+    }
+
+    func testDuplicateSampleIsRejected() {
+        var gate = RouteLocationSampleTemporalGate()
+        let original = timestampedSample(at: now)
+
+        XCTAssertEqual(gate.evaluate(original, receivedAt: now), .accepted)
+        XCTAssertEqual(
+            gate.evaluate(original, receivedAt: now),
+            .rejected(.nonMonotonic)
+        )
+        XCTAssertEqual(gate.lastAcceptedTimestamp, original.timestamp)
+    }
+
+    func testDifferentSampleWithEqualTimestampIsRejected() {
+        var gate = RouteLocationSampleTemporalGate()
+        let first = timestampedSample(at: now, coordinate: point(0, 0))
+        let equalTimestamp = timestampedSample(
+            at: now,
+            coordinate: point(0, 0.0005)
+        )
+
+        XCTAssertEqual(gate.evaluate(first, receivedAt: now), .accepted)
+        XCTAssertEqual(
+            gate.evaluate(equalTimestamp, receivedAt: now),
+            .rejected(.nonMonotonic)
+        )
+        XCTAssertEqual(gate.lastAcceptedTimestamp, first.timestamp)
+    }
+
+    func testReversedSampleIsRejectedAndDoesNotPoisonLaterValidFix() {
+        var gate = RouteLocationSampleTemporalGate()
+        let first = timestampedSample(
+            at: now.addingTimeInterval(1),
+            coordinate: point(0, 0.0002)
+        )
+        let reversed = timestampedSample(
+            at: now,
+            coordinate: point(0, 0.0008)
+        )
+        let later = timestampedSample(
+            at: now.addingTimeInterval(2),
+            coordinate: point(0, 0.0009)
+        )
+
+        XCTAssertEqual(
+            gate.evaluate(first, receivedAt: now.addingTimeInterval(1)),
+            .accepted
+        )
+        XCTAssertEqual(
+            gate.evaluate(reversed, receivedAt: now.addingTimeInterval(1)),
+            .rejected(.nonMonotonic)
+        )
+        XCTAssertEqual(
+            gate.evaluate(later, receivedAt: now.addingTimeInterval(2)),
+            .accepted
+        )
+        XCTAssertEqual(gate.lastAcceptedTimestamp, later.timestamp)
+    }
+
+    func testResetStartsANewTemporalSession() {
+        var gate = RouteLocationSampleTemporalGate()
+        let sample = timestampedSample(at: now)
+        XCTAssertEqual(gate.evaluate(sample, receivedAt: now), .accepted)
+
+        gate.reset()
+
+        XCTAssertNil(gate.lastAcceptedTimestamp)
+        XCTAssertEqual(gate.evaluate(sample, receivedAt: now), .accepted)
+    }
+
+    func testNonFiniteTimestampsAreRejected() {
+        var gate = RouteLocationSampleTemporalGate()
+        let invalid = timestampedSample(
+            at: Date(timeIntervalSinceReferenceDate: .nan)
+        )
+
+        XCTAssertEqual(
+            gate.evaluate(invalid, receivedAt: now),
+            .rejected(.invalidTimestamp)
+        )
+        XCTAssertNil(gate.lastAcceptedTimestamp)
+    }
+
+    private func timestampedSample(
+        at timestamp: Date,
+        coordinate: Coordinate = Coordinate(latitude: 0, longitude: 0)
+    ) -> RouteLocationSample {
+        RouteLocationSample(
+            coordinate: coordinate,
+            horizontalAccuracyMeters: 5,
+            timestamp: timestamp
+        )
+    }
+}
+
+@MainActor
 final class RouteGuidanceModelTests: XCTestCase {
     func testDeniedRestrictedReducedAndDisabledPermissionsBlockGuidance() async {
         let cases: [(RouteLocationAuthorization, RouteGuidanceBlockReason)] = [
@@ -352,9 +505,305 @@ final class RouteGuidanceModelTests: XCTestCase {
         harness.model.shutdown()
     }
 
+    func testStaleCachedSampleCannotMutateLatestProgressStalenessOrMapState() async {
+        let harness = makeHarness(authorization: .authorized)
+        await harness.model.start()
+        let first = sample(point(0, 0.0002))
+        harness.location.send(first)
+        await assertEventually { harness.model.latestLocation == first }
+        let snapshot = harness.model.snapshot
+        let mapSummary = harness.model.mapAccessibilitySummary
+
+        harness.clock.date = Date(timeIntervalSince1970: 1_030)
+        let staleButNewer = sample(point(0, 0.0008), seconds: 14)
+        harness.location.send(staleButNewer)
+        await settleAsyncWork()
+        harness.model.refreshLocationDelayState()
+
+        XCTAssertEqual(harness.model.latestLocation, first)
+        XCTAssertEqual(harness.model.snapshot, snapshot)
+        XCTAssertEqual(harness.model.mapAccessibilitySummary, mapSummary)
+        XCTAssertEqual(harness.model.lastAcceptedLocationTimestamp, first.timestamp)
+        XCTAssertTrue(
+            harness.model.isLocationDelayed,
+            "A rejected cached sample must not refresh the no-update timer."
+        )
+        harness.model.shutdown()
+    }
+
+    func testFutureDatedSampleCannotMutateMapOrProgressAndDoesNotPoisonNextFix() async {
+        let harness = makeHarness(authorization: .authorized)
+        await harness.model.start()
+        let first = sample(point(0, 0.0002))
+        harness.location.send(first)
+        await assertEventually { harness.model.latestLocation == first }
+        let firstSnapshot = harness.model.snapshot
+        let firstMapSummary = harness.model.mapAccessibilitySummary
+
+        harness.clock.date = Date(timeIntervalSince1970: 1_001)
+        let future = sample(point(0.002, 0.0008), seconds: 6.001)
+        harness.location.send(future)
+        await settleAsyncWork()
+
+        XCTAssertEqual(harness.model.latestLocation, first)
+        XCTAssertEqual(harness.model.snapshot, firstSnapshot)
+        XCTAssertEqual(harness.model.mapAccessibilitySummary, firstMapSummary)
+
+        let next = sample(point(0, 0.0004), seconds: 1)
+        harness.location.send(next)
+        await assertEventually { harness.model.latestLocation == next }
+        XCTAssertGreaterThan(
+            harness.model.snapshot?.metrics.progressFraction ?? 0,
+            firstSnapshot?.metrics.progressFraction ?? 0
+        )
+        harness.model.shutdown()
+    }
+
+    func testDuplicateEqualAndReversedSamplesHaveZeroDownstreamEffect() async {
+        let harness = makeHarness(authorization: .authorized)
+        await harness.model.start()
+        let first = sample(point(0, 0.0003))
+        harness.location.send(first)
+        await assertEventually { harness.model.latestLocation == first }
+        let firstSnapshot = harness.model.snapshot
+        let firstSummary = harness.model.mapAccessibilitySummary
+
+        harness.location.send(first)
+        harness.location.send(sample(point(0, 0.0008)))
+        harness.location.send(sample(point(0.002, 0.0009), seconds: -1))
+        await settleAsyncWork()
+
+        XCTAssertEqual(harness.model.latestLocation, first)
+        XCTAssertEqual(harness.model.snapshot, firstSnapshot)
+        XCTAssertEqual(harness.model.mapAccessibilitySummary, firstSummary)
+        XCTAssertEqual(harness.model.lastAcceptedLocationTimestamp, first.timestamp)
+        harness.model.shutdown()
+    }
+
+    func testPauseResumePreservesWatermarkAndRestartsFreshnessWindow() async {
+        let harness = makeHarness(authorization: .authorized)
+        await harness.model.start()
+        let first = sample(point(0, 0.0002))
+        harness.location.send(first)
+        await assertEventually { harness.model.latestLocation == first }
+
+        harness.model.pause()
+        XCTAssertEqual(harness.model.lastAcceptedLocationTimestamp, first.timestamp)
+        harness.clock.date = Date(timeIntervalSince1970: 1_001)
+        harness.model.resume()
+        XCTAssertEqual(harness.model.lastAcceptedLocationTimestamp, first.timestamp)
+
+        let replayed = sample(point(0, 0.0007))
+        harness.location.send(replayed)
+        await settleAsyncWork()
+        XCTAssertEqual(harness.model.latestLocation, first)
+
+        harness.clock.date = Date(timeIntervalSince1970: 1_030.9)
+        harness.model.refreshLocationDelayState()
+        XCTAssertFalse(harness.model.isLocationDelayed)
+        harness.clock.date = Date(timeIntervalSince1970: 1_031)
+        harness.model.refreshLocationDelayState()
+        XCTAssertTrue(harness.model.isLocationDelayed)
+
+        let fresh = sample(point(0, 0.0007), seconds: 31)
+        harness.location.send(fresh)
+        await assertEventually { harness.model.latestLocation == fresh }
+        XCTAssertFalse(harness.model.isLocationDelayed)
+
+        harness.model.end()
+        XCTAssertNil(harness.model.lastAcceptedLocationTimestamp)
+    }
+
+    func testFailureAndRetryResetTemporalWatermark() async {
+        let harness = makeHarness(authorization: .authorized)
+        await harness.model.start()
+        let beforeFailure = sample(point(0, 0.0002))
+        harness.location.send(beforeFailure)
+        await assertEventually {
+            harness.model.latestLocation == beforeFailure
+        }
+
+        harness.location.finish(throwing: RouteLocationServiceError.unavailable)
+        await assertEventually {
+            if case .failed = harness.model.phase { return true }
+            return false
+        }
+        XCTAssertNil(harness.model.lastAcceptedLocationTimestamp)
+
+        await harness.model.retry()
+        let equalTimestampInNewAttempt = sample(point(0, 0.0004))
+        harness.location.send(equalTimestampInNewAttempt)
+        await assertEventually {
+            harness.model.latestLocation == equalTimestampInNewAttempt
+        }
+        XCTAssertEqual(
+            harness.model.lastAcceptedLocationTimestamp,
+            equalTimestampInNewAttempt.timestamp
+        )
+        harness.model.shutdown()
+    }
+
+    func testNewNavigationModelAcceptsTimestampUsedByEndedSession() async {
+        let firstSession = makeHarness(authorization: .authorized)
+        await firstSession.model.start()
+        let sharedTimestamp = sample(point(0, 0.0002))
+        firstSession.location.send(sharedTimestamp)
+        await assertEventually {
+            firstSession.model.latestLocation == sharedTimestamp
+        }
+        firstSession.model.end()
+        XCTAssertNil(firstSession.model.lastAcceptedLocationTimestamp)
+
+        let secondSession = makeHarness(authorization: .authorized)
+        XCTAssertNil(secondSession.model.lastAcceptedLocationTimestamp)
+        await secondSession.model.start()
+        let reusedTimestamp = sample(point(0, 0.0004))
+        secondSession.location.send(reusedTimestamp)
+        await assertEventually {
+            secondSession.model.latestLocation == reusedTimestamp
+        }
+        XCTAssertEqual(secondSession.model.latestLocation, reusedTimestamp)
+        secondSession.model.shutdown()
+    }
+
+    func testRejectedSamplesDoNotIncrementOffRouteCounter() async {
+        let harness = makeHarness(authorization: .authorized)
+        await harness.model.start()
+        let onRoute = sample(point(0, 0.0002))
+        harness.location.send(onRoute)
+        await assertEventually { harness.model.latestLocation == onRoute }
+        let beforeRejectedSamples = harness.model.snapshot
+
+        harness.location.send(sample(point(0.001, 0.0002), seconds: 6))
+        harness.location.send(sample(point(0.001, 0.0002), seconds: 7))
+        await settleAsyncWork()
+        XCTAssertEqual(harness.model.snapshot, beforeRejectedSamples)
+
+        for seconds in 1...2 {
+            harness.clock.date = Date(
+                timeIntervalSince1970: 1_000 + TimeInterval(seconds)
+            )
+            let offRoute = sample(
+                point(0.001, 0.0002),
+                seconds: TimeInterval(seconds)
+            )
+            harness.location.send(offRoute)
+            await assertEventually {
+                harness.model.latestLocation == offRoute
+            }
+            XCTAssertEqual(harness.model.snapshot?.adherence, .onRoute)
+        }
+
+        harness.clock.date = Date(timeIntervalSince1970: 1_003)
+        let thirdOffRoute = sample(point(0.001, 0.0002), seconds: 3)
+        harness.location.send(thirdOffRoute)
+        await assertEventually {
+            harness.model.latestLocation == thirdOffRoute
+        }
+        guard case .offRoute = harness.model.snapshot?.adherence else {
+            harness.model.shutdown()
+            return XCTFail("Three accepted off-route fixes should enter warning state.")
+        }
+        harness.model.shutdown()
+    }
+
+    func testRejectedFinishSamplesDoNotIncrementCompletionCounter() async {
+        let harness = makeHarness(authorization: .authorized)
+        await harness.model.start()
+
+        let nearFinish = sample(point(0, 0.00085))
+        harness.location.send(nearFinish)
+        await assertEventually { harness.model.latestLocation == nearFinish }
+
+        harness.clock.date = Date(timeIntervalSince1970: 1_001)
+        let firstFinish = sample(point(0, 0.001), seconds: 1)
+        harness.location.send(firstFinish)
+        await assertEventually { harness.model.latestLocation == firstFinish }
+        XCTAssertEqual(harness.model.phase, .guiding)
+
+        harness.location.send(firstFinish)
+        harness.location.send(sample(point(0, 0.001), seconds: 7))
+        await settleAsyncWork()
+        XCTAssertEqual(harness.model.phase, .guiding)
+        XCTAssertFalse(harness.model.snapshot?.isComplete ?? true)
+
+        harness.clock.date = Date(timeIntervalSince1970: 1_002)
+        let secondFinish = sample(point(0, 0.001), seconds: 2)
+        harness.location.send(secondFinish)
+        await assertEventually { harness.model.phase == .completed }
+        XCTAssertNil(harness.model.lastAcceptedLocationTimestamp)
+    }
+
+    func testRejectedSampleCannotAdvanceInstruction() async {
+        let route = verifiedRoute(
+            path: [point(0, 0), point(0, 0.001), point(0, 0.002)],
+            instructions: [
+                instruction("Bear left", longitude: 0.0005),
+                instruction("Continue straight", longitude: 0.0015)
+            ]
+        )
+        let harness = makeHarness(
+            authorization: .authorized,
+            route: route
+        )
+        await harness.model.start()
+        let first = sample(point(0, 0.0002))
+        harness.location.send(first)
+        await assertEventually { harness.model.latestLocation == first }
+        XCTAssertEqual(harness.model.snapshot?.nextInstruction?.text, "Bear left")
+
+        harness.location.send(sample(point(0, 0.001), seconds: 6))
+        await settleAsyncWork()
+        XCTAssertEqual(harness.model.snapshot?.nextInstruction?.text, "Bear left")
+
+        harness.clock.date = Date(timeIntervalSince1970: 1_001)
+        let validAdvance = sample(point(0, 0.001), seconds: 1)
+        harness.location.send(validAdvance)
+        await assertEventually {
+            harness.model.latestLocation == validAdvance
+        }
+        XCTAssertEqual(
+            harness.model.snapshot?.nextInstruction?.text,
+            "Continue straight"
+        )
+        harness.model.shutdown()
+    }
+
+    func testSettingsRecoveryRechecksRecoverablePermissionBlocks() async {
+        for authorization in [
+            RouteLocationAuthorization.denied,
+            .reducedAccuracy,
+            .servicesDisabled
+        ] {
+            let harness = makeHarness(authorization: authorization)
+            await harness.model.start()
+            harness.location.authorization = .authorized
+
+            await harness.model.appDidBecomeActive()
+
+            XCTAssertEqual(harness.model.phase, .guiding)
+            XCTAssertEqual(harness.location.startCount, 1)
+            XCTAssertTrue(harness.awake.isGuidanceActive)
+            harness.model.shutdown()
+        }
+    }
+
+    func testRestrictedPermissionDoesNotOfferFalseSettingsRecovery() async {
+        let harness = makeHarness(authorization: .restricted)
+        await harness.model.start()
+        harness.location.authorization = .authorized
+
+        await harness.model.appDidBecomeActive()
+
+        XCTAssertEqual(harness.model.phase, .blocked(.permissionRestricted))
+        XCTAssertEqual(harness.location.startCount, 0)
+        XCTAssertFalse(harness.awake.isGuidanceActive)
+    }
+
     private func makeHarness(
         authorization: RouteLocationAuthorization,
-        requestedAuthorization: RouteLocationAuthorization? = nil
+        requestedAuthorization: RouteLocationAuthorization? = nil,
+        route: TrailRoute? = nil
     ) -> RouteGuidanceHarness {
         let location = TestRouteLocationService(
             authorization: authorization,
@@ -369,14 +818,40 @@ final class RouteGuidanceModelTests: XCTestCase {
         )
         return RouteGuidanceHarness(
             model: RouteGuidanceModel(
-                route: verifiedRoute(
+                route: route ?? verifiedRoute(
                     path: [point(0, 0), point(0, 0.001)]
                 ),
                 dependencies: dependencies
             ),
             location: location,
+            clock: clock,
             awake: awake
         )
+    }
+
+    private func waitUntil(
+        _ condition: @escaping @MainActor () -> Bool
+    ) async -> Bool {
+        for _ in 0..<100 {
+            if condition() { return true }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        return condition()
+    }
+
+    private func assertEventually(
+        _ condition: @escaping @MainActor () -> Bool,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        let succeeded = await waitUntil(condition)
+        XCTAssertTrue(succeeded, file: file, line: line)
+    }
+
+    private func settleAsyncWork() async {
+        for _ in 0..<20 {
+            await Task.yield()
+        }
     }
 }
 
@@ -384,6 +859,7 @@ final class RouteGuidanceModelTests: XCTestCase {
 private struct RouteGuidanceHarness {
     let model: RouteGuidanceModel
     let location: TestRouteLocationService
+    let clock: TestRouteGuidanceClock
     let awake: TestRouteScreenAwakeController
 }
 
