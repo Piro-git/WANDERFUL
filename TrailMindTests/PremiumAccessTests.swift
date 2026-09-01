@@ -49,6 +49,7 @@ final class PremiumAccessTests: XCTestCase {
         let storefront = MockPremiumStorefront()
         storefront.products = products
         let transaction = activeTransaction()
+        storefront.unfinished = [.verified(transaction)]
         storefront.entitlements = [.verified(transaction)]
         let cache = InMemoryPremiumEntitlementCache()
         let store = makeStore(storefront: storefront, cache: cache)
@@ -61,11 +62,23 @@ final class PremiumAccessTests: XCTestCase {
         )
         XCTAssertTrue(store.hasPremiumAccess)
         XCTAssertEqual(cache.entitlement?.transactionIdentifier, transaction.id)
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [transaction.id])
+    }
+
+    func testPurchaseFailureCopyDoesNotGuessWhetherTheAppStoreCharged() {
+        let message = PremiumStorefrontError.purchaseFailed.localizedDescription
+
+        XCTAssertFalse(message.localizedCaseInsensitiveContains("not charged"))
+        XCTAssertTrue(message.localizedCaseInsensitiveContains("purchase history"))
+        XCTAssertTrue(message.localizedCaseInsensitiveContains("access is unchanged"))
     }
 
     func testUnverifiedTransactionsNeverGrantOrFinishAccess() async {
         let storefront = MockPremiumStorefront()
         storefront.products = products
+        storefront.unfinished = [
+            .unverified(productIdentifier: configuration.monthlyProductIdentifier)
+        ]
         storefront.entitlements = [
             .unverified(productIdentifier: configuration.monthlyProductIdentifier)
         ]
@@ -86,6 +99,10 @@ final class PremiumAccessTests: XCTestCase {
 
         await store.start()
         await store.purchase(products[0])
+        storefront.sendUpdate(
+            .unverified(productIdentifier: configuration.monthlyProductIdentifier)
+        )
+        await waitUntil { store.statusMessage != nil }
 
         XCTAssertEqual(store.accessState, .inactive)
         XCTAssertFalse(store.hasPremiumAccess)
@@ -113,6 +130,7 @@ final class PremiumAccessTests: XCTestCase {
             .gracePeriod(expirationDate: graceExpiration)
         )
         XCTAssertTrue(graceStore.hasPremiumAccess)
+        XCTAssertEqual(graceStorefront.finishedTransactionIdentifiers, [7])
 
         for expected: PremiumAccessState in [.billingRetry, .expired, .revoked] {
             let storefront = MockPremiumStorefront()
@@ -128,19 +146,24 @@ final class PremiumAccessTests: XCTestCase {
                 XCTFail("Unexpected state")
                 continue
             }
+            let transaction = activeTransaction(
+                expiration: currentDate.addingTimeInterval(-60),
+                revoked: renewalState == .revoked
+            )
             storefront.statuses = [
                 status(
                     state: renewalState,
-                    transaction: activeTransaction(
-                        expiration: currentDate.addingTimeInterval(-60),
-                        revoked: renewalState == .revoked
-                    )
+                    transaction: transaction
                 )
             ]
             let store = makeStore(storefront: storefront)
             await store.start()
             XCTAssertEqual(store.accessState, expected)
             XCTAssertFalse(store.hasPremiumAccess)
+            XCTAssertEqual(
+                storefront.finishedTransactionIdentifiers,
+                [transaction.id]
+            )
         }
     }
 
@@ -164,7 +187,7 @@ final class PremiumAccessTests: XCTestCase {
         XCTAssertEqual(storefront.finishedTransactionIdentifiers, [41])
     }
 
-    func testVerifiedButInactivePurchaseDoesNotGrantOrFinish() async {
+    func testVerifiedButInactivePurchaseDoesNotGrantAndStillFinishes() async {
         let transaction = activeTransaction(
             id: 42,
             expiration: currentDate.addingTimeInterval(-60)
@@ -178,9 +201,9 @@ final class PremiumAccessTests: XCTestCase {
         await store.purchase(products[0])
 
         XCTAssertFalse(store.hasPremiumAccess)
-        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [])
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [42])
         guard case .failed = store.purchaseState else {
-            return XCTFail("Inactive transactions must remain unacknowledged and locked.")
+            return XCTFail("Inactive verified transactions must be acknowledged without granting access.")
         }
     }
 
@@ -247,6 +270,7 @@ final class PremiumAccessTests: XCTestCase {
         )
         let storefront = MockPremiumStorefront()
         storefront.loadProductsError = .productUnavailable
+        storefront.statusError = .unavailable
         let store = makeStore(
             storefront: storefront,
             cache: InMemoryPremiumEntitlementCache(entitlement: cached)
@@ -292,6 +316,219 @@ final class PremiumAccessTests: XCTestCase {
         XCTAssertTrue(storefront.listenerWasCancelled)
     }
 
+    func testProductCatalogFailureStillUsesAuthoritativeCurrentEntitlement() async {
+        let transaction = activeTransaction(id: 78)
+        let storefront = MockPremiumStorefront()
+        storefront.loadProductsError = .productUnavailable
+        storefront.entitlements = [.verified(transaction)]
+        let store = makeStore(storefront: storefront)
+
+        await store.start()
+
+        XCTAssertEqual(
+            store.accessState,
+            .active(expirationDate: try XCTUnwrap(transaction.expirationDate))
+        )
+        XCTAssertTrue(store.hasPremiumAccess)
+        XCTAssertEqual(storefront.statusCallCount, 0)
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [78])
+        XCTAssertEqual(
+            store.statusMessage,
+            PremiumStorefrontError.productUnavailable.localizedDescription
+        )
+    }
+
+    func testUpgradedVerifiedUpdateFinishesWithoutGrantingAccess() async {
+        let transaction = activeTransaction(id: 79, upgraded: true)
+        let storefront = MockPremiumStorefront()
+        storefront.products = products
+        let store = makeStore(storefront: storefront)
+        await store.start()
+
+        storefront.sendUpdate(.verified(transaction))
+        await waitUntil { storefront.finishedTransactionIdentifiers == [79] }
+
+        XCTAssertFalse(store.hasPremiumAccess)
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [79])
+    }
+
+    func testExactDuplicateVerifiedUpdateProcessesAndFinishesOnce() async {
+        let transaction = activeTransaction(id: 80)
+        let storefront = MockPremiumStorefront()
+        storefront.products = products
+        storefront.entitlements = [.verified(transaction)]
+        let store = makeStore(storefront: storefront)
+        await store.start()
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [80])
+
+        storefront.sendUpdate(.verified(transaction))
+        storefront.sendUpdate(.verified(transaction))
+        try? await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertTrue(store.hasPremiumAccess)
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [80])
+    }
+
+    func testListenerRestartReattachesAndProcessesANewVerifiedUpdate() async {
+        let storefront = MockPremiumStorefront()
+        storefront.products = products
+        let store = makeStore(storefront: storefront)
+        await store.start()
+        XCTAssertEqual(storefront.listenerCallCount, 1)
+
+        store.stop()
+        await waitUntil { storefront.listenerCancellationCount == 1 }
+        await store.start()
+        XCTAssertEqual(storefront.listenerCallCount, 2)
+
+        let transaction = activeTransaction(id: 81)
+        storefront.entitlements = [.verified(transaction)]
+        storefront.sendUpdate(.verified(transaction))
+        await waitUntil { storefront.finishedTransactionIdentifiers == [81] }
+
+        XCTAssertTrue(store.hasPremiumAccess)
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [81])
+    }
+
+    func testProcessingFailureLeavesTransactionUnfinishedAndDuplicateRetries() async {
+        let cache = FailOncePremiumEntitlementCache()
+        let storefront = MockPremiumStorefront()
+        storefront.products = products
+        let store = makeStore(storefront: storefront, cache: cache)
+        await store.start()
+
+        let transaction = activeTransaction(id: 82)
+        storefront.entitlements = [.verified(transaction)]
+        storefront.sendUpdate(.verified(transaction))
+        await waitUntil { store.statusMessage != nil }
+
+        XCTAssertFalse(store.hasPremiumAccess)
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [])
+        XCTAssertEqual(cache.saveCallCount, 1)
+
+        storefront.sendUpdate(.verified(transaction))
+        await waitUntil { storefront.finishedTransactionIdentifiers == [82] }
+
+        XCTAssertTrue(store.hasPremiumAccess)
+        XCTAssertEqual(cache.saveCallCount, 2)
+        XCTAssertNil(store.statusMessage)
+    }
+
+    func testRestoreFailureDoesNotMisreportCachedOfflineAccessAsRestored() async {
+        let cached = PremiumCachedEntitlement(
+            productIdentifier: configuration.monthlyProductIdentifier,
+            transactionIdentifier: 83,
+            expirationDate: currentDate.addingTimeInterval(30 * 24 * 60 * 60),
+            verifiedAt: currentDate.addingTimeInterval(-60)
+        )
+        let storefront = MockPremiumStorefront()
+        storefront.loadProductsError = .productUnavailable
+        storefront.statusError = .unavailable
+        let store = makeStore(
+            storefront: storefront,
+            cache: InMemoryPremiumEntitlementCache(entitlement: cached)
+        )
+        await store.start()
+        XCTAssertTrue(store.hasPremiumAccess)
+
+        await store.restorePurchases()
+
+        guard case .failed = store.restoreState else {
+            return XCTFail("A failed authoritative refresh must not report cached access as restored.")
+        }
+        XCTAssertTrue(store.hasPremiumAccess)
+    }
+
+    func testUnverifiedRenewalNeverGrantsButVerifiedTransactionStillFinishes() async {
+        let transaction = activeTransaction(id: 84)
+        let storefront = MockPremiumStorefront()
+        storefront.products = products
+        storefront.statuses = [
+            PremiumSubscriptionStatusRecord(
+                state: .subscribed,
+                transaction: .verified(transaction),
+                gracePeriodExpirationDate: nil,
+                renewalInfoIsVerified: false
+            )
+        ]
+        let store = makeStore(storefront: storefront)
+
+        await store.start()
+
+        XCTAssertEqual(store.accessState, .inactive)
+        XCTAssertFalse(store.hasPremiumAccess)
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [84])
+    }
+
+    func testChangedVerifiedFactWithSameIdentifierProcessesAgain() async {
+        let active = activeTransaction(id: 85)
+        let storefront = MockPremiumStorefront()
+        storefront.products = products
+        storefront.entitlements = [.verified(active)]
+        let store = makeStore(storefront: storefront)
+        await store.start()
+        XCTAssertEqual(storefront.finishedTransactionIdentifiers, [85])
+
+        let revoked = activeTransaction(id: 85, revoked: true)
+        storefront.entitlements = []
+        storefront.statuses = [status(state: .revoked, transaction: revoked)]
+        storefront.sendUpdate(.verified(revoked))
+        await waitUntil { storefront.finishedTransactionIdentifiers == [85, 85] }
+
+        XCTAssertEqual(store.accessState, .revoked)
+        XCTAssertFalse(store.hasPremiumAccess)
+    }
+
+    func testRelaunchRecomputesSameVerifiedEntitlementWithoutChangingOutcome() async {
+        let transaction = activeTransaction(id: 86)
+        let cache = InMemoryPremiumEntitlementCache()
+
+        let firstStorefront = MockPremiumStorefront()
+        firstStorefront.products = products
+        firstStorefront.entitlements = [.verified(transaction)]
+        let firstStore = makeStore(storefront: firstStorefront, cache: cache)
+        await firstStore.start()
+        firstStore.stop()
+
+        let relaunchedStorefront = MockPremiumStorefront()
+        relaunchedStorefront.products = products
+        relaunchedStorefront.unfinished = [.verified(transaction)]
+        let relaunchedStore = makeStore(storefront: relaunchedStorefront, cache: cache)
+        await relaunchedStore.start()
+
+        XCTAssertEqual(firstStore.accessState, relaunchedStore.accessState)
+        XCTAssertTrue(relaunchedStore.hasPremiumAccess)
+        XCTAssertEqual(relaunchedStorefront.unfinishedCallCount, 1)
+        XCTAssertEqual(relaunchedStorefront.finishedTransactionIdentifiers, [86])
+    }
+
+    func testProcessingFailureRetriesUnfinishedTransactionAfterRelaunch() async {
+        let transaction = activeTransaction(id: 87)
+        let cache = FailOncePremiumEntitlementCache()
+        let firstStorefront = MockPremiumStorefront()
+        firstStorefront.products = products
+        firstStorefront.unfinished = [.verified(transaction)]
+        let firstStore = makeStore(storefront: firstStorefront, cache: cache)
+
+        await firstStore.start()
+
+        XCTAssertFalse(firstStore.hasPremiumAccess)
+        XCTAssertEqual(firstStorefront.finishedTransactionIdentifiers, [])
+        XCTAssertEqual(cache.saveCallCount, 1)
+        firstStore.stop()
+
+        let relaunchedStorefront = MockPremiumStorefront()
+        relaunchedStorefront.products = products
+        relaunchedStorefront.unfinished = [.verified(transaction)]
+        let relaunchedStore = makeStore(storefront: relaunchedStorefront, cache: cache)
+
+        await relaunchedStore.start()
+
+        XCTAssertTrue(relaunchedStore.hasPremiumAccess)
+        XCTAssertEqual(cache.saveCallCount, 2)
+        XCTAssertEqual(relaunchedStorefront.finishedTransactionIdentifiers, [87])
+    }
+
     private var configuration: WanderfulPremiumConfiguration {
         WanderfulPremiumConfiguration(
             monthlyProductIdentifier: "app.wanderful.premium.monthly",
@@ -333,7 +570,8 @@ final class PremiumAccessTests: XCTestCase {
     private func activeTransaction(
         id: UInt64 = 7,
         expiration: Date? = nil,
-        revoked: Bool = false
+        revoked: Bool = false,
+        upgraded: Bool = false
     ) -> PremiumTransactionRecord {
         PremiumTransactionRecord(
             id: id,
@@ -341,7 +579,7 @@ final class PremiumAccessTests: XCTestCase {
             purchaseDate: currentDate.addingTimeInterval(-3_600),
             expirationDate: expiration ?? currentDate.addingTimeInterval(30 * 24 * 60 * 60),
             revocationDate: revoked ? currentDate.addingTimeInterval(-30) : nil,
-            isUpgraded: false
+            isUpgraded: upgraded
         )
     }
 
@@ -385,9 +623,34 @@ final class PremiumAccessTests: XCTestCase {
 }
 
 @MainActor
+private final class FailOncePremiumEntitlementCache: PremiumEntitlementCaching {
+    private(set) var entitlement: PremiumCachedEntitlement?
+    private(set) var saveCallCount = 0
+
+    func load() -> PremiumCachedEntitlement? { entitlement }
+
+    func save(_ entitlement: PremiumCachedEntitlement) throws {
+        saveCallCount += 1
+        if saveCallCount == 1 {
+            throw TestCacheError.writeFailed
+        }
+        self.entitlement = entitlement
+    }
+
+    func clear() {
+        entitlement = nil
+    }
+
+    private enum TestCacheError: Error {
+        case writeFailed
+    }
+}
+
+@MainActor
 private final class MockPremiumStorefront: PremiumStorefront {
     var canMakePayments = true
     var products: [PremiumProduct] = []
+    var unfinished: [PremiumTransactionVerification] = []
     var entitlements: [PremiumTransactionVerification] = []
     var statuses: [PremiumSubscriptionStatusRecord] = []
     var purchaseOutcome: PremiumPurchaseOutcome = .userCancelled
@@ -398,12 +661,14 @@ private final class MockPremiumStorefront: PremiumStorefront {
     private var updateContinuation: AsyncStream<PremiumTransactionVerification>.Continuation?
 
     private(set) var loadProductsCallCount = 0
+    private(set) var unfinishedCallCount = 0
     private(set) var currentEntitlementsCallCount = 0
     private(set) var statusCallCount = 0
     private(set) var purchaseCallCount = 0
     private(set) var syncCallCount = 0
     private(set) var listenerCallCount = 0
     private(set) var listenerWasCancelled = false
+    private(set) var listenerCancellationCount = 0
     private(set) var finishedTransactionIdentifiers: [UInt64] = []
 
     func loadProducts(
@@ -419,6 +684,13 @@ private final class MockPremiumStorefront: PremiumStorefront {
     ) async -> [PremiumTransactionVerification] {
         currentEntitlementsCallCount += 1
         return entitlements
+    }
+
+    func unfinishedTransactions(
+        productIdentifiers _: Set<String>
+    ) async -> [PremiumTransactionVerification] {
+        unfinishedCallCount += 1
+        return unfinished
     }
 
     func subscriptionStatuses(
@@ -447,7 +719,10 @@ private final class MockPremiumStorefront: PremiumStorefront {
         return AsyncStream { continuation in
             updateContinuation = continuation
             continuation.onTermination = { [weak self] _ in
-                Task { @MainActor in self?.listenerWasCancelled = true }
+                Task { @MainActor in
+                    self?.listenerWasCancelled = true
+                    self?.listenerCancellationCount += 1
+                }
             }
         }
     }

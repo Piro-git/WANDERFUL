@@ -52,21 +52,40 @@ struct PremiumSubscriptionControlsView: View {
                 Task { await premiumAccess.restorePurchases() }
             }
             .disabled(premiumAccess.restoreState == .restoring)
+            .accessibilityHint("Asks the App Store to resync past purchases")
             .accessibilityIdentifier("premium.profile.restore")
+
+            profileRestoreStatus
 
             Button("Manage subscription", systemImage: "rectangle.and.pencil.and.ellipsis") {
                 showManageSubscriptions = true
             }
+            .accessibilityHint("Opens Apple's subscription management sheet")
             .accessibilityIdentifier("premium.profile.manage")
-
-            if case let .failed(message) = premiumAccess.restoreState {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(theme.warning)
-                    .accessibilityIdentifier("premium.profile.restoreError")
-            }
         }
         .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
+    }
+
+    @ViewBuilder
+    private var profileRestoreStatus: some View {
+        switch premiumAccess.restoreState {
+        case .restoring:
+            ProgressView("Restoring…")
+                .font(.caption)
+                .accessibilityIdentifier("premium.profile.restoreProcessing")
+        case let .succeeded(foundAccess):
+            Text(foundAccess ? "Premium access restored." : "No active Premium purchase was found.")
+                .font(.caption)
+                .foregroundStyle(theme.secondaryText)
+                .accessibilityIdentifier("premium.profile.restoreResult")
+        case let .failed(message):
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(theme.warning)
+                .accessibilityIdentifier("premium.profile.restoreError")
+        case .idle:
+            EmptyView()
+        }
     }
 
     private var accessLabel: String {
@@ -175,9 +194,36 @@ struct PremiumPaywallView: View {
 
     @ViewBuilder
     private var products: some View {
-        if premiumAccess.products.isEmpty {
+        if premiumAccess.products.isEmpty,
+           let message = premiumAccess.statusMessage {
+            VStack(alignment: .leading, spacing: 12) {
+                Label(
+                    "Subscription options unavailable",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(theme.graphite)
+
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("Try again", systemImage: "arrow.clockwise") {
+                    Task { await premiumAccess.reload() }
+                }
+                .buttonStyle(.bordered)
+                .accessibilityHint("Reloads subscription options and verified access from the App Store")
+                .accessibilityIdentifier("premium.products.retry")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .trailCard()
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("premium.products.error")
+        } else if premiumAccess.products.isEmpty {
             VStack(spacing: 12) {
                 ProgressView()
+                    .accessibilityHidden(true)
                 Text("Loading App Store options…")
                     .font(.subheadline)
                     .foregroundStyle(theme.secondaryText)
@@ -338,24 +384,16 @@ private struct PremiumProductOption: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(product.displayName)
-                        .font(.headline)
-                        .foregroundStyle(theme.graphite)
-                    Text(product.description)
-                        .font(.caption)
-                        .foregroundStyle(theme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    productIdentity
+                    Spacer(minLength: 16)
+                    productPrice
                 }
-                Spacer(minLength: 16)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(product.displayPrice)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(theme.graphite)
-                    Text("per \(product.periodDescription)")
-                        .font(.caption)
-                        .foregroundStyle(theme.secondaryText)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    productIdentity
+                    productPrice
                 }
             }
 
@@ -373,6 +411,7 @@ private struct PremiumProductOption: View {
                 if isPurchasing {
                     ProgressView()
                         .frame(maxWidth: .infinity)
+                        .accessibilityHidden(true)
                 } else {
                     Text("Subscribe for \(product.displayPrice) per \(product.periodDescription)")
                         .font(.subheadline.weight(.bold))
@@ -386,11 +425,40 @@ private struct PremiumProductOption: View {
                 premiumAccess.purchaseState.isBusy ||
                     !premiumAccess.canMakePayments
             )
+            .accessibilityLabel(
+                isPurchasing
+                    ? "Processing \(product.displayName) subscription"
+                    : "Subscribe to \(product.displayName) for \(product.displayPrice) per \(product.periodDescription)"
+            )
+            .accessibilityHint("Completes the subscription through the App Store")
             .accessibilityIdentifier("premium.subscribe.\(product.tier.rawValue)")
         }
         .trailCard()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("premium.product.\(product.tier.rawValue)")
+    }
+
+    private var productIdentity: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(product.displayName)
+                .font(.headline)
+                .foregroundStyle(theme.graphite)
+            Text(product.description)
+                .font(.caption)
+                .foregroundStyle(theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var productPrice: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(product.displayPrice)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(theme.graphite)
+            Text("per \(product.periodDescription)")
+                .font(.caption)
+                .foregroundStyle(theme.secondaryText)
+        }
     }
 
     private func introductoryDisclosure(

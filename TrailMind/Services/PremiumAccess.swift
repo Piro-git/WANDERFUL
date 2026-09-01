@@ -31,7 +31,7 @@ nonisolated struct PremiumProduct: Identifiable, Equatable, Sendable {
     let introductoryOffer: PremiumIntroductoryOffer?
 }
 
-nonisolated struct PremiumTransactionRecord: Equatable, Sendable {
+nonisolated struct PremiumTransactionRecord: Equatable, Hashable, Sendable {
     let id: UInt64
     let productIdentifier: String
     let purchaseDate: Date
@@ -71,6 +71,7 @@ nonisolated enum PremiumStorefrontError: LocalizedError, Equatable, Sendable {
     case unavailable
     case productUnavailable
     case purchaseFailed
+    case processingFailed
     case restoreFailed
 
     var errorDescription: String? {
@@ -80,7 +81,9 @@ nonisolated enum PremiumStorefrontError: LocalizedError, Equatable, Sendable {
         case .productUnavailable:
             "Subscription options could not be loaded. Try again later."
         case .purchaseFailed:
-            "The purchase could not be completed. You were not charged by Wanderful."
+            "The purchase could not be completed. Your Premium access is unchanged. Check your App Store purchase history before trying again."
+        case .processingFailed:
+            "The purchase was verified, but Premium access could not be saved safely. Access remains locked; try again."
         case .restoreFailed:
             "Purchases could not be restored. Check your connection and try again."
         }
@@ -94,6 +97,9 @@ protocol PremiumStorefront: AnyObject {
     func loadProducts(
         configuration: WanderfulPremiumConfiguration
     ) async throws -> [PremiumProduct]
+    func unfinishedTransactions(
+        productIdentifiers: Set<String>
+    ) async -> [PremiumTransactionVerification]
     func currentEntitlements(
         productIdentifiers: Set<String>
     ) async -> [PremiumTransactionVerification]
@@ -119,6 +125,12 @@ final class NoOpPremiumStorefront: PremiumStorefront {
     }
 
     func currentEntitlements(
+        productIdentifiers _: Set<String>
+    ) async -> [PremiumTransactionVerification] {
+        []
+    }
+
+    func unfinishedTransactions(
         productIdentifiers _: Set<String>
     ) async -> [PremiumTransactionVerification] {
         []
@@ -150,7 +162,7 @@ final class NoOpPremiumStorefront: PremiumStorefront {
 @MainActor
 final class StoreKitPremiumStorefront: PremiumStorefront {
     private var storeProducts: [String: Product] = [:]
-    private var unfinishedTransactions: [UInt64: Transaction] = [:]
+    private var verifiedTransactionHandles: [UInt64: Transaction] = [:]
 
     var canMakePayments: Bool { AppStore.canMakePayments }
 
@@ -201,12 +213,25 @@ final class StoreKitPremiumStorefront: PremiumStorefront {
         return mapped.sorted { $0.tier.sortOrder < $1.tier.sortOrder }
     }
 
+    func unfinishedTransactions(
+        productIdentifiers: Set<String>
+    ) async -> [PremiumTransactionVerification] {
+        var results: [PremiumTransactionVerification] = []
+        for await result in Transaction.unfinished {
+            guard productIdentifiers.contains(result.unsafeProductID) else { continue }
+            rememberVerifiedTransaction(from: result)
+            results.append(map(result))
+        }
+        return results
+    }
+
     func currentEntitlements(
         productIdentifiers: Set<String>
     ) async -> [PremiumTransactionVerification] {
         var results: [PremiumTransactionVerification] = []
         for await result in Transaction.currentEntitlements {
             guard productIdentifiers.contains(result.unsafeProductID) else { continue }
+            rememberVerifiedTransaction(from: result)
             results.append(map(result))
         }
         return results
@@ -217,10 +242,15 @@ final class StoreKitPremiumStorefront: PremiumStorefront {
     ) async throws -> [PremiumSubscriptionStatusRecord] {
         var results: [PremiumSubscriptionStatusRecord] = []
         var visitedGroups: Set<String> = []
+        let configuredProducts = storeProducts.values.filter {
+            productIdentifiers.contains($0.id)
+        }
+        guard !configuredProducts.isEmpty else {
+            throw PremiumStorefrontError.productUnavailable
+        }
 
-        for product in storeProducts.values {
-            guard productIdentifiers.contains(product.id),
-                  let subscription = product.subscription,
+        for product in configuredProducts {
+            guard let subscription = product.subscription,
                   visitedGroups.insert(subscription.subscriptionGroupID).inserted
             else { continue }
 
@@ -228,6 +258,7 @@ final class StoreKitPremiumStorefront: PremiumStorefront {
                 let transaction = map(status.transaction)
                 let productID = transaction.productIdentifier
                 guard productID.map(productIdentifiers.contains) ?? true else { continue }
+                rememberVerifiedTransaction(from: status.transaction)
 
                 let renewalInfo: Product.SubscriptionInfo.RenewalInfo?
                 switch status.renewalInfo {
@@ -256,7 +287,7 @@ final class StoreKitPremiumStorefront: PremiumStorefront {
         case let .success(result):
             switch result {
             case let .verified(transaction):
-                unfinishedTransactions[transaction.id] = transaction
+                verifiedTransactionHandles[transaction.id] = transaction
                 return .success(record(for: transaction))
             case let .unverified(transaction, _):
                 return .unverified(productIdentifier: transaction.productID)
@@ -283,7 +314,7 @@ final class StoreKitPremiumStorefront: PremiumStorefront {
                     guard !Task.isCancelled else { break }
                     guard productIdentifiers.contains(result.unsafeProductID) else { continue }
                     if case let .verified(transaction) = result {
-                        self?.unfinishedTransactions[transaction.id] = transaction
+                        self?.verifiedTransactionHandles[transaction.id] = transaction
                     }
                     continuation.yield(self?.map(result) ?? .unverified(productIdentifier: nil))
                 }
@@ -294,7 +325,7 @@ final class StoreKitPremiumStorefront: PremiumStorefront {
     }
 
     func finish(transactionIdentifier: UInt64) async {
-        guard let transaction = unfinishedTransactions.removeValue(
+        guard let transaction = verifiedTransactionHandles.removeValue(
             forKey: transactionIdentifier
         ) else { return }
         await transaction.finish()
@@ -309,6 +340,13 @@ final class StoreKitPremiumStorefront: PremiumStorefront {
         case let .unverified(transaction, _):
             .unverified(productIdentifier: transaction.productID)
         }
+    }
+
+    private func rememberVerifiedTransaction(
+        from result: VerificationResult<Transaction>
+    ) {
+        guard case let .verified(transaction) = result else { return }
+        verifiedTransactionHandles[transaction.id] = transaction
     }
 
     private func record(for transaction: Transaction) -> PremiumTransactionRecord {
@@ -402,7 +440,7 @@ nonisolated struct PremiumCachedEntitlement: Codable, Equatable, Sendable {
 @MainActor
 protocol PremiumEntitlementCaching: AnyObject {
     func load() -> PremiumCachedEntitlement?
-    func save(_ entitlement: PremiumCachedEntitlement)
+    func save(_ entitlement: PremiumCachedEntitlement) throws
     func clear()
 }
 
@@ -422,8 +460,8 @@ final class UserDefaultsPremiumEntitlementCache: PremiumEntitlementCaching {
         return try? decoder.decode(PremiumCachedEntitlement.self, from: data)
     }
 
-    func save(_ entitlement: PremiumCachedEntitlement) {
-        guard let data = try? encoder.encode(entitlement) else { return }
+    func save(_ entitlement: PremiumCachedEntitlement) throws {
+        let data = try encoder.encode(entitlement)
         defaults.set(data, forKey: Self.key)
     }
 
@@ -441,7 +479,7 @@ final class InMemoryPremiumEntitlementCache: PremiumEntitlementCaching {
     }
 
     func load() -> PremiumCachedEntitlement? { entitlement }
-    func save(_ entitlement: PremiumCachedEntitlement) { self.entitlement = entitlement }
+    func save(_ entitlement: PremiumCachedEntitlement) throws { self.entitlement = entitlement }
     func clear() { entitlement = nil }
 }
 
@@ -502,6 +540,11 @@ struct PremiumPresentationPolicy: Equatable, Sendable {
 @MainActor
 @Observable
 final class PremiumAccessStore {
+    private struct EntitlementResolution {
+        let state: PremiumAccessState
+        let cachedEntitlement: PremiumCachedEntitlement?
+    }
+
     private static let maximumOfflineCacheAge: TimeInterval = 72 * 60 * 60
     private let configuration: WanderfulPremiumConfiguration?
     private let storefront: any PremiumStorefront
@@ -510,6 +553,7 @@ final class PremiumAccessStore {
     private let presentationPolicy = PremiumPresentationPolicy()
     private var listenerTask: Task<Void, Never>?
     private var hasStarted = false
+    private var processedVerifiedTransactions: Set<PremiumTransactionRecord> = []
     private var recordedVerifiedRouteIdentifiers: Set<UUID> = []
 
     private(set) var products: [PremiumProduct] = []
@@ -555,43 +599,57 @@ final class PremiumAccessStore {
     func reload() async {
         guard let configuration else { return }
         statusMessage = nil
+        var catalogMessage: String?
 
         do {
             products = try await storefront.loadProducts(configuration: configuration)
-            guard Set(products.map(\.id)) == configuration.productIdentifiers else {
-                accessState = validCachedState() ?? .unavailable
-                statusMessage = PremiumStorefrontError.productUnavailable.localizedDescription
-                return
+            if Set(products.map(\.id)) != configuration.productIdentifiers {
+                catalogMessage = PremiumStorefrontError.productUnavailable.localizedDescription
             }
-            await refreshEntitlement(configuration: configuration)
         } catch {
-            accessState = validCachedState() ?? .unavailable
-            statusMessage = userFacingMessage(
+            products = []
+            catalogMessage = userFacingMessage(
                 for: error,
                 fallback: PremiumStorefrontError.productUnavailable
             )
         }
+
+        _ = await refreshEntitlement(configuration: configuration)
+        if statusMessage == nil {
+            statusMessage = catalogMessage
+        }
     }
 
     func purchase(_ product: PremiumProduct) async {
-        guard canMakePayments, products.contains(product) else { return }
+        guard let configuration, canMakePayments, products.contains(product) else { return }
         purchaseState = .purchasing(productIdentifier: product.id)
         statusMessage = nil
 
         do {
             switch try await storefront.purchase(productIdentifier: product.id) {
             case let .success(transaction):
-                guard grantsAccess(transaction) else {
+                let resolution = resolution(for: transaction)
+                do {
+                    try await applyAndFinish(
+                        resolution: resolution,
+                        verifiedTransactions: [transaction]
+                    )
+                } catch {
+                    purchaseState = .failed(
+                        message: userFacingMessage(for: error, fallback: .processingFailed)
+                    )
+                    return
+                }
+
+                if resolution.state.grantsAccess {
+                    purchaseState = .succeeded
+                    presentedPaywall = nil
+                } else {
                     purchaseState = .failed(
                         message: "The App Store purchase is no longer active."
                     )
-                    await reload()
-                    return
+                    _ = await refreshEntitlement(configuration: configuration)
                 }
-                grantVerified(transaction, state: .active(expirationDate: transaction.expirationDate!))
-                await storefront.finish(transactionIdentifier: transaction.id)
-                purchaseState = .succeeded
-                presentedPaywall = nil
             case .unverified:
                 purchaseState = .failed(
                     message: "The App Store receipt could not be verified. Access was not granted."
@@ -615,8 +673,14 @@ final class PremiumAccessStore {
         do {
             try await storefront.sync()
             guard let configuration else { return }
-            await refreshEntitlement(configuration: configuration)
-            restoreState = .succeeded(foundAccess: hasPremiumAccess)
+            let refreshed = await refreshEntitlement(configuration: configuration)
+            if refreshed {
+                restoreState = .succeeded(foundAccess: hasPremiumAccess)
+            } else {
+                restoreState = .failed(
+                    message: statusMessage ?? PremiumStorefrontError.restoreFailed.localizedDescription
+                )
+            }
         } catch {
             restoreState = .failed(
                 message: userFacingMessage(for: error, fallback: .restoreFailed)
@@ -673,88 +737,96 @@ final class PremiumAccessStore {
     ) async {
         switch update {
         case let .verified(transaction):
-            if grantsAccess(transaction) {
-                grantVerified(
-                    transaction,
-                    state: .active(expirationDate: transaction.expirationDate!)
-                )
-                await storefront.finish(transactionIdentifier: transaction.id)
-            } else {
-                cache.clear()
+            guard configuration.productIdentifiers.contains(transaction.productIdentifier) else {
+                return
             }
-            await refreshEntitlement(configuration: configuration)
+            do {
+                let didProcess = try await applyAndFinish(
+                    resolution: resolution(for: transaction),
+                    verifiedTransactions: [transaction]
+                )
+                if didProcess {
+                    statusMessage = nil
+                    _ = await refreshEntitlement(configuration: configuration)
+                }
+            } catch {
+                accessState = validCachedState() ?? .unavailable
+                statusMessage = userFacingMessage(for: error, fallback: .processingFailed)
+            }
         case .unverified:
             statusMessage = "An App Store update could not be verified. Existing verified access is unchanged."
         }
     }
 
+    @discardableResult
     private func refreshEntitlement(
         configuration: WanderfulPremiumConfiguration
-    ) async {
+    ) async -> Bool {
+        let unfinished = await storefront.unfinishedTransactions(
+            productIdentifiers: configuration.productIdentifiers
+        )
         let entitlements = await storefront.currentEntitlements(
             productIdentifiers: configuration.productIdentifiers
         )
-        let verified = entitlements.compactMap { result -> PremiumTransactionRecord? in
-            guard case let .verified(transaction) = result else { return nil }
-            return transaction
-        }
+        let verified = verifiedTransactions(
+            in: unfinished + entitlements,
+            configuration: configuration
+        )
         if let active = verified
             .filter(grantsAccess)
             .max(by: { ($0.expirationDate ?? .distantPast) < ($1.expirationDate ?? .distantPast) }) {
-            grantVerified(
-                active,
-                state: .active(expirationDate: active.expirationDate!)
-            )
-            return
+            do {
+                try await applyAndFinish(
+                    resolution: resolution(for: active),
+                    verifiedTransactions: verified
+                )
+                return true
+            } catch {
+                accessState = validCachedState() ?? .unavailable
+                statusMessage = userFacingMessage(for: error, fallback: .processingFailed)
+                return false
+            }
         }
 
+        let statuses: [PremiumSubscriptionStatusRecord]
         do {
-            let statuses = try await storefront.subscriptionStatuses(
+            statuses = try await storefront.subscriptionStatuses(
                 productIdentifiers: configuration.productIdentifiers
             )
-            apply(statuses: statuses)
         } catch {
             accessState = validCachedState() ?? .unavailable
             statusMessage = userFacingMessage(for: error, fallback: .unavailable)
+            return false
+        }
+
+        let verifiedStatusTransactions = statuses.compactMap { status -> PremiumTransactionRecord? in
+            guard case let .verified(transaction) = status.transaction,
+                  configuration.productIdentifiers.contains(transaction.productIdentifier)
+            else { return nil }
+            return transaction
+        }
+        do {
+            try await applyAndFinish(
+                resolution: resolution(for: statuses),
+                verifiedTransactions: verified + verifiedStatusTransactions
+            )
+            return true
+        } catch {
+            accessState = validCachedState() ?? .unavailable
+            statusMessage = userFacingMessage(for: error, fallback: .processingFailed)
+            return false
         }
     }
 
-    private func apply(statuses: [PremiumSubscriptionStatusRecord]) {
-        let verifiedStatuses = statuses.filter { status in
-            guard case .verified = status.transaction else { return false }
-            return status.renewalInfoIsVerified
-        }
-
-        if let subscribed = verifiedStatuses.first(where: { $0.state == .subscribed }),
-           case let .verified(transaction) = subscribed.transaction,
-           grantsAccess(transaction) {
-            grantVerified(
-                transaction,
-                state: .active(expirationDate: transaction.expirationDate!)
-            )
-            return
-        }
-        if let grace = verifiedStatuses.first(where: { $0.state == .gracePeriod }),
-           case let .verified(transaction) = grace.transaction,
-           grace.gracePeriodExpirationDate.map({ $0 > now() }) ?? grantsAccess(transaction) {
-            grantVerified(
-                transaction,
-                state: .gracePeriod(
-                    expirationDate: grace.gracePeriodExpirationDate ?? transaction.expirationDate
-                )
-            )
-            return
-        }
-
-        cache.clear()
-        if verifiedStatuses.contains(where: { $0.state == .revoked }) {
-            accessState = .revoked
-        } else if verifiedStatuses.contains(where: { $0.state == .billingRetry }) {
-            accessState = .billingRetry
-        } else if verifiedStatuses.contains(where: { $0.state == .expired }) {
-            accessState = .expired
-        } else {
-            accessState = .inactive
+    private func verifiedTransactions(
+        in verifications: [PremiumTransactionVerification],
+        configuration: WanderfulPremiumConfiguration
+    ) -> [PremiumTransactionRecord] {
+        verifications.compactMap { verification in
+            guard case let .verified(transaction) = verification,
+                  configuration.productIdentifiers.contains(transaction.productIdentifier)
+            else { return nil }
+            return transaction
         }
     }
 
@@ -764,20 +836,136 @@ final class PremiumAccessStore {
             transaction.expirationDate.map { $0 > now() } == true
     }
 
-    private func grantVerified(
-        _ transaction: PremiumTransactionRecord,
-        state: PremiumAccessState
-    ) {
-        guard let expirationDate = transaction.expirationDate else { return }
-        cache.save(
-            PremiumCachedEntitlement(
-                productIdentifier: transaction.productIdentifier,
-                transactionIdentifier: transaction.id,
-                expirationDate: expirationDate,
-                verifiedAt: now()
+    private func resolution(
+        for transaction: PremiumTransactionRecord
+    ) -> EntitlementResolution {
+        if grantsAccess(transaction), let expirationDate = transaction.expirationDate {
+            return EntitlementResolution(
+                state: .active(expirationDate: expirationDate),
+                cachedEntitlement: cachedEntitlement(
+                    for: transaction,
+                    expirationDate: expirationDate
+                )
             )
+        }
+        if transaction.revocationDate != nil {
+            return EntitlementResolution(state: .revoked, cachedEntitlement: nil)
+        }
+        if transaction.isUpgraded {
+            return EntitlementResolution(state: .inactive, cachedEntitlement: nil)
+        }
+        if transaction.expirationDate.map({ $0 <= now() }) == true {
+            return EntitlementResolution(state: .expired, cachedEntitlement: nil)
+        }
+        return EntitlementResolution(state: .inactive, cachedEntitlement: nil)
+    }
+
+    private func resolution(
+        for statuses: [PremiumSubscriptionStatusRecord]
+    ) -> EntitlementResolution {
+        let trustedStatuses = statuses.filter { status in
+            guard case .verified = status.transaction else { return false }
+            return status.renewalInfoIsVerified
+        }
+
+        let subscribedTransactions = trustedStatuses.compactMap { status -> PremiumTransactionRecord? in
+            guard status.state == .subscribed,
+                  case let .verified(transaction) = status.transaction,
+                  grantsAccess(transaction)
+            else { return nil }
+            return transaction
+        }
+        if let active = subscribedTransactions.max(by: {
+            ($0.expirationDate ?? .distantPast) < ($1.expirationDate ?? .distantPast)
+        }), let expirationDate = active.expirationDate {
+            return EntitlementResolution(
+                state: .active(expirationDate: expirationDate),
+                cachedEntitlement: cachedEntitlement(
+                    for: active,
+                    expirationDate: expirationDate
+                )
+            )
+        }
+
+        let graceCandidates = trustedStatuses.compactMap {
+            status -> (transaction: PremiumTransactionRecord, expirationDate: Date?)? in
+            guard status.state == .gracePeriod,
+                  case let .verified(transaction) = status.transaction,
+                  transaction.revocationDate == nil,
+                  !transaction.isUpgraded
+            else { return nil }
+            if let graceExpirationDate = status.gracePeriodExpirationDate,
+               graceExpirationDate <= now() {
+                return nil
+            }
+            return (transaction, status.gracePeriodExpirationDate)
+        }
+        if let grace = graceCandidates.max(by: {
+            ($0.expirationDate ?? .distantFuture) < ($1.expirationDate ?? .distantFuture)
+        }) {
+            let cached = grace.expirationDate.map {
+                cachedEntitlement(for: grace.transaction, expirationDate: $0)
+            }
+            return EntitlementResolution(
+                state: .gracePeriod(expirationDate: grace.expirationDate),
+                cachedEntitlement: cached
+            )
+        }
+
+        if trustedStatuses.contains(where: { $0.state == .revoked }) {
+            return EntitlementResolution(state: .revoked, cachedEntitlement: nil)
+        }
+        if trustedStatuses.contains(where: { $0.state == .billingRetry }) {
+            return EntitlementResolution(state: .billingRetry, cachedEntitlement: nil)
+        }
+        if trustedStatuses.contains(where: { $0.state == .expired }) {
+            return EntitlementResolution(state: .expired, cachedEntitlement: nil)
+        }
+        return EntitlementResolution(state: .inactive, cachedEntitlement: nil)
+    }
+
+    private func cachedEntitlement(
+        for transaction: PremiumTransactionRecord,
+        expirationDate: Date
+    ) -> PremiumCachedEntitlement {
+        PremiumCachedEntitlement(
+            productIdentifier: transaction.productIdentifier,
+            transactionIdentifier: transaction.id,
+            expirationDate: expirationDate,
+            verifiedAt: now()
         )
-        accessState = state
+    }
+
+    @discardableResult
+    private func applyAndFinish(
+        resolution: EntitlementResolution,
+        verifiedTransactions: [PremiumTransactionRecord]
+    ) async throws -> Bool {
+        var uniqueTransactions: [PremiumTransactionRecord] = []
+        var seen: Set<PremiumTransactionRecord> = []
+        for transaction in verifiedTransactions where seen.insert(transaction).inserted {
+            uniqueTransactions.append(transaction)
+        }
+
+        let unprocessed = uniqueTransactions.filter {
+            !processedVerifiedTransactions.contains($0)
+        }
+        guard !unprocessed.isEmpty || accessState != resolution.state else {
+            return false
+        }
+
+        if let cachedEntitlement = resolution.cachedEntitlement {
+            try cache.save(cachedEntitlement)
+        } else {
+            cache.clear()
+        }
+        accessState = resolution.state
+
+        for transaction in unprocessed {
+            await storefront.finish(transactionIdentifier: transaction.id)
+            processedVerifiedTransactions.insert(transaction)
+        }
+        return true
     }
 
     private func applyValidCachedEntitlement(
