@@ -83,6 +83,25 @@ test('provider distance 25 percent above its supplied geometry cannot become a v
   assert.equal(result.statistics,undefined);
 });
 
+test('dense flat vertices cannot turn the same 25 percent distance conflict into a pass',async()=>{
+  const a={latitude:-30,longitude:140},b={latitude:-30,longitude:140.01};
+  const c={latitude:-29.99,longitude:140.01},corners=[a,b,c,a];
+  const dense=[corners[0]];
+  for(let leg=1;leg<corners.length;leg++)for(let step=1;step<=300;step++) {
+    const fraction=step/300,from=corners[leg-1],to=corners[leg];
+    dense.push({latitude:from.latitude+(to.latitude-from.latitude)*fraction,
+      longitude:from.longitude+(to.longitude-from.longitude)*fraction});
+  }
+  const inflated=pathLength(dense)*1.25;
+  const fixture=response(dense,corners,{distance:inflated,time:3_600_000,ascent:0});
+  fixture.paths[0].descend=0;
+  fixture.paths[0].points.coordinates=dense.map(({longitude,latitude})=>[longitude,latitude,0]);
+  fixture.snapped_waypoints.coordinates=corners.map(({longitude,latitude})=>[longitude,latitude,0]);
+  const result=await createDynamicItineraryRouter({provider:{route:async()=>fixture}})(loopInput(a,[b,c]));
+  assert.equal(result.accepted,false,'adding collinear vertices cannot justify a longer measured route');
+  assert.equal(result.statistics,undefined);
+});
+
 test('two individually tolerated gaps cannot place a POI 178 m from the actual route',async()=>{
   const a={latitude:0,longitude:0},b={latitude:0,longitude:0.02};
   const c={latitude:0.01,longitude:0.02},d={latitude:0.01,longitude:0};
