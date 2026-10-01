@@ -346,6 +346,13 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
                 XCTAssertTrue(explanation.contains(result.suggestion.route.distanceLabel))
                 XCTAssertTrue(explanation.contains("drinking water availability are not verified"))
                 XCTAssertEqual(explanation.contains("Partial match"), decision == "partial")
+                XCTAssertEqual(result.suggestion.route.dynamicRouteOutcome,
+                               DynamicRouteOutcome(isPartial: decision == "partial", hasUnresolvedWishes: true))
+                for language in AppLanguage.allCases {
+                    let copy = RouteLocalizedCopy(route: result.suggestion.route, language: language)
+                    XCTAssertFalse(copy.outcomeExplanation.contains(claim))
+                    XCTAssertFalse(copy.outcomeExplanation.contains("GraphHopper"))
+                }
             }
         }
     }

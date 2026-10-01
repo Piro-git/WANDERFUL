@@ -33,6 +33,32 @@ final class RouteCardPhotoUITests: XCTestCase {
     }
 
     @MainActor
+    func testRouteCopyAndStatisticsUseSelectedLanguage() {
+        for (language, distance, climb, duration, limitation) in [
+            ("de", "Strecke", "Aufstieg", "Dauer", "Technische Wegschwierigkeit unbekannt"),
+            ("en", "distance", "climb", "Duration", "Technical trail difficulty data unavailable")
+        ] {
+            let app = launch(language: language)
+            let route = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "route.open.")).firstMatch
+            XCTAssertTrue(route.waitForExistence(timeout: 10))
+            XCTAssertTrue(route.label.contains(distance))
+            XCTAssertTrue(route.label.contains(climb))
+            XCTAssertTrue(route.label.contains(limitation))
+            XCTAssertFalse(route.label.contains("GraphHopper"))
+            route.tap()
+            XCTAssertTrue(app.scrollViews["route.detail"].waitForExistence(timeout: 5))
+            let summary = app.staticTexts["route.quality.summary"]
+            for _ in 0..<5 where !summary.isHittable { app.swipeUp() }
+            XCTAssertTrue(summary.exists)
+            XCTAssertTrue(summary.label.contains(language == "de" ? "Route berechnet:" : "Route calculated:"))
+            XCTAssertFalse(summary.label.contains("GraphHopper"))
+            XCTAssertTrue(app.staticTexts[duration].exists)
+            capture(app, "Localized route detail · " + language)
+            app.terminate()
+        }
+    }
+
+    @MainActor
     func testFallbacksAndPendingImageKeepRouteNavigable() {
         for mode in ["none", "invalid", "offline", "corrupt", "slow"] {
             let app = launch(extra: ["--card-photo-" + mode])

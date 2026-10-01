@@ -303,8 +303,7 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
             }
             // Free model prose has no independently verified claim mapping. Validate
             // the envelope, but never promote summary/remainingWishes to route facts.
-            route.dynamicResearchExplanation = trustedExplanation(for: route,
-                partial: decision == "partial", hasUnresolvedWishes: !remaining.isEmpty)
+            route.dynamicRouteOutcome = DynamicRouteOutcome(isPartial: decision == "partial", hasUnresolvedWishes: !remaining.isEmpty)
         } else if requiresWebResearch {
             throw OutdoorAdventurePlanningClientFailure.invalidResponse
         }
@@ -318,20 +317,11 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
             }
         }
         route.dynamicResearchStops = stops
-        route.dynamicResearchExplanation = route.dynamicResearchExplanation ?? trustedExplanation(for: route,
-            partial: false, hasUnresolvedWishes: false)
+        route.dynamicRouteOutcome = route.dynamicRouteOutcome ?? DynamicRouteOutcome(isPartial: false, hasUnresolvedWishes: false)
+        // Compatibility copy for non-UI consumers; views render the typed state
+        // using the current interface language instead of persisting a translation.
+        route.dynamicResearchExplanation = RouteLocalizedCopy(route: route, language: .english).outcomeExplanation
         return DynamicResearchPlanningResult(suggestion: RouteSuggestion(route: route, explanation: route.dynamicResearchExplanation ?? route.whyItMatches))
-    }
-
-    private static func trustedExplanation(for route: TrailRoute, partial: Bool, hasUnresolvedWishes: Bool) -> String {
-        var parts = [String]()
-        if partial { parts.append("Partial match — the planner left some preferences unresolved.") }
-        parts.append("GraphHopper calculated \(route.distanceLabel).")
-        if hasUnresolvedWishes {
-            parts.append("Review the route against your original request; not all preferences are confirmed.")
-        }
-        parts.append("Current access, safety and drinking water availability are not verified. Check weather, local rules and trail conditions before starting.")
-        return parts.joined(separator: "\n")
     }
 
     static func validateStoredEvidence(_ stops: [DynamicResearchStop]) throws {

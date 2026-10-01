@@ -444,6 +444,26 @@ final class HikingRouteQualityEngineTests: XCTestCase {
         XCTAssertEqual(limitation.detail, "Unknown sections are not treated as paved or unpaved.")
     }
 
+    func testLocalizedEvidenceRetainsMeasuredPercentagesAndCoverageLimits() throws {
+        let full = try FixtureFactory.build(fixture(withID: "easy-loop-distance-fit"))
+        let route = try XCTUnwrap(full.suggestions.first?.route)
+        let items = engine.presentation(for: route)
+        let pathItem = try XCTUnwrap(items.verifiedCharacteristics.first { $0.code == .pathsAndTracks })
+        let de = RouteLocalizedCopy(route: route, language: .german).evidence(pathItem)
+        XCTAssertEqual(de.title, "80 % Wege und Pfade")
+        XCTAssertEqual(de.detail, "Wegklassendaten decken 100 % der Route ab.")
+        let en = RouteLocalizedCopy(route: route, language: .english).evidence(pathItem)
+        XCTAssertEqual(en.title, pathItem.title)
+        XCTAssertEqual(en.detail, pathItem.detail)
+
+        let partial = try FixtureFactory.build(fixture(withID: "partial-surface-limitation"))
+        let partialRoute = try XCTUnwrap(partial.suggestions.first?.route)
+        let limitation = try XCTUnwrap(engine.presentation(for: partialRoute).limitations.first { $0.code == .surfaceCoverageLimited })
+        let localized = RouteLocalizedCopy(route: partialRoute, language: .german).evidence(limitation)
+        XCTAssertEqual(localized.title, "Untergrunddaten decken nur 25 % ab")
+        XCTAssertEqual(localized.detail, "Unbekannte Abschnitte gelten weder als befestigt noch als unbefestigt.")
+    }
+
     private func fixture(withID id: String) throws -> HikingQualityFixture {
         try XCTUnwrap(try HikingQualityFixtureSuite.load().cases.first { $0.id == id })
     }

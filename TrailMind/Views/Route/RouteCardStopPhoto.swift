@@ -206,7 +206,8 @@ struct RouteSuggestionCardRow: View {
         let base = RouteComparisonAccessibilitySummary(
             route: suggestion.route,
             comparisonLabel: suggestion.explanation,
-            researchPresentation: researchPresentation
+            researchPresentation: researchPresentation,
+            language: languageController.language
         ).label
         guard let stopPhoto else { return base }
         return base + (isGerman ? ". Foto eines Routenstopps: " : ". Photo of a route stop: ") + stopPhoto.stopName

@@ -246,6 +246,7 @@ private struct ActiveRouteGuidance: Identifiable {
 }
 
 struct RouteDetailView: View {
+    @Environment(AppLanguageController.self) private var languageController
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
     @Environment(\.routeGuidanceDependencies) private var guidanceDependencies
@@ -291,10 +292,10 @@ struct RouteDetailView: View {
                     header
                     verificationNotice
                     RouteStatsRow(route: route)
-                    if let explanation = route.dynamicResearchExplanation {
-                        let parts = explanation.components(separatedBy: "\n").filter { !$0.isEmpty }
+                    if route.dynamicRouteOutcome != nil {
+                        let parts = [copy.summary] + copy.outcomeDetails
                         VStack(alignment: .leading, spacing: 10) {
-                            Text(parts.first ?? explanation).font(.subheadline)
+                            Text(copy.summary).font(.subheadline)
                                 .accessibilityIdentifier("route.quality.summary")
                             Text("Planning assessment — review before starting.").font(.caption).foregroundStyle(.secondary)
                             if parts.count > 1 {
@@ -544,7 +545,8 @@ struct RouteDetailView: View {
                 subtitle: researchPresentation?.kind.isResearchGuided == true
                     ? "Mapped route characteristics and known route-data limits."
                     : "Request fit, mapped route evidence and known data limits.",
-                items: items
+                items: items,
+                route: route
             )
         }
     }
@@ -606,6 +608,8 @@ struct RouteDetailView: View {
         return items
     }
 
+    private var copy: RouteLocalizedCopy { RouteLocalizedCopy(route: route, language: languageController.language) }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -623,15 +627,15 @@ struct RouteDetailView: View {
                     DifficultyBadge(difficulty: route.difficulty)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Physical effort estimate: \(route.difficulty.rawValue)")
+                .accessibilityLabel(copy.text("Physical effort estimate: ", "Geschätzte Anstrengung: ") + copy.difficulty)
             }
 
-            Text(route.title)
+            Text(copy.title)
                 .font(.trailTitle)
                 .foregroundStyle(theme.graphite)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(route.summary)
+            Text(copy.summary)
                 .font(.body)
                 .foregroundStyle(theme.secondaryText)
                 .lineSpacing(4)
@@ -1160,10 +1164,12 @@ private struct GPXActivityView: UIViewControllerRepresentable {
 
 private struct RouteQualityEvidenceSection: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(AppLanguageController.self) private var languageController
 
     let title: String
     let subtitle: String
     let items: [RouteQualityPresentationItem]
+    let route: TrailRoute
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1183,7 +1189,9 @@ private struct RouteQualityEvidenceSection: View {
     }
 
     private func evidenceRow(_ item: RouteQualityPresentationItem) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        let presentation = RouteLocalizedCopy(route: route, language: languageController.language)
+        let copy = presentation.evidence(item)
+        return HStack(alignment: .top, spacing: 12) {
             Image(systemName: item.symbol)
                 .font(.footnote.weight(.bold))
                 .foregroundStyle(itemColor(item.role))
@@ -1195,17 +1203,17 @@ private struct RouteQualityEvidenceSection: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(roleLabel(item.role).uppercased())
+                Text(presentation.role(item.role).uppercased())
                     .font(.caption2.weight(.bold))
                     .tracking(0.5)
                     .foregroundStyle(itemColor(item.role))
 
-                Text(item.title)
+                Text(copy.title)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(theme.graphite)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if let detail = item.detail {
+                if let detail = copy.detail {
                     Text(detail)
                         .font(.footnote)
                         .foregroundStyle(theme.secondaryText)
@@ -1222,21 +1230,8 @@ private struct RouteQualityEvidenceSection: View {
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.accessibilityLabel)
+        .accessibilityLabel(copy.accessibilityLabel)
         .accessibilityIdentifier("route.qualityEvidence.\(item.code.rawValue)")
-    }
-
-    private func roleLabel(_ role: RouteQualityExplanationRole) -> String {
-        switch role {
-        case .primaryFit:
-            "Request fit"
-        case .verifiedCharacteristic:
-            "Mapped evidence"
-        case .estimate:
-            "Estimate"
-        case .limitation:
-            "Data limitation"
-        }
     }
 
     private func itemColor(_ role: RouteQualityExplanationRole) -> Color {
@@ -1489,14 +1484,16 @@ private struct VerifiedRouteCharacteristicsView: View {
 }
 
 struct RouteStatsRow: View {
+    @Environment(AppLanguageController.self) private var languageController
     let route: TrailRoute
 
     var body: some View {
+        let copy = RouteLocalizedCopy(route: route, language: languageController.language)
         HStack(spacing: 8) {
-            StatPill(value: route.distanceLabel, label: "Distance", symbol: "point.bottomleft.forward.to.point.topright.scurvepath")
-            StatPill(value: route.elevationLabel, label: "Elevation", symbol: "mountain.2.fill")
-            StatPill(value: route.durationLabel, label: "Duration", symbol: "clock.fill")
-            StatPill(value: route.routeType.rawValue, label: "Type", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
+            StatPill(value: copy.distance, label: "Distance", symbol: "point.bottomleft.forward.to.point.topright.scurvepath")
+            StatPill(value: copy.climb, label: "Elevation", symbol: "mountain.2.fill")
+            StatPill(value: copy.duration, label: "Duration", symbol: "clock.fill")
+            StatPill(value: copy.routeType, label: "Type", symbol: "arrow.trianglehead.2.clockwise.rotate.90")
         }
         .trailCard()
     }

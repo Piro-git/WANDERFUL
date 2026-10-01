@@ -1,0 +1,28 @@
+name: UI localization simulator checks
+
+on:
+  push:
+    branches: ['codex/ui-localization-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-localization-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.5.app/Contents/Developer
+    steps:
+      - name: Check out reviewed UI source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Compile and run serial synthetic simulator tests
+        run: bash scripts/test-ui-localization-ci.sh
+      # Deliberately no binary, xcresult, screenshot, log or cache uploads.
