@@ -1,0 +1,34 @@
+[
+  {
+    "path": "docs/handoff/COORDINATOR_HANDOFF_2026-09-06.md",
+    "originalLocalSHA256": "f2be16f007b56e9616f6d2ac241bdf52dd37afd855620f51c37c0991eacd2cfb",
+    "publishedSHA256": "0550eb2f0364ae745d584038ea5fde57143f29bc8111ef937f57b7501aed469e",
+    "redactions": [
+      "[private local credential path omitted]",
+      "[device identifier omitted]",
+      "[personal signing team omitted]",
+      "[Vercel team ID omitted]",
+      "[Vercel project ID omitted]",
+      "[historical deployment ID omitted]",
+      "[private project settings URL omitted]",
+      "[Vercel team slug omitted]",
+      "Physical owner phone,"
+    ]
+  },
+  {
+    "path": "docs/handoff/WANDERFUL_APP_STORE_LAUNCH_LEITFADEN_2026-09-17.md",
+    "originalLocalSHA256": "58100eb3fda95b6bd35d40631b23d4faab24ef6c6344094207417d96632e382c",
+    "publishedSHA256": "c74a17aec2e18ef2c5bd423fbb58c5484f99f550435a1e67d88c9cea5f851425",
+    "redactions": []
+  },
+  {
+    "path": "docs/handoff/WANDERFUL_LAUNCH_ROADMAP_2026-09-24.md",
+    "originalLocalSHA256": "c535164f5568dedc54543e38c29ebc9bfe0bb713ac950fd0492fc24216fd76e4",
+    "publishedSHA256": "64ef6ab9708f0485372da7dc15bb080b4c49383617811f51e0d93441760240bc",
+    "redactions": [
+      "[Vercel team ID omitted]",
+      "[Vercel project ID omitted]",
+      "[historical deployment ID omitted]"
+    ]
+  }
+]
