@@ -1,5 +1,8 @@
 """Synthetic guard regressions: missing/skipped cases must never produce green CI."""
 import copy
+import contextlib
+import io
+import tempfile
 import importlib.util
 from pathlib import Path
 import unittest
@@ -46,6 +49,24 @@ class ResultVerifierTests(unittest.TestCase):
 
     def testMalformedTreeFails(self):
         with self.assertRaises(ValueError): verifier.verify(self.summary, {})
+
+    def testFailureDiagnosticsRemainBoundedAndDoNotWeakenGate(self):
+        self.summary["failedTests"] = 1
+        self.summary["testFailures"] = [{"testIdentifierString": "SavedRouteStoreTests/example()",
+                                         "failureText": "Expected value\n" + "x" * 4000}] * 30
+        self.cases[0]["result"] = "Failed"
+        with tempfile.TemporaryDirectory() as directory:
+            stream = io.StringIO()
+            path = Path(directory) / "summary.txt"
+            with contextlib.redirect_stdout(stream):
+                verifier.report(self.summary, self.tree, path)
+            output = stream.getvalue()
+            self.assertIn("failedTests: 1", path.read_text())
+            self.assertIn("SavedRouteStoreTests/example()", output)
+            self.assertEqual(output.count("Test failure:"), 20)
+            self.assertIn("Test result:", output)
+            self.assertNotIn("x" * 1201, output)
+        with self.assertRaises(ValueError): verifier.verify(self.summary, self.tree)
 
 
 if __name__ == "__main__":

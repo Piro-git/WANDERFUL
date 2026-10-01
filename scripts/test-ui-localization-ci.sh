@@ -54,13 +54,34 @@ xcodebuild test -quiet -onlyUsePackageVersionsFromResolvedFile \
   -only-testing:TrailMindUITests/RouteStaysUITests > "$log_path" 2>&1
 build_status=$?
 set -e
+# Read structured evidence even when xcodebuild failed. Preserve its exit code.
+summary_path="$RUNNER_TEMP/ui-localization-summary.json"
+tests_path="$RUNNER_TEMP/ui-localization-tests.json"
+verification_status=1
+if [[ -d "$result_path" ]] && xcrun xcresulttool get test-results summary --path "$result_path" > "$summary_path"; then
+  if ! xcrun xcresulttool get test-results tests --path "$result_path" > "$tests_path"; then
+    printf '{"testNodes": []}\n' > "$tests_path"
+  fi
+  set +e
+  python3 scripts/verify-ui-localization-results.py "$summary_path" "$tests_path" "$GITHUB_STEP_SUMMARY"
+  verification_status=$?
+  set -e
+else
+  echo 'No structured test result available.' >> "$GITHUB_STEP_SUMMARY"
+fi
 if [[ "$build_status" != 0 ]]; then
   echo "Simulator build/tests failed (exit $build_status)." >> "$GITHUB_STEP_SUMMARY"
-  # Only source/compiler/test diagnostics; never dump environments or artifacts.
-  grep -E 'error:| failed |Test Case.*failed|BUILD FAILED|TEST FAILED' "$log_path" | tail -n 60 || true
+  # Bounded compiler/test diagnostics from this synthetic job only. No raw log upload.
+  python3 - "$log_path" <<'PY_DIAGNOSTICS'
+import re, sys
+lines = open(sys.argv[1], errors='replace').read().splitlines()
+indices = set()
+for index, line in enumerate(lines):
+    if re.search(r'error:|Testing failed:|Test Case.*failed|BUILD FAILED|TEST FAILED', line, re.I):
+        indices.update(range(max(0, index - 2), min(len(lines), index + 9)))
+for index in sorted(indices)[-80:]:
+    print('Build diagnostic: ' + lines[index][:1200])
+PY_DIAGNOSTICS
   exit "$build_status"
 fi
-xcrun xcresulttool get test-results summary --path "$result_path" > "$RUNNER_TEMP/ui-localization-summary.json"
-xcrun xcresulttool get test-results tests --path "$result_path" > "$RUNNER_TEMP/ui-localization-tests.json"
-python3 scripts/verify-ui-localization-results.py \
-  "$RUNNER_TEMP/ui-localization-summary.json" "$RUNNER_TEMP/ui-localization-tests.json" "$GITHUB_STEP_SUMMARY"
+exit "$verification_status"

@@ -45,15 +45,42 @@ def verify(summary, tree):
     return passed, failed, skipped
 
 
-def main():
-    summary = json.loads(Path(sys.argv[1]).read_text())
-    tree = json.loads(Path(sys.argv[2]).read_text())
-    # Record the actual aggregate even when a required identity is missing.
+def report(summary, tree, summary_path):
+    """Bounded test diagnostics only; never dump a bundle, environment or media."""
     counts = "; ".join(f"{key}: {summary.get(key, 'missing')}" for key in
                        ("passedTests", "failedTests", "skippedTests", "expectedFailures"))
     print(counts, flush=True)
-    with Path(sys.argv[3]).open("a") as output:
+    with Path(summary_path).open("a") as output:
         output.write(counts + "\n")
+
+    def bounded(value):
+        return " ".join(str(value).split())[:1200]
+
+    for failure in summary.get("testFailures", [])[:20]:
+        if isinstance(failure, dict):
+            print("Test failure: " + bounded(failure.get("testIdentifierString", failure.get("testName", "unknown")))
+                  + " — " + bounded(failure.get("failureText", "No failure message")), flush=True)
+    reported = 0
+
+    def walk(nodes):
+        nonlocal reported
+        if not isinstance(nodes, list):
+            return
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            if node.get("nodeType") == "Test Case" and node.get("result") != "Passed" and reported < 20:
+                print("Test result: " + bounded(node.get("nodeIdentifier", "unknown"))
+                      + " — " + bounded(node.get("result", "unknown")), flush=True)
+                reported += 1
+            walk(node.get("children", []))
+    walk(tree.get("testNodes"))
+
+
+def main():
+    summary = json.loads(Path(sys.argv[1]).read_text())
+    tree = json.loads(Path(sys.argv[2]).read_text())
+    report(summary, tree, sys.argv[3])
     verify(summary, tree)
     with Path(sys.argv[3]).open("a") as output:
         output.write(f"Required regressions: {len(REQUIRED)} passed.\n")
