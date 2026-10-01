@@ -1,0 +1,35 @@
+name: Synthetic CA diagnosis
+on:
+  push:
+    branches: ['codex/source-review-ci-probe-20261001']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: macos-15
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Inspect synthetic CA properties only
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          import {X509Certificate} from 'node:crypto';
+          for (const config of [[], ['-config', '/dev/null']]) {
+            const dir=mkdtempSync(join(tmpdir(),'ca-probe-'));
+            try {
+              execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-sha256','-days','1','-subj','/CN=Synthetic Probe CA','-addext','basicConstraints=critical,CA:TRUE',...config,'-keyout',join(dir,'key.pem'),'-out',join(dir,'ca.pem')],{stdio:'ignore'});
+              const c=new X509Certificate(readFileSync(join(dir,'ca.pem')));
+              console.log(JSON.stringify({node:process.version,openssl:execFileSync('openssl',['version'],{encoding:'utf8'}).trim(),emptyConfig:config.length>0,ca:c.ca,validFrom:c.validFrom,validTo:c.validTo,now:new Date().toISOString()}));
+              const text=execFileSync('openssl',['x509','-in',join(dir,'ca.pem'),'-text','-noout'],{encoding:'utf8'});
+              const start=text.indexOf('X509v3 extensions');
+              console.log(text.slice(start,text.indexOf('Signature Algorithm',start)));
+            } finally {rmSync(dir,{recursive:true});}
+          }
+          JS
