@@ -26,9 +26,11 @@ function graphHopperFixture(path,waypoints,{distance=length(path),time=3_600_000
 }
 const regions=[
   {name:'southern midlatitude',anchor:{latitude:-42.9,longitude:147.3},
-    first:{latitude:-42.89,longitude:147.31},second:{latitude:-42.89,longitude:147.29},targetKm:4.5},
+    first:{latitude:-42.89,longitude:147.31},second:{latitude:-42.89,longitude:147.29},targetKm:4.5,
+    prompt:'Ich möchte vom gewählten Start aus eine ruhige Runde zu zwei belegten Aussichtspunkten gehen. Etwa viereinhalb Kilometer wären gut.'},
   {name:'northern high latitude and date line',anchor:{latitude:75,longitude:179.98},
-    first:{latitude:75.01,longitude:179.99},second:{latitude:75.01,longitude:-179.99},targetKm:3}
+    first:{latitude:75.01,longitude:179.99},second:{latitude:75.01,longitude:-179.99},targetKm:3,
+    prompt:'出発地点に戻る徒歩の周回コースを考えて。地図に記録された展望地点を二つ通り、距離は3kmくらいが希望です。'}
 ];
 function mappedPlaces(region) {
   const payload={osm3s:{timestamp_osm_base:'2026-09-30T11:00:00Z'},elements:
@@ -56,10 +58,16 @@ for(const region of regions) {
     assert.equal(places.length,2);
     const providerResponse=graphHopperFixture(path,path,{time:4_321_000,ascent:137});
     let providerCalls=0,modelTurn=0;
-    const deps={researchWeb:async()=>webFixture(places[0]),search:async()=>places,
-      interact:async()=>({steps:[modelTurn++===0?
+    const deps={researchWeb:async input=>{
+      assert.equal(input.prompt,region.prompt);
+      return webFixture(places[0]);
+    },search:async()=>places,
+      interact:async history=>{
+        assert.ok(history[0].content[0].text.includes(region.prompt));
+        return {steps:[modelTurn++===0?
         tool('discover','search_places',{radiusMeters:10000,kinds:['viewpoint']}):
-        tool('itinerary','route_itinerary',{placeIds:places.map(p=>p.id)})]}),
+        tool('itinerary','route_itinerary',{placeIds:places.map(p=>p.id)})]};
+      },
       route:createDynamicItineraryRouter({provider:{route:async routeRequest=>{
         providerCalls++;
         assert.equal(routeRequest.profile,'foot');
@@ -67,7 +75,7 @@ for(const region of regions) {
         return providerResponse;
       }}}),
       reviewPlan:async()=>({decision:'complete',summary:'Only mapped stops and measured statistics are claimed.',remainingWishes:[],evidenceIds:[places[0].id]})};
-    const result=await planDynamicResearch(request(region,`Plan a ${region.targetKm} km hike from my chosen start through two sourced stops and return.`),deps);
+    const result=await planDynamicResearch(request(region,region.prompt),deps);
     assert.equal(providerCalls,1);
     assert.equal(result.plannerSource,'gemini_tools');
     assert.equal(result.geometryProvider,'graphhopper');
