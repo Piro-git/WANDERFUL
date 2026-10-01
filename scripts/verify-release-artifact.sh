@@ -728,6 +728,13 @@ profile_expiration_is_future() {
   [[ "$expiration_epoch" == <1-> && "$current_epoch" == <1-> && "$expiration_epoch" -gt "$current_epoch" ]]
 }
 
+profile_array_json() {
+  # macOS 15 can reject direct JSON extraction when another profile field
+  # contains a plist date or data value. Isolate the value as a plist first.
+  plutil -extract "$2" xml1 -o - "$1" 2>/dev/null |
+    plutil -convert json -o - - 2>/dev/null
+}
+
 signing_certificate_matches_profile() {
   local app_path="$1"
   local profile_plist="$2"
@@ -778,17 +785,17 @@ validate_provisioning_profile() {
     record_failure "provisioning_profile_contract"
     return 0
   fi
-  profile_teams="$(plutil -extract TeamIdentifier json -o - "$decoded_profile" 2>/dev/null)" || {
+  profile_teams="$(profile_array_json "$decoded_profile" TeamIdentifier)" || {
     record_failure "provisioning_profile_contract"
     return 0
   }
-  profile_prefixes="$(plutil -extract ApplicationIdentifierPrefix json -o - "$decoded_profile" 2>/dev/null)" || profile_prefixes='[]'
+  profile_prefixes="$(profile_array_json "$decoded_profile" ApplicationIdentifierPrefix)" || profile_prefixes='[]'
   profile_app_identifier="$(plutil -extract 'Entitlements.application-identifier' raw -o - "$decoded_profile" 2>/dev/null)" || profile_app_identifier=""
   profile_team_identifier="$(plutil -extract 'Entitlements.com\.apple\.developer\.team-identifier' raw -o - "$decoded_profile" 2>/dev/null)" || profile_team_identifier=""
   profile_app_attest="$(plutil -extract 'Entitlements.com\.apple\.developer\.devicecheck\.appattest-environment' raw -o - "$decoded_profile" 2>/dev/null)" || profile_app_attest=""
   profile_get_task_allow="$(plutil -extract 'Entitlements.get-task-allow' raw -o - "$decoded_profile" 2>/dev/null)" || profile_get_task_allow="missing"
   profile_beta_reports_active="$(plutil -extract 'Entitlements.beta-reports-active' raw -o - "$decoded_profile" 2>/dev/null)" || profile_beta_reports_active="missing"
-  if plutil -extract ProvisionedDevices json -o - "$decoded_profile" >/dev/null 2>&1; then
+  if plutil -extract ProvisionedDevices xml1 -o - "$decoded_profile" >/dev/null 2>&1; then
     profile_has_provisioned_devices=true
   fi
   if plutil -extract ProvisionsAllDevices raw -o - "$decoded_profile" >/dev/null 2>&1; then

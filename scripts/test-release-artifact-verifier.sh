@@ -110,6 +110,16 @@ stub_security() {
   /bin/cat "${TRAILMIND_RELEASE_STUB_PROFILE:?}"
 }
 
+stub_plutil() {
+  if [[ "${TRAILMIND_RELEASE_STUB_SCENARIO:-pass}" == "legacy_plutil" &&
+        "${1:-}" == "-extract" && "${3:-}" == "json" ]] &&
+     /usr/bin/plutil -convert xml1 -o - "${@: -1}" 2>/dev/null |
+       /usr/bin/grep -Eq '<(date|data)>'; then
+    return 1
+  fi
+  /usr/bin/plutil "$@"
+}
+
 stub_assetutil() {
   if [[ "${TRAILMIND_RELEASE_STUB_SCENARIO:-pass}" == "alpha_icon" ]]; then
     print -r -- '[{"AssetType":"Icon Image","Name":"AppIcon","Opaque":false}]'
@@ -143,6 +153,10 @@ case "${0:t}" in
     stub_security "$@"
     exit $?
     ;;
+  plutil)
+    stub_plutil "$@"
+    exit $?
+    ;;
   assetutil)
     stub_assetutil "$@"
     exit $?
@@ -160,7 +174,7 @@ trap 'rm -rf -- "$work_directory"' EXIT INT TERM
 
 stub_bin="${work_directory}/stub-bin"
 mkdir -p -- "$stub_bin"
-for stub_name in file lipo otool codesign dwarfdump security assetutil; do
+for stub_name in file lipo otool codesign dwarfdump security assetutil plutil; do
   ln -s "${PWD}/scripts/test-release-artifact-verifier.sh" "${stub_bin}/${stub_name}"
 done
 
@@ -366,7 +380,7 @@ expect_status() {
   [[ "$actual_status" == "$expected_status" ]] || {
     print -u2 -r -- "Expected status ${expected_status}, got ${actual_status}."
     sed -n '1,160p' "$LAST_OUTPUT" >&2
-    [[ -f "$LAST_REPORT" ]] && plutil -p "$LAST_REPORT" >&2 || true
+    [[ -f "$LAST_REPORT" ]] && jq . "$LAST_REPORT" >&2 || true
     exit 1
   }
 }
@@ -412,6 +426,16 @@ expect_status 0 env \
 assert_report '.final_status == "passed" and .failed_check_count == 0'
 
 expect_status 1 env TRAILMIND_RELEASE_STUB_PROFILE="$adhoc_profile" \
+  "$VERIFIER" distribution-signed-archive "$archive_path"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("provisioning_profile_contract") != null)'
+
+# A profile's unrelated date/data must neither block valid arrays nor hide
+# ProvisionedDevices on older plutil versions.
+expect_status 0 env TRAILMIND_RELEASE_STUB_SCENARIO=legacy_plutil \
+  "$VERIFIER" distribution-signed-archive "$archive_path"
+assert_report '.final_status == "passed" and .failed_check_count == 0'
+expect_status 1 env TRAILMIND_RELEASE_STUB_SCENARIO=legacy_plutil \
+  TRAILMIND_RELEASE_STUB_PROFILE="$adhoc_profile" \
   "$VERIFIER" distribution-signed-archive "$archive_path"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("provisioning_profile_contract") != null)'
 
