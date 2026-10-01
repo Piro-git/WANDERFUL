@@ -240,10 +240,22 @@ struct RouteDetailPresentation: Equatable {
     }
 }
 
+private struct ActiveRouteGuidance: Identifiable {
+    let id = UUID()
+    let route: TrailRoute
+}
+
 struct RouteDetailView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
+    @Environment(\.routeGuidanceDependencies) private var guidanceDependencies
+    @Environment(PremiumAccessStore.self) private var premiumAccess
+    @State private var checkedConditions: RouteLocalConditions?
+    @State private var recheckTask: Task<Void, Never>?
+    @State private var recheckError: String?
+    @State private var recheckDate = Date.now
     @State private var exportFlow = GPXExportFlow()
+    @State private var activeGuidance: ActiveRouteGuidance?
     #if DEBUG
     @State private var showIntentQA = false
     #endif
@@ -260,6 +272,7 @@ struct RouteDetailView: View {
         gpxService: any GPXService = DefaultGPXService()
     ) {
         self.route = route
+        _recheckDate = State(initialValue: PlanningEvidenceDate.parse(route.localConditions?.visitTime) ?? .now)
         self.researchPresentation = researchPresentation
         self.gpxService = gpxService
         presentation = RouteDetailPresentation(route: route)
@@ -278,10 +291,68 @@ struct RouteDetailView: View {
                     header
                     verificationNotice
                     RouteStatsRow(route: route)
+                    if let explanation = route.dynamicResearchExplanation {
+                        let parts = explanation.components(separatedBy: "\n").filter { !$0.isEmpty }
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(parts.first ?? explanation).font(.subheadline)
+                                .accessibilityIdentifier("route.quality.summary")
+                            Text("Planning assessment — review before starting.").font(.caption).foregroundStyle(.secondary)
+                            if parts.count > 1 {
+                                DisclosureGroup("Preferences to review") {
+                                    ForEach(Array(parts.dropFirst().enumerated()), id: \.offset) { _, text in
+                                        Text(text).font(.caption).padding(.top, 6)
+                                    }
+                                }.font(.subheadline)
+                            }
+                        }
+                    }
+                    if WanderfulAppConfigurationSnapshot.configuration?.routeWeatherAvailable == true {
+                        RouteWeatherCard(route: route).id(route.id)
+                    }
+                    HikePreparationCard(route: route).id(route.id)
+                    if route.routeStays != nil || route.days.count > 1 {
+                        RouteStaysView(evidence: route.routeStays)
+                    }
+                    if guidanceEligibility.isEligible {
+                        guidanceStart
+                            .disabled((checkedConditions ?? route.localConditions)?.blockingNoticeIds.isEmpty == false)
+                    }
                     researchEvidenceSummary
                     planningContext
                     researchFit
                     researchHighlights
+                    DynamicRouteEvidenceView(stops: route.dynamicResearchStops, explanation: nil,
+                                             research: route.dynamicWebResearch)
+                    if !route.dynamicResearchStops.isEmpty || route.localConditions != nil {
+                        VStack(alignment: .leading, spacing: 12) {
+                            RouteLocalConditionsView(conditions: checkedConditions ?? route.localConditions)
+                            DatePicker("Check for", selection: $recheckDate, displayedComponents: [.date, .hourAndMinute])
+                                .accessibilityIdentifier("route.conditions.date")
+                            Button(recheckTask == nil ? "Check local reports again" : "Checking local reports…") {
+                                recheckTask = Task {
+                                    defer { recheckTask = nil }
+                                    do {
+                                        guard let client = DynamicResearchPlanningClientFactory.makeDefault() else { throw OutdoorAdventurePlanningClientFailure.unavailable }
+                                        try client.validateConfiguration()
+                                        let evidence = try await client.recheck(route: route, plannedStartAt: recheckDate)
+                                        checkedConditions = evidence; recheckError = nil
+                                        if appModel.savedRoutes.isSaved(route) {
+                                            var updated = route; updated.localConditions = evidence
+                                            await appModel.savedRoutes.save(updated)
+                                        }
+                                    } catch is CancellationError { }
+                                    catch { recheckError = "The check could not be completed. Your route is unchanged. Try again when connected." }
+                                }
+                            }
+                            .disabled(recheckTask != nil)
+                            .accessibilityIdentifier("route.conditions.recheck")
+                            if let recheckError { Text(recheckError).font(.caption).foregroundStyle(.secondary) }
+                            if (checkedConditions ?? route.localConditions)?.blockingNoticeIds.isEmpty == false {
+                                Text("A reported restriction affects this route. Review the notice before setting off.").font(.subheadline.weight(.semibold))
+                            }
+                        }
+                        .onDisappear { recheckTask?.cancel(); recheckTask = nil }
+                    }
                     routeEvidence
                     verifiedRouteCharacteristics
                     #if DEBUG
@@ -299,6 +370,9 @@ struct RouteDetailView: View {
                     safety
                     if presentation.allowsProductionActions {
                         export
+                    }
+                    if premiumAccess.canOfferPremium(after: route) {
+                        PremiumInvitationView(route: route)
                     }
                 }
                 .padding(TrailSpacing.page)
@@ -352,7 +426,76 @@ struct RouteDetailView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("route.gpxShareSheet")
         }
+        .fullScreenCover(item: $activeGuidance) { selection in
+            RouteGuidanceView(
+                route: selection.route,
+                dependencies: guidanceDependencies
+            )
+        }
+        .sheet(item: premiumPaywallBinding) { _ in
+            PremiumPaywallView()
+        }
+        .task(id: route.id) {
+            premiumAccess.recordVerifiedRouteViewed(route)
+        }
         .accessibilityIdentifier("route.detail")
+    }
+
+    private var guidanceEligibility: RouteGuidanceEligibility {
+        RouteGuidanceEligibility(route: route)
+    }
+
+    private var guidanceStart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(
+                title: "Route Guidance",
+                subtitle: "Follow your verified mapped route while Wanderful is open."
+            )
+
+            Label(
+                "Uses your precise location only while the guidance screen is open. Your position and track aren’t stored or sent.",
+                systemImage: "location.fill"
+            )
+            .font(.footnote)
+            .foregroundStyle(theme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("route.guidancePermissionPurpose")
+
+            Label(
+                "Guidance is a planning aid, not a safety guarantee. Check signs, weather, trail conditions, and local rules.",
+                systemImage: "exclamationmark.shield.fill"
+            )
+            .font(.footnote)
+            .foregroundStyle(theme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                activeGuidance = ActiveRouteGuidance(route: route)
+            } label: {
+                Label("Start Route", systemImage: "location.north.fill")
+                    .font(.headline)
+                    .foregroundStyle(theme.onBrandPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .frame(minHeight: 54)
+                    .background(
+                        theme.brandFill,
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Start Route Guidance")
+            .accessibilityHint("Requests When In Use location permission if needed, then opens foreground guidance.")
+            .accessibilityIdentifier("route.startGuidance")
+        }
+        .trailCard()
+    }
+
+    private var premiumPaywallBinding: Binding<PremiumPaywallPresentation?> {
+        Binding(
+            get: { premiumAccess.presentedPaywall },
+            set: { premiumAccess.presentedPaywall = $0 }
+        )
     }
 
     @ViewBuilder

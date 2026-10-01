@@ -436,25 +436,45 @@ async function simulateCrashAfterPreStep() {
     );
     await client.query(
       `SELECT pg_catalog.set_config(
-                'trailmind.phase1_v2_run_id', $1, false
+                'trailmind.phase1_v2_bootstrap_contract', $1, false
               ),
               pg_catalog.set_config(
-                'trailmind.phase1_v2_authorization_binding_digest', $2, false
+                'trailmind.phase1_v2_project_ref', $2, false
               ),
               pg_catalog.set_config(
-                'trailmind.phase1_v2_candidate_commit', $3, false
+                'trailmind.phase1_v2_project_name', $3, false
               ),
               pg_catalog.set_config(
-                'trailmind.phase1_v2_candidate_tree', $4, false
+                'trailmind.phase1_v2_database_name', $4, false
               ),
               pg_catalog.set_config(
-                'trailmind.phase1_v2_operator_digests_digest', $5, false
+                'trailmind.phase1_v2_bootstrap_backend_pid',
+                pg_catalog.pg_backend_pid()::text, false
+              ),
+              pg_catalog.set_config(
+                'trailmind.phase1_v2_run_id', $5, false
+              ),
+              pg_catalog.set_config(
+                'trailmind.phase1_v2_authorization_binding_digest', $6, false
+              ),
+              pg_catalog.set_config(
+                'trailmind.phase1_v2_candidate_commit', $7, false
+              ),
+              pg_catalog.set_config(
+                'trailmind.phase1_v2_candidate_tree', $8, false
+              ),
+              pg_catalog.set_config(
+                'trailmind.phase1_v2_operator_digests_digest', $9, false
               ),
               pg_catalog.set_config(
                 'trailmind.phase1_v2_provider_acl_restore_plan_digest',
-                $6, false
+                $10, false
               )`,
       [
+        "managed-supabase-postgres-v1",
+        PROJECT,
+        "TrailMind Outdoor Staging V1",
+        "postgres",
         admission.runId,
         admission.authorizationBindingDigest,
         admission.candidateCommit,

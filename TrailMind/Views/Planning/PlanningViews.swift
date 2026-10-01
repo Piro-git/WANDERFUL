@@ -697,7 +697,7 @@ struct RouteSuggestionsView: View {
             }
         }
         guard !summaries.isEmpty else { return nil }
-        return "\(summaries.joined(separator: " · ")). These are requested preferences, not verified guarantees."
+        return "\(summaries.joined(separator: " · ")). These are planning preferences, not verified guarantees."
     }
 
     private var routeCountTitle: String {

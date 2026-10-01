@@ -188,10 +188,10 @@ final class ResearchRoutePresentationTests: XCTestCase {
         context: reachedContext
       )
     )
-    XCTAssertEqual(reached.highlights.first?.title, "Visits Viewpoint")
+    XCTAssertEqual(reached.highlights.first?.title, "Viewpoint")
     XCTAssertEqual(
       reached.highlights.first?.evidenceLabel,
-      "Route geometry reaches this selected highlight"
+      "Matches your required viewpoint experience. The mapped route approaches this location; current access and visibility are unverified."
     )
   }
 
@@ -230,7 +230,7 @@ final class ResearchRoutePresentationTests: XCTestCase {
 
     XCTAssertEqual(
       presentation.highlights.first?.evidenceLabel,
-      "Mapped place on this routed path"
+      "Route approaches this mapped location"
     )
     XCTAssertTrue(
       presentation.limitations.contains {

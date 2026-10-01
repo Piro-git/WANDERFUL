@@ -7,78 +7,68 @@ import XCTest
 // GPXExporterTests, BackendRouteClientTests and AppAttestServiceTests.
 @MainActor
 final class PrivacyReleaseContentTests: XCTestCase {
-    func testReleaseParserDisclosureMatchesFactoryReleaseBranch() throws {
-        let factorySource = try source(
-            relativePath: "TrailMind/Services/IntentParsingFoundation.swift"
-        )
-        let factoryBody = try declarationBody(
-            startingWith: "enum IntentParsingProviderFactory",
-            in: factorySource
-        )
-        let defaultProviderBody = try declarationBody(
-            startingWith: "static func makeDefaultProvider(",
-            in: factoryBody
-        )
-
-        XCTAssertEqual(
-            try releaseBranchStatements(in: defaultProviderBody),
-            [
-                "_ = environment",
-                "_ = remoteIntentEnabled",
-                "return LocalIntentParsingProvider()"
-            ]
-        )
-        XCTAssertEqual(
-            TrailMindAboutContent.releasePromptParsingDetail,
-            "Release builds parse your full typed route request on this device. They do not send the full prompt to a remote AI provider."
-        )
-        XCTAssertTrue(
-            try dataFlowDetail(id: "about.data.promptParsing")
-                .hasPrefix(TrailMindAboutContent.releasePromptParsingDetail)
-        )
+    func testDisclosureCoversResearchPlanningBeyondLocalIntentParsing() throws {
+        let client = try source(relativePath: "TrailMind/Services/OutdoorAdventurePlanningClient.swift")
+        XCTAssertTrue(client.contains("api/llm-plan-route"))
+        let detail = try dataFlowDetail(id: "about.data.promptParsing")
+        XCTAssertEqual(detail, TrailMindAboutContent.releasePromptParsingDetail)
+        for recipient in ["backend", "Google Gemini", "GraphHopper"] {
+            XCTAssertTrue(detail.contains(recipient))
+            XCTAssertTrue(TrailMindAboutContent.onlinePlanningPermissionDetail.contains(recipient))
+        }
+        XCTAssertFalse(detail.contains("do not send the full prompt"))
     }
 
-    func testRemoteIntentImplementationIsDebugCompilationOnly() throws {
-        let parsingSource = try source(
-            relativePath: "TrailMind/Services/IntentParsingFoundation.swift"
-        )
-        let plannerSource = try source(
-            relativePath: "TrailMind/ViewModels/PlannerViewModel.swift"
-        )
+    func testRemoteIntentReleaseCompositionHonorsFeatureFlagWithoutLocalFallback() throws {
+        let parsingSource = try source(relativePath: "TrailMind/Services/IntentParsingFoundation.swift")
+        let factoryBody = try declarationBody(startingWith: "enum IntentParsingProviderFactory", in: parsingSource)
+        let defaultProviderBody = try declarationBody(startingWith: "static func makeDefaultProvider(", in: factoryBody)
 
-        for token in [
-            "struct RemoteAIIntentParsingProvider",
-            "struct RemoteWithLocalFallbackIntentParsingProvider",
-            "private struct RemoteIntentRequest",
-            "private struct RemoteAdventureIntentResponse",
-            "appending(path: \"parse-intent\")"
-        ] {
-            XCTAssertTrue(
-                try everyOccurrenceIsDebugOnly(token, in: parsingSource),
-                "Remote intent token must remain inside #if DEBUG: \(token)"
-            )
+        // Disabling remote intent still yields the local parser without starting a request.
+        let disabledProvider = IntentParsingProviderFactory.makeDefaultProvider(
+            environment: [:], remoteIntentEnabled: false
+        )
+        XCTAssertTrue(disabledProvider is LocalIntentParsingProvider)
+        XCTAssertTrue(defaultProviderBody.contains("guard remoteIntentEnabled else { return LocalIntentParsingProvider() }"))
+        // The enabled Release branch must use the real remote provider, not the
+        // developer fallback that could disguise a failed AI request as success.
+        XCTAssertEqual(try releaseBranchStatements(in: defaultProviderBody), [
+            "_ = environment",
+            "return RemoteAIIntentParsingProvider()"
+        ])
+        #if !DEBUG
+        XCTAssertTrue(IntentParsingProviderFactory.makeDefaultProvider(
+            environment: [:], remoteIntentEnabled: true
+        ) is RemoteAIIntentParsingProvider)
+        #endif
+
+        let remoteBody = try declarationBody(startingWith: "struct RemoteAIIntentParsingProvider", in: parsingSource)
+        let endpointBody = try declarationBody(startingWith: "private func endpointURL(", in: remoteBody)
+        XCTAssertTrue(endpointBody.contains("guard let baseURL else { return nil }"))
+        XCTAssertTrue(endpointBody.contains("baseURL.appending(path: \"api\").appending(path: \"parse-intent\")"))
+        for token in ["struct RemoteAIIntentParsingProvider", "private struct RemoteIntentRequest", "private struct RemoteAdventureIntentResponse"] {
+            XCTAssertTrue(parsingSource.contains(token))
+            XCTAssertFalse(try everyOccurrenceIsDebugOnly(token, in: parsingSource))
         }
 
-        XCTAssertTrue(
-            try everyOccurrenceIsDebugOnly(
-                "error is RemoteAIIntentParsingProvider.ProviderError",
-                in: plannerSource
-            ),
-            "Planner remote-error handling must not compile into Release."
-        )
+        let plannerSource = try source(relativePath: "TrailMind/ViewModels/PlannerViewModel.swift")
+        let remoteErrorToken = "error is RemoteAIIntentParsingProvider.ProviderError"
+        XCTAssertTrue(plannerSource.contains(remoteErrorToken))
+        XCTAssertFalse(try everyOccurrenceIsDebugOnly(remoteErrorToken, in: plannerSource))
+        XCTAssertTrue(plannerSource.contains("Route understanding isn’t available right now. Try again or edit the request."))
     }
 
     func testVoiceDisclosureMatchesRecognitionRequestMode() throws {
         let voiceSource = try source(
             relativePath: "TrailMind/Services/VoicePlanningService.swift"
         )
-        let serviceBody = try declarationBody(
-            startingWith: "final class AppleSpeechVoicePlanningService: VoicePlanningService",
+        let recognitionManagerBody = try declarationBody(
+            startingWith: "private final class AppleVoiceRecognitionManager: VoiceRecognitionManaging",
             in: voiceSource
         )
         let transcriptionBody = try declarationBody(
-            startingWith: "func startTranscription(language: VoicePlanningLanguage)",
-            in: serviceBody
+            startingWith: "func start(",
+            in: recognitionManagerBody
         )
         let requestVariables = try captureGroups(
             pattern: #"\blet\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*SFSpeechAudioBufferRecognitionRequest\s*\(\s*\)"#,
@@ -207,10 +197,13 @@ final class PrivacyReleaseContentTests: XCTestCase {
         let builtInfo = try XCTUnwrap(Bundle.main.infoDictionary)
 
         for (label, info) in [("tracked", trackedInfo), ("built", builtInfo)] {
-            XCTAssertNil(
-                info["NSLocationWhenInUseUsageDescription"],
-                "The \(label) plist must not request unavailable location access."
+            XCTAssertEqual(
+                info["NSLocationWhenInUseUsageDescription"] as? String,
+                TrailMindPermissionCopy.locationWhenInUse,
+                "Unexpected \(label) When In Use location purpose."
             )
+            XCTAssertNil(info["NSLocationAlwaysUsageDescription"])
+            XCTAssertNil(info["NSLocationAlwaysAndWhenInUseUsageDescription"])
             XCTAssertEqual(
                 info["NSMicrophoneUsageDescription"] as? String,
                 TrailMindPermissionCopy.microphone,
@@ -229,24 +222,55 @@ final class PrivacyReleaseContentTests: XCTestCase {
 
         XCTAssertEqual(
             try dataFlowDetail(id: "about.data.deviceLocation"),
-            "Wanderful does not currently access your device's location. Enter a place name when choosing a route start."
+            "During active Route Guidance, Wanderful uses your precise location to show position and progress, including during screen lock and app changes. Pause or end guidance to stop updates. No location track is stored or sent by Wanderful. If the app is terminated, reopen it and resume guidance manually."
         )
     }
 
-    func testShippingSourceHasNoDormantLocationAuthorizationOrTrackingSurface() throws {
-        let servicesSource = try source(relativePath: "TrailMind/Services/TrailServices.swift")
-
-        for forbiddenToken in [
-            "LocationService",
-            "CLLocationManager",
-            "requestWhenInUseAuthorization",
-            "startUpdatingLocation"
-        ] {
-            XCTAssertFalse(
-                servicesSource.contains(forbiddenToken),
-                "Shipping services must not retain unused location capability: \(forbiddenToken)"
-            )
+    func testActiveGuidanceDeclaresBackgroundLocationWithoutAlwaysPermission() throws {
+        let locationSource = try source(relativePath: "TrailMind/Services/RouteLocationService.swift")
+        for info in [try trackedInfoPlist(), try XCTUnwrap(Bundle.main.infoDictionary)] {
+            XCTAssertEqual(info["UIBackgroundModes"] as? [String], ["location"])
+            XCTAssertNil(info["NSLocationAlwaysUsageDescription"])
+            XCTAssertNil(info["NSLocationAlwaysAndWhenInUseUsageDescription"])
         }
+        XCTAssertTrue(locationSource.contains("requestWhenInUseAuthorization"))
+        XCTAssertTrue(locationSource.contains("allowsBackgroundLocationUpdates = true"))
+        XCTAssertTrue(locationSource.contains("pausesLocationUpdatesAutomatically = false"))
+        XCTAssertTrue(locationSource.contains("showsBackgroundLocationIndicator = true"))
+        // The service resets both background flags when its active stream stops.
+        let serviceBody = try declarationBody(startingWith: "final class CoreLocationRouteLocationService", in: locationSource)
+        let streamBody = try declarationBody(startingWith: "private lazy var locationStream", in: serviceBody)
+        XCTAssertTrue(streamBody.contains("stopUpdatingLocation()"))
+        XCTAssertTrue(streamBody.contains("allowsBackgroundLocationUpdates = false"))
+        XCTAssertTrue(streamBody.contains("showsBackgroundLocationIndicator = false"))
+        for forbiddenToken in ["requestAlwaysAuthorization", "startMonitoringSignificantLocationChanges", "startMonitoringVisits"] {
+            XCTAssertFalse(locationSource.contains(forbiddenToken))
+        }
+        // RouteGuidanceModelTests cover actual progress, pause/end and revocation;
+        // these source/config contracts do not constitute physical lock-screen proof.
+    }
+
+    func testPlacePhotoDisclosureNamesRecipientsAndLimits() throws {
+        let detail = try dataFlowDetail(id: "about.data.photos")
+        for phrase in ["Wikidata", "Wikimedia Commons", "network address", "do not confirm current access"] {
+            XCTAssertTrue(detail.contains(phrase))
+        }
+    }
+
+    func testReleaseArtifactPermissionContractMatchesShippingDisclosure() throws {
+        let data = Data(try source(relativePath: "scripts/release-contract.json").utf8)
+        let contract = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let product = try XCTUnwrap(contract["product"] as? [String: Any])
+        let usage = try XCTUnwrap(product["usage_descriptions"] as? [String: String])
+        XCTAssertEqual(usage["NSLocationWhenInUseUsageDescription"], TrailMindPermissionCopy.locationWhenInUse)
+        XCTAssertEqual(product["background_modes"] as? [String], ["location"])
+        let info = try trackedInfoPlist()
+        XCTAssertEqual(info["UIBackgroundModes"] as? [String], product["background_modes"] as? [String])
+        let markers = try XCTUnwrap(contract["required_binary_markers"] as? [String])
+        let displayedCopy = TrailMindAboutContent.credits.map(\.detail).joined(separator: " ")
+            + TrailMindAboutContent.credits.map(\.title).joined(separator: " ")
+            + TrailMindAboutContent.planningBoundaryItems.map(\.detail).joined(separator: " ")
+        for marker in markers { XCTAssertTrue(displayedCopy.contains(marker), "Required release copy must be displayed: \(marker)") }
     }
 
     func testClosedBetaDeclaresOnlyProvenIPhonePortraitSurface() throws {
@@ -269,7 +293,7 @@ final class PrivacyReleaseContentTests: XCTestCase {
         XCTAssertEqual(
             TrailMindAboutContent.planningBoundaryItems.map(\.detail),
             [
-                "Wanderful is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
+                "Route Guidance is a planning aid, not a safety guarantee. Check signs, weather, trail conditions, closures, local rules and water availability. Saved route data does not download the Apple basemap; offline maps are not provided. AI planning and route recalculation are unavailable without an internet connection.",
                 "Requested features are shown separately unless mapped route data verifies them."
             ]
         )

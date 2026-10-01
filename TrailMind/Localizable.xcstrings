@@ -1,0 +1,480 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Web evidence unavailable in this view. It is not stored with saved routes." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Die Webrecherche ist hier nicht verfügbar. Sie wird nicht mit gespeicherten Routen abgelegt."}}}},
+    "No web passage reliably linked to this stop." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Für diesen Stopp ist keine passende Textstelle aus der Webrecherche belegt."}}}},
+    "Research links a source identity or named passage (%@). Read the original research for context; its statements are not confirmed route conditions." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Die Recherche verknüpft eine Quelle oder Textstelle (%@). Lies die Originalquelle für den Kontext; aktuelle Bedingungen sind damit nicht bestätigt."}}}},
+    "Research and alternatives" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Recherche und Alternativen"}}}},
+    "Prepare for this hike" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Für diese Wanderung packen"}}}},
+    "Prepare for this trip" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Für diese Tour packen"}}}},
+    "Open to review your saved list." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Öffne deine gespeicherte Packliste."}}}},
+    "Your list & departure checks" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Deine Packliste und letzte Checks"}}}},
+    "%lld of %lld packed" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "%lld von %lld gepackt"}}}},
+    "%@ km · %@ hr" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "%@ km · %@ Std."}}}},
+    "Packing list complete" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Alles auf deiner Liste ist gepackt"}}}},
+    "One thing at a time." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Ein Teil nach dem anderen."}}}},
+    "Trip style" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Unterwegs mit"}}}},
+    "Day hike" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Tagestour"}}}},
+    "Overnight · camping" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Übernachtung im Zelt"}}}},
+    "Overnight · hut" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Übernachtung in der Hütte"}}}},
+    "Add the equipment you need for your activity. The suggested list is designed for hiking." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Ergänze die Ausrüstung für deine Aktivität. Die vorgeschlagene Liste ist fürs Wandern gedacht."}}}},
+    "Clothing" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Kleidung"}}}},
+    "Food & drink" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Essen & Trinken"}}}},
+    "Essentials" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Grundausrüstung"}}}},
+    "Overnight" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Übernachten"}}}},
+    "Your additions" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Deine Ergänzungen"}}}},
+    "Not needed · %lld" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Nicht benötigt · %lld"}}}},
+    "Your saved list could not be read. It has been kept unchanged. Close and try again after updating the app." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Deine gespeicherte Liste konnte nicht gelesen werden. Sie bleibt unverändert. Schließe diese Ansicht und versuche es nach einem App-Update erneut."}}}},
+    "Add an item" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Gegenstand hinzufügen"}}}},
+    "Confirm camping permission & food storage rules" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Zelterlaubnis und Regeln zur Lebensmittelaufbewahrung prüfen"}}}},
+    "Confirm hut booking, meals & bedding" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Hüttenbuchung, Verpflegung und Bettzeug klären"}}}},
+    "Changes could not be saved. Please try again." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut."}}}},
+    "Packed" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Gepackt"}}}},
+    "Not packed" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Noch nicht gepackt"}}}},
+    "Double tap to unpack" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Doppeltippen, um den Haken zu entfernen"}}}},
+    "Double tap to pack" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Doppeltippen, um abzuhaken"}}}},
+    "Reason for %@" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Warum %@ auf der Liste steht"}}}},
+    "Options for %@" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Optionen für %@"}}}},
+    "Added by you for this trip." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Von dir für diese Tour ergänzt."}}}},
+    "Extra layer & rain shell" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Warme Schicht & Regenjacke"}}}},
+    "Choose layers after checking conditions." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Wähle deine Kleidung nach einem Blick auf die Bedingungen."}}}},
+    "Hat, sunglasses & sunscreen" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Kopfbedeckung, Sonnenbrille & Sonnencreme"}}}},
+    "Plan for sun exposure." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Denke an Sonnenschutz für unterwegs."}}}},
+    "Water & carrying bottles" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Wasser & Trinkflaschen"}}}},
+    "Plan your supply; refills are unverified." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Plane deinen Vorrat; Nachfüllmöglichkeiten sind nicht geprüft."}}}},
+    "Water treatment supplies" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Ausrüstung zur Wasseraufbereitung"}}}},
+    "If collecting water, choose a suitable method." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Falls du Wasser sammelst, wähle eine passende Aufbereitung."}}}},
+    "Food & spare snacks" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Verpflegung & zusätzliche Snacks"}}}},
+    "Allow for delays as well as your planned outing." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Plane auch einen Vorrat für Verzögerungen ein."}}}},
+    "Map & navigation backup" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Karte & Ersatz zur Orientierung"}}}},
+    "Bring tools you know how to use." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Nimm Hilfsmittel mit, die du sicher bedienen kannst."}}}},
+    "Phone & backup power" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Handy & Powerbank"}}}},
+    "Charge before leaving." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Lade alles vor dem Aufbruch auf."}}}},
+    "Headlamp & spare power" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Stirnlampe & Ersatzakku"}}}},
+    "Delays can extend into darkness." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Bei Verzögerungen kann es unterwegs dunkel werden."}}}},
+    "First aid & personal medication" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Erste Hilfe & persönliche Medikamente"}}}},
+    "Check supplies and expiry dates." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Prüfe Inhalt und Haltbarkeit."}}}},
+    "Emergency blanket or bivy" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Rettungsdecke oder Notbiwaksack"}}}},
+    "Emergency cover, separate from camping equipment." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Schutz für Notfälle, zusätzlich zur Campingausrüstung."}}}},
+    "Small repair kit" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Kleines Reparaturset"}}}},
+    "Choose tools for your equipment." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Wähle Werkzeug passend zu deiner Ausrüstung."}}}},
+    "Emergency fire kit" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Feuerstarter für Notfälle"}}}},
+    "Check local fire restrictions; carrying a kit is not permission to light fires." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Prüfe örtliche Feuerverbote. Ein Feuerstarter ist keine Erlaubnis, Feuer zu machen."}}}},
+    "A meal for the longer outing" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Mahlzeit für die längere Tour"}}}},
+    "Make room for a meal in your food plan." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Plane eine Mahlzeit in deine Verpflegung ein."}}}},
+    "Dry change & spare socks" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Trockene Wechselkleidung & Ersatzsocken"}}}},
+    "Keep sleeping clothes dry." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Halte deine Kleidung für die Nacht trocken."}}}},
+    "Overnight meals & toiletries" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Verpflegung für die Nacht & Hygieneartikel"}}}},
+    "Plan each meal and personal supplies." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Plane alle Mahlzeiten und deinen persönlichen Bedarf."}}}},
+    "Tent & pitching kit" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Zelt & Zubehör zum Aufbau"}}}},
+    "Check equipment and permitted places to stay." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Prüfe deine Ausrüstung und erlaubte Übernachtungsplätze."}}}},
+    "Sleeping bag & sleeping pad" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Schlafsack & Isomatte"}}}},
+    "Choose for checked overnight conditions." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Wähle sie passend zu den geprüften Bedingungen in der Nacht."}}}},
+    "Hut sleeping kit" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Schlafausrüstung für die Hütte"}}}},
+    "Ask the hut what bedding or liner to bring." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Frage bei der Hütte nach Bettzeug und Hüttenschlafsack."}}}},
+    "Spare walking socks" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Ersatzwandersocken"}}}},
+    "Easy-to-reach snack pouch" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Griffbereite Snacktasche"}}}},
+    "Small sit mat" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Kleines Sitzkissen"}}}},
+    "Dry bags for spare kit" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Packsäcke für Wechselkleidung"}}}},
+    "Tent repair supplies" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Zeltreparaturset"}}}},
+    "Earplugs for the hut" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Ohrstöpsel für die Hütte"}}}},
+    "AI-selected option · An optional dry pair to change into during your outing." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "KI-Vorschlag · Ein trockenes Paar zum Wechseln unterwegs."}}}},
+    "AI-selected option · Keep your planned snacks accessible while walking." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "KI-Vorschlag · Halte deine Snacks beim Wandern griffbereit."}}}},
+    "AI-selected option · An optional seat for planned breaks." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "KI-Vorschlag · Eine Sitzunterlage für deine Pausen."}}}},
+    "AI-selected option · Separate spare clothing and supplies inside your pack." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "KI-Vorschlag · Verstaue Wechselkleidung und Vorräte getrennt im Rucksack."}}}},
+    "AI-selected option · For your selected camping stay, match spares to your tent." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "KI-Vorschlag · Wähle Ersatzteile passend zu deinem Zelt."}}}},
+    "AI-selected option · For your selected hut stay, consider shared sleeping spaces." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "KI-Vorschlag · Denke an gemeinsam genutzte Schlafräume in der Hütte."}}}},
+    "Choose your clothing after checking the forecast for your departure." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Wähle deine Kleidung nach einem Blick auf die Vorhersage für deinen Start."}}}},
+    "Plan meals and breaks around the mapped duration, with room for delays." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Plane Mahlzeiten und Pausen zur berechneten Dauer, mit Puffer für Verzögerungen."}}}},
+    "Check that your footwear fits and suits the terrain you have reviewed." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Prüfe, ob deine Schuhe passen und für das geplante Gelände geeignet sind."}}}},
+    "Check your tent setup and sleeping kit before your camping stay." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Prüfe Zeltaufbau und Schlafausrüstung vor deiner Übernachtung."}}}},
+    "Ask your booked hut about meals, bedding and arrival times." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Frage deine gebuchte Hütte nach Mahlzeiten, Bettzeug und Ankunftszeiten."}}}},
+    "German Alpine Club · Hut visits" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Deutscher Alpenverein · Hüttenbesuche"}}}},
+    "Check local access and conditions before you go." : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Prüfe vor dem Start Zugänge und Bedingungen vor Ort."}}}},
+    "Sources & details" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Quellen & Details"}}}},
+    "Entrance details" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Details zum Eingang"}}}},
+    "Source date: %@" : {"localizations": {"de": {"stringUnit": {"state": "translated", "value": "Quellenstand: %@"}}}},
+    "App language" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "App-Sprache" } }
+      }
+    },
+    "A little more personal" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Etwas persönlicher" } } }
+    },
+    "Account" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Konto" } } } },
+    "A focused planner for routed outdoor options." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Ein klarer Planer für echte Outdoor-Routen." } } } },
+    "Always check local rules, weather, trail conditions and water availability before starting." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Prüfe vor dem Start lokale Regeln, Wetter, Wegbedingungen und Wasserverfügbarkeit." } } } },
+    "Before you set off" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Vor dem Aufbruch" } } } },
+    "Check weather, local rules and signs before starting. A lack of reports is not an assurance of access or safety." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Prüfe vor dem Start Wetter, lokale Regeln und Beschilderung. Fehlende Meldungen bedeuten nicht, dass ein Weg zugänglich oder sicher ist." } } } },
+    "Center" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Zentrieren" } } } },
+    "Clarify route" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Route präzisieren" } } } },
+    "Create Trail Profile" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderprofil erstellen" } } } },
+    "Close" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Schließen" } } } },
+    "Data" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Daten" } } } },
+    "Data & privacy" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Daten & Datenschutz" } } } },
+    "About this list" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Über diese Liste" } } }
+    },
+    "Add your own item" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Eigenen Gegenstand hinzufügen" } } }
+    },
+    "Before you go" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Vor dem Start" } } }
+    },
+    "Build my route" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Route planen" } } }
+    },
+    "Cancel" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } } }
+    },
+    "Choose your language" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wähle deine Sprache" } }
+      }
+    },
+    "Changing the app language does not change your routes, packing lists, purchases, or the language of your own prompts." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wenn du die App-Sprache änderst, bleiben deine Routen, Packlisten und Käufe erhalten. Deine eigenen Eingaben kannst du weiterhin in jeder Sprache schreiben." } }
+      }
+    },
+    "Check local rules & trail conditions" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Lokale Regeln und Wegbedingungen prüfen" } } }
+    },
+    "Check the latest forecast" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktuelle Wettervorhersage prüfen" } } }
+    },
+    "Continue" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Weiter" } }
+      }
+    },
+    "Destination" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Ziel" } } }
+    },
+    "Delete" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Löschen" } } } },
+    "Delete account" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Konto löschen" } } } },
+    "Delete saved route" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gespeicherte Route löschen" } } } },
+    "Edit Trail Profile" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderprofil bearbeiten" } } } },
+    "End" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Beenden" } } } },
+    "End Route" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Route beenden" } } } },
+    "End Route Guidance?" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenführung beenden?" } } } },
+    "Finding your position" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Dein Standort wird gesucht" } } } },
+    "Export GPX" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "GPX exportieren" } } } },
+    "Done" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Fertig" } } }
+    },
+    "Edit prompt" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Eingabe ändern" } } }
+    },
+    "General guidance with your trip choices. Conditions, water, access and overnight availability have not been checked here. Review checks again before every departure." : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Allgemeine Hinweise passend zu deiner Tour. Bedingungen, Wasser, Zugang und Übernachtungsmöglichkeiten wurden hier nicht geprüft. Prüfe alles vor jedem Start erneut." } } }
+    },
+    "Keep Guiding" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Weiterführen" } } } },
+    "Maps are not downloaded" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Karten werden nicht heruntergeladen" } } } },
+    "Planning boundary" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Grenzen der Planung" } } } },
+    "Planning defaults" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Planungsvorgaben" } } } },
+    "No Trail Profile saved" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein Wanderprofil gespeichert" } } } },
+    "Listening…" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Ich höre zu …" } } } },
+    "Location unavailable" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Standort nicht verfügbar" } } } },
+    "Got it" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Verstanden" } } }
+    },
+    "Item name" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Name des Gegenstands" } } }
+    },
+    "Language" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Sprache" } }
+      }
+    },
+    "Loading your Trail Profile" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Dein Wanderprofil wird geladen" } } }
+    },
+    "Open Settings" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Einstellungen öffnen" } } }
+    },
+    "Matching places" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Passende Orte" } } } },
+    "Offline preparation" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Offline vorbereiten" } } } },
+    "Original web research" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Ursprüngliche Webrecherche" } } } },
+    "Planning assessment — review before starting." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Planungseinschätzung – bitte vor dem Start prüfen." } } } },
+    "Preparing GPX" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "GPX wird vorbereitet" } } } },
+    "Optional suggestions use only your selected trip style and mapped distance and duration." : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Optionale Vorschläge nutzen nur deinen gewählten Tourstil sowie kartierte Strecke und Dauer." } } }
+    },
+    "Packing progress" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Packfortschritt" } } }
+    },
+    "Pack & prepare" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Packen & vorbereiten" } } }
+    },
+    "Plan" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Planen" } } }
+    },
+    "Profile" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Profil" } } }
+    },
+    "Providers & map data" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Anbieter & Kartendaten" } } } },
+    "Remove" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Entfernen" } } } },
+    "Remove from Saved" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Aus Gespeichert entfernen" } } } },
+    "Restore purchases" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Käufe wiederherstellen" } } } },
+    "Route Guidance" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenführung" } } } },
+    "Route evidence" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wegnachweise" } } } },
+    "Route on this iPhone" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Route auf diesem iPhone" } } } },
+    "Route planning" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenplanung" } } }
+    },
+    "Saved" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gespeichert" } } }
+    },
+    "Save" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Speichern" } } }
+    },
+    "Share your route & expected return" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Route und geplante Rückkehr teilen" } } }
+    },
+    "Start town or trailhead" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Startort oder Wanderparkplatz" } } }
+    },
+    "Start Route" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Route starten" } } } },
+    "Stops on this route" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Stopps auf dieser Route" } } } },
+    "Start" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Start" } } } },
+    "Stop" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Stopp" } } } },
+    "Try Again" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Erneut versuchen" } } }
+    },
+    "Try again" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Erneut versuchen" } } } },
+    "Your plan" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Tour" } } }
+    },
+    "Your request" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Anfrage" } } } },
+    "Your routes" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Routen" } } } },
+    "Your Trail Profile" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Dein Wanderprofil" } } } },
+    "Your plan added items. Take a fresh look below." : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Tour hat weitere Gegenstände ergänzt. Schau sie dir unten noch einmal an." } } }
+    },
+    "Type instead" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Stattdessen tippen" } } }
+    },
+    "15 km loop" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "15-km-Rundweg" } } }
+    },
+    "2-hour trail run" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "2-stündiger Trailrun" } } }
+    },
+    "Bike route" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Radtour" } } }
+    },
+    "Destination" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Ziel" } } }
+    },
+    "Pick an idea, then choose your places." : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wähle eine Idee, dann deine Orte." } } }
+    },
+    "Plan for a date" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Für ein Datum planen" } } }
+    },
+    "Point-to-point hike" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Streckenwanderung" } } }
+    },
+    "Start with a thought" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Ideen für deine Tour" } } }
+    },
+    "Where should\nwe go next?" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wohin geht es\nals Nächstes?" } } }
+    },
+    "Describe a route. Wanderful calculates it on mapped paths." : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Beschreibe deine Wanderung. Wanderful plant sie auf kartierten Wegen." } } }
+    },
+    "Tell me the route" : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Beschreibe deine Route" } } }
+    },
+    "Start, destination or loop, plus distance or time." : {
+      "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Start, Ziel oder Rundweg – und dazu Strecke oder Zeit." } } }
+    },
+    "Use the app in English" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "App auf Englisch nutzen" } }
+      }
+    },
+    "You can change this any time in Profile." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Du kannst das jederzeit im Profil ändern." } }
+      }
+    },
+    "Add only the defaults that make planning easier. You can leave every answer unknown." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Lege nur fest, was dir die Planung erleichtert. Du kannst jede Antwort offenlassen." } } } },
+    "Choose your places. Wanderful will check them before calculating a route." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wähle deine Orte. Wanderful prüft sie, bevor eine Route berechnet wird." } } } },
+    "Choose preferences" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorlieben auswählen" } } } },
+    "Comfortable day" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Angenehmer Tag" } } } },
+    "Delete Trail Profile" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderprofil löschen" } } } },
+    "Delete your Trail Profile?" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderprofil löschen?" } } } },
+    "Describe your route and where to start" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Beschreibe deine Route und deinen Startpunkt" } } } },
+    "Edit item" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gegenstand bearbeiten" } } } },
+    "Explore Premium" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Premium entdecken" } } } },
+    "Help & legal" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Hilfe & Rechtliches" } } } },
+    "I don’t know yet" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Weiß ich noch nicht" } } } },
+    "Not needed" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht benötigt" } } } },
+    "One quick detail" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine kurze Rückfrage" } } } },
+    "Plan something different" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Etwas anderes planen" } } } },
+    "Premium subscription" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Premium-Abo" } } } },
+    "Skip personalization" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Personalisierung überspringen" } } } },
+    "Town, valley or trailhead" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Ort, Tal oder Wanderparkplatz" } } } },
+    "Your trail shelf" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine gespeicherten Routen" } } } },
+    "Your usual day" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Dein üblicher Tag" } } } },
+    "A reported restriction affects this route. Review the notice before setting off." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine gemeldete Einschränkung betrifft diese Route. Lies den Hinweis vor dem Aufbruch." } } } },
+    "Access connection is unconfirmed. Check local signs and rules." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Verbindung zum Zugang ist nicht bestätigt. Prüfe lokale Beschilderung und Regeln." } } } },
+    "Current local conditions have not been checked for this route." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die aktuellen Bedingungen vor Ort wurden für diese Route nicht geprüft." } } } },
+    "Day hike is the starting list. Change this to match your plans." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Tageswanderung ist die Ausgangsliste. Passe sie an deine Tour an." } } } },
+    "Discard unreadable local record" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht lesbaren lokalen Eintrag verwerfen" } } } },
+    "Discard unreadable record" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht lesbaren Eintrag verwerfen" } } } },
+    "Dismiss" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Schließen" } } } },
+    "Follow the mapped route" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Der kartierten Route folgen" } } } },
+    "GPS can follow the saved line without internet. There is no offline route recalculation or AI planning. Prepare another reliable map before leaving coverage." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "GPS kann der gespeicherten Linie ohne Internet folgen. Offline gibt es keine Neuberechnung und keine KI-Planung. Bereite vor dem Verlassen des Empfangsbereichs eine weitere zuverlässige Karte vor." } } } },
+    "Loading App Store options…" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "App-Store-Optionen werden geladen …" } } } },
+    "Manage subscription" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Abo verwalten" } } } },
+    "No mapped routing instruction is available here. Check the map and local signs." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Hier gibt es keine kartierte Weganweisung. Prüfe die Karte und lokale Schilder." } } } },
+    "No relevant report was returned by the listed sources. This does not confirm that paths are open." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die aufgeführten Quellen haben keinen passenden Hinweis geliefert. Das bestätigt nicht, dass Wege offen sind." } } } },
+    "Not needed items are left out of packing progress. Restore them whenever plans change." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht benötigte Gegenstände zählen nicht zum Packfortschritt. Stelle sie wieder her, wenn sich deine Pläne ändern." } } } },
+    "Offline map unavailable" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Offline-Karte nicht verfügbar" } } } },
+    "Offline preparation · maps not downloaded" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Offline vorbereiten · Karten nicht geladen" } } } },
+    "OpenStreetMap supplies identities and positions. GraphHopper calculated the path near these stops. Current access, views, water and safety remain unconfirmed." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "OpenStreetMap liefert Namen und Positionen. GraphHopper hat den Weg nahe dieser Stopps berechnet. Zugang, Aussicht, Wasser und Sicherheit sind aktuell nicht bestätigt." } } } },
+    "Preview pending" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorschau wird geladen" } } } },
+    "Premium access verified." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Premium-Zugang bestätigt." } } } },
+    "Publication date not provided." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Kein Veröffentlichungsdatum angegeben." } } } },
+    "Remove unusable records" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Unbrauchbare Einträge entfernen" } } } },
+    "Requested features are preferences, not verified guarantees." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gewünschte Merkmale sind Vorlieben, keine bestätigten Zusagen." } } } },
+    "Reset" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Zurücksetzen" } } } },
+    "Reset answers" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Antworten zurücksetzen" } } } },
+    "Reset your answers?" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Antworten zurücksetzen?" } } } },
+    "Review official local notices, weather and signs before starting." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Prüfe vor dem Start offizielle Hinweise vor Ort, Wetter und Beschilderung." } } } },
+    "Route preview unavailable" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenvorschau nicht verfügbar" } } } },
+    "Saves locally first. No account needed." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird zuerst lokal gespeichert. Kein Konto nötig." } } } },
+    "The route changed after the local search. Added areas or stops have not been checked." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Route hat sich nach der lokalen Suche geändert. Neue Bereiche oder Stopps wurden nicht geprüft." } } } },
+    "The saved record can’t be read safely. Discard it to begin again. No account or network connection is required." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Der gespeicherte Eintrag kann nicht sicher gelesen werden. Verwirf ihn, um neu zu beginnen. Dafür brauchst du kein Konto und keine Internetverbindung." } } } },
+    "This route has no turn instructions. Only its mapped line and route statistics can be saved." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Diese Route hat keine Abbiegehinweise. Es können nur die kartierte Linie und Routenwerte gespeichert werden." } } } },
+    "Waiting for When In Use permission and a precise location." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Warte auf Standortfreigabe während der Nutzung und einen genauen Standort." } } } },
+    "Your current guidance session will stop. Wanderful does not save a location track." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine aktuelle Routenführung wird beendet. Wanderful speichert keinen Standortverlauf." } } } },
+    "Your route is ready" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Route ist bereit" } } } },
+    "Check the latest forecast" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Aktuelle Wettervorhersage prüfen" } } } },
+    "Comfort measured by" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Komfort gemessen an" } } } },
+    "Delete all saved routes" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Alle gespeicherten Routen löschen" } } } },
+    "ESTIMATED EFFORT" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "GESCHÄTZTE ANSTRENGUNG" } } } },
+    "Finishing transcription…" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Transkription wird abgeschlossen …" } } } },
+    "General checks · separate from your packing list. Mapped route statistics above do not confirm current conditions." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Allgemeine Prüfungen · getrennt von deiner Packliste. Die Routenwerte oben bestätigen keine aktuellen Bedingungen." } } } },
+    "Good to know" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gut zu wissen" } } } },
+    "How online planning uses your request" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "So verwendet die Online-Planung deine Anfrage" } } } },
+    "Local reports will be compared with this date. Check again before starting." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Lokale Hinweise werden mit diesem Datum abgeglichen. Prüfe sie vor dem Start erneut." } } } },
+    "Not knowing is an answer. You can change this later." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht wissen ist auch eine Antwort. Du kannst das später ändern." } } } },
+    "OK" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "OK" } } } },
+    "OR REQUEST UP TO THREE" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "ODER WÄHLE BIS ZU DREI" } } } },
+    "Plan first. Decide after the value moment." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Plane zuerst. Entscheide erst, wenn du den Nutzen kennst." } } } },
+    "Plan a route by voice" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Route per Sprache planen" } } } },
+    "Preparing onboarding" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Einrichtung wird vorbereitet" } } } },
+    "Preparing your route setup" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Routenplanung wird vorbereitet" } } } },
+    "Previous step" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorheriger Schritt" } } } },
+    "Purchases and subscription management are handled by Apple." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Käufe und Abo-Verwaltung werden von Apple abgewickelt." } } } },
+    "Reset Saved Data" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gespeicherte Daten zurücksetzen" } } } },
+    "Retry" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Erneut versuchen" } } } },
+    "Route request" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenanfrage" } } } },
+    "Saves locally first. No account needed." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wird zuerst lokal gespeichert. Kein Konto nötig." } } } },
+    "Start place" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Startort" } } } },
+    "Starting Route Guidance" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenführung wird gestartet" } } } },
+    "Stored on this iPhone. Relevant defaults are included when you allow online route planning." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Auf diesem iPhone gespeichert. Relevante Vorgaben fließen ein, wenn du die Online-Routenplanung erlaubst." } } } },
+    "Subscriptions automatically renew unless canceled at least 24 hours before the current period ends. Payment is charged to your Apple Account at confirmation. You can manage or cancel in App Store subscription settings." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Abos verlängern sich automatisch, sofern du nicht mindestens 24 Stunden vor Ablauf kündigst. Die Zahlung wird bei Bestätigung deinem Apple-Account belastet. Verwalte oder kündige dein Abo in den App-Store-Einstellungen." } } } },
+    "Your local Trail Profile needs a fresh start" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Dein lokales Wanderprofil muss neu angelegt werden" } } } },
+    "You can close this screen without sending a request. Saved routes remain available." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Du kannst diesen Bildschirm schließen, ohne eine Anfrage zu senden. Gespeicherte Routen bleiben verfügbar." } } } },
+    "You planned a verified route first. Explore Wanderful Premium only if it feels useful now." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Du hast zuerst eine echte Route geplant. Entdecke Wanderful Premium nur, wenn es dir jetzt wirklich hilft." } } } },
+    "Your route remains available whether or not you subscribe. Choose a plan only if Wanderful Premium is right for you." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Route bleibt verfügbar, egal ob du abonnierst. Wähle ein Abo nur, wenn Wanderful Premium zu dir passt." } } } },
+    "Attributed research passage, not a verified statement about this route." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Zitierter Rechercheauszug, keine bestätigte Aussage über diese Route." } } } },
+    "Check local rules & trail conditions" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Lokale Regeln und Wegbedingungen prüfen" } } } },
+    "Confirm water availability & your supply" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wasserverfügbarkeit und Vorrat prüfen" } } } },
+    "DAY " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "TAG " } } } },
+    "Elevation profile" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Höhenprofil" } } } },
+    "Google Search suggestions" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Google-Suchvorschläge" } } } },
+    "Intent QA" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Absichtsprüfung" } } } },
+    "Later" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Später" } } } },
+    "Manage what you share and find help with your next route." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Verwalte, was du teilst, und finde Hilfe für deine nächste Route." } } } },
+    "Mapped as " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Kartiert als " } } } },
+    "No location track is saved or sent. Check weather, local rules and trail conditions before starting." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Es wird kein Standortverlauf gespeichert oder gesendet. Prüfe vor dem Start Wetter, lokale Regeln und Wegbedingungen." } } } },
+    "Not on this route: " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Nicht auf dieser Route: " } } } },
+    "Offline evidence check" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Offline-Nachweisprüfung" } } } },
+    "Opening local setup…" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Lokale Einrichtung wird geöffnet …" } } } },
+    "Or enter a specific starting area" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Oder gib einen genauen Startbereich ein" } } } },
+    "PREVIEW" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "VORSCHAU" } } } },
+    "Photo linked to " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Foto verknüpft mit " } } } },
+    "Physical effort estimate: " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Geschätzte körperliche Anstrengung: " } } } },
+    "Preferences remain requests until route evidence verifies them. They never guarantee scenery, access, conditions, difficulty, or safety." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorlieben bleiben Wünsche, bis Wegdaten sie belegen. Sie garantieren niemals Aussicht, Zugang, Bedingungen, Schwierigkeit oder Sicherheit." } } } },
+    "Research before route selection — includes alternatives and unconfirmed context. Only the stops listed above belong to this route. Source statements may be outdated; they do not verify route conditions." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Recherche vor der Routenauswahl – mit Alternativen und unbestätigtem Kontext. Nur die oben aufgeführten Stopps gehören zu dieser Route. Quellen können veraltet sein und bestätigen keine Wegbedingungen." } } } },
+    "Retry Cleanup" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereinigung erneut versuchen" } } } },
+    "Retry cleanup" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereinigung erneut versuchen" } } } },
+    "Retrying cleanup" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereinigung wird wiederholt" } } } },
+    "Route copilot" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenbegleitung" } } } },
+    "Share your route & expected return" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Teile deine Route und geplante Rückkehr" } } } },
+    "Source statement; current route conditions are not confirmed." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Quellenaussage; aktuelle Wegbedingungen sind nicht bestätigt." } } } },
+    "Specific town, valley or trailhead" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Genauer Ort, Tal oder Wanderparkplatz" } } } },
+    "The Apple basemap needs connectivity. Previously viewed areas may disappear without a network connection. Saving this route does not download a map." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Apple-Basiskarte benötigt eine Verbindung. Bereits angesehene Bereiche können ohne Netz verschwinden. Das Speichern dieser Route lädt keine Karte herunter." } } } },
+    "The suggested kit covers hiking. Add your own activity-specific equipment below; this is not a complete kit for " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die vorgeschlagene Ausrüstung ist für Wandern gedacht. Ergänze unten eigenes, aktivitätsspezifisches Material; dies ist keine vollständige Ausrüstung für " } } } },
+    "These are defaults, not rules. A route request you make now always wins." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Das sind Vorgaben, keine Regeln. Deine aktuelle Routenanfrage hat immer Vorrang." } } } },
+    "What you’ll see along the way" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Das siehst du unterwegs" } } } },
+    "While guidance is active" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Während die Routenführung läuft" } } } },
+    "YOUR TRAIL PROFILE" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "DEIN WANDERPROFIL" } } } },
+    "Applies: " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gilt: " } } } },
+    "CURRENT ROUTE" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "AKTUELLE ROUTE" } } } },
+    "Choose only what feels useful. “I don’t know yet” stays unknown." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wähle nur, was dir hilfreich erscheint. „Weiß ich noch nicht“ bleibt offen." } } } },
+    "End Route Guidance" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenführung beenden" } } } },
+    "Entrance is " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Eingang ist " } } } },
+    "MUST-HAVE" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "MUSS DABEI SEIN" } } } },
+    "Onboarding progress" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Einrichtungsfortschritt" } } } },
+    "Options for " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Optionen für " } } } },
+    "Published: " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Veröffentlicht: " } } } },
+    "Rebalancing your route…" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine Route wird angepasst …" } } } },
+    "Recenter map on your position" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Karte auf deinen Standort zentrieren" } } } },
+    "Removes this route from Saved. The current guidance session keeps its route until you end it." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Entfernt diese Route aus Gespeichert. Die laufende Routenführung behält ihre Route, bis du sie beendest." } } } },
+    "Route Guidance map" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Karte der Routenführung" } } } },
+    "Route comparison: " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenvergleich: " } } } },
+    "Save the mapped route and available instructions. Reopen it from Saved after closing the app; start guidance again manually." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Speichere die kartierte Route und verfügbare Hinweise. Öffne sie nach dem Schließen der App unter Gespeichert und starte die Führung bei Bedarf erneut." } } } },
+    "Source snapshot: " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Quellenstand: " } } } },
+    "Start Route Guidance" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Routenführung starten" } } } },
+    "Start guidance while the app is open. Location updates continue during screen lock and app changes. Pause or End stops location use. Force-quitting the app or restarting your iPhone ends the session." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Starte die Führung bei geöffneter App. Standortupdates laufen bei gesperrtem Bildschirm und App-Wechsel weiter. Pausieren oder Beenden stoppt die Standortnutzung. Das Beenden der App oder ein iPhone-Neustart beendet die Sitzung." } } } },
+    "Start here with a precise reading. Active guidance continues during app changes and screen lock." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Starte hier mit einem genauen Standort. Die aktive Führung läuft bei App-Wechsel und gesperrtem Bildschirm weiter." } } } },
+    "This removes the local profile and its resumable draft from this iPhone. Remote sync is not active in V1. Your saved routes are not affected." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Das entfernt das lokale Profil und den fortsetzbaren Entwurf von diesem iPhone. In Version 1 ist keine Fernsynchronisierung aktiv. Deine gespeicherten Routen bleiben erhalten." } } } },
+    "This route has multiple days. Choose an overnight style if you plan to stay out." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Diese Route dauert mehrere Tage. Wähle eine Übernachtungsart, wenn du unterwegs bleiben möchtest." } } } },
+    "WHAT’S NEXT" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "WAS ALS NÄCHSTES KOMMT" } } } },
+    "Wanderful Premium" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderful Premium" } } } },
+    "Wanderful found one distinct loop for this start and distance. A nearby trailhead or different distance may yield alternatives." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderful hat für diesen Start und diese Strecke eine eigenständige Rundtour gefunden. Ein nahegelegener Wanderparkplatz oder eine andere Strecke kann weitere Optionen ergeben." } } } },
+    "Wanderful will only add this answer to the missing part of your request." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderful ergänzt diese Antwort nur bei dem fehlenden Teil deiner Anfrage." } } } },
+    "Wanderful. A focused planner for routed outdoor options." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderful. Ein klarer Planer für echte Outdoor-Routen." } } } },
+    "Where would you like to go?" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wohin möchtest du gehen?" } } } },
+    "Wanderful today" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wanderful heute" } } } },
+    "Your Trail Profile will stay available, but every planning preference will return to “Not set yet.”" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Dein Wanderprofil bleibt erhalten, aber alle Planungsvorlieben werden auf „Noch nicht festgelegt“ zurückgesetzt." } } } },
+    "Your next route request always wins. Wanderful uses these defaults only when your request leaves a gap." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Deine nächste Routenanfrage hat immer Vorrang. Wanderful nutzt diese Vorgaben nur, wenn deine Anfrage etwas offenlässt." } } } },
+    "per " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "pro " } } } },
+    "Built around “" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Geplant rund um „" } } } },
+    "Checked: " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Geprüft: " } } } },
+    "Edit " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Bearbeiten " } } } },
+    "Restore " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wiederherstellen " } } } },
+    "Subscribe for " : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Abonnieren für " } } } },
+    "Where should" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Wohin geht" } } } },
+    "Applies: %@ – %@" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gültig: %@ – %@" } } } },
+    "Built around “%@”" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Geplant rund um „%@“" } } } },
+    "Checked: %@" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Geprüft: %@" } } } },
+    "Mapped as %@" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Kartiert als %@" } } } },
+    "Published: %@" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Veröffentlicht: %@" } } } },
+    "Restore %@" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ wiederherstellen" } } } },
+    "Subscribe for %@ per %@" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Für %@ pro %@ abonnieren" } } } },
+    "%@ of %@ packed" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ von %@ gepackt" } } } },
+    "Account sign-in is not available in this build." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Die Kontoanmeldung ist in dieser App-Version nicht verfügbar." } } } },
+    "Deletes Wanderful server account data and signs you out. Saved routes and packing lists on this iPhone stay here unless you delete them separately." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Löscht deine Wanderful-Kontodaten auf dem Server und meldet dich ab. Gespeicherte Routen und Packlisten auf diesem iPhone bleiben erhalten, bis du sie separat löschst." } } } },
+    "No weather, water, access, campsite or safety claim is generated. Departure date and personal needs are not shared." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Es werden keine Zusagen zu Wetter, Wasser, Zugang, Campingplatz oder Sicherheit erzeugt. Startdatum und persönliche Bedürfnisse werden nicht geteilt." } } } },
+    "Photos are Wikimedia Commons images linked from each stop’s Wikidata record. Availability varies by place." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Fotos stammen aus Wikimedia Commons und sind mit dem Wikidata-Eintrag jedes Stopps verknüpft. Die Verfügbarkeit ist je nach Ort unterschiedlich." } } } },
+    "Saved routes and packing lists remain on this iPhone." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Gespeicherte Routen und Packlisten bleiben auf diesem iPhone." } } } },
+    "Getting suggestions…" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorschläge werden erstellt …" } } } },
+    "Suggest extras with AI" : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Zusätzliche Ausrüstung per KI vorschlagen" } } } },
+    "Review the optional additions before packing." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "Prüfe die optionalen Ergänzungen, bevor du packst." } } } },
+    "AI suggestions are unavailable. Your packing list is unchanged." : { "localizations" : { "de" : { "stringUnit" : { "state" : "translated", "value" : "KI-Vorschläge sind nicht verfügbar. Deine Packliste bleibt unverändert." } } } },
+    "Die App auf Deutsch nutzen" : {
+      "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Use the app in German" } } }
+    }
+  },
+  "version" : "1.0"
+}

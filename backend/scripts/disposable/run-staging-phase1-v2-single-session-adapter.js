@@ -155,7 +155,7 @@ subjectAltName = DNS:db.mbvzwsrtqcrwhvykugcd.supabase.co
         `-c ssl_key_file=${serverKey} ` +
         `-c dynamic_library_path=${root} ` +
         `-c shared_preload_libraries=supautils ` +
-        `-c supautils.privileged_role=postgres ` +
+        `-c supautils.privileged_role=supabase_privileged_role ` +
         `-c supautils.superuser=supabase_admin ` +
         `-c supautils.privileged_extensions_superuser=supabase_admin ` +
         `-c supautils.privileged_extensions=postgis`,
@@ -192,13 +192,18 @@ function provisionManagedFixture(cluster) {
     CREATE ROLE dashboard_user NOLOGIN NOINHERIT;
     CREATE ROLE supabase_auth_admin NOLOGIN NOINHERIT;
     CREATE ROLE supabase_storage_admin NOLOGIN NOINHERIT;
-    CREATE ROLE postgres LOGIN PASSWORD 'test-only-password'
-      NOINHERIT NOSUPERUSER CREATEDB CREATEROLE
+    CREATE ROLE supabase_privileged_role
+      NOLOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
       NOREPLICATION NOBYPASSRLS;
+    CREATE ROLE postgres LOGIN PASSWORD 'test-only-password'
+      INHERIT NOSUPERUSER CREATEDB CREATEROLE
+      REPLICATION BYPASSRLS;
     GRANT pg_signal_backend TO postgres
       WITH INHERIT FALSE, SET FALSE, ADMIN TRUE;
     GRANT pg_read_all_settings TO postgres
       WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
+    GRANT supabase_privileged_role TO postgres
+      WITH INHERIT TRUE, SET TRUE, ADMIN FALSE;
     ALTER DATABASE postgres OWNER TO postgres;
     CREATE SCHEMA extensions AUTHORIZATION postgres;
     GRANT USAGE ON SCHEMA extensions TO PUBLIC;
@@ -233,7 +238,8 @@ function provisionManagedFixture(cluster) {
     BEGIN
       IF current_setting('server_version_num')::integer / 10000 <> 17 THEN
         RAISE EXCEPTION 'disposable PostgreSQL major version is invalid';
-      ELSIF current_setting('supautils.privileged_role') <> 'postgres' THEN
+      ELSIF current_setting('supautils.privileged_role') <>
+        'supabase_privileged_role' THEN
         RAISE EXCEPTION 'disposable supautils privileged role is invalid';
       ELSIF current_setting('supautils.superuser') <> 'supabase_admin' THEN
         RAISE EXCEPTION 'disposable supautils managed superuser is invalid';

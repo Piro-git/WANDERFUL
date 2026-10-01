@@ -1,8 +1,6 @@
--- TrailMind Outdoor Staging V1 Phase 1 Supabase PostGIS-isolation V2 candidate.
--- LOCAL REVIEW CANDIDATE ONLY: this turn did not authorize remote execution.
--- If independently approved later, run only on the exact authorized empty staging
--- project, inside one transaction, before the V2 migration policy
--- 001-007 + 009 + 010.
+-- TrailMind Outdoor Staging V1 Phase 1 Supabase PostGIS-isolation V2 pre-step.
+-- Run only through the exact target-bound managed bootstrap contract, before the
+-- V2 migration policy 001-007 + 009 + 010.
 -- Never run this file after the historical blocked V1 operator path.
 
 BEGIN;
@@ -17,22 +15,84 @@ DO $foundation$
 DECLARE
   role_name text;
 BEGIN
-  IF session_user <> 'postgres' OR current_user <> 'postgres' OR
+  IF pg_catalog.current_database() <> 'postgres' OR
+     session_user <> 'postgres' OR current_user <> 'postgres' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_bootstrap_contract', true
+     ) IS DISTINCT FROM 'managed-supabase-postgres-v1' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_project_ref', true
+     ) IS DISTINCT FROM 'mbvzwsrtqcrwhvykugcd' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_project_name', true
+     ) IS DISTINCT FROM 'TrailMind Outdoor Staging V1' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_database_name', true
+     ) IS DISTINCT FROM 'postgres' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_bootstrap_backend_pid', true
+     ) IS DISTINCT FROM pg_catalog.pg_backend_pid()::text OR
+     current_setting('server_version_num')::integer / 10000 <> 17 OR
+     pg_catalog.current_setting(
+       'supautils.privileged_role', true
+     ) IS DISTINCT FROM 'supabase_privileged_role' OR
+     NOT ('supabase_admin' = ANY(ARRAY[
+       pg_catalog.current_setting('supautils.superuser', true),
+       pg_catalog.current_setting(
+         'supautils.privileged_extensions_superuser', true
+       )
+     ])) OR
+     pg_catalog.strpos(
+       ',' || pg_catalog.replace(
+         COALESCE(pg_catalog.current_setting(
+           'supautils.privileged_extensions', true
+         ), ''), ' ', ''
+       ) || ',', ',postgis,'
+     ) = 0 OR
+     pg_catalog.current_setting('is_superuser') <> 'off' OR
      NOT EXISTS (
        SELECT 1
          FROM pg_catalog.pg_roles role_record
         WHERE role_record.rolname = current_user
+          AND role_record.rolcanlogin
+          AND role_record.rolinherit
+          AND NOT role_record.rolsuper
+          AND role_record.rolcreatedb
           AND role_record.rolcreaterole
-          AND NOT role_record.rolreplication
-          AND NOT role_record.rolbypassrls
+          AND role_record.rolreplication
+          AND role_record.rolbypassrls
      ) OR pg_catalog.pg_get_userbyid((
        SELECT database_record.datdba
          FROM pg_catalog.pg_database database_record
         WHERE database_record.datname = pg_catalog.current_database()
-     )) <> 'postgres' THEN
+     )) <> 'postgres' OR
+     NOT pg_catalog.pg_has_role(
+       current_user, 'pg_read_all_settings', 'USAGE'
+     ) OR NOT EXISTS (
+       SELECT 1
+         FROM pg_catalog.pg_roles privileged_role
+        WHERE privileged_role.rolname = 'supabase_privileged_role'
+          AND NOT privileged_role.rolcanlogin
+          AND privileged_role.rolinherit
+          AND NOT privileged_role.rolsuper
+          AND NOT privileged_role.rolcreatedb
+          AND NOT privileged_role.rolcreaterole
+          AND NOT privileged_role.rolreplication
+          AND NOT privileged_role.rolbypassrls
+          AND pg_catalog.pg_has_role(
+            current_user, privileged_role.rolname, 'USAGE'
+          )
+     ) OR NOT EXISTS (
+       SELECT 1
+         FROM pg_catalog.pg_roles managed_admin
+        WHERE managed_admin.rolname = 'supabase_admin'
+          AND managed_admin.rolsuper
+     ) OR pg_catalog.pg_has_role(
+       'postgres', 'supabase_admin', 'SET'
+     ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '42501',
-      MESSAGE = 'TrailMind Phase 1 V2 requires the exact managed postgres operator and database owner';
+      MESSAGE = 'TrailMind Phase 1 V2 managed bootstrap contract rejected the operator, target, database, or session';
   END IF;
 
   FOREACH role_name IN ARRAY ARRAY[
@@ -162,6 +222,15 @@ REVOKE ALL ON TABLE
   trailmind_phase1_guard.shared_acl_principal_snapshot FROM PUBLIC;
 CREATE TABLE trailmind_phase1_guard.recovery_binding (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  bootstrap_contract text NOT NULL CHECK (
+    bootstrap_contract = 'managed-supabase-postgres-v1'
+  ),
+  project_ref text NOT NULL CHECK (project_ref = 'mbvzwsrtqcrwhvykugcd'),
+  project_name text NOT NULL CHECK (
+    project_name = 'TrailMind Outdoor Staging V1'
+  ),
+  database_name text NOT NULL CHECK (database_name = 'postgres'),
+  bootstrap_backend_pid integer NOT NULL CHECK (bootstrap_backend_pid > 0),
   run_id uuid NOT NULL,
   authorization_binding_digest text NOT NULL CHECK (
     authorization_binding_digest ~ '^[0-9a-f]{64}$'
@@ -184,6 +253,11 @@ COMMENT ON TABLE trailmind_phase1_guard.recovery_binding IS
   'trailmind:mbvzwsrtqcrwhvykugcd:phase1-v2:recovery-binding';
 REVOKE ALL ON TABLE trailmind_phase1_guard.recovery_binding FROM PUBLIC;
 INSERT INTO trailmind_phase1_guard.recovery_binding (
+  bootstrap_contract,
+  project_ref,
+  project_name,
+  database_name,
+  bootstrap_backend_pid,
   run_id,
   authorization_binding_digest,
   candidate_commit,
@@ -191,6 +265,11 @@ INSERT INTO trailmind_phase1_guard.recovery_binding (
   operator_digests_digest,
   provider_acl_restore_plan_digest
 ) VALUES (
+  pg_catalog.current_setting('trailmind.phase1_v2_bootstrap_contract'),
+  pg_catalog.current_setting('trailmind.phase1_v2_project_ref'),
+  pg_catalog.current_setting('trailmind.phase1_v2_project_name'),
+  pg_catalog.current_database(),
+  pg_catalog.pg_backend_pid(),
   pg_catalog.current_setting('trailmind.phase1_v2_run_id')::uuid,
   pg_catalog.current_setting(
     'trailmind.phase1_v2_authorization_binding_digest'

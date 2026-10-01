@@ -1,0 +1,46 @@
+{
+  "coordinates": [
+    [
+      10,
+      47
+    ],
+    [
+      10.02,
+      47
+    ]
+  ],
+  "evidence": {
+    "schemaVersion": 1,
+    "geometryDigest": "cf4fa3679626f19c10f2d72dfbe1bb033ad438cec282279c6b7c25daf9cc5ff3",
+    "checkedAt": "2026-09-29T10:00:00.000Z",
+    "coverage": "partial",
+    "maximumOffsetMeters": 2000,
+    "state": "available",
+    "candidates": [
+      {
+        "id": "osm:node:1",
+        "name": "Fixture hut",
+        "category": "alpine_hut",
+        "coordinate": {
+          "latitude": 47.001,
+          "longitude": 10.01
+        },
+        "coordinateKind": "mapped_point",
+        "source": {
+          "provider": "openstreetmap",
+          "url": "https://www.openstreetmap.org/node/1",
+          "license": "ODbL-1.0",
+          "attribution": "© OpenStreetMap contributors",
+          "version": 2,
+          "updatedAt": "2024-01-01T00:00:00.000Z",
+          "retrievedAt": "2026-09-29T10:00:00.000Z",
+          "snapshotAt": "2026-09-29T09:00:00.000Z"
+        },
+        "nameKnown": true,
+        "operator": null,
+        "website": "https://operator.example.org/visit",
+        "straightLineDistanceToPathMeters": 111
+      }
+    ]
+  }
+}

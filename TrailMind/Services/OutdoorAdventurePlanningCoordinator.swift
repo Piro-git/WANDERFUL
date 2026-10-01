@@ -4,6 +4,13 @@ protocol OutdoorAdventurePlanningCoordinatingV1: Sendable {
     func plan(
         intent: AdventureResearchIntentV1
     ) async throws -> OutdoorAdventurePlanningCoordinatorResultV1
+    func plan(intent: AdventureResearchIntentV1, planningContext: ResearchLedPlanningContext) async throws -> OutdoorAdventurePlanningCoordinatorResultV1
+}
+
+extension OutdoorAdventurePlanningCoordinatingV1 {
+    func plan(intent: AdventureResearchIntentV1, planningContext: ResearchLedPlanningContext) async throws -> OutdoorAdventurePlanningCoordinatorResultV1 {
+        try await plan(intent: intent)
+    }
 }
 
 enum OutdoorAdventurePlanningCoordinatorFailureV1:
@@ -39,7 +46,7 @@ enum OutdoorAdventurePlanningCoordinatorFailureV1:
         mapping failure: OutdoorAdventurePlanningClientFailure
     ) {
         switch failure {
-        case .invalidRequest, .requestTooLarge, .rejected:
+        case .invalidRequest, .requestTooLarge, .rejected, .noAcceptableRoute:
             self = .rejected
         case .unavailable:
             self = .unavailable
@@ -199,11 +206,15 @@ struct OutdoorAdventurePlanningCoordinatorV1:
     func plan(
         intent: AdventureResearchIntentV1
     ) async throws -> OutdoorAdventurePlanningCoordinatorResultV1 {
+        try await plan(intent: intent, planningContext: .unspecified)
+    }
+
+    func plan(intent: AdventureResearchIntentV1, planningContext: ResearchLedPlanningContext) async throws -> OutdoorAdventurePlanningCoordinatorResultV1 {
         try Task.checkCancellation()
         let result: OutdoorAdventurePlanningResultV1
         do {
             result = try await client.plan(
-                OutdoorAdventurePlanningRequestV1(intent: intent)
+                OutdoorAdventurePlanningRequestV1(intent: intent, planningContext: planningContext)
             )
         } catch is CancellationError {
             throw CancellationError()

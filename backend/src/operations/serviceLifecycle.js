@@ -122,6 +122,9 @@ export async function startStandaloneIntentService(options = {}) {
       operationalState,
       appAttestRuntime,
       appAttestRepository,
+      // The account lane deliberately shares the app-security pool, never the
+      // read-only outdoor evidence role.
+      accountPostgresPool: pools.appSecurity,
       postgresPool: pools.outdoorEvidence,
       outdoorResearchPool: pools.outdoorResearch,
       outdoorResearchCancellationPool: pools.outdoorResearchCancellation

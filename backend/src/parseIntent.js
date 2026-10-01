@@ -110,7 +110,7 @@ export function intentErrorResult(error) {
 export async function parseIntentEndpoint(input, options = {}) {
   const request = validateRequest(input);
   const env = options.env ?? process.env;
-  const provider = selectedProvider(env);
+  const provider = selectedIntentProvider(env);
 
   const googleApiKey = credential(env.GOOGLE_API_KEY);
   const openRouterApiKey = credential(env.OPENROUTER_API_KEY);
@@ -287,7 +287,7 @@ async function executeProviderRequest({ request, env, options, url, init, respon
   }
 }
 
-function googleResponseText(payload) {
+export function googleResponseText(payload) {
   const direct =
     payload?.output_text ??
     payload?.outputText ??
@@ -470,7 +470,7 @@ export function validateRequest(input) {
   return { prompt, locale, userLocationHint };
 }
 
-function selectedProvider(env) {
+export function selectedIntentProvider(env) {
   const value = cleanString(env.AI_PROVIDER).toLowerCase();
   if (value === "google" || value === "gemini") return "google";
   if (value === "openrouter") return "openrouter";

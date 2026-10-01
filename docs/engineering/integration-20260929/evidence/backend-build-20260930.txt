@@ -1,0 +1,5 @@
+
+> trailmind-intent-backend@0.1.0 build
+> node scripts/check-javascript.js
+
+{"checked":381,"failures":[]}

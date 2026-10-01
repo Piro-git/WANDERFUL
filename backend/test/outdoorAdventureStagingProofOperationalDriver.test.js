@@ -698,7 +698,8 @@ describe("outdoor adventure staging proof operational capture", () => {
     assert.equal(queries.at(-1), "ROLLBACK");
   });
 
-  it("requires an accepted PostgreSQL cancel, cancelled query, and rollback", async () => {
+  for (const cancellationFunction of [undefined, "trailmind_control.cancel_active_outdoor_research_backend_integer"]) {
+  it(`requires accepted cancel, cancelled query, and rollback (${cancellationFunction ?? "default"})`, async () => {
     const lifecycle = [];
     const primaryQueries = [];
     let rejectActiveQuery;
@@ -720,7 +721,7 @@ describe("outdoor adventure staging proof operational capture", () => {
       async query(statement, values) {
         assert.equal(
           statement,
-          "SELECT pg_cancel_backend($1) AS cancelled"
+          `SELECT ${cancellationFunction ?? "pg_cancel_backend"}($1) AS cancelled`
         );
         assert.deepEqual(values, [42]);
         const error = new Error("cancelled");
@@ -735,6 +736,7 @@ describe("outdoor adventure staging proof operational capture", () => {
     let productConnectionCount = 0;
     let controlConnectionCount = 0;
     const repository = new PostgresOutdoorResearchRepository({
+      cancellationFunction,
       pool: {
         async connect() {
           productConnectionCount += 1;
@@ -776,6 +778,8 @@ describe("outdoor adventure staging proof operational capture", () => {
     assert.equal(productConnectionCount, 1);
     assert.equal(controlConnectionCount, 1);
   });
+
+  }
 
   it("never obtains cancellation capacity from the retained transaction pool", async () => {
     const sharedPool = {

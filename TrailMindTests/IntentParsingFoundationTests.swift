@@ -293,7 +293,7 @@ final class IntentParsingFoundationTests: XCTestCase {
 
         XCTAssertEqual(validated.desiredFeatures, [.viewpoint, .forest])
         XCTAssertEqual(validated.desiredFeatures, validated.requestedFeaturePreferences)
-        XCTAssertEqual(request.metadata.requestedFeatureSummary, "Requested: Views, Forest")
+        XCTAssertEqual(request.metadata.requestedFeatureSummary, "Preferences: Views, Forest")
     }
 
     #if DEBUG
@@ -305,6 +305,30 @@ final class IntentParsingFoundationTests: XCTestCase {
             XCTFail("Remote provider must stay disabled without a configured backend URL.")
         } catch {
             XCTAssertEqual(error as? RemoteAIIntentParsingProvider.ProviderError, .notConfigured)
+        }
+    }
+
+    func testRemoteParserForwardsFreeformPromptsVerbatimWithoutPresetSelection() async throws {
+        let prompts = [
+            "Plan About A 15km hiking loop from Ilsenburg With Views",
+            "Please start at Wernigerode, wander for about 83 minutes, and include a quiet place to pause.",
+            "Ich möchte ab Goslar wandern, ungefähr 12,5 km, am liebsten mit Aussicht."
+        ]
+        for prompt in prompts {
+            let capturedRequest = CapturedURLRequest()
+            let provider = RemoteAIIntentParsingProvider(
+                baseURL: URL(string: "http://127.0.0.1:3000"),
+                authorizer: FakeIntentAuthorizer(),
+                dataLoader: { request in
+                    await capturedRequest.set(request)
+                    return (Self.remoteIntentData(), Self.httpResponse(statusCode: 200))
+                }
+            )
+            _ = try await provider.parseIntent(rawPrompt: prompt)
+            let captured = await capturedRequest.get()
+            let body = try XCTUnwrap(captured?.httpBody)
+            let payload = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            XCTAssertEqual(payload?["prompt"] as? String, prompt)
         }
     }
 
@@ -737,7 +761,7 @@ final class IntentParsingFoundationTests: XCTestCase {
         XCTAssertEqual(result.status, .repaired)
         XCTAssertEqual(validated.desiredFeatures, [.viewpoint])
         XCTAssertEqual(validated.requestedFeaturePreferences, [.viewpoint])
-        XCTAssertEqual(request.metadata.requestedFeatureSummary, "Requested: Views")
+        XCTAssertEqual(request.metadata.requestedFeatureSummary, "Preferences: Views")
     }
 
     func testIntentRepairPreservesExplicitGenericMustHaveExperience()

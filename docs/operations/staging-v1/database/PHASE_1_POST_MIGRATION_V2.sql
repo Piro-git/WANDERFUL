@@ -1,5 +1,4 @@
 -- TrailMind Outdoor Staging V1 Phase 1 Supabase PostGIS-isolation V2 post-step.
--- LOCAL REVIEW CANDIDATE ONLY: this turn did not authorize remote execution.
 -- Run only after the exact V2 policy 001-007 + 009 + 010 has committed in
 -- trailmind_app as trailmind_app_owner. Never pair this with historical 008.
 
@@ -13,15 +12,52 @@ SELECT pg_catalog.pg_advisory_xact_lock(
 
 DO $foundation$
 BEGIN
-  IF session_user <> 'postgres' OR current_user <> 'postgres' OR
+  IF pg_catalog.current_database() <> 'postgres' OR
+     session_user <> 'postgres' OR current_user <> 'postgres' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_bootstrap_contract', true
+     ) IS DISTINCT FROM 'managed-supabase-postgres-v1' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_project_ref', true
+     ) IS DISTINCT FROM 'mbvzwsrtqcrwhvykugcd' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_project_name', true
+     ) IS DISTINCT FROM 'TrailMind Outdoor Staging V1' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_database_name', true
+     ) IS DISTINCT FROM 'postgres' OR
+     pg_catalog.current_setting(
+       'trailmind.phase1_v2_bootstrap_backend_pid', true
+     ) IS DISTINCT FROM pg_catalog.pg_backend_pid()::text OR
      NOT EXISTS (
        SELECT 1
          FROM pg_catalog.pg_roles role_record
         WHERE role_record.rolname = current_user
+          AND role_record.rolcanlogin
+          AND role_record.rolinherit
           AND NOT role_record.rolsuper
+          AND role_record.rolcreatedb
           AND role_record.rolcreaterole
-          AND NOT role_record.rolreplication
-          AND NOT role_record.rolbypassrls
+          AND role_record.rolreplication
+          AND role_record.rolbypassrls
+     ) OR NOT EXISTS (
+       SELECT 1
+         FROM trailmind_phase1_guard.recovery_binding binding
+        WHERE binding.singleton
+          AND binding.bootstrap_contract =
+            pg_catalog.current_setting(
+              'trailmind.phase1_v2_bootstrap_contract'
+            )
+          AND binding.project_ref = pg_catalog.current_setting(
+            'trailmind.phase1_v2_project_ref'
+          )
+          AND binding.project_name = pg_catalog.current_setting(
+            'trailmind.phase1_v2_project_name'
+          )
+          AND binding.database_name = pg_catalog.current_database()
+          AND binding.run_id = pg_catalog.current_setting(
+            'trailmind.phase1_v2_run_id'
+          )::uuid
      ) OR (
        SELECT pg_catalog.count(*)
          FROM pg_catalog.pg_auth_members membership
@@ -103,7 +139,8 @@ BEGIN
     '006_outdoor_route_membership_point_index.sql',
     '007_routable_highlight_access_geography_index.sql',
     '009_supabase_postgis_isolated_runtime_read_contract.sql',
-    '010_bounded_outdoor_import_schema_provisioning.sql'
+    '010_bounded_outdoor_import_schema_provisioning.sql',
+    '011_pin_security_invoker_function_search_paths.sql'
   ]::text[] THEN
     RAISE EXCEPTION USING
       ERRCODE = '55000',

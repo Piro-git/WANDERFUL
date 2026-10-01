@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-09-29T13:25:52.350Z",
+  "scope": "Public metadata only. Coordinates came from Wikidata, not a live routed OSM stop. No image downloaded/rendered and no route acceptance claimed.",
+  "results": [
+    {
+      "wikidataId": "Q3375",
+      "placeName": "Zugspitze",
+      "evidence": {
+        "id": "Q3375",
+        "sourceURL": "https://www.wikidata.org/wiki/Q3375",
+        "license": "CC0",
+        "imageFile": "Zugspitzmassiv-von-Almkopf-2024.jpg"
+      },
+      "photo": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/Zugspitzmassiv-von-Almkopf-2024.jpg/960px-Zugspitzmassiv-von-Almkopf-2024.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceURL": "https://commons.wikimedia.org/wiki/File%3AZugspitzmassiv-von-Almkopf-2024.jpg",
+        "license": "CC BY-SA 4.0",
+        "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "credit": "Tuxyso / Wikimedia Commons / CC-BY-SA-4.0",
+        "placeSourceURL": "https://www.wikidata.org/wiki/Q3375"
+      }
+    },
+    {
+      "wikidataId": "Q39231",
+      "placeName": "Mount Fuji",
+      "evidence": {
+        "id": "Q39231",
+        "sourceURL": "https://www.wikidata.org/wiki/Q39231",
+        "license": "CC0",
+        "imageFile": "Kodaki fuji frm shojinko refurb.jpg"
+      },
+      "photo": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/Kodaki_fuji_frm_shojinko_refurb.jpg/960px-Kodaki_fuji_frm_shojinko_refurb.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "sourceURL": "https://commons.wikimedia.org/wiki/File%3AKodaki%20fuji%20frm%20shojinko%20refurb.jpg",
+        "license": "CC BY-SA 3.0",
+        "licenseURL": "https://creativecommons.org/licenses/by-sa/3.0/",
+        "credit": "名古屋太郎, (edited by Hannes_24 )",
+        "placeSourceURL": "https://www.wikidata.org/wiki/Q39231"
+      }
+    },
+    {
+      "wikidataId": "Q513",
+      "placeName": "Mount Everest",
+      "evidence": {
+        "id": "Q513",
+        "sourceURL": "https://www.wikidata.org/wiki/Q513",
+        "license": "CC0",
+        "imageFile": "Mount Everest as seen from Drukair2 PLW edit.jpg"
+      },
+      "photo": null
+    }
+  ]
+}

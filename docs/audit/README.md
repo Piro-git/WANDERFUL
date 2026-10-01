@@ -5,6 +5,11 @@ The documents in this directory are a point-in-time repository audit captured on
 historical evidence and an execution record, not the current product-state source
 of truth.
 
+Geographic product scope was updated on 2026-09-10 in `AGENTS.md` and
+`PROJECT_CONTEXT.md`: any supported, resolved place is in scope. References in
+these audits to Germany-first users or Harz examples describe the earlier
+audited direction and must not be reinstated as current product requirements.
+
 Several findings were addressed after the audit, including Release-surface truth
 cleanup, provenance enforcement, live-evaluation harness hardening, location
 intelligence, and the hiking route-quality engine. In particular, the location

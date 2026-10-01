@@ -32,6 +32,17 @@ enum TrailMindBackendSecurity {
             .insecureLocalBackendAuthorizationEnabled(),
         attestedSessionAuthorizer: any RouteSessionAuthorizing = TrailMindBackendSecurity.attestedSessionAuthorizer
     ) -> any RouteSessionAuthorizing {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        guard let owner = OwnerAccessConfiguration.load(), owner.baseURL == baseURL else {
+            return RouteSessionService(opener: UnconfiguredOwnerSessionOpener())
+        }
+        return RouteSessionService(opener: OwnerAccessClient(configuration: owner))
+        #else
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        if let owner = OwnerPhoneTestConfiguration.load(), owner.baseURL == baseURL {
+            return OwnerPhoneTestAuthorizer(configuration: owner)
+        }
+        #endif
         #if DEBUG && targetEnvironment(simulator)
         if allowsInsecureLoopback,
            LoopbackDevelopmentSessionAuthorizer.supports(baseURL: baseURL) {
@@ -39,6 +50,7 @@ enum TrailMindBackendSecurity {
         }
         #endif
         return attestedSessionAuthorizer
+        #endif
     }
 }
 
@@ -78,7 +90,7 @@ actor RouteSessionService: RouteSessionAuthorizing {
 
     init(
         opener: any RouteSessionOpening,
-        now: @escaping @Sendable () -> Date = Date.init,
+        now: @escaping @Sendable () -> Date = { Date() },
         refreshLeeway: TimeInterval = 10
     ) {
         self.opener = opener
@@ -161,3 +173,11 @@ actor RouteSessionService: RouteSessionAuthorizing {
         refreshTask = nil
     }
 }
+
+#if DEBUG && WANDERFUL_PRIVATE_OWNER
+private struct UnconfiguredOwnerSessionOpener: RouteSessionOpening {
+    func openRouteSession() async throws -> RouteSession {
+        throw AppAttestServiceError.configurationUnavailable
+    }
+}
+#endif

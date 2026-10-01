@@ -1,0 +1,48 @@
+{
+  "publication": "local_only_no_image_bytes_in_this_branch",
+  "notice": "These screenshot files remain in the private local integration handoff and are not available from this repository.",
+  "tests": [
+    {
+      "attachments": [
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Weather fixture de large no date_0_0E30B1D4-3549-4F06-886B-476D199AC8CB.png",
+          "timestamp": 1790689820.681,
+          "localOnlyFileName": "16513D1C-3E85-462E-9A98-8A112850EDC9.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Weather fixture de accessibility3 forecast_0_2713B129-26AF-4285-A789-411493CE2B89.png",
+          "timestamp": 1790689819.615,
+          "localOnlyFileName": "7AC2A003-DB96-4F63-BD69-08B4255F2B71.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Weather fixture de large forecast_0_F946C436-C65E-4AD0-A76D-A3E5CE8486EA.png",
+          "timestamp": 1790689818.516,
+          "localOnlyFileName": "E5795188-B824-44BA-A3CA-72AA9031410A.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Weather fixture en large forecast_0_3EEEAC00-06DE-4AE0-832A-E4C8C6D3BBBA.png",
+          "timestamp": 1790689817.432,
+          "localOnlyFileName": "2C4F76CA-E8BF-4B17-AF2C-1C9B2B0FE61A.png",
+          "publication": "not_uploaded_local_evidence_only"
+        }
+      ],
+      "testIdentifier": "RouteWeatherTests/testNativeCardSnapshotsInEnglishGermanAndLargeText()",
+      "testIdentifierURL": "test://com.apple.xcode/TrailMind/TrailMindTests/RouteWeatherTests/testNativeCardSnapshotsInEnglishGermanAndLargeText"
+    }
+  ]
+}

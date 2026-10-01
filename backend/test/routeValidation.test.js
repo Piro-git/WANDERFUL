@@ -125,13 +125,13 @@ describe("route request validation", () => {
 
   it("enforces round-trip distance bounds", () => {
     assertRouteError(loopRequest({ roundTrip: { distanceMeters: 999, seed: 11 } }), "invalid_request");
-    assertRouteError(loopRequest({ roundTrip: { distanceMeters: 200_001, seed: 11 } }), "invalid_request");
+    assertRouteError(loopRequest({ roundTrip: { distanceMeters: 200_001, seed: 11 } }), "route_distance_limit");
   });
 
   it("enforces configured round-trip distance bounds", () => {
     assert.throws(
       () => validateRouteRequest(loopRequest(), { maxDistanceMeters: 10_000 }),
-      (error) => error.code === "invalid_request"
+      (error) => error.code === "route_distance_limit"
     );
   });
 
@@ -186,7 +186,7 @@ describe("route request validation", () => {
           { latitude: 54, longitude: 10 }
         ]
       }),
-      "invalid_request"
+      "route_distance_limit"
     );
   });
 

@@ -1,7 +1,11 @@
+> Superseded release scope (2026-09-10): use [LAUNCH_V4_CURRENT_PACKAGE.md](LAUNCH_V4_CURRENT_PACKAGE.md). Statements below about disabled AI or foreground-only guidance describe an earlier build and must not be copied into current metadata. Historical validation is not evidence for the integrated V4 build.
+
 # Wanderful Privacy Policy Content Draft V1
 
 Status: **DRAFT — NOT HOSTED**
 Source baseline: `21f8450c976252210edf03389dc1b682d2440450`
+
+This file is retained as the disabled-engine drafting baseline. The deployable, fail-closed engine-enabled template and validator are in `public-site`; do not publish either version without matching it to the exact selected build and completing `OWNER_LEGAL_INPUTS_V1.md`.
 
 This is source-derived drafting material, not legal advice and not a published policy. Every bracketed `OWNER REQUIRED` field must be supplied and approved outside git before publication. No domain, URL, support address, legal entity, retention period or jurisdiction is inferred here.
 

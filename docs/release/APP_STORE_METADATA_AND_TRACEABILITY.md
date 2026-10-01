@@ -4,7 +4,7 @@ Status: copy draft; not entered in App Store Connect
 Evidence date: 2026-07-17
 Scope: iPhone-only portrait beta
 
-Every public field below is conditional. Do not enter this copy until its claim-matrix gate is closed. In particular, omit GPX and voice claims until independent GPX import and physical-device voice proof pass. Position the current build only as a Germany-first English-interface beta until the owner approves its primary locale and territories.
+Every public field below is conditional. Do not enter this copy until its claim-matrix gate is closed. In particular, omit GPX and voice claims until independent GPX import and physical-device voice proof pass. Product scope is any supported, resolved place; do not position Harz or Germany as the required focus. Confirm the candidate build’s actual language support and routing coverage before approving its primary locale and distribution territories. Do not claim worldwide coverage.
 
 ## Metadata draft
 

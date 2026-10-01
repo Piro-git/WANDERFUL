@@ -10,9 +10,17 @@ enum AppAttestServiceError: LocalizedError, Sendable, Equatable {
     case verificationFailed
     case invalidResponse
     case networkUnavailable
+    case configurationUnavailable
+    case rateLimited
+    case authorizationDenied
 
     var errorDescription: String? {
-        "Wanderful couldn’t verify this app installation. Check your connection and try again."
+        switch self {
+        case .configurationUnavailable: "Route planning isn’t configured for this app installation. Contact support to complete setup."
+        case .rateLimited: "App verification has reached its request limit. Please wait before trying again."
+        case .authorizationDenied: "This app installation isn’t authorized for route planning."
+        default: "Wanderful couldn’t verify this app installation. Check your connection and try again."
+        }
     }
 }
 
@@ -287,7 +295,7 @@ struct URLSessionAppAttestAPI: AppAttestAPI, Sendable {
         body: Request
     ) async throws -> Response {
         guard let baseURL, let endpoint = URL(string: path, relativeTo: baseURL)?.absoluteURL else {
-            throw AppAttestServiceError.networkUnavailable
+            throw AppAttestServiceError.configurationUnavailable
         }
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -296,12 +304,14 @@ struct URLSessionAppAttestAPI: AppAttestAPI, Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = try JSONEncoder().encode(body)
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await session.data(for: request, delegate: BackendRedirectBlocker())
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw AppAttestServiceError.invalidResponse
             }
             guard (200..<300).contains(httpResponse.statusCode) else {
                 let envelope = try? JSONDecoder().decode(ServerErrorEnvelope.self, from: data)
+                if httpResponse.statusCode == 429 { throw AppAttestServiceError.rateLimited }
+                if httpResponse.statusCode == 403 { throw AppAttestServiceError.authorizationDenied }
                 throw Self.mapServerError(envelope?.error.code)
             }
             return try JSONDecoder().decode(Response.self, from: data)
@@ -309,6 +319,8 @@ struct URLSessionAppAttestAPI: AppAttestAPI, Sendable {
             throw CancellationError()
         } catch let error as AppAttestServiceError {
             throw error
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
         } catch {
             throw AppAttestServiceError.networkUnavailable
         }
@@ -331,47 +343,91 @@ struct URLSessionAppAttestAPI: AppAttestAPI, Sendable {
 
 enum TrailMindBackendConfiguration {
     nonisolated static func baseURL(bundle: Bundle = .main) -> URL? {
-        configuration(bundle: bundle)?.backend.configuredValue?.baseURL
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return OwnerAccessConfiguration.load(bundle: bundle)?.baseURL
+        #else
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        if let owner = OwnerPhoneTestConfiguration.load(bundle: bundle) { return owner.baseURL }
+        #endif
+        return configuration(bundle: bundle)?.backend.configuredValue?.baseURL
+        #endif
     }
 
     nonisolated static func outdoorEvidenceEnabled(bundle: Bundle = .main) -> Bool {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return false
+        #else
         guard let configuration = configuration(bundle: bundle) else { return false }
         return configuration.features.outdoorEvidence && configuration.backend.isAvailable
+        #endif
     }
 
     nonisolated static func researchGuidedPlanningEnabled(
         bundle: Bundle = .main
     ) -> Bool {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return false
+        #else
         guard let configuration = configuration(bundle: bundle) else { return false }
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        if configuration.environment == .local {
+            return OwnerPhoneTestConfiguration.loadForResearch(bundle: bundle, configuration: configuration) != nil
+        }
+        #endif
         return configuration.features.researchGuidedPlanning && configuration.backend.isAvailable
+        #endif
     }
 
     nonisolated static func routableHighlightAccessEnabled(
         bundle: Bundle = .main
     ) -> Bool {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return false
+        #else
         guard let configuration = configuration(bundle: bundle) else { return false }
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        if configuration.environment == .local {
+            return OwnerPhoneTestConfiguration.loadForResearch(bundle: bundle, configuration: configuration) != nil
+        }
+        #endif
         return configuration.features.researchGuidedPlanning &&
             configuration.features.routableHighlightAccess &&
             configuration.backend.isAvailable
+        #endif
     }
 
     nonisolated static func remoteIntentEnabled() -> Bool {
-        WanderfulAppConfigurationSnapshot.configuration?.features.remoteIntent == true
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return OwnerAccessConfiguration.load() != nil
+        #else
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        if OwnerPhoneTestConfiguration.load() != nil { return true }
+        #endif
+        return WanderfulAppConfigurationSnapshot.configuration?.features.remoteIntent == true
+        #endif
     }
 
     nonisolated static func directGraphHopperEnabled() -> Bool {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return false
+        #else
         guard let configuration = WanderfulAppConfigurationSnapshot.configuration else {
             return false
         }
         return configuration.environment == .local && configuration.features.directGraphHopper
+        #endif
     }
 
     nonisolated static func insecureLocalBackendAuthorizationEnabled() -> Bool {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return false
+        #else
         guard let configuration = WanderfulAppConfigurationSnapshot.configuration else {
             return false
         }
         return configuration.environment == .local &&
             configuration.features.insecureLocalBackendAuthorization
+        #endif
     }
 
     private nonisolated static func configuration(

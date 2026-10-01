@@ -405,8 +405,8 @@ extension ResearchPresentationProjector {
         ResearchFitReason(
           code: .mustHaveHighlights,
           title: mustHaveWaypoints.count == 1
-            ? "Includes a requested must-have highlight"
-            : "Includes \(mustHaveWaypoints.count) requested must-have highlights",
+            ? "Approaches a requested must-have location"
+            : "Approaches \(mustHaveWaypoints.count) requested must-have locations",
           detail: categories.isEmpty
             ? nil
             : naturalLanguageList(categories),
@@ -432,8 +432,8 @@ extension ResearchPresentationProjector {
         ResearchFitReason(
           code: .verifiedHighlights,
           title: presentedWaypoints.count == 1
-            ? "A researched highlight lies on the routed path"
-            : "\(presentedWaypoints.count) researched highlights lie on the routed path",
+            ? "The route approaches a researched location"
+            : "The route approaches \(presentedWaypoints.count) researched locations",
           detail: categories.isEmpty
             ? nil
             : naturalLanguageList(categories),
@@ -603,19 +603,29 @@ extension ResearchPresentationProjector {
       )
       return ResearchHighlightPresentation(
         id: index,
-        title: usesApproachVerification
-          ? "Visits \(category.capitalized)"
-          : category.capitalized,
+        title: waypoint.sourcedDisplayName ?? category.capitalized,
         categoryLabel: category,
         evidenceLabel: usesApproachVerification
-          ? "Route geometry reaches this selected highlight"
+          ? researchedStopExplanation(waypoint, category: category)
           : isMappedOnly
-            ? "Mapped place on this routed path"
-            : "Researched place on this routed path",
+            ? "Route approaches this mapped location"
+            : "Route approaches this researched location",
         symbol: categorySymbol(waypoint.highlightCategory),
         isMustHave: waypoint.role == .mustHave
       )
     }
+  }
+
+  private static func researchedStopExplanation(_ waypoint: ResearchSelectedWaypointV1, category: String) -> String {
+    let reason: String
+    if waypoint.selectionReasons.contains(.requiredExperience) {
+      reason = "Matches your required \(category) experience."
+    } else if waypoint.selectionReasons.contains(.preferredExperience) {
+      reason = "Matches your preference for \(category)."
+    } else {
+      reason = "Recorded as a \(category) in the available place evidence."
+    }
+    return "\(reason) The mapped route approaches this location; current access and visibility are unverified."
   }
 
   fileprivate static func limitationPresentations(

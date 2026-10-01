@@ -35,11 +35,20 @@ final class PlannerViewModel {
     }
 
     struct OperationTimeouts: Equatable, Sendable {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        // Free hosting may need a cold wake before authorization can begin.
+        static let production = OperationTimeouts(
+            parserSeconds: 115,
+            geocodingSeconds: 15,
+            routingSeconds: 140
+        )
+        #else
         static let production = OperationTimeouts(
             parserSeconds: 22,
             geocodingSeconds: 15,
             routingSeconds: 45
         )
+        #endif
 
         let parserSeconds: TimeInterval
         let geocodingSeconds: TimeInterval
@@ -248,7 +257,7 @@ final class PlannerViewModel {
     }
 
     struct ResearchPlanningContext: Equatable, Sendable {
-        enum LegacyFallbackReason: Equatable, Sendable {
+        enum LegacyFallbackReason: Error, Equatable, Sendable {
             case adapterUnsupported
             case coordinatorUnsupported
             case noViableRoute
@@ -309,6 +318,7 @@ final class PlannerViewModel {
         let stage: GenerationStage
         let kind: RecoveryKind
         let preparedAttempt: PreparedAttempt?
+        let researchFailureReason: ResearchPlanningContext.LegacyFallbackReason?
         let researchClarificationContext: ResearchClarificationContext?
 
         init(
@@ -317,8 +327,10 @@ final class PlannerViewModel {
             stage: GenerationStage,
             kind: RecoveryKind,
             preparedAttempt: PreparedAttempt?,
-            researchClarificationContext: ResearchClarificationContext? = nil
+            researchClarificationContext: ResearchClarificationContext? = nil,
+            researchFailureReason: ResearchPlanningContext.LegacyFallbackReason? = nil
         ) {
+            self.researchFailureReason = researchFailureReason
             self.originalPrompt = originalPrompt
             self.message = message
             self.stage = stage
@@ -372,6 +384,7 @@ final class PlannerViewModel {
         case invalidIntent(String)
         case timedOut
         case unverifiedRoutes
+        case remoteIntentUnavailable
         case unsupportedClarification
     }
 
@@ -435,6 +448,8 @@ final class PlannerViewModel {
     private let locationResolver: any LocationResolving
     private let routingCoordinator: any RoutingCoordinating
     private let researchIntentAdapter: any AdventureResearchIntentAdaptingV1
+    var plannedStartAt: Date? = nil
+    private let dynamicResearchClient: (any DynamicResearchPlanning)?
     private let researchPlanningCoordinator:
         any OutdoorAdventurePlanningCoordinatingV1
     private let outdoorEvidenceProvider: any OutdoorRouteEvidenceProviding
@@ -591,6 +606,7 @@ final class PlannerViewModel {
         geocodingService: (any GeocodingService)? = nil,
         locationResolver: (any LocationResolving)? = nil,
         routingCoordinator: any RoutingCoordinating = RoutingCoordinator(),
+        dynamicResearchClient: (any DynamicResearchPlanning)? = DynamicResearchPlanningClientFactory.makeDefault(),
         researchIntentAdapter: any AdventureResearchIntentAdaptingV1 =
             AdventureResearchIntentAdapterV1(),
         researchPlanningCoordinator:
@@ -626,6 +642,7 @@ final class PlannerViewModel {
         }
         self.routingCoordinator = routingCoordinator
         self.researchIntentAdapter = researchIntentAdapter
+        self.dynamicResearchClient = dynamicResearchClient
         self.researchPlanningCoordinator = researchPlanningCoordinator
         self.researchFeatureAvailable = researchFeatureAvailable
         self.researchOperationDidFinish =
@@ -1002,13 +1019,44 @@ private extension PlannerViewModel {
         }
     }
 
+}
+
+extension PlannerViewModel {
+    /// Research mode stops here; only the pre-existing unsupported-adapter path
+    /// may proceed to standard routing. Preserve the typed cause for recovery.
+    static func researchStopReason(
+        outcome: ResearchPlanningContext.Outcome?,
+        routableHighlightAccessEnabled: Bool
+    ) -> ResearchPlanningContext.LegacyFallbackReason? {
+        guard routableHighlightAccessEnabled,
+              case let .legacyFallback(reason)? = outcome,
+              reason != .adapterUnsupported else { return nil }
+        return reason
+    }
+
     static func recoveryKind(for error: Error, stage: GenerationStage) -> RecoveryKind {
+        if let failure = error as? OutdoorAdventurePlanningClientFailure {
+            switch failure {
+            case .timedOut: return .timedOut
+            case .invalidResponse, .responseTooLarge: return .unverified
+            default: return .routing
+            }
+        }
+        if let reason = error as? ResearchPlanningContext.LegacyFallbackReason {
+            return switch reason {
+            case .coordinatorFailure(.timedOut): .timedOut
+            case .invalidResearchResult, .coordinatorFailure(.invalidResult): .unverified
+            default: .routing
+            }
+        }
         if let issue = error as? PlannerIssue {
             return switch issue {
             case .timedOut:
                 .timedOut
             case .invalidIntent, .unsupportedClarification:
                 .malformedIntent
+            case .remoteIntentUnavailable:
+                .intentUnavailable
             case .unverifiedRoutes:
                 .unverified
             }
@@ -1037,12 +1085,44 @@ private extension PlannerViewModel {
     }
 
     static func userMessage(for error: Error) -> String {
+        if let error = error as? AppAttestServiceError {
+            return error.localizedDescription
+        }
+        if let error = error as? DynamicResearchConfigurationFailure {
+            return error.localizedDescription
+        }
+        if let failure = error as? OutdoorAdventurePlanningClientFailure {
+            return (failure.errorDescription ?? "Route planning is unavailable.") + " No extra route search was started."
+        }
+        if let reason = error as? ResearchPlanningContext.LegacyFallbackReason {
+            let message: String = switch reason {
+            case .coordinatorFailure(.timedOut):
+                "Route planning took too long to respond. Your request may still be suitable."
+            case .coordinatorFailure(.unavailable):
+                "The planning service couldn’t complete your request right now."
+            case .coordinatorFailure(.authorizationFailed):
+                "Wanderful couldn’t access route planning with this session. Check your planning access before continuing."
+            case .coordinatorFailure(.rateLimited):
+                "The planning service has reached its request limit. Please wait before trying again."
+            case .coordinatorFailure(.rejected):
+                "The planning service couldn’t accept this request."
+            case .coordinatorUnsupported, .adapterUnsupported:
+                "This kind of route request isn’t supported by research planning yet."
+            case .noViableRoute:
+                "No fitting route was found among the researched options. You can adjust the distance, start location, or preferences."
+            case .invalidResearchResult, .coordinatorFailure(.invalidResult):
+                "Wanderful couldn’t verify the planning result."
+            }
+            return message + " No extra route search was started."
+        }
         if let issue = error as? PlannerIssue {
             return switch issue {
             case let .invalidIntent(message):
                 message
             case .timedOut:
                 "This route is taking longer than expected. Try again, shorten the distance, or choose a nearby trailhead."
+            case .remoteIntentUnavailable:
+                "AI route understanding is unavailable right now. No route was generated. Please try again later."
             case .unverifiedRoutes:
                 "Wanderful couldn’t verify the returned route. Try again or edit the request."
             case .unsupportedClarification:
@@ -1055,11 +1135,9 @@ private extension PlannerViewModel {
         if let error = error as? IntentValidationError {
             return error.localizedDescription
         }
-        #if DEBUG
         if error is RemoteAIIntentParsingProvider.ProviderError {
             return "Route understanding isn’t available right now. Try again or edit the request."
         }
-        #endif
         if let error = error as? GeocodingServiceError {
             return switch error {
             case .emptyQuery:
@@ -1068,6 +1146,8 @@ private extension PlannerViewModel {
                 "Wanderful couldn’t find “\(query)”. Check the spelling or choose a nearby trailhead."
             case .endpointsTooClose:
                 "Start and destination are too close together. Choose a more specific destination."
+            case .endpointsTooFar:
+                "The selected places are more than 200 km apart. Check the start and destination before planning again."
             case let .needsClarification(query):
                 "Wanderful needs a more specific town, valley or trailhead for “\(query)”."
             case .network:
@@ -1080,6 +1160,8 @@ private extension PlannerViewModel {
         }
         if let error = error as? GraphHopperError {
             return switch error {
+            case let .planningFailure(reason):
+                reason.message
             case .missingAPIKey:
                 "Live routing isn’t configured yet. Try again after routing setup is complete."
             case .noRouteFound:
@@ -1092,8 +1174,8 @@ private extension PlannerViewModel {
                 "Wanderful couldn’t calculate this route. Try again or edit the request."
             }
         }
-        if error is RoutingError {
-            return "Wanderful couldn’t build a useful loop from this start. Try a nearby trailhead or a different distance."
+        if let error = error as? RoutingError {
+            return error.localizedDescription
         }
         if error is RouteEligibilityError {
             return "Wanderful couldn’t verify the returned route. Try again or edit the request."
@@ -1106,6 +1188,9 @@ private extension PlannerViewModel {
         return "Wanderful couldn’t build this route. Try again or edit the request."
     }
 
+}
+
+private extension PlannerViewModel {
     static func isNoRoutesError(_ error: Error) -> Bool {
         if let graphHopperError = error as? GraphHopperError,
            case .noRouteFound = graphHopperError {
@@ -1163,7 +1248,8 @@ private extension PlannerViewModel {
         preparedAttempt: PreparedAttempt,
         planningRequest: RoutePlanningRequest,
         validatedIntent: ValidatedAdventureIntent,
-        startCandidate: LocationCandidate
+        startCandidate: LocationCandidate,
+        planningContext: ResearchLedPlanningContext
     ) async throws -> ResearchPathDecision {
         guard researchGuidedPlanningIsAvailable() else {
             return .useLegacy(context: nil, notice: nil)
@@ -1213,6 +1299,11 @@ private extension PlannerViewModel {
             return .handled
 
         case let .ready(intent, gaps):
+            // Clarification/profile changes can turn an initially unspecified shape into a loop.
+            guard preparedAttempt.intent.parserSource == .remoteAI,
+                  preparedAttempt.parserDebugInfo?.remoteSucceeded != false else {
+                throw PlannerIssue.remoteIntentUnavailable
+            }
             guard adapterResult.satisfiesStateInvariants else {
                 return .useLegacy(
                     context: Self.makeLegacyResearchContext(
@@ -1232,7 +1323,8 @@ private extension PlannerViewModel {
                 ) {
                     SendableResearchPlanningResult(
                         value: try await self.researchPlanningCoordinator.plan(
-                            intent: intent
+                            intent: intent,
+                            planningContext: planningContext
                         )
                     )
                 }
@@ -1827,7 +1919,11 @@ private extension PlannerViewModel {
                 validatedIntent: preparedAttempt.validatedIntent,
                 profile: hikingProfileProvider()
             )
-            let planningRequest = profileAdaptation?.request ?? basePlanningRequest
+            var planningRequest = profileAdaptation?.request ?? basePlanningRequest
+            planningRequest.retainExplicitEndpointTargets(
+                comfortWasSpecified: preparedAttempt.validatedIntent.preferenceExplicitness.comfortableOuting == .specified
+            )
+            planningRequest.plannedStartAt = plannedStartAt
             let planningIntent = preparedAttempt.validatedIntent.applying(planningRequest)
             var workingPrepared = preparedAttempt
             let startCandidate: LocationCandidate
@@ -1884,6 +1980,11 @@ private extension PlannerViewModel {
                 guard endpointDistance >= 250 else {
                     throw GeocodingServiceError.endpointsTooClose
                 }
+                guard !LocationResolutionPolicy.endpointsExceedRouteLimit(
+                    start: start, end: resolvedEnd.coordinate
+                ) else {
+                    throw GeocodingServiceError.endpointsTooFar
+                }
                 end = resolvedEnd.coordinate
                 endCandidate = resolvedEnd
             } else {
@@ -1902,12 +2003,41 @@ private extension PlannerViewModel {
             state = .generatingRoutes(resolved)
             stage = .routing
 
+            let researchPlanningContext = ResearchLedPlanningContext(
+                intent: planningIntent,
+                distanceFromProfile: profileAdaptation?.resolvedDefaults.comfortableOuting.source == .profileDefault,
+                preferencesFromProfile: profileAdaptation?.resolvedDefaults.requestedExperiences.source == .profileDefault
+            )
+            if researchPlanningContext.requiresConstraintClarification {
+                throw PlannerIssue.invalidIntent("Please confirm your maximum distance or time, for example ‘15 km maximum’ or ‘at most 3 hours’.")
+            }
+            if let dynamicResearchClient {
+                try dynamicResearchClient.validateConfiguration()
+                guard workingPrepared.intent.parserSource == .remoteAI,
+                      workingPrepared.parserDebugInfo?.remoteSucceeded != false else {
+                    throw PlannerIssue.remoteIntentUnavailable
+                }
+                let originalPrompt = workingPrepared.originalPrompt
+                // Includes first-install App Attest exchanges plus the 160s planning transport.
+                let result = try await withTimeout(seconds: 260) {
+                    try await dynamicResearchClient.plan(prompt: originalPrompt,
+                        request: planningRequest, start: start, end: end, context: researchPlanningContext)
+                }
+                try ensureActive(requestID)
+                try RouteEligibilityPolicy.validate(result.suggestion.route, for: .productionSuccess)
+                activeRequestID = nil
+                state = .suggestionsReady(PlanningSuccess(originalPrompt: workingPrepared.originalPrompt,
+                    suggestions: [result.suggestion], notice: result.suggestion.route.dynamicResearchExplanation,
+                    researchContext: nil))
+                return
+            }
             let researchDecision = try await researchPathDecision(
                 requestID: requestID,
                 preparedAttempt: workingPrepared,
                 planningRequest: planningRequest,
                 validatedIntent: planningIntent,
-                startCandidate: startCandidate
+                startCandidate: startCandidate,
+                planningContext: researchPlanningContext
             )
             let legacyResearchContext: ResearchPlanningContext?
             let legacyResearchNotice: String?
@@ -1921,7 +2051,12 @@ private extension PlannerViewModel {
                     PlanningSuccess(
                         originalPrompt: preparedAttempt.originalPrompt,
                         suggestions: suggestions,
-                        notice: notice,
+                        notice: Self.mergedPlanningNotice(
+                            researchNotice: researchPlanningContext.explanation(
+                                targetDistanceKm: planningRequest.targetDistanceKm,
+                                actualDistanceKm: suggestions.first?.route.distanceKilometers
+                            ), routingNotice: notice
+                        ),
                         researchContext: context
                     )
                 )
@@ -1929,6 +2064,17 @@ private extension PlannerViewModel {
                 return
 
             case let .useLegacy(context, notice):
+                if let reason = Self.researchStopReason(
+                    outcome: context?.outcome,
+                    routableHighlightAccessEnabled: TrailMindBackendConfiguration.routableHighlightAccessEnabled()
+                ) {
+                    transitionToFailure(
+                        reason,
+                        requestID: requestID, originalPrompt: workingPrepared.originalPrompt,
+                        stage: .routing, preparedAttempt: workingPrepared
+                    )
+                    return
+                }
                 legacyResearchContext = context
                 legacyResearchNotice = notice
 
@@ -1936,6 +2082,9 @@ private extension PlannerViewModel {
                 return
             }
 
+            if !researchPlanningContext.hardAvoidances.isEmpty {
+                throw PlannerIssue.invalidIntent("This route request includes exclusions that standard routing cannot verify. Refine the request before continuing.")
+            }
             let sendableRoutingResult = try await withTimeout(seconds: operationTimeouts.routingSeconds) {
                 SendableRoutingResult(
                     value: try await self.routingCoordinator.routeSuggestions(
@@ -1953,7 +2102,11 @@ private extension PlannerViewModel {
             stage = .preparation
 
             let routingResult = sendableRoutingResult.value
-            guard !routingResult.suggestions.isEmpty else {
+            let constrainedSuggestions = routingResult.suggestions.filter {
+                researchPlanningContext.accepts(distanceKilometers: $0.route.distanceKilometers,
+                    durationHours: $0.route.durationHours)
+            }
+            guard !constrainedSuggestions.isEmpty else {
                 transitionToNoRoutes(
                     requestID: requestID,
                     originalPrompt: workingPrepared.originalPrompt,
@@ -1962,7 +2115,7 @@ private extension PlannerViewModel {
                 return
             }
 
-            for suggestion in routingResult.suggestions {
+            for suggestion in constrainedSuggestions {
                 try RouteEligibilityPolicy.validate(
                     suggestion.route,
                     for: .productionSuccess
@@ -1988,7 +2141,7 @@ private extension PlannerViewModel {
                 loopSearchOutcome: routingResult.loopSearchOutcome,
                 loopSearchDiagnostics: routingResult.loopSearchDiagnostics
             )
-            let preparedSuggestions = routingResult.suggestions.map { suggestion in
+            let preparedSuggestions = constrainedSuggestions.map { suggestion in
                 let planningMetadata = suggestion.route.planningMetadata ?? planningRequest.metadata
                 let routeWithSearchOutcome = suggestion.route.withPlanningMetadata(
                     planningRequest.routeType == .loop
@@ -2040,7 +2193,10 @@ private extension PlannerViewModel {
     }
 
     func understand(_ attempt: PlanningAttempt) async throws -> PreparedAttempt? {
-        let parsedIntent = try await withTimeout(seconds: operationTimeouts.parserSeconds) {
+        try dynamicResearchClient?.validateConfiguration()
+        // The first remote parse may include registration and session exchange.
+        let parsingTimeout = dynamicResearchClient == nil ? operationTimeouts.parserSeconds : max(operationTimeouts.parserSeconds, 100)
+        let parsedIntent = try await withTimeout(seconds: parsingTimeout) {
             try await self.intentParsingProvider.parseIntent(rawPrompt: attempt.originalPrompt)
         }
         try ensureActive(attempt.id)
@@ -2055,6 +2211,12 @@ private extension PlannerViewModel {
             parserDebugInfo = nil
         }
         try ensureActive(attempt.id)
+        // A provider wrapper's label does not prove a successful remote parse.
+        // Keep standard planning behavior, but never promote local fallback to AI research.
+        if researchGuidedPlanningIsAvailable(), parsedIntent.routeType == .loop,
+           (parsedIntent.parserSource != .remoteAI || parserDebugInfo?.remoteSucceeded == false) {
+            throw PlannerIssue.remoteIntentUnavailable
+        }
         let validationResult = intentValidationService.validateResult(parsedIntent)
 
         return try preparedAttempt(
@@ -2271,7 +2433,8 @@ private extension PlannerViewModel {
                 kind: Self.recoveryKind(for: error, stage: stage),
                 preparedAttempt: preparedAttempt,
                 researchClarificationContext:
-                    researchClarificationContext
+                    researchClarificationContext,
+                researchFailureReason: error as? ResearchPlanningContext.LegacyFallbackReason
             )
         )
     }

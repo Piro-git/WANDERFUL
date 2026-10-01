@@ -260,6 +260,7 @@ make_info_plist() {
       UIDeviceFamily: $c.product.device_family,
       UISupportedInterfaceOrientations: $c.product.orientations,
       LSApplicationCategoryType: $c.product.app_category,
+      UIBackgroundModes: $c.product.background_modes,
       CFBundleIcons: {
         CFBundlePrimaryIcon: {
           CFBundleIconFiles: ["AppIcon60x60"],
@@ -303,6 +304,7 @@ make_app_fixture() {
   plutil -convert xml1 "$app_path/swift-crypto_Crypto.bundle/PrivacyInfo.xcprivacy"
   print -r -- 'SYNTHETIC WANDERFUL RELEASE EXECUTABLE' > "$app_path/TrailMind"
   jq -r '.required_binary_markers[]' "$CONTRACT" >> "$app_path/TrailMind"
+  jq -r '.monetization.required_binary_markers[]' "$CONTRACT" >> "$app_path/TrailMind"
   chmod +x "$app_path/TrailMind"
   print -r -- 'ASSET CATALOG' > "$app_path/Assets.car"
   print -rn -- 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC' |
@@ -470,10 +472,37 @@ enabled_research_app="$(clone_simulator_fixture enabled-research)"
 expect_status 1 "$VERIFIER" simulator-app "$enabled_research_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
 
+# Account UI must never be accidentally enabled by a build-setting override.
+for account_flag in WANDERFUL_ACCOUNT_ENABLED WANDERFUL_APPLE_SIGN_IN_ENABLED ROUTE_WEATHER_ENABLED; do
+  enabled_account_app="$(clone_simulator_fixture "enabled-${account_flag}")"
+  /usr/libexec/PlistBuddy -c "Set :${account_flag} true" "$enabled_account_app/Info.plist"
+  expect_status 1 "$VERIFIER" simulator-app "$enabled_account_app"
+  assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
+done
+
 enabled_superwall_app="$(clone_simulator_fixture enabled-superwall)"
 /usr/libexec/PlistBuddy -c 'Set :SUPERWALL_ENABLED yes' "$enabled_superwall_app/Info.plist"
 expect_status 1 "$VERIFIER" simulator-app "$enabled_superwall_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("feature_flag_contract") != null)'
+
+enabled_monetization_without_owner_inputs_app="$(clone_simulator_fixture enabled-monetization-without-owner-inputs)"
+/usr/libexec/PlistBuddy -c 'Set :MONETIZATION_ENABLED true' "$enabled_monetization_without_owner_inputs_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$enabled_monetization_without_owner_inputs_app"
+assert_report '
+  .final_status == "failed" and
+  (.failed_check_ids | index("feature_flag_contract") != null) and
+  (.failed_check_ids | index("monetization_configuration_contract") != null)
+'
+
+conflicting_monetization_app="$(clone_simulator_fixture conflicting-monetization)"
+/usr/libexec/PlistBuddy -c 'Set :MONETIZATION_ENABLED true' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :SUPERWALL_ENABLED true' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_PREMIUM_WEEKLY_PRODUCT_ID app.wanderful.premium.weekly' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID app.wanderful.premium.annual' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_PRIVACY_POLICY_URL https://wanderful.app/privacy' "$conflicting_monetization_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :WANDERFUL_TERMS_OF_USE_URL https://wanderful.app/terms' "$conflicting_monetization_app/Info.plist"
+expect_status 1 "$VERIFIER" simulator-app "$conflicting_monetization_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("monetization_configuration_contract") != null)'
 
 missing_flag_app="$(clone_simulator_fixture missing-flag)"
 /usr/libexec/PlistBuddy -c 'Delete :OUTDOOR_EVIDENCE_ENABLED' "$missing_flag_app/Info.plist"
@@ -500,7 +529,7 @@ expect_status 1 "$VERIFIER" simulator-app "$missing_public_url_key_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("public_link_configuration_contract") != null)'
 
 extra_permission_app="$(clone_simulator_fixture extra-permission)"
-/usr/libexec/PlistBuddy -c 'Add :NSLocationWhenInUseUsageDescription string Unexpected' "$extra_permission_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Add :NSLocationAlwaysUsageDescription string Unexpected' "$extra_permission_app/Info.plist"
 expect_status 1 "$VERIFIER" simulator-app "$extra_permission_app"
 assert_report '
   .final_status == "failed" and
@@ -508,11 +537,16 @@ assert_report '
   (.failed_check_ids | index("forbidden_info_keys") != null)
 '
 
-background_mode_app="$(clone_simulator_fixture background-mode)"
-plutil -insert UIBackgroundModes -array "$background_mode_app/Info.plist"
-plutil -insert UIBackgroundModes.0 -string location "$background_mode_app/Info.plist"
-expect_status 1 "$VERIFIER" simulator-app "$background_mode_app"
-assert_report '.final_status == "failed" and (.failed_check_ids | index("forbidden_info_keys") != null)'
+for background_case in missing extra duplicate; do
+  background_mode_app="$(clone_simulator_fixture "background-$background_case")"
+  case "$background_case" in
+    missing) plutil -remove UIBackgroundModes "$background_mode_app/Info.plist" ;;
+    extra) plutil -insert UIBackgroundModes.1 -string audio "$background_mode_app/Info.plist" ;;
+    duplicate) plutil -insert UIBackgroundModes.1 -string location "$background_mode_app/Info.plist" ;;
+  esac
+  expect_status 1 "$VERIFIER" simulator-app "$background_mode_app"
+  assert_report '.final_status == "failed" and (.failed_check_ids | index("permission_contract") != null)'
+done
 
 missing_privacy_app="$(clone_simulator_fixture missing-privacy)"
 rm -f -- "$missing_privacy_app/PrivacyInfo.xcprivacy"
@@ -551,10 +585,25 @@ print -r -- 'UNEXPECTED CERTIFICATE FIXTURE' > "$unexpected_certificate_app/Unex
 expect_status 1 "$VERIFIER" simulator-app "$unexpected_certificate_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("forbidden_bundle_content") != null)'
 
+remote_provider_app="$(clone_simulator_fixture remote-provider)"
+print -r -- 'RemoteAIIntentParsingProvider parse-intent' >> "$remote_provider_app/TrailMind"
+expect_status 0 "$VERIFIER" simulator-app "$remote_provider_app"
+assert_report '.final_status == "passed" and .failed_check_count == 0'
+
+fallback_provider_app="$(clone_simulator_fixture fallback-provider)"
+print -r -- 'RemoteWithLocalFallbackIntentParsingProvider' >> "$fallback_provider_app/TrailMind"
+expect_status 1 "$VERIFIER" simulator-app "$fallback_provider_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
+
 debug_marker_app="$(clone_simulator_fixture debug-marker)"
 print -r -- '--trailmind-ui-testing' >> "$debug_marker_app/TrailMind"
 expect_status 1 "$VERIFIER" simulator-app "$debug_marker_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
+
+missing_monetization_path_app="$(clone_simulator_fixture missing-monetization-path)"
+sed -i '' '/Restore purchases/d' "$missing_monetization_path_app/TrailMind"
+expect_status 1 "$VERIFIER" simulator-app "$missing_monetization_path_app"
+assert_report '.final_status == "failed" and (.failed_check_ids | index("monetization_management_paths") != null)'
 
 large_debug_marker_app="$(clone_simulator_fixture large-debug-marker)"
 print -r -- '--trailmind-ui-testing' >> "$large_debug_marker_app/TrailMind"

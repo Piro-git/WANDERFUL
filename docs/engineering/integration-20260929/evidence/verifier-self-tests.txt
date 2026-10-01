@@ -1,0 +1,1 @@
+Release artifact verifier self-tests passed (56 isolated command cases plus stale-report recovery).

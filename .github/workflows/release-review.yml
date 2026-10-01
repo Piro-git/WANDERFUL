@@ -1,0 +1,56 @@
+name: Release review
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'codex/source-review-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-and-verifier:
+    name: Backend fixtures and release verifier self-tests
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Check out complete history for provenance tests
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Install locked backend dependencies without lifecycle scripts
+        working-directory: backend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check backend JavaScript
+        working-directory: backend
+        run: npm run build
+      - name: Run backend fixture tests (no provider or database credentials)
+        working-directory: backend
+        run: npm test -- --test-concurrency=2 --test-reporter=tap
+      - name: Check generated deployment configuration
+        run: node backend/scripts/configure-research-app.js --check
+      - name: Run release verifier self-tests (synthetic artifacts)
+        run: zsh scripts/test-release-artifact-verifier.sh
+      - name: Record coverage limits
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          These checks cover backend fixtures and the release verifier itself.
+          Opt-in database/performance suites are not activated. No live provider
+          traffic, iOS build, signing, physical-device acceptance, StoreKit purchase,
+          deployment or App Store approval is established by this workflow.
+          The existing unsigned candidate artifact remains 41/45, with four failed
+          signature checks. Weather, accounts and purchases remain disabled.
+          SUMMARY

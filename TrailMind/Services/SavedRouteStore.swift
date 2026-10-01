@@ -636,6 +636,10 @@ nonisolated private struct PersistedRoute: Codable {
     let routeInstructions: [PersistedInstruction]
     let planningMetadata: PersistedPlanningMetadata?
     let verifiedCharacteristics: PersistedVerifiedCharacteristics?
+    let localConditions: RouteLocalConditions?
+    let dynamicResearchStops: [DynamicResearchStop]?
+    let routeStays: RouteStays?
+    let dynamicResearchExplanation: String?
 
     @MainActor init(route: TrailRoute, createdAt: Date, savedAt: Date) {
         schemaVersion = LocalSavedRouteStore.currentSchemaVersion
@@ -663,6 +667,11 @@ nonisolated private struct PersistedRoute: Codable {
         routeInstructions = route.routeInstructions.map(PersistedInstruction.init)
         planningMetadata = route.planningMetadata.map(PersistedPlanningMetadata.init)
         verifiedCharacteristics = route.verifiedCharacteristics.map(PersistedVerifiedCharacteristics.init)
+        routeStays = route.routeStays
+        localConditions = route.localConditions
+        dynamicResearchStops = route.dynamicResearchStops.isEmpty ? nil : route.dynamicResearchStops
+        // Source-bound model synthesis is response-scoped like its Google grounding.
+        dynamicResearchExplanation = nil
     }
 
     @MainActor var snapshot: SavedRouteSnapshot {
@@ -686,7 +695,7 @@ nonisolated private struct PersistedRoute: Codable {
                 throw PersistedRouteError.unsupportedSchema
             }
 
-            let route = TrailRoute(
+            var route = TrailRoute(
                 id: id,
                 provenance: routeProvenance,
                 title: title,
@@ -711,6 +720,14 @@ nonisolated private struct PersistedRoute: Codable {
                 intentDebugMetadata: nil,
                 verifiedCharacteristics: verifiedCharacteristics?.value
             )
+            if let routeStays, (try? routeStays.validate(path: route.path)) != nil {
+                route.routeStays = routeStays
+            }
+            route.localConditions = localConditions
+            try route.localConditions?.validate()
+            route.dynamicResearchStops = dynamicResearchStops ?? []
+            route.dynamicResearchExplanation = dynamicResearchExplanation
+            try BackendDynamicResearchPlanningClient.validateStoredEvidence(route.dynamicResearchStops)
             try PersistedRouteValidator.validate(route)
             if schemaVersion == LocalSavedRouteStore.currentSchemaVersion {
                 try RouteEligibilityPolicy.validate(route, for: .persistence)
@@ -786,6 +803,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
     let provider: String?
     let routingStrategy: String?
     let factFingerprint: String?
+    let guidanceFingerprint: String?
     let demoKind: String?
     let unverifiedReason: String?
 
@@ -796,6 +814,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
             provider = routed.provider.rawValue
             routingStrategy = routed.strategy.rawValue
             factFingerprint = routed.factFingerprint.rawValue
+            guidanceFingerprint = routed.guidanceFingerprint?.rawValue
             demoKind = nil
             unverifiedReason = nil
         case let .demo(demo):
@@ -803,6 +822,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
             provider = nil
             routingStrategy = nil
             factFingerprint = nil
+            guidanceFingerprint = nil
             demoKind = demo.rawValue
             unverifiedReason = nil
         case let .unverified(reason):
@@ -810,6 +830,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
             provider = nil
             routingStrategy = nil
             factFingerprint = nil
+            guidanceFingerprint = nil
             demoKind = nil
             unverifiedReason = reason.rawValue
         }
@@ -833,7 +854,10 @@ nonisolated private struct PersistedRouteProvenance: Codable {
                     RoutedRouteProvenance(
                         provider: provider,
                         strategy: routingStrategy,
-                        factFingerprint: RouteFactFingerprint(rawValue: factFingerprint)
+                        factFingerprint: RouteFactFingerprint(rawValue: factFingerprint),
+                        guidanceFingerprint: guidanceFingerprint.map(
+                            RouteGuidanceFingerprint.init(rawValue:)
+                        )
                     )
                 )
             case "demo":
@@ -841,6 +865,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
                     provider == nil,
                     routingStrategy == nil,
                     factFingerprint == nil,
+                    guidanceFingerprint == nil,
                     let demoKind,
                     let demoKind = RouteDemoKind(rawValue: demoKind),
                     unverifiedReason == nil
@@ -851,6 +876,7 @@ nonisolated private struct PersistedRouteProvenance: Codable {
                     provider == nil,
                     routingStrategy == nil,
                     factFingerprint == nil,
+                    guidanceFingerprint == nil,
                     demoKind == nil,
                     let unverifiedReason,
                     let unverifiedReason = UnverifiedRouteReason(rawValue: unverifiedReason)

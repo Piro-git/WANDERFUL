@@ -20,6 +20,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>WANDERFUL_OWNER_ACCESS_ORIGIN</key>
+	<string>$(WANDERFUL_OWNER_ACCESS_ORIGIN)</string>
 	<key>INTENT_BACKEND_BASE_URL</key>
 	<string>$(INTENT_BACKEND_BASE_URL)</string>
 	<key>DIRECT_GRAPHHOPPER_ENABLED</key>
@@ -28,6 +30,14 @@
 	<string>$(INSECURE_LOCAL_BACKEND_AUTH_ENABLED)</string>
 	<key>IN_MEMORY_APP_ATTEST_ENABLED</key>
 	<string>$(IN_MEMORY_APP_ATTEST_ENABLED)</string>
+	<key>MONETIZATION_ENABLED</key>
+	<string>$(MONETIZATION_ENABLED)</string>
+	<key>WANDERFUL_ACCOUNT_ENABLED</key>
+	<string>$(WANDERFUL_ACCOUNT_ENABLED)</string>
+	<key>WANDERFUL_APPLE_SIGN_IN_ENABLED</key>
+	<string>$(WANDERFUL_APPLE_SIGN_IN_ENABLED)</string>
+	<key>ROUTE_WEATHER_ENABLED</key>
+	<string>$(ROUTE_WEATHER_ENABLED)</string>
 	<key>OUTDOOR_EVIDENCE_ENABLED</key>
 	<string>$(OUTDOOR_EVIDENCE_ENABLED)</string>
 	<key>RESEARCH_GUIDED_PLANNING_ENABLED</key>
@@ -54,12 +64,24 @@
 	<string>$(WANDERFUL_PRIVACY_POLICY_URL)</string>
 	<key>WANDERFUL_SUPPORT_URL</key>
 	<string>$(WANDERFUL_SUPPORT_URL)</string>
+	<key>WANDERFUL_TERMS_OF_USE_URL</key>
+	<string>$(WANDERFUL_TERMS_OF_USE_URL)</string>
+	<key>WANDERFUL_PREMIUM_WEEKLY_PRODUCT_ID</key>
+	<string>$(WANDERFUL_PREMIUM_WEEKLY_PRODUCT_ID)</string>
+	<key>WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID</key>
+	<string>$(WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.navigation</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Wanderful uses the microphone to turn your spoken route request into text.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Wanderful uses your precise location during active Route Guidance, including when the screen is locked or you use another app, to show your position and progress. Pause or end guidance to stop location updates.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Apple Speech can send captured audio to Apple's servers for processing. Wanderful does not retain raw audio or send it to its own backend.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

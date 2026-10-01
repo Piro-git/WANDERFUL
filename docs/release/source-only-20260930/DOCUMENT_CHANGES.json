@@ -1,0 +1,166 @@
+{
+  "source": "1f5d268c39a540a2f22b205cbc55bbb3d81c366a",
+  "scope": "Personal metadata redaction and explicit local-only screenshot references",
+  "files": [
+    {
+      "path": "FINAL_SOURCE_SNAPSHOT.json",
+      "source_sha256": "a41078f254575946b9a647f0d85f201435782133db3d6a1afc57e99e09150189",
+      "publication_sha256": "6db9cbd5676635aa0da202497314a5d96e208caec865f66a79582c57b63368ff"
+    },
+    {
+      "path": "FOURTH_PHONE_TEST_STATUS.md",
+      "source_sha256": "b2cf4be46ba70ddca21beb62ffca37422d11b4498d69ea31cedab6ae76e6a11f",
+      "publication_sha256": "9d04dbdb2c9b994d7f74ae378462660a6848381eaf6b3db572bb6597ff306a20"
+    },
+    {
+      "path": "FREE_OWNER_HOSTING.md",
+      "source_sha256": "bb479dfc870aca2e7cff0a43a31a7f7d73ba6f176848ce90a6f622bccbcd5bf6",
+      "publication_sha256": "d3c03e36672744051e9083b00e47cc7cd366d446205230861eef66c136f903d0"
+    },
+    {
+      "path": "HANDOFF_ROUTE_STAYS_20260929.md",
+      "source_sha256": "f37e01d4b1c8437f0472a8784d2a84cf1e9c81e8a2ba356243ddfcf60f94553b",
+      "publication_sha256": "bf4a6655835bdf641ad6448f94d2932798b1331990ee1136120d370cddead809"
+    },
+    {
+      "path": "INTEGRATION_STATUS_20260915.md",
+      "source_sha256": "16aa1e1fc0e121183bb4a08101688b2ce41ee68b555d8fa7e538b5b5e0ca4a43",
+      "publication_sha256": "a3e9b2bf8703f58792025cbf8450a1bcc74df88fbc42dd46aa982952f6392eca"
+    },
+    {
+      "path": "LIVE_ROUTING_HANDOFF_20260915.md",
+      "source_sha256": "7e01d3b12372605116c76ac6fbe3597a7557bce7e06179fb3c85369e1c9d4ece",
+      "publication_sha256": "16968ea2baca2581b0176443d50b513fd662d501f50e71bfcfa88b180041fd7b"
+    },
+    {
+      "path": "OWNER_PHONE_ACCEPTANCE.md",
+      "source_sha256": "97acd8249d927fbc2b04fc229d1ef2252080fbebafd8357a03dce7ae165a2cb8",
+      "publication_sha256": "00d3bcd60d13d7e9a52877530df8958d1d5b2fcdf70bbe68eca8a8d6885f0eda"
+    },
+    {
+      "path": "PHONE_LAUNCH_V4.md",
+      "source_sha256": "9d0c5de54d6ac800ee2604832fb284a6fe4090c9ce5503d164dbb6e9075799b3",
+      "publication_sha256": "751b8281337692f0c6117a350d04db04ed3d9a8bc7a6858d3b8fe9cc3a038efd"
+    },
+    {
+      "path": "ROUTING_REPAIR_HANDOFF.md",
+      "source_sha256": "b7a387836154b0367d8481ac5970f6b2c52e8b7ed10bc3207d66313059e43a73",
+      "publication_sha256": "7c64ce4b4cadd56e78d3c9e99f38ac0773b038bb4b213c3fcba0566c160100f6"
+    },
+    {
+      "path": "SECOND_DIAGNOSTIC_STATUS.md",
+      "source_sha256": "b8571cea80a8512e607fe76caff3921228493518ddbd05719b16b054cdf93c44",
+      "publication_sha256": "c58497d74831bd2e9cd9f9904513b4271661dd460c8feba29aa84aa809bd8e7a"
+    },
+    {
+      "path": "THIRD_PHONE_TEST_STATUS.md",
+      "source_sha256": "59d71db6236c9f23bfe4d5c7b02d8f6241a4a45957bb337e149c601bf7319130",
+      "publication_sha256": "02103a70816d31a7b7f8392b9e63d2beb2f029643e0d54a969411075c6c3e8df"
+    },
+    {
+      "path": "docs/OWNER_PHONE_TESTING.md",
+      "source_sha256": "15b732c830c13662c35726881296472c5b0e409378da37d6769f76cf0c877110",
+      "publication_sha256": "9ce5caa36bf3d3aff509875ae400d7774f2a99f66453e88b8726e5985c806fab"
+    },
+    {
+      "path": "docs/PRIVATE_OWNER_IPHONE_VERIFICATION_20260906.md",
+      "source_sha256": "571b0a579ba9a88762ae1ececf348484a8b0d48f3bd19a7f3d05be46d172a2ba",
+      "publication_sha256": "5e4212f5df6414cec3deca3bd5115d92b796eb511c1c8bda3b0e7932f02f6ce2"
+    },
+    {
+      "path": "docs/engineering/access-local-conditions-validation.md",
+      "source_sha256": "ad1af1fd11968ad16930982d6676c2df44c8567d9ce82129f7e00bd04aad0dbd",
+      "publication_sha256": "4c0782f9a61b646fc9637813ad04500bbd79d3b801c7d0f8c6adc835c752aac2"
+    },
+    {
+      "path": "docs/engineering/access-local-conditions.md",
+      "source_sha256": "1abd3aa7c43bff8f157f36e65de88fec9fcdfdeb4308398d105afa190c0c3bc1",
+      "publication_sha256": "5a4dea22bbdcf4292f23bcb26fd8673fd3474fa884cc3ad0afa76fb528d07816"
+    },
+    {
+      "path": "docs/engineering/integration-20260929/HANDOFF.md",
+      "source_sha256": "7cc9dabd7455fa7808581fe05bd494985ad7a89282ba0b4dcfc6ae8cb6e46171",
+      "publication_sha256": "e8dec538589de7fef5a9c0e45dd4df36a9277203125a845bd2be0c2c3cf103eb"
+    },
+    {
+      "path": "docs/engineering/integration-20260929/evidence/release-build.json",
+      "source_sha256": "f4bc3389b93489f70a78093a85ba142192d7d0e6a4ba0072fff50f352e935ff7",
+      "publication_sha256": "0085147e34e7e7eb616372e4fb5c3cee62adcc90a3fde30374f831de8fa03da8"
+    },
+    {
+      "path": "docs/engineering/integration-20260929/snapshots/source-credit/manifest.json",
+      "source_sha256": "e78777b723ec2389dcc4c47f9d6a90a1f1b0be01e41ee93aabcfe1a2b14f66cc",
+      "publication_sha256": "9f11173185302b3800729ff9767fec396a412183718eb62fa60b508f1e8eba87"
+    },
+    {
+      "path": "docs/engineering/integration-20260929/snapshots/ui/manifest.json",
+      "source_sha256": "c2f23e12629cafa1ec2b5f785edf1ed8e7a48b61d092e7a314f5da9136fe5249",
+      "publication_sha256": "a94ef26de9e5c8fccb784a2b6030e71886ef711ee7eddbf706560556ad02d8a1"
+    },
+    {
+      "path": "docs/engineering/integration-20260929/snapshots/weather/manifest.json",
+      "source_sha256": "5d31b71da911d9f5f1e7e8e98c66f2f9e22552b332a53bee1707349f57971be9",
+      "publication_sha256": "c12ca09cdb602f77372755086eccdc4ef6c768efa0e357117243758906d9279a"
+    },
+    {
+      "path": "docs/handoff/AI_PHONE_DIAGNOSIS_2026-09-06.md",
+      "source_sha256": "ca43658057d0e39171d1b056a924ebb89210a653564a35d6fd6c3de3cbc4dea8",
+      "publication_sha256": "325ae30394b88c445f71059fdcd1390b2484163730c548af220f4e4c3af8136e"
+    },
+    {
+      "path": "docs/handoff/COMBINED_OWNER_INTEGRATION_2026-09-06.md",
+      "source_sha256": "bb65eec071500af97873fd0f41e4d88ab77428c3b011affea52ce5175a715dc0",
+      "publication_sha256": "7677624a9f1beef916a9454022144e80f35fd5d4f561dd09ef1650a1189d8e9b"
+    },
+    {
+      "path": "docs/handoff/DYNAMIC_RESEARCH_OFFLINE_STATUS_2026-09-07.md",
+      "source_sha256": "d94d88421318045c5c454f77715a0d51ed418f04129c7909de43e632df0dce11",
+      "publication_sha256": "5294453c8b3b9e6d4462383b3bd66d0e7e6992d20828e0559dbec3f6bfb280e6"
+    },
+    {
+      "path": "docs/handoff/OWNER_RESEARCH_ACTIVATION_SEQUENCE_2026-09-06.md",
+      "source_sha256": "8c6a268974fcff720b1b7da4df6683e86f3295ed37deb04014358dd89ee523ea",
+      "publication_sha256": "57f29c3cf2638b35f9ff0c596ce997673dfecc57abc12d04420cb4cf418b2e8f"
+    },
+    {
+      "path": "docs/handoff/OWNER_RESEARCH_PHONE_SESSION_2026-09-06.md",
+      "source_sha256": "7a0d50d7ede2246db925a4e7bb2e199a004cd395b14d5aca745bf322c571a9ad",
+      "publication_sha256": "fa331f47b374a8229e93ad537913d174d1933e39d61615f64f843cb1aa9a5140"
+    },
+    {
+      "path": "docs/handoff/RECOVERY_PHONE_ACCEPTANCE_2026-09-08.md",
+      "source_sha256": "d42529d2a521d44533c276c6af9c9f7c5c3e337613114e8b97d982e878cda4bf",
+      "publication_sha256": "93b9bf713df207de3e0e32e5d5da14158aed33f47e24123d168ccc6c71b477e2"
+    },
+    {
+      "path": "docs/handoffs/route-weather-20260929.md",
+      "source_sha256": "4a780a362750cf83bbef3a40d29dc3eb2ee05e5d29655f5872fb5f4b3531dfdb",
+      "publication_sha256": "636ee517c5bd931983593de31a4096e1d7a23c368c7da9933e002590435e663e"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/native-tests.log",
+      "source_sha256": "95f8eca4d795423f60a832256aa4b297f94144246131bc7937a67146ed522c05",
+      "publication_sha256": "c40d2d2233fd235871580b6c5913fc5af67a5ff9d9495fc904c5892958480aee"
+    },
+    {
+      "path": "docs/release/CURRENT_RELEASE_CHECKLIST_2026-09-15.md",
+      "source_sha256": "b379a64c1f0344afcbd9d15c7ad54808ab88a5d5b430a872d36b5303c3980bc5",
+      "publication_sha256": "899dc3808411d8b3cc5e905627704feb9558ab5bf92047ad2e3757d5481701dd"
+    },
+    {
+      "path": "docs/release/STORE_READINESS_HANDOFF_2026-09-15.md",
+      "source_sha256": "d5f1ff61de50ea20bce499e9448ea8527f9c4dc952865bf66cbc6e2ba0aa156f",
+      "publication_sha256": "fba3b0c2a412556584345e45e6681a05f9119c43813fe363efca0e162eb422e9"
+    },
+    {
+      "path": "docs/release/account-store-20260926/README.md",
+      "source_sha256": "d1aff22d5c98e990c58fd880b87fc7d92a6791347b5526e66ea91be95be8513f",
+      "publication_sha256": "b4601b7974a86c39c6e4dde0fb8a006727264726b6a7b974b08d60708c1857aa"
+    },
+    {
+      "path": "docs/release/iphone-20260926/ACCEPTANCE.md",
+      "source_sha256": "615c15febc4094a609f04c10bf3479140d5630b86c4733650208e31983cdcc57",
+      "publication_sha256": "9ab460959b7aa932be2078ccb44437da6e197367a74df84491b6a9b07b39dd04"
+    }
+  ]
+}

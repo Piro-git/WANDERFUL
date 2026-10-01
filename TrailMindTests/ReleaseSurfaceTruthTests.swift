@@ -65,12 +65,16 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertFalse(copy.localizedCaseInsensitiveContains("two days"))
         XCTAssertFalse(copy.localizedCaseInsensitiveContains("practical stops"))
         XCTAssertFalse(copy.localizedCaseInsensitiveContains("exposure"))
-        XCTAssertTrue(copy.localizedCaseInsensitiveContains("planning aid"))
-        XCTAssertTrue(copy.localizedCaseInsensitiveContains("not live navigation"))
+        let trustPage = OnboardingView.pages.first { $0.step == .trust }
+        XCTAssertNotNil(trustPage)
+        XCTAssertTrue(trustPage?.body.contains("AI-assisted planning with routed geometry and estimated stats") == true)
+        XCTAssertTrue(trustPage?.body.contains("Review the route and current conditions before starting.") == true)
+        XCTAssertFalse(copy.localizedCaseInsensitiveContains("guaranteed safe"))
+        XCTAssertFalse(copy.localizedCaseInsensitiveContains("offline maps available"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("requested preferences"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("I don’t know yet"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("what you ask for later always wins"))
-        XCTAssertTrue(copy.localizedCaseInsensitiveContains("real route"))
+        XCTAssertTrue(copy.localizedCaseInsensitiveContains("routed option"))
         XCTAssertTrue(copy.localizedCaseInsensitiveContains("distance, time and elevation"))
         XCTAssertFalse(copy.localizedCaseInsensitiveContains("a few optional answers"))
     }
@@ -116,15 +120,70 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
             "SUPABASE_ONBOARDING_SYNC_ENABLED = false",
             "RESEARCH_GUIDED_PLANNING_ENABLED = false",
             "OUTDOOR_EVIDENCE_ENABLED = false",
+            "ROUTE_WEATHER_ENABLED = false",
             "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED = false",
             "REMOTE_INTENT_ENABLED = false",
             "DIRECT_GRAPHHOPPER_ENABLED = false",
             "INSECURE_LOCAL_BACKEND_AUTH_ENABLED = false",
             "IN_MEMORY_APP_ATTEST_ENABLED = false",
-            "SUPERWALL_ENABLED = false"
+            "SUPERWALL_ENABLED = false",
+            "MONETIZATION_ENABLED = false",
+            "WANDERFUL_ACCOUNT_ENABLED = false",
+            "WANDERFUL_APPLE_SIGN_IN_ENABLED = false"
         ] {
             XCTAssertTrue(sharedConfiguration.contains(setting), "Missing disabled setting: \(setting)")
         }
+    }
+
+    func testWeatherCardUsesValidatedReleaseGateAndTrackedPlistFlag() throws {
+        let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let view = try String(contentsOf: repository.appendingPathComponent("TrailMind/Views/Route/RouteDetailView.swift"), encoding: .utf8)
+        XCTAssertTrue(view.contains("if WanderfulAppConfigurationSnapshot.configuration?.routeWeatherAvailable == true {\n                        RouteWeatherCard(route: route)"))
+        let plist = try String(contentsOf: repository.appendingPathComponent("Configuration/TrailMind-Info.plist"), encoding: .utf8)
+        XCTAssertTrue(plist.contains("<key>ROUTE_WEATHER_ENABLED</key>\n\t<string>$(ROUTE_WEATHER_ENABLED)</string>"))
+        let development = try String(contentsOf: repository.appendingPathComponent("Configuration/Development.xcconfig"), encoding: .utf8)
+        XCTAssertTrue(development.contains("ROUTE_WEATHER_ENABLED = false"))
+    }
+
+    func testShippingIdentityUsesWanderfulPublicNameAndCurrentVersion() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let productionConfiguration = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "Configuration/Production.xcconfig"
+            ),
+            encoding: .utf8
+        )
+        let project = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind.xcodeproj/project.pbxproj"
+            ),
+            encoding: .utf8
+        )
+        let contractData = try Data(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "scripts/release-contract.json"
+            )
+        )
+        let contract = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: contractData) as? [String: Any]
+        )
+        let product = try XCTUnwrap(contract["product"] as? [String: Any])
+
+        XCTAssertTrue(productionConfiguration.contains("TRAILMIND_DISPLAY_NAME = Wanderful"))
+        XCTAssertFalse(productionConfiguration.contains("TRAILMIND_DISPLAY_NAME = TrailMind"))
+        XCTAssertTrue(
+            productionConfiguration.contains(
+                "TRAILMIND_PRODUCT_BUNDLE_IDENTIFIER = com.trailmind.app"
+            )
+        )
+        XCTAssertEqual(product["display_name"] as? String, "Wanderful")
+        XCTAssertEqual(product["bundle_identifier"] as? String, "com.trailmind.app")
+        XCTAssertEqual(product["marketing_version"] as? String, "1.0")
+        XCTAssertEqual(product["build_number"] as? String, "1")
+        XCTAssertTrue(project.contains("MARKETING_VERSION = 1.0;"))
+        XCTAssertTrue(project.contains("CURRENT_PROJECT_VERSION = 1;"))
     }
 
     func testReleaseUsesAdaptiveAppearanceAndEmptyPublicLinkDefaults() throws {
@@ -148,10 +207,19 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         for emptySetting in [
             "LOCAL_PRIVACY_POLICY_URL =",
             "LOCAL_SUPPORT_URL =",
+            "LOCAL_TERMS_OF_USE_URL =",
+            "LOCAL_PREMIUM_WEEKLY_PRODUCT_ID =",
+            "LOCAL_PREMIUM_ANNUAL_PRODUCT_ID =",
             "STAGING_PRIVACY_POLICY_URL =",
             "STAGING_SUPPORT_URL =",
+            "STAGING_TERMS_OF_USE_URL =",
+            "STAGING_PREMIUM_WEEKLY_PRODUCT_ID =",
+            "STAGING_PREMIUM_ANNUAL_PRODUCT_ID =",
             "PRODUCTION_PRIVACY_POLICY_URL =",
-            "PRODUCTION_SUPPORT_URL ="
+            "PRODUCTION_SUPPORT_URL =",
+            "PRODUCTION_TERMS_OF_USE_URL =",
+            "PRODUCTION_PREMIUM_WEEKLY_PRODUCT_ID =",
+            "PRODUCTION_PREMIUM_ANNUAL_PRODUCT_ID ="
         ] {
             XCTAssertTrue(
                 sharedConfiguration.contains(emptySetting),
@@ -181,6 +249,41 @@ final class ReleaseSurfaceTruthTests: XCTestCase {
         XCTAssertTrue(sharedConfiguration.contains("https:/$()/…"))
         XCTAssertFalse(localExample.contains("LOCAL_PRIVACY_POLICY_URL = https:"))
         XCTAssertFalse(localExample.contains("LOCAL_SUPPORT_URL = https:"))
+        XCTAssertFalse(localExample.contains("LOCAL_TERMS_OF_USE_URL = https:"))
+    }
+
+    func testProductionPremiumFoundationIsDisabledAndTestCatalogIsDebugOnly() async throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sharedConfiguration = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "Configuration/Shared.xcconfig"
+            ),
+            encoding: .utf8
+        )
+        let premiumSource = try String(
+            contentsOf: repositoryURL.appendingPathComponent(
+                "TrailMind/Services/PremiumAccess.swift"
+            ),
+            encoding: .utf8
+        )
+        let releasePremiumSource = sourceExcludingDebugBlocks(
+            premiumSource.replacingOccurrences(
+                of: "#if DEBUG && targetEnvironment(simulator)",
+                with: "#if DEBUG"
+            )
+        )
+
+        XCTAssertTrue(sharedConfiguration.contains("MONETIZATION_ENABLED = false"))
+        XCTAssertFalse(releasePremiumSource.contains("test.app.wanderful.premium"))
+        XCTAssertFalse(releasePremiumSource.contains("local.storekit.test"))
+
+        let store = PremiumAccessFactory.makeProduction(appConfiguration: nil)
+        await store.start()
+        XCTAssertEqual(store.accessState, .disabled)
+        XCTAssertFalse(store.isAvailable)
+        XCTAssertTrue(store.products.isEmpty)
     }
 
     func testRouteSuggestionsExposeOneCompleteOuterAccessibilityAction() throws {

@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
@@ -56,6 +57,10 @@ describe("staging OCI artifact", () => {
       "src/operations/migrationRunner.js",
       "src/operations/stagingMigrationCapability.js",
       "src/operations/stagingMigrationPolicy.js",
+      "src/operations/stagingPhase1V2Admission.js",
+      "src/operations/stagingPhase1V2LiveLauncher.js",
+      "src/operations/stagingPhase1V2MachineObserver.js",
+      "src/operations/stagingPhase1V2SingleSessionAdapter.js",
       "src/operations/stagingPhase1V2Operator.js"
     ]) assert.match(ignore, new RegExp(`^${escapePattern(operatorOnly)}$`, "m"));
   });
@@ -63,7 +68,7 @@ describe("staging OCI artifact", () => {
   it("passes the deterministic application-context secret and content scan", async () => {
     const { stdout } = await execFileAsync(
       process.execPath,
-      [new URL("../scripts/staging/runtime/verify-build-context.js", import.meta.url).pathname],
+      [fileURLToPath(new URL("../scripts/staging/runtime/verify-build-context.js", import.meta.url))],
       { maxBuffer: 4 * 1_024 * 1_024 }
     );
     const report = JSON.parse(stdout);

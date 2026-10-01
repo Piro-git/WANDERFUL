@@ -1,0 +1,618 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Weather along your route": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wetter entlang deiner Route"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weather along your route"
+          }
+        }
+      }
+    },
+    "Plan your layers and breaks with a forecast for points along this route.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plane Kleidung und Pausen mit einer Prognose für mehrere Punkte deiner Route."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan your layers and breaks with a forecast for points along this route."
+          }
+        }
+      }
+    },
+    "Time and forecast details": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeit und Wetterdetails"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time and forecast details"
+          }
+        }
+      }
+    },
+    "Planned start": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geplanter Start"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planned start"
+          }
+        }
+      }
+    },
+    "Times shown in %@ (device time zone).": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitangaben in %@ (Zeitzone des Geräts)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Times shown in %@ (device time zone)."
+          }
+        }
+      }
+    },
+    "The window uses the mapped route duration without breaks. Three samples cannot describe every trail section. Forecasts can change, especially in mountains; check official warnings before setting off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Zeitfenster basiert auf der berechneten Routendauer ohne Pausen. Drei Punkte bilden nicht jeden Wegabschnitt ab. Prognosen können sich besonders im Gebirge ändern. Prüfe vor dem Start offizielle Warnungen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The window uses the mapped route duration without breaks. Three samples cannot describe every trail section. Forecasts can change, especially in mountains; check official warnings before setting off."
+          }
+        }
+      }
+    },
+    "Start": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        }
+      }
+    },
+    "Finish": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziel"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish"
+          }
+        }
+      }
+    },
+    "Halfway along the route": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf halber Strecke"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halfway along the route"
+          }
+        }
+      }
+    },
+    "Forecast interval: %d h": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prognoseintervall: %d Std."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forecast interval: %d h"
+          }
+        }
+      }
+    },
+    "Model updated %@ · retrieved %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modellstand %@ · abgerufen %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model updated %@ · retrieved %@"
+          }
+        }
+      }
+    },
+    "Precipitation is the highest interval average, including rain or snow, not a peak intensity or a trip total. Wind is modelled near the ground, not gusts. Values are summarized across the trip window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niederschlag ist der höchste Intervallmittelwert für Regen oder Schnee, keine Spitzenintensität oder Gesamtmenge der Tour. Wind bezeichnet den bodennahen Modellwind, keine Böen. Die Werte fassen das gesamte Zeitfenster zusammen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precipitation is the highest interval average, including rain or snow, not a peak intensity or a trip total. Wind is modelled near the ground, not gusts. Values are summarized across the trip window."
+          }
+        }
+      }
+    },
+    "Data license · CC BY 4.0": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datenlizenz · CC BY 4.0"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data license · CC BY 4.0"
+          }
+        }
+      }
+    },
+    "Checking weather…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wetter wird geprüft …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking weather…"
+          }
+        }
+      }
+    },
+    "Check route weather": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routenwetter prüfen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check route weather"
+          }
+        }
+      }
+    },
+    "Refresh weather": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wetter aktualisieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh weather"
+          }
+        }
+      }
+    },
+    "Choose trip time": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Startzeit auswählen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose trip time"
+          }
+        }
+      }
+    },
+    "Checking three points along the route…": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drei Punkte entlang der Route werden geprüft …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking three points along the route…"
+          }
+        }
+      }
+    },
+    "Weather could not be loaded. Check your connection and try again; your route is unchanged.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Wetter konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut. Deine Route bleibt erhalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weather could not be loaded. Check your connection and try again; your route is unchanged."
+          }
+        }
+      }
+    },
+    "Check the forecast for your planned start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe die Prognose für deinen geplanten Start."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the forecast for your planned start."
+          }
+        }
+      }
+    },
+    "Choose a start date and time in the details to see your route forecast.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle in den Details ein Startdatum und eine Uhrzeit für deine Wettervorschau."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a start date and time in the details to see your route forecast."
+          }
+        }
+      }
+    },
+    "This forecast needs a fresh check.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Prognose muss aktualisiert werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This forecast needs a fresh check."
+          }
+        }
+      }
+    },
+    "This trip window is outside the available forecast. Choose a future start within about nine days and check again closer to departure.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Zeitfenster liegt außerhalb der verfügbaren Prognose. Wähle einen zukünftigen Start innerhalb von etwa neun Tagen und prüfe das Wetter kurz vor der Tour erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This trip window is outside the available forecast. Choose a future start within about nine days and check again closer to departure."
+          }
+        }
+      }
+    },
+    "Weather previews cover routes up to 24 hours. Check each day separately for a longer trip.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wettervorschauen decken Routen bis 24 Stunden ab. Prüfe bei längeren Touren das Wetter für jeden Tag separat."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weather previews cover routes up to 24 hours. Check each day separately for a longer trip."
+          }
+        }
+      }
+    },
+    "Weather is currently unavailable for this route. Please try again later and consult a local forecast.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für diese Route ist gerade keine Wettervorschau verfügbar. Versuche es später erneut und prüfe eine lokale Prognose."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weather is currently unavailable for this route. Please try again later and consult a local forecast."
+          }
+        }
+      }
+    },
+    "%.0f–%.0f °C · precipitation up to %.1f mm/h · wind up to %.0f km/h": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.0f–%.0f °C · Niederschlag bis %.1f mm/h · Wind bis %.0f km/h"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.0f–%.0f °C · precipitation up to %.1f mm/h · wind up to %.0f km/h"
+          }
+        }
+      }
+    },
+    "One third along the route": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One third along the route"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einem Drittel der Route"
+          }
+        }
+      }
+    },
+    "Two thirds along the route": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Two thirds along the route"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach zwei Dritteln der Route"
+          }
+        }
+      }
+    },
+    "Temperature": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temperature"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temperatur"
+          }
+        }
+      }
+    },
+    "Rain / snow": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rain / snow"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regen / Schnee"
+          }
+        }
+      }
+    },
+    "Wind": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wind"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wind"
+          }
+        }
+      }
+    },
+    "Average precipitation up to %.1f millimetres per hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Average precipitation up to %.1f millimetres per hour"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mittlerer Niederschlag bis %.1f Millimeter pro Stunde"
+          }
+        }
+      }
+    },
+    "Weather data: MET Norway": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weather data: MET Norway"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wetterdaten: MET Norway"
+          }
+        }
+      }
+    },
+    "Data updated %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data updated %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datenstand %@"
+          }
+        }
+      }
+    },
+    "up to %.1f": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "up to %.1f"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bis %.1f"
+          }
+        }
+      }
+    },
+    "mm/h on average": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mm/h on average"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mm/h im Mittel"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

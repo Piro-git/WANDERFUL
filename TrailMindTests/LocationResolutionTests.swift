@@ -81,6 +81,50 @@ private final class StubLocationCandidateProvider: LocationCandidateProviding {
 
 @MainActor
 final class LocationResolutionTests: XCTestCase {
+    func testDistantDestinationRequiresClarificationDespiteStrongNameMatch() {
+        let context = LocationQueryContext(
+            originalQuery: "Siegessäule, Berlin",
+            originalPrompt: "Plan a hike from Brandenburger Tor, Berlin to Siegessäule, Berlin.",
+            routeType: .pointToPoint, activityType: .hiking,
+            requestedField: .endLocationQuery,
+            preferredCoordinate: Coordinate(latitude: 52.5163, longitude: 13.3777)
+        )
+        let candidate = LocationCandidate(
+            id: "synthetic-distant-match", name: "Siegessäule",
+            displayName: "Siegessäule, Berlin",
+            coordinate: Coordinate(latitude: 48.1, longitude: 11.5),
+            semanticKind: .landmark, provider: .appleGeocoder
+        )
+        XCTAssertGreaterThanOrEqual(
+            LocationResolutionPolicy.rank(candidates: [candidate], for: context).first?.score ?? 0,
+            LocationResolutionPolicy.automaticResolutionThreshold,
+            "Regression fixture must pass the old name/confidence-only automatic acceptance"
+        )
+        guard case let .needsClarification(clarification) = LocationResolutionPolicy.resolve(
+            context: context, candidates: [candidate]
+        ) else { return XCTFail("A strong name match must not silently exceed the backend route limit") }
+        XCTAssertTrue(clarification.supportingText.contains("200 km"))
+        XCTAssertTrue(clarification.allowsFreeText)
+    }
+
+    func testNearbyBerlinDestinationStillResolves() {
+        let context = LocationQueryContext(
+            originalQuery: "Siegessäule, Berlin", originalPrompt: "A hike in Berlin",
+            routeType: .pointToPoint, activityType: .hiking,
+            requestedField: .endLocationQuery,
+            preferredCoordinate: Coordinate(latitude: 52.5163, longitude: 13.3777)
+        )
+        let candidate = LocationCandidate(
+            id: "synthetic-nearby-match", name: "Siegessäule", displayName: "Siegessäule, Berlin",
+            coordinate: Coordinate(latitude: 52.5145, longitude: 13.3501),
+            semanticKind: .landmark, provider: .appleGeocoder
+        )
+        guard case let .resolved(resolved) = LocationResolutionPolicy.resolve(context: context, candidates: [candidate]) else {
+            return XCTFail("The supported Berlin point-to-point flow must remain automatic")
+        }
+        XCTAssertEqual(resolved.id, candidate.id)
+    }
+
     func testEvaluationFixtureCoversAtLeastThirtyGermanAndEnglishHikingCases() throws {
         let fixtures = try LocationResolutionFixture.load()
 
