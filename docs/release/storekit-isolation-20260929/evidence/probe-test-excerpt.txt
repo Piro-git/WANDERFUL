@@ -1,0 +1,50 @@
+Test Suite 'All tests' started at 2026-09-29 11:36:15.343.
+Test Suite 'ProbeTests.xctest' started at 2026-09-29 11:36:15.346.
+Test Suite 'StoreKitIsolationTests' started at 2026-09-29 11:36:15.347.
+Test Case '-[ProbeTests.StoreKitIsolationTests testBundledConfigurationsAreReadable]' started.
+Test Case '-[ProbeTests.StoreKitIsolationTests testBundledConfigurationsAreReadable]' passed (0.003 seconds).
+Test Case '-[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingExplicitURL]' started.
+2026-09-29 11:36:15.395223+0200 Probe[25547:4667306] [SKTestSession] Error saving configuration file: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+2026-09-29 11:36:15.395441+0200 Probe[25547:4667306] [SKTestSession] Error setting value to 1 for identifier 2 for test.local.storekit.probe: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+2026-09-29 11:36:15.395633+0200 Probe[25547:4667306] [SKTestSession] Error fetching value for identifier 2 for test.local.storekit.probe: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+/tmp/wanderful-storekit-probe-20260929-v1/Tests/StoreKitIsolationTests.swift:37: error: -[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingExplicitURL] : XCTAssertTrue failed - StoreKit test service did not persist its local setting
+/tmp/wanderful-storekit-probe-20260929-v1/Tests/StoreKitIsolationTests.swift:39: error: -[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingExplicitURL] : XCTAssertEqual failed: ("[]") is not equal to ("["test.local.storekit.probe.consumable"]") - Local StoreKit catalog unavailable before any product logic
+Test Case '-[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingExplicitURL]' failed (1.426 seconds).
+Test Case '-[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingName]' started.
+2026-09-29 11:36:16.783783+0200 Probe[25547:4667306] [SKTestSession] Error saving configuration file: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+2026-09-29 11:36:16.784003+0200 Probe[25547:4667306] [SKTestSession] Error setting value to 1 for identifier 2 for test.local.storekit.probe: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+2026-09-29 11:36:16.784460+0200 Probe[25547:4667306] [SKTestSession] Error fetching value for identifier 2 for test.local.storekit.probe: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+/tmp/wanderful-storekit-probe-20260929-v1/Tests/StoreKitIsolationTests.swift:37: error: -[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingName] : XCTAssertTrue failed - StoreKit test service did not persist its local setting
+/tmp/wanderful-storekit-probe-20260929-v1/Tests/StoreKitIsolationTests.swift:39: error: -[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingName] : XCTAssertEqual failed: ("[]") is not equal to ("["test.local.storekit.probe.consumable"]") - Local StoreKit catalog unavailable before any product logic
+Test Case '-[ProbeTests.StoreKitIsolationTests testMinimalCatalogUsingName]' failed (0.014 seconds).
+Test Case '-[ProbeTests.StoreKitIsolationTests testWanderfulCatalogUsingExplicitURL]' started.
+2026-09-29 11:36:16.802187+0200 Probe[25547:4667306] [SKTestSession] Error saving configuration file: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+2026-09-29 11:36:16.802370+0200 Probe[25547:4667306] [SKTestSession] Error setting value to 1 for identifier 2 for test.local.storekit.probe: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+2026-09-29 11:36:16.802530+0200 Probe[25547:4667306] [SKTestSession] Error fetching value for identifier 2 for test.local.storekit.probe: Error Domain=SKInternalErrorDomain Code=3 "(null)"
+/tmp/wanderful-storekit-probe-20260929-v1/Tests/StoreKitIsolationTests.swift:37: error: -[ProbeTests.StoreKitIsolationTests testWanderfulCatalogUsingExplicitURL] : XCTAssertTrue failed - StoreKit test service did not persist its local setting
+/tmp/wanderful-storekit-probe-20260929-v1/Tests/StoreKitIsolationTests.swift:39: error: -[ProbeTests.StoreKitIsolationTests testWanderfulCatalogUsingExplicitURL] : XCTAssertEqual failed: ("[]") is not equal to ("["test.app.wanderful.premium.weekly", "test.app.wanderful.premium.annual"]") - Local StoreKit catalog unavailable before any product logic
+Test Case '-[ProbeTests.StoreKitIsolationTests testWanderfulCatalogUsingExplicitURL]' failed (0.512 seconds).
+Test Suite 'StoreKitIsolationTests' failed at 2026-09-29 11:36:17.314.
+	 Executed 4 tests, with 6 failures (0 unexpected) in 1.956 (1.968) seconds
+Test Suite 'ProbeTests.xctest' failed at 2026-09-29 11:36:17.315.
+	 Executed 4 tests, with 6 failures (0 unexpected) in 1.956 (1.969) seconds
+Test Suite 'All tests' failed at 2026-09-29 11:36:17.315.
+	 Executed 4 tests, with 6 failures (0 unexpected) in 1.956 (1.972) seconds
+2026-09-29 11:36:40.396 xcodebuild[25356:4665422] [MT] IDETestOperationsObserverDebug: 47.870 elapsed -- Testing started completed.
+2026-09-29 11:36:40.396 xcodebuild[25356:4665422] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-29 11:36:40.396 xcodebuild[25356:4665422] [MT] IDETestOperationsObserverDebug: 47.870 sec, +47.870 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/wanderful-storekit-probe-20260929.xcresult
+
+Failing tests:
+	StoreKitIsolationTests.testMinimalCatalogUsingExplicitURL()
+	StoreKitIsolationTests.testMinimalCatalogUsingExplicitURL()
+	StoreKitIsolationTests.testMinimalCatalogUsingName()
+	StoreKitIsolationTests.testMinimalCatalogUsingName()
+	StoreKitIsolationTests.testWanderfulCatalogUsingExplicitURL()
+	StoreKitIsolationTests.testWanderfulCatalogUsingExplicitURL()
+
+** TEST FAILED **
+
+Testing started

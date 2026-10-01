@@ -1,0 +1,26 @@
+{
+  "result": "Passed",
+  "totalTestCount": 39,
+  "passedTests": 39,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "startTime": 1790674683.22,
+  "finishTime": 1790674693.435,
+  "environment": {
+    "xcode": "26.5 (17F42)",
+    "runtime": "iOS 26.5 (23F77)",
+    "destination": "iPhone 17 Pro, arm64 simulator"
+  },
+  "failures": [],
+  "scope": "Previously built ecbd70d Debug host, code identical to current 83a99c0 candidate; test-without-building; injected account/storefront dependencies, not Apple authentication or transactions.",
+  "suites": {
+    "AccountAuthenticationTests": {
+      "passed": 18,
+      "failed": 0
+    },
+    "PremiumAccessTests": {
+      "passed": 21,
+      "failed": 0
+    }
+  }
+}

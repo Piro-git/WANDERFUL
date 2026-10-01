@@ -1,0 +1,12 @@
+2026-09-29 11:36:15.377 E  storekitd[29003:4737cd] [com.apple.storekit:Default] [f90fe4bb] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:15.377 E  storekitd[29003:4737cd] [com.apple.storekit:Default] [AE8193F6] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:15.377 E  storekitd[29003:4737cd] [com.apple.storekit:Default] [4BB6EF09] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:15.917 Df storekitd[29003:4737e2] [com.apple.storekit:Default] [Default] Running task with context: ([Client] test.local.storekit.probe (Probe) Sandbox)
+2026-09-29 11:36:16.766 E  storekitd[29003:4738e5] [com.apple.storekit:Default] [1d7c0511] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:16.766 E  storekitd[29003:4738e5] [com.apple.storekit:Default] [662FC636] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:16.766 E  storekitd[29003:4738e5] [com.apple.storekit:Default] [93D4A887] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:16.769 Df storekitd[29003:4738e5] [com.apple.storekit:Default] [Default] Running task with context: ([Client] test.local.storekit.probe (Probe) Sandbox)
+2026-09-29 11:36:16.784 E  storekitd[29003:4738e6] [com.apple.storekit:Default] [079aff1a] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:16.784 E  storekitd[29003:4738e6] [com.apple.storekit:Default] [FFF33975] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:16.784 E  storekitd[29003:4738e6] [com.apple.storekit:Default] [01415138] test.local.storekit.probe is not installed for development
+2026-09-29 11:36:16.787 Df storekitd[29003:4738e6] [com.apple.storekit:Default] [Default] Running task with context: ([Client] test.local.storekit.probe (Probe) Sandbox)

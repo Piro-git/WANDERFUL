@@ -1,0 +1,62 @@
+{
+  "candidateCommit": "83a99c0d9f4dc6e457437eca2a29f306d3b8233a",
+  "candidateStatus": "",
+  "testedProductSource": "ecbd70d59d0c7b9f5256a358e2133f0a381ad62f",
+  "files": [
+    {
+      "file": "TrailMindTests/StoreKit/Wanderful.storekit",
+      "sha256": "fa912389f12540bbdbf8054b68f95b7b6b52724630ef50f0c03710cece9f52d6",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMindTests/StoreKitCatalogTests.swift",
+      "sha256": "508d29ad1bf188ecf09828e7d3ed01c5fa7be34b621db2b058432c73d8f12b00",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMindTests/StoreKitTransactionLifecycleTests.swift",
+      "sha256": "9d8964df53cd1860c846a14fe5a99e69748229ff03e1e2c200e28fc4ffb16055",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMindTests/PremiumAccessTests.swift",
+      "sha256": "ae49d7afa08d5056e934b88c2406db8869304e431a63fad2c20baf9d3c4fa684",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMindTests/AccountAuthenticationTests.swift",
+      "sha256": "1240aaaea17cd91e0045bdc1e3ad8ddd8017dfd9f7289e4a6cdf94faf036de82",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMind/Services/PremiumAccess.swift",
+      "sha256": "d1064e0048538141b23a8b451a15da805ee57873b3f00306d191343b49d443e8",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMind/Services/AppleAccountAuthentication.swift",
+      "sha256": "ebad94b7e8de19c6cfd0621b94c2b98ab7381d167221f837d2f48cb7e15f3144",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMind/Services/AccountService.swift",
+      "sha256": "e0d12b5f2278d42b4120d8151499e2268028ba233da4a56166ce0b33ecf597f0",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMind/Services/AccountSessionStore.swift",
+      "sha256": "39a26511e6e2de83a7d5b7f54f5f78ce820b148c77a3438c9a6dd3606a1656fc",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMind.xcodeproj/project.pbxproj",
+      "sha256": "18e605da6a27963f52c5c241b7dc813f0b12b7adbf93b8555076b440b0fe3ab2",
+      "matchesCandidate": true
+    },
+    {
+      "file": "TrailMind.xcodeproj/xcshareddata/xcschemes/TrailMind.xcscheme",
+      "sha256": "90384ae006025c161d52bf5221450c56f1c881bce94fce7d6fdb0d9ee0816af4",
+      "matchesCandidate": true
+    }
+  ]
+}

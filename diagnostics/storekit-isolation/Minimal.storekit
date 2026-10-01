@@ -1,0 +1,16 @@
+{
+  "identifier": "E23F849B-97EC-45B7-BCDE-4A6539909288",
+  "nonRenewingSubscriptions": [],
+  "products": [{
+    "displayPrice": "0.99",
+    "familyShareable": false,
+    "internalID": "0B081B7B-7149-4907-B387-080497C1B412",
+    "localizations": [{"description": "Local diagnostic fixture only", "displayName": "Probe", "locale": "en_US"}],
+    "productID": "test.local.storekit.probe.consumable",
+    "referenceName": "Probe",
+    "type": "Consumable"
+  }],
+  "settings": {"_failTransactionsEnabled": false, "_locale": "en_US", "_storefront": "USA", "_storeKitErrors": []},
+  "subscriptionGroups": [],
+  "version": {"major": 4, "minor": 0}
+}
