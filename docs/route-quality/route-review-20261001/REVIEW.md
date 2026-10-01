@@ -4,7 +4,17 @@
 
 Reviewed the recovered published source tree `12f1ac6f16730809b70f895e2d9811a697fe4fc6` (backend tree `52e7a7913e2db06fc1e44e42655ce927f2ef2165`) in an isolated, self-contained checkout. This branch changes only quality tests and this review. It makes no production, database, provider, iPhone or secret changes.
 
-**Current route-quality decision: NO-GO for an end-to-end production claim.** The prior 10-case acceptance suite is now green, including the previously failing segment-stop and unsafe-review cases. Two new provider-consistency acceptance cases fail. No two-region live Gemini → sourced POI → GraphHopper → Commons receipt for this exact backend tree was available to this reviewer. An offline mock success is not a live route or a phone result.
+**Decision for the recovered published tree: NO-GO for an end-to-end production claim.** The prior 10-case acceptance suite is green, including the previously failing segment-stop and unsafe-review cases. Two new provider-consistency findings fail in three deterministic variants. No two-region live Gemini → sourced POI → GraphHopper → Commons receipt for this exact backend tree was available to this reviewer. An offline mock success is not a live route or a phone result. A later committed code fix is verified below; the live and phone gates remain open.
+
+## Independent verification of the follow-up code fix
+
+The backend owner committed `0f92256f3ebd479d90a046f7c2341db8c9b8bc25` (backend tree `633d0c58698c677920e8542c46ad7cf8fcaf986b`). I fetched that immutable commit into this isolated checkout, overlaid the eight committed review tests from QA commit `a74bd822a5c5d4873fbc4a1cf198f0da63898174`, and ran:
+
+```sh
+node --test backend/quality-gates/routeReview20261001.test.js backend/quality-gates/routeAcceptance.test.js
+```
+
+Result: **18 pass, 0 fail**. Source inspection confirms the dynamic router asks GraphHopper for unsimplified geometry, screens conflicting flat 3D distance with an allowance independent of vertex count, and checks each source waypoint directly against the ordered route line. Both P2 findings below are **closed for this code commit** by these deterministic tests. This does not establish hosted provider behavior, actual photo subject, deployed version, or phone presentation. The end-to-end production claim remains **NO-GO pending those receipts**.
 
 ## Reproducible new finding
 
