@@ -1217,3 +1217,228 @@ function reverseKeys(value) {
     Object.keys(value).reverse().map((key) => [key, reverseKeys(value[key])])
   );
 }
+
+// Research-led engine fixtures are synthetic and never used by production providers.
+import { materializeResearchItineraryV2 } from "../src/routeResearch/researchGuidedRouteCandidatePlannerV2.js";
+import { createResearchLedRouting, createResearchItinerarySelector, enforceRoutedConstraints, validatePlanningContext } from "../src/llmPlanning/researchLedItinerary.js";
+const planningContext = { maximumDistanceKm: null, maximumDurationMinutes: null,
+  distanceOrigin: "prompt", preferenceOrigin: "saved_profile", hardAvoidances: [] };
+
+function selectionFor(plan) {
+  const proposal = [...plan.proposals].sort((a, b) => b.selectedHighlights.length - a.selectedHighlights.length)[0];
+  return { proposalId: proposal.proposalId, orderedStopIds: proposal.selectedHighlights.map(h => h.entityId).slice(0, 3) };
+}
+function realisticResponse(request) {
+  const response = providerResponse(request);
+  // Add an ordinary mapped path bend on the return leg, creating a synthetic loop.
+  const c = response.paths[0].points.coordinates;
+  c.splice(c.length - 1, 0, [c[0][0] + 0.025, c[0][1] - 0.005]);
+  response.snapped_waypoints.coordinates = request.points.map(p => [p.longitude, p.latitude]);
+  response.paths[0].distance = c.slice(1).reduce((sum, point, i) => sum + distanceMeters(
+    { longitude: c[i][0], latitude: c[i][1] }, { longitude: point[0], latitude: point[1] }), 0);
+  return response;
+}
+
+describe("research-led itinerary integration", () => {
+  it("selects supported IDs in model order and never accepts an unknown stop or proposal", () => {
+    const plan = twoProposalV2Plan();
+    const selection = selectionFor(plan);
+    const ordered = { ...selection, orderedStopIds: [...selection.orderedStopIds].reverse() };
+    assert.deepEqual(materializeResearchItineraryV2(plan, ordered).selectedHighlights.map(h => h.entityId), ordered.orderedStopIds);
+    assert.throws(() => materializeResearchItineraryV2(plan, { ...selection, orderedStopIds: ["invented"] }));
+    assert.throws(() => materializeResearchItineraryV2(plan, { ...selection, proposalId: "invented" }));
+    assert.throws(() => materializeResearchItineraryV2(plan, { ...selection, safety: "safe" }));
+  });
+  it("rejects an invalid model selection before GraphHopper", async () => {
+    let calls = 0;
+    const route = createResearchLedRouting({ planningContext, selectItinerary: async () => ({ proposalId: "invented", orderedStopIds: ["invented"] }) });
+    await assert.rejects(route(twoProposalV2Plan(), { provider: { route: async () => { calls++; } } }, {}));
+    assert.equal(calls, 0);
+  });
+  it("routes selected mapped stops through the existing V2 result contract", async () => {
+    const plan = twoProposalV2Plan();
+    let calls = 0;
+    const route = createResearchLedRouting({ planningContext, selectItinerary: async p => selectionFor(p) });
+    const result = await route(plan, { provider: { route: async request => { calls++; return realisticResponse(request); } } }, {});
+    assert.equal(calls, 1);
+    assert.equal(result.attempts[0].routeResults.length, 1);
+    const routed = result.attempts[0].routeResults[0];
+    assert(routed.highlightVerifications.every(h => h.providerVerifiedAccess));
+    assert.equal(routed.geometryProvider, "graphhopper");
+    assert(!JSON.stringify(result).includes('"photos"'));
+    validateResearchGuidedRoutedAlternativesV2(result);
+  });
+  it("hard distance and duration maxima reject otherwise routable geometry", () => {
+    const plan = twoProposalV2Plan();
+    const h = materializeResearchItineraryV2(plan, selectionFor(plan));
+    const request = { profile: "foot", routeType: "loop", points: [plan.anchor.coordinate, ...h.selectedHighlights.map(h => h.routingCoordinate), plan.anchor.coordinate] };
+    const response = realisticResponse(request);
+    assert.throws(() => enforceRoutedConstraints(plan, request, response, { ...planningContext, maximumDistanceKm: 1 }));
+    assert.throws(() => enforceRoutedConstraints(plan, request, response, { ...planningContext, maximumDurationMinutes: 10 }));
+    const target = response.paths[0].distance / 1000 / 1.1;
+    const softPlan = { ...plan, normalizedIntent: { ...plan.normalizedIntent, distanceRangeKm: { min: target, max: target } } };
+    assert.doesNotThrow(() => enforceRoutedConstraints(softPlan, request, response, planningContext));
+    assert.throws(() => enforceRoutedConstraints({ ...softPlan, normalizedIntent: { ...softPlan.normalizedIntent, distanceRangeKm: { min: target / 2, max: target / 2 } } }, request, response, planningContext));
+  });
+  it("nearby disconnected snaps never become an accepted route", async () => {
+    const route = createResearchLedRouting({ planningContext, selectItinerary: async p => selectionFor(p) });
+    let calls = 0;
+    const result = await route(twoProposalV2Plan(), { provider: { route: async request => {
+      calls++; const response = realisticResponse(request);
+      response.snapped_waypoints.coordinates[1][0] += 0.02;
+      return response;
+    } } }, {});
+    assert(result.attempts.every(a => a.routeResults.length === 0));
+    assert(calls <= 2);
+  });
+  it("propagates pre-cancellation without model or provider calls", async () => {
+    const controller = new AbortController(); controller.abort();
+    const route = createResearchLedRouting({ planningContext, selectItinerary: async () => assert.fail("model called") });
+    await assert.rejects(route(twoProposalV2Plan(), { provider: { route: async () => assert.fail("provider called") } }, { signal: controller.signal }), e => e.code === "cancelled");
+  });
+  it("cancels a model that ignores its abort signal", async () => {
+    const controller = new AbortController();
+    const route = createResearchLedRouting({ planningContext, selectItinerary: async () => {
+      controller.abort(); return new Promise(() => {});
+    } });
+    await assert.rejects(route(twoProposalV2Plan(), { provider: {} }, { signal: controller.signal }), e => e.code === "cancelled");
+  });
+  it("retains explicit profile provenance and validates limits", () => {
+    assert.deepEqual(validatePlanningContext(planningContext), planningContext);
+    assert.throws(() => validatePlanningContext({ ...planningContext, maximumDistanceKm: -1 }));
+    assert.throws(() => validatePlanningContext({ ...planningContext, preferenceOrigin: "verified" }));
+  });
+  it("uses the existing Gemini transport once with strict IDs and no retained interaction", async () => {
+    const plan = twoProposalV2Plan(); let calls = 0;
+    const select = createResearchItinerarySelector({ env: { AI_PROVIDER: "google", GOOGLE_API_KEY: "fixture-key" }, fetchImpl: async (_url, options) => {
+      calls++; const body = JSON.parse(options.body);
+      assert.equal(body.store, false);
+      assert.equal(body.response_format.schema.additionalProperties, false);
+      assert(body.input.includes("untrusted data"));
+      assert(!body.input.includes("safe waterfall"));
+      return new Response(JSON.stringify({ output_text: JSON.stringify(selectionWithReasons(plan)) }), { headers: { "content-type": "application/json" } });
+    } });
+    assert.deepEqual(await select(plan), selectionWithReasons(plan)); assert.equal(calls, 1);
+  });
+});
+
+import { createLLMFirstPlanningEndpoint } from "../src/llmPlanning/llmFirstPlanningEndpoint.js";
+describe("research-led phone endpoint", () => {
+  const env = { NODE_ENV: "test", LLM_FIRST_PLANNING_ENABLED: "true", INTENT_PROVIDER_ENABLED: "true",
+    ROUTE_PROVIDER_ENABLED: "true", OUTDOOR_RESEARCH_PLANNING_ENABLED: "true", OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED: "true" };
+  it("accepts the native resolved intent/context and returns a decodable V2 routed envelope", async () => {
+    const dossier = singleMustHaveDossier(); let modelCalls = 0; let routingCalls = 0;
+    const endpoint = createLLMFirstPlanningEndpoint({ env, repository: {},
+      authorizer: { authorize: async () => ({ authorized: true, rateLimitKey: "fixture", limitsConsumed: true }) },
+      itinerarySelector: async plan => { modelCalls++; return selectionFor(plan); },
+      orchestrationDependencies: { researchAdventure: async normalizedIntent => ({ state: "ready", normalizedIntent,
+        planningGaps: [], dossier, trailAccessResolution: accessResolution(dossier.candidateHighlights) }) },
+      provider: { route: async request => { routingCalls++; return realisticResponse(request); } }
+    });
+    const result = await endpoint({ schemaVersion: 2, intent: dossier.normalizedIntent, planningContext });
+    assert.equal(result.statusCode, 200, JSON.stringify(result));
+    assert.equal(result.payload.schemaVersion, 2);
+    assert.equal(result.payload.routedAlternatives.attempts[0].routeResults.length, 1);
+    assert.equal(modelCalls, 1); assert.equal(routingCalls, 1);
+  });
+  it("does not call a model or route provider when evidence is unavailable", async () => {
+    const dossier = singleMustHaveDossier();
+    const endpoint = createLLMFirstPlanningEndpoint({ env, repository: {},
+      authorizer: { authorize: async () => ({ authorized: true, rateLimitKey: "fixture", limitsConsumed: true }) },
+      itinerarySelector: async () => assert.fail("model called"),
+      orchestrationDependencies: { researchAdventure: async normalizedIntent => ({ state: "unsupported", normalizedIntent,
+        planningGaps: [], availabilityState: "unsupported_region" }) },
+      provider: { route: async () => assert.fail("routing called") }
+    });
+    const result = await endpoint({ schemaVersion: 2, intent: dossier.normalizedIntent, planningContext });
+    assert.equal(result.statusCode, 200, JSON.stringify(result));
+    assert.equal(result.payload.state, "unsupported");
+    assert.equal(result.payload.routedAlternatives, null);
+  });
+  it("fails closed on missing context, before authorization", async () => {
+    const endpoint = createLLMFirstPlanningEndpoint({ env, authorizer: { authorize: async () => assert.fail("auth called") } });
+    assert.equal((await endpoint({ schemaVersion: 2, intent: singleMustHaveDossier().normalizedIntent })).statusCode, 400);
+  });
+});
+
+function multiStopPlan() {
+  const dossier = multiHighlightDossier({ distanceRangeKm: null,
+    mustHaveExperiences: [{ experience: "viewpoint", minimumCount: 1 }], preferredExperiences: ["waterfall", "peak"] });
+  dossier.candidateHighlights[1].coordinate = { latitude: 47.275, longitude: 11.435 };
+  dossier.candidateHighlights[2].coordinate = { latitude: 47.26, longitude: 11.42 };
+  return buildResearchGuidedRouteCandidatePlanV2(dossier, accessResolution(dossier.candidateHighlights, { distinctTrailSegments: true }));
+}
+
+describe("bounded multi-stop refinement", () => {
+  it("keeps mandatory stops while letting the model order a real multi-stop loop", async () => {
+    const plan = multiStopPlan(); const selection = selectionFor(plan);
+    assert(selection.orderedStopIds.length >= 2);
+    const chosen = materializeResearchItineraryV2(plan, selection);
+    const hard = chosen.selectedHighlights.find(h => h.role === "must_have");
+    assert.throws(() => materializeResearchItineraryV2(plan, { ...selection,
+      orderedStopIds: selection.orderedStopIds.filter(id => id !== hard.entityId) }));
+    const reversed = { ...selection, orderedStopIds: [...selection.orderedStopIds].reverse() };
+    const route = createResearchLedRouting({ planningContext, selectItinerary: async () => reversed });
+    const result = await route(plan, { provider: { route: async request => realisticResponse(request) } }, {});
+    assert.equal(result.attempts[0].routeResults.length, 1);
+    assert.deepEqual(result.attempts[0].provenance.selectedHighlights.map(h => h.entityId), reversed.orderedStopIds);
+  });
+  it("removes at most one optional stop after excessive distance and stops after two attempts", async () => {
+    const plan = multiStopPlan(); let count = 0; let modelCount = 0; const stopCounts = [];
+    const route = createResearchLedRouting({ planningContext, selectItinerary: async p => { modelCount++; return selectionFor(p); } });
+    const result = await route(plan, { provider: { route: async request => {
+      count++; stopCounts.push(request.points.length - 2);
+      const response = realisticResponse(request); response.paths[0].distance *= 10;
+      return response;
+    } } }, {});
+    assert.equal(count, 2); assert.equal(modelCount, 1);
+    assert.equal(stopCounts[1], stopCounts[0] - 1);
+    assert(result.attempts.every(a => a.routeResults.length === 0));
+  });
+});
+
+import { readFileSync } from "node:fs";
+import { validateOutdoorAdventurePlanningResponseV2 } from "../src/outdoorAdventure/orchestrationContractV2.js";
+it("keeps the checked-in native decoder fixture on the backend contract", () => {
+  const fixture = JSON.parse(readFileSync(new URL("../../TrailMindTests/Fixtures/research-led-itinerary.json", import.meta.url)));
+  assert.equal(fixture.syntheticFixture, true);
+  validatePlanningContext(fixture.request.planningContext);
+  validateOutdoorAdventurePlanningResponseV2(fixture.response);
+});
+it("does not retry upstream authorization or provider errors as refinement", async () => {
+  let calls = 0;
+  const route = createResearchLedRouting({ planningContext, selectItinerary: async plan => selectionFor(plan) });
+  const result = await route(multiStopPlan(), { provider: { route: async () => { calls++; throw new Error("upstream denied"); } } }, {});
+  assert.equal(calls, 1);
+  assert.equal(result.attempts[0].routeResults.length, 0);
+});
+
+function selectionWithReasons(plan) {
+  const selection = selectionFor(plan);
+  const proposal = plan.proposals.find(p => p.proposalId === selection.proposalId);
+  return { ...selection, stopReasons: selection.orderedStopIds.map(stopId => {
+    const stop = proposal.selectedHighlights.find(h => h.entityId === stopId);
+    return { stopId, reasonCode: stop.selectionReasons[0], evidenceClaimIds: stop.evidenceClaimIds };
+  }) };
+}
+import { researchItineraryCandidates } from "../src/llmPlanning/researchLedItinerary.js";
+it("uses sourced names and readable facts without fabricated descriptions", () => {
+  const dossier = singleMustHaveDossier();
+  const resolution = accessResolution(dossier.candidateHighlights);
+  resolution.candidates[0].displayName = "Synthetic named viewpoint";
+  const plan = buildResearchGuidedRouteCandidatePlanV2(dossier, resolution);
+  const stop = researchItineraryCandidates(plan)[0].stops[0];
+  assert.equal(stop.name, "Synthetic named viewpoint");
+  assert.equal(stop.nameSource.sourceId, OUTDOOR_RESEARCH_TEST_IDS.source);
+  assert.equal(stop.supportedFacts[0].text, "Recorded place category: viewpoint.");
+  assert(stop.supportedReasons[0].text.includes("required experience"));
+  assert(!JSON.stringify(stop).includes("beautiful"));
+});
+it("rejects uncited and unsupported model explanations", () => {
+  const plan = twoProposalV2Plan(); const selection = selectionWithReasons(plan);
+  assert.doesNotThrow(() => materializeResearchItineraryV2(plan, selection));
+  const unknownClaim = structuredClone(selection); unknownClaim.stopReasons[0].evidenceClaimIds = ["invented"];
+  assert.throws(() => materializeResearchItineraryV2(plan, unknownClaim));
+  const unsafeClaim = structuredClone(selection); unsafeClaim.stopReasons[0].reasonCode = "safe_and_scenic";
+  assert.throws(() => materializeResearchItineraryV2(plan, unsafeClaim));
+});

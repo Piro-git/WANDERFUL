@@ -19,7 +19,7 @@ private struct ResearchFixedIntentParser: IntentParsingProvider {
 
 @MainActor
 private final class ResearchScriptedIntentParser: IntentParsingProvider {
-    nonisolated let parserSource: IntentParserSource = .localRuleBased
+    nonisolated let parserSource: IntentParserSource = .remoteAI
     private var intents: [AdventureIntent]
 
     init(intents: [AdventureIntent]) {
@@ -271,6 +271,43 @@ private struct SensitiveResearchError: LocalizedError {
 
 @MainActor
 final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
+    func testResearchStopPreservesFailureCategoriesAndNeverBlamesPromptForTransport() {
+        typealias Reason = PlannerViewModel.ResearchPlanningContext.LegacyFallbackReason
+        let cases: [(Reason, PlannerViewModel.RecoveryKind, String)] = [
+            (.coordinatorFailure(.timedOut), .timedOut, "took too long"),
+            (.coordinatorFailure(.unavailable), .routing, "couldn’t complete"),
+            (.coordinatorFailure(.authorizationFailed), .routing, "planning access"),
+            (.coordinatorFailure(.rateLimited), .routing, "request limit"),
+            (.coordinatorFailure(.rejected), .routing, "couldn’t accept"),
+            (.coordinatorUnsupported, .routing, "isn’t supported"),
+            (.noViableRoute, .routing, "No fitting route"),
+            (.invalidResearchResult, .unverified, "couldn’t verify"),
+            (.coordinatorFailure(.invalidResult), .unverified, "couldn’t verify")
+        ]
+        for (reason, kind, expectedCopy) in cases {
+            let stopped = PlannerViewModel.researchStopReason(
+                outcome: .legacyFallback(reason), routableHighlightAccessEnabled: true
+            )
+            XCTAssertEqual(stopped, reason)
+            XCTAssertEqual(PlannerViewModel.recoveryKind(for: reason, stage: .routing), kind)
+            let message = PlannerViewModel.userMessage(for: reason)
+            XCTAssertTrue(message.contains(expectedCopy), message)
+            XCTAssertTrue(message.hasSuffix("No extra route search was started."))
+            XCTAssertFalse(message.contains("Researched places"))
+            XCTAssertNil(PlannerViewModel.researchStopReason(
+                outcome: .legacyFallback(reason), routableHighlightAccessEnabled: false
+            ))
+        }
+        let bypassedOutcomes: [PlannerViewModel.ResearchPlanningContext.Outcome?] = [
+            nil, .routed, .partial, .legacyFallback(.adapterUnsupported)
+        ]
+        for outcome in bypassedOutcomes {
+            XCTAssertNil(PlannerViewModel.researchStopReason(
+                outcome: outcome, routableHighlightAccessEnabled: true
+            ))
+        }
+    }
+
     private let startCoordinate = Coordinate(
         latitude: 51.8666,
         longitude: 10.6782
@@ -1753,9 +1790,9 @@ final class PlannerViewModelResearchGuidedPlanningTests: XCTestCase {
         let researchNotice =
             "A standard routed option was built because research-guided matching was unavailable."
         let flexibleModeNotice =
-            "GraphHopper round trips need flexible mode on this API plan, so Wanderful built loop options from normal routed segments."
+            "GraphHopper round trips need flexible mode for this request, so Wanderful built loop options from normal routed segments."
         let loopComparisonNotice =
-            "Wanderful found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct routed loop options from the same start for comparison."
         let cases: [
             (
                 name: String,
@@ -2981,7 +3018,8 @@ private extension PlannerViewModelResearchGuidedPlanningTests {
     ) -> AdventureIntent {
         AdventureIntent(
             rawPrompt: prompt,
-            parserSource: .localRuleBased,
+            // Research success fixtures represent a completed remote parse.
+            parserSource: .remoteAI,
             confidence: 0.91,
             activityType: activity,
             routeType: routeType,

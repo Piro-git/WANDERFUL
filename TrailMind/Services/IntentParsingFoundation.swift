@@ -107,7 +107,6 @@ struct LocalIntentParsingProvider: IntentParsingProvider, IntentParsingDebugProv
     }
 }
 
-#if DEBUG
 struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugProviding {
     enum ProviderError: LocalizedError, Equatable {
         case notConfigured
@@ -149,7 +148,7 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
         debugRecorder: IntentParserDebugRecorder = IntentParserDebugRecorder(),
         authorizer: (any RouteSessionAuthorizing)? = nil,
         dataLoader: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            try await URLSession.shared.data(for: request)
+            try await BoundedRouteHTTPTransport(session: .shared, limits: .standard, rejectsRedirects: true).data(for: request)
         }
     ) {
         self.baseURL = baseURL
@@ -324,7 +323,7 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
         let result = try await dataLoader(request)
         if mayRefresh,
            let response = result.1 as? HTTPURLResponse,
-           !(200..<300).contains(response.statusCode),
+           response.statusCode == 401,
            let envelope = try? JSONDecoder().decode(IntentAuthorizationErrorEnvelope.self, from: result.0),
            Self.isRefreshableSessionError(envelope.error.code)
         {
@@ -335,8 +334,7 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
     }
 
     private nonisolated static func isRefreshableSessionError(_ code: String) -> Bool {
-        code == "route_session_expired" || code == "route_session_exhausted" ||
-            code == "route_session_invalid"
+        code == "route_session_expired"
     }
 
     private func endpointURL(baseURL: URL?) -> URL? {
@@ -348,6 +346,16 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
         bundle: Bundle = .main,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> URL? {
+        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        return OwnerAccessConfiguration.load(bundle: bundle)?.baseURL
+        #else
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        if let owner = OwnerPhoneTestConfiguration.load(bundle: bundle) { return owner.baseURL }
+        #endif
+        if let configuration = WanderfulAppConfigurationSnapshot.configuration,
+           configuration.environment != .local {
+            return configuration.backend.configuredValue?.baseURL
+        }
         #if DEBUG
         if let environmentValue = environment[infoPlistBaseURLKey],
            let url = usableURL(environmentValue) {
@@ -359,9 +367,9 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
         }
         return URL(string: "http://127.0.0.1:3000")
         #else
-        _ = bundle
         _ = environment
-        return nil
+        return TrailMindBackendConfiguration.baseURL(bundle: bundle)
+        #endif
         #endif
     }
 
@@ -593,15 +601,19 @@ private extension URLError {
         }
     }
 }
-#endif
 
 enum IntentParsingProviderFactory {
     static func makeDefaultProvider(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         remoteIntentEnabled: Bool = TrailMindBackendConfiguration.remoteIntentEnabled()
     ) -> any IntentParsingProvider {
-        #if DEBUG
         guard remoteIntentEnabled else { return LocalIntentParsingProvider() }
+        // Shipping environments use the real service. A fallback cannot satisfy
+        // the research contract's proof of successful remote intent extraction.
+        #if DEBUG
+        if WanderfulAppConfigurationSnapshot.configuration?.environment != .local {
+            return RemoteAIIntentParsingProvider()
+        }
         switch debugParserMode(environment: environment) {
         case .localOnly:
             return LocalIntentParsingProvider()
@@ -610,8 +622,7 @@ enum IntentParsingProviderFactory {
         }
         #else
         _ = environment
-        _ = remoteIntentEnabled
-        return LocalIntentParsingProvider()
+        return RemoteAIIntentParsingProvider()
         #endif
     }
 
@@ -630,7 +641,6 @@ enum IntentParsingProviderFactory {
     #endif
 }
 
-#if DEBUG
 private struct RemoteIntentRequest: Encodable {
     let prompt: String
     let locale: String
@@ -790,7 +800,6 @@ private struct RemoteAdventureIntentResponse: Decodable {
         return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
-#endif
 
 enum IntentValidationError: LocalizedError, Equatable {
     case missingLoopStartOrRegion

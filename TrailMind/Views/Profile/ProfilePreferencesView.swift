@@ -3,6 +3,8 @@ import SwiftUI
 struct ProfilePreferencesView: View {
     @Environment(TrailTheme.self) private var theme
     @Environment(AppModel.self) private var appModel
+    @Environment(PremiumAccessStore.self) private var premiumAccess
+    @Environment(AppLanguageController.self) private var languageController
     @State private var isEditingTrailProfile = false
     @State private var isConfirmingReset = false
     @State private var isConfirmingDelete = false
@@ -76,7 +78,35 @@ struct ProfilePreferencesView: View {
                         accessibilityIdentifier: "profile.trailProfile.section"
                     )
                 } footer: {
-                    Text("Saved only on this iPhone. Remote sync is not active in V1.")
+                    Text("Stored on this iPhone. Relevant defaults are included when you allow online route planning.")
+                }
+
+                Section {
+                    if let account = WanderfulAccountAccess.make() {
+                        NavigationLink("Account") {
+                            AccountView(store: account.store, authenticator: account.authenticator)
+                        }
+                    } else {
+                        Text("Account sign-in is not available in this build.")
+                            .foregroundStyle(theme.secondaryText)
+                    }
+                } header: {
+                    Text("Account")
+                } footer: {
+                    Text("Saved routes and packing lists remain on this iPhone.")
+                }
+
+                Section {
+                    Picker("App language", selection: languageBinding) {
+                        ForEach(AppLanguage.allCases) { language in
+                            Text(language.displayName).tag(language)
+                        }
+                    }
+                    .accessibilityIdentifier("profile.language")
+                } header: {
+                    Text("Language")
+                } footer: {
+                    Text("Changing the app language does not change your routes, packing lists, purchases, or the language of your own prompts.")
                 }
 
                 Section {
@@ -102,6 +132,16 @@ struct ProfilePreferencesView: View {
                 } footer: {
                     Text(TrailMindAboutContent.dataFlowFooter)
                         .accessibilityIdentifier("about.data.footer")
+                }
+
+                if premiumAccess.isAvailable {
+                    Section {
+                        PremiumSubscriptionControlsView()
+                    } header: {
+                        Text("Premium subscription")
+                    } footer: {
+                        Text("Purchases and subscription management are handled by Apple.")
+                    }
                 }
 
                 Section {
@@ -172,10 +212,21 @@ struct ProfilePreferencesView: View {
                         )
                     }
                     .accessibilityIdentifier(TrailMindAboutAccessibilityID.helpAndSafety)
+
+                    if let termsURL = publicLinks.termsOfUse.url {
+                        Link(destination: termsURL) {
+                            destinationRow(
+                                title: "Terms of Use",
+                                detail: "Read Wanderful's published terms.",
+                                symbol: "doc.text.fill"
+                            )
+                        }
+                        .accessibilityIdentifier("about.termsOfUse")
+                    }
                 } header: {
                     Text("Help & legal")
                 } footer: {
-                    Text("Public web links appear only after reviewed HTTPS destinations are configured.")
+                    Text("Manage what you share and find help with your next route.")
                 }
 
                 Section {
@@ -232,6 +283,13 @@ struct ProfilePreferencesView: View {
         }
     }
 
+    private var languageBinding: Binding<AppLanguage> {
+        Binding(
+            get: { languageController.language },
+            set: { languageController.select($0) }
+        )
+    }
+
     private var profileHeader: some View {
         HStack(spacing: 16) {
             ZStack {
@@ -252,19 +310,19 @@ struct ProfilePreferencesView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Wanderful")
                     .font(.trailSection)
-                Text("A focused planner for real outdoor routes.")
+                Text("A focused planner for routed outdoor options.")
                     .font(.subheadline)
                     .foregroundStyle(theme.secondaryText)
             }
         }
         .padding(.vertical, 14)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Wanderful. A focused planner for real outdoor routes.")
+        .accessibilityLabel("Wanderful. A focused planner for routed outdoor options.")
         .accessibilityIdentifier(TrailMindAboutAccessibilityID.header)
     }
 
     private func sectionHeader(
-        _ title: String,
+        _ title: LocalizedStringKey,
         accessibilityIdentifier: String
     ) -> some View {
         Text(title)

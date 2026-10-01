@@ -59,39 +59,65 @@ struct RouteComparisonAccessibilitySummary: Equatable {
 
 struct RouteCard: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(AppLanguageController.self) private var languageController
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let route: TrailRoute
     let comparisonLabel: String?
     let qualityExplanations: [RouteQualityExplanation]
     let researchPresentation: ResearchRoutePresentation?
+    let stopPhoto: RouteCardStopPhoto?
     private let qualityPresentation: RouteQualityExplanationSet
 
     init(
         route: TrailRoute,
         comparisonLabel: String? = nil,
         qualityExplanations: [RouteQualityExplanation] = [],
-        researchPresentation: ResearchRoutePresentation? = nil
+        researchPresentation: ResearchRoutePresentation? = nil,
+        stopPhoto: RouteCardStopPhoto? = nil
     ) {
         self.route = route
         self.comparisonLabel = comparisonLabel
         self.qualityExplanations = qualityExplanations
         self.researchPresentation = researchPresentation
+        self.stopPhoto = stopPhoto
         qualityPresentation = HikingRouteQualityEngine().presentation(for: route)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             ZStack(alignment: .topLeading) {
-                RouteThumbnailView(route: route)
-                    .frame(height: 154)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .accessibilityHidden(true)
+                Group {
+                    if let stopPhoto {
+                        GeometryReader { proxy in
+                            HStack(spacing: 6) {
+                                routeThumbnail
+                                    .frame(width: proxy.size.width * 0.55)
+                                Image(uiImage: stopPhoto.image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: proxy.size.width * 0.45 - 6, height: 154)
+                                    .clipped()
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                    } else {
+                        routeThumbnail
+                    }
+                }
+                .frame(height: 154)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                 if !usesExpandedLayout, badgeLabel != nil {
                     comparisonBadge
                         .padding(12)
                 }
+            }
+
+            if let stopPhoto {
+                Text(stopPhotoCaption(stopPhoto.stopName))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if usesExpandedLayout, badgeLabel != nil {
@@ -131,7 +157,19 @@ struct RouteCard: View {
                 RouteCardEvidenceRow(items: cardEvidenceItems)
             }
         }
-        .trailCard()
+    }
+
+    private var routeThumbnail: some View {
+        RouteThumbnailView(route: route)
+            .frame(maxWidth: .infinity)
+            .frame(height: 154)
+            .accessibilityHidden(true)
+    }
+
+    private func stopPhotoCaption(_ name: String) -> String {
+        languageController.language == .german
+            ? "Foto eines Routenstopps: \(name)"
+            : "Photo of a route stop: \(name)"
     }
 
     @ViewBuilder
@@ -388,8 +426,8 @@ struct RouteThumbnailView: View {
 
                         markers(points: geometry.normalizedPoints, isLoop: geometry.isLoop, in: proxy.size)
                     }
-                    .padding(18)
                 }
+                .padding(18)
             } else {
                 RouteThumbnailPlaceholder()
             }

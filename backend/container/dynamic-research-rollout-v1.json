@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "status": "template_only_not_deployed",
+  "profile": "dynamic-research-v1",
+  "runtime": "existing backend/Dockerfile and container/start.js",
+  "releaseStage": "staging",
+  "appLane": "staging, normal build without owner flag",
+  "providerBudgetAuthorization": null,
+  "publicBaseURL": null,
+  "environmentExample": {
+    "TRAILMIND_RUNTIME_PROFILE": "dynamic-research-v1",
+    "TRAILMIND_RELEASE_STAGE": "staging",
+    "ROUTE_PROVIDER_ENABLED": "true",
+    "INTENT_PROVIDER_ENABLED": "true",
+    "LLM_FIRST_PLANNING_ENABLED": "true",
+    "DYNAMIC_RESEARCH_ENABLED": "true",
+    "DYNAMIC_WEB_RESEARCH_ENABLED": "true",
+    "AI_PROVIDER": "google",
+    "ROUTE_GLOBAL_LEASE_TTL_SECONDS": "180",
+    "ROUTE_GLOBAL_MAX_COST": "12",
+    "APP_ATTEST_INSTALLATION_MAX_COST": "12",
+    "ROUTE_GLOBAL_WINDOW_SECONDS": "86400",
+    "APP_ATTEST_INSTALLATION_WINDOW_SECONDS": "86400",
+    "ROUTE_GLOBAL_MAX_CONCURRENCY": "1",
+    "INTENT_GLOBAL_MAX_COST": "3",
+    "APP_ATTEST_INTENT_INSTALLATION_MAX_COST": "3",
+    "INTENT_GLOBAL_WINDOW_SECONDS": "86400",
+    "APP_ATTEST_INTENT_INSTALLATION_WINDOW_SECONDS": "86400",
+    "INTENT_GLOBAL_MAX_CONCURRENCY": "1"
+  },
+  "requiredOperatorValues": [
+    "DYNAMIC_RESEARCH_BUDGET_APPROVAL_ID",
+    "DYNAMIC_RESEARCH_DAILY_REQUEST_LIMIT",
+    "DYNAMIC_RESEARCH_USER_AGENT",
+    "TRAILMIND_STAGING_PROJECT_REF_SHA256",
+    "TRAILMIND_APPLICATION_SCHEMA",
+    "APP_ATTEST_RUNTIME_ROLE",
+    "APP_ATTEST_CONTROL_ROLE",
+    "APP_ATTEST_OPERATOR_ROLE",
+    "APP_ATTEST_APP_ID_PREFIX",
+    "APP_ATTEST_BUNDLE_ID",
+    "APP_ATTEST_ENVIRONMENT",
+    "APP_ATTEST_ALLOWED_VALIDATION_CATEGORIES",
+    "APP_ATTEST_ALLOWED_BUNDLE_VERSIONS"
+  ],
+  "requiredPlatformSecrets": [
+    "APP_ATTEST_DATABASE_URL",
+    "GOOGLE_API_KEY",
+    "GRAPHHOPPER_API_KEY"
+  ],
+  "requiredSecretFile": "verified database CA under /etc/secrets/*.crt",
+  "exactFalse": [
+    "OUTDOOR_EVIDENCE_PROVIDER_ENABLED",
+    "OUTDOOR_RESEARCH_PLANNING_ENABLED",
+    "OUTDOOR_ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
+    "ROUTE_ALLOW_INSECURE_LOCAL_ROUTING",
+    "INTENT_ALLOW_INSECURE_LOCAL_PARSING",
+    "INTENT_ALLOW_DETERMINISTIC_MOCK",
+    "OUTDOOR_RESEARCH_PLANNING_ALLOW_INSECURE_LOCAL",
+    "APP_ATTEST_ALLOW_IN_MEMORY"
+  ],
+  "allowanceContract": {
+    "dailyRequestLimit": "integer 1 through 10; each admitted request costs 12 durable route units",
+    "admission": "Every new admission requires durable App Attest replay, installation, global-cost and concurrency gates. Inflight work retains its existing deadline.",
+    "durability": "Daily cost windows survive restart and are never reset by an approval change.",
+    "units": "Request cost units, not currency. Explicit provider monetary limits remain required."
+  }
+}

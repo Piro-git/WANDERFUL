@@ -1,0 +1,5 @@
+// Generated from ResearchDeployment.json; no secrets belong here.
+STAGING_BACKEND_BASE_URL =
+STAGING_RESEARCH_ENABLED = false
+PRODUCTION_BACKEND_BASE_URL =
+PRODUCTION_RESEARCH_ENABLED = false

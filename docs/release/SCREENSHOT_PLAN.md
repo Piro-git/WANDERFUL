@@ -67,7 +67,7 @@ Create one record per asset:
 
 ## Localization
 
-Capture an English screenshot set for the Germany-first English-interface beta: interface copy, errors, and requested route instructions are English, while unqualified place searches are intentionally Germany-biased. German and English route prompts are supported, but that parser capability is not a German-localized interface. Do not upload German-localized screenshots until the full UI, metadata, permissions, safety copy, and support/privacy pages are localized and reviewed. The owner must approve the primary locale and territory before capture.
+Choose screenshot languages from the candidate build’s verified interface localization. Product scope is any supported, resolved place; do not imply a Harz/Germany-first restriction or worldwide coverage. Use pre-verified routes, and distinguish accepted prompt languages from interface localization. Do not upload German-localized screenshots until the full UI, metadata, permissions, safety copy, and support/privacy pages are localized and reviewed. The owner must approve the primary locale and territory before capture.
 
 ## Rejection criteria
 

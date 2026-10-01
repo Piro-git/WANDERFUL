@@ -1,0 +1,11 @@
+{
+  "configuration": "Release",
+  "sdk": "iphonesimulator26.5",
+  "architecture": "arm64",
+  "codeSigningAllowed": false,
+  "result": "BUILD SUCCEEDED",
+  "logSHA256": "cad37bc6e0c0f2d1b590632b07734d7e8f441a2aeb9d66c3d8ca00b36ae8ea3c",
+  "freshIsolatedBuild": true,
+  "physicalDeviceInstalled": false,
+  "skippedChecks": 0
+}

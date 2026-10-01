@@ -1,0 +1,11 @@
+{
+  "TrailMind/Services/WikimediaCommonsPhotoResolver.swift": "f1635e85514c753595574d84db58ae11dbbb7a187854f470450d34a0efecd3ce",
+  "TrailMind/Views/Profile/TrailMindAboutContent.swift": "e8cdb60ca677b2f7a0dd6b917ecc8b3d7de1dd0140761f2c542d31a0384c37e1",
+  "TrailMind/Views/Route/CommonsRoutePhotoGallery.swift": "100788a0fd125a65dc2b4ec60139c0581f31c6f159cf8faeac1bf38f4d0fabc8",
+  "TrailMindTests/PrivacyReleaseContentTests.swift": "a6e4a2b714b00a732fe2c95a5750b9995bd9bde22f800868638442448f84f70d",
+  "TrailMindTests/WikimediaCommonsPhotoResolverTests.swift": "c66a45fe6f55613cc9a94fc4050bf1f0b459b3cb3d9652169825737d23726446",
+  "TrailMindUITests/TrailMindCriticalPathUITests.swift": "ec28e59f5d0c546adf5c2b3dc5f576b6cb543556a6d693e18c408af96d4b9de4",
+  "scripts/release-contract.json": "3e1bf70db623d38aaa156bb10cdc7dd79e913c811b5baff8a01dd0ff2842ad18",
+  "scripts/test-release-artifact-verifier.sh": "e06dac77f1daf6ec632dce06ae8c4b207237b9733f0d90cbdd6baa7ff1b75a99",
+  "scripts/verify-release-artifact.sh": "116bcf0ba6d2031bf132378314d0b2a73f5573464ab9bf64e5e01ae5e1a50333"
+}

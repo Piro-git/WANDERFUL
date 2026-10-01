@@ -18,7 +18,8 @@ export const SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2 = Object.freeze([
   "006_outdoor_route_membership_point_index.sql",
   "007_routable_highlight_access_geography_index.sql",
   "009_supabase_postgis_isolated_runtime_read_contract.sql",
-  "010_bounded_outdoor_import_schema_provisioning.sql"
+  "010_bounded_outdoor_import_schema_provisioning.sql",
+  "011_pin_security_invoker_function_search_paths.sql"
 ]);
 
 export const MIGRATION_POLICIES = Object.freeze({

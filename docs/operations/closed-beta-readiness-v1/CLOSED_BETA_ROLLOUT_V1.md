@@ -1,5 +1,7 @@
 # Closed-Beta Rollout V1
 
+Scope note — 2026-09-10: This document preserves the earlier bounded regional pilot proposal and its evidence requirements. It is not the current product territory, an instruction to restart that rollout, or a live admission receipt. Current product scope is any supported, resolved place (see `AGENTS.md`); actual regional adapter boundaries and unproved gates remain unchanged.
+
 Status: **NO-GO — NO COHORT CREATED**
 
 Current backend source boundary:

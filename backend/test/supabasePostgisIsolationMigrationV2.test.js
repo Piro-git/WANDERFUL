@@ -36,7 +36,8 @@ describe("Supabase PostGIS isolation migration policy V2", () => {
       "006_outdoor_route_membership_point_index.sql",
       "007_routable_highlight_access_geography_index.sql",
       "009_supabase_postgis_isolated_runtime_read_contract.sql",
-      "010_bounded_outdoor_import_schema_provisioning.sql"
+      "010_bounded_outdoor_import_schema_provisioning.sql",
+      "011_pin_security_invoker_function_search_paths.sql"
     ]);
     assert.equal(
       createHash("sha256").update(await readFile(historicalMigrationURL)).digest("hex"),
@@ -91,6 +92,16 @@ describe("Supabase PostGIS isolation migration policy V2", () => {
     assert.match(pre, /SET search_path = pg_catalog, trailmind_app, pg_temp/);
     assert.match(pre, /shared_acl_snapshot/);
     assert.match(pre, /shared_acl_principal_snapshot/);
+    assert.match(pre, /managed-supabase-postgres-v1/);
+    assert.match(pre, /trailmind\.phase1_v2_project_ref/);
+    assert.match(pre, /trailmind\.phase1_v2_project_name/);
+    assert.match(pre, /trailmind\.phase1_v2_bootstrap_backend_pid/);
+    assert.match(pre, /role_record\.rolreplication/);
+    assert.match(pre, /role_record\.rolbypassrls/);
+    assert.doesNotMatch(
+      pre,
+      /role_record\.rolcreaterole\s+AND NOT role_record\.rolreplication/
+    );
     assert.match(pre, /namespace\.nspname IN \('public', 'extensions'\)/);
     assert.doesNotMatch(pre, /REVOKE TEMPORARY ON DATABASE/);
     assertBoundedLock(pre);
@@ -107,8 +118,11 @@ describe("Supabase PostGIS isolation migration policy V2", () => {
     ), "utf8");
     assert.match(post, /009_supabase_postgis_isolated_runtime_read_contract\.sql/);
     assert.match(post, /010_bounded_outdoor_import_schema_provisioning\.sql/);
+    assert.match(post, /011_pin_security_invoker_function_search_paths\.sql/);
     assert.doesNotMatch(post, /008_outdoor_research_runtime_read_contract\.sql/);
     assert.match(post, /session_user <> 'postgres' OR current_user <> 'postgres'/);
+    assert.match(post, /managed-supabase-postgres-v1/);
+    assert.match(post, /binding\.project_ref/);
     assert.match(post, /REVOKE USAGE, CREATE ON SCHEMA extensions FROM PUBLIC/);
     assert.match(post, /shared_acl_principal_snapshot/);
     assert.match(post, /V2 PostGIS isolation, ownership, or GIS write boundary is invalid/);

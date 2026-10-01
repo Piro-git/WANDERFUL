@@ -1,6 +1,6 @@
 # Privacy and Support URL Requirements V1
 
-Status: **both production URLs empty/UNKNOWN; native link surfaces implemented; public release blocked**
+Status: **validated fail-closed static package implemented; owner inputs, hosting, and both production URLs remain empty/UNKNOWN; public release blocked**
 Placeholders are forbidden in App Store Connect and shipping UI.
 
 Apple requires an iOS privacy-policy URL and requires the privacy policy to be easily accessible inside the app. A Support URL is required and must lead to actual contact information. Privacy and platform-version requirements rechecked 2026-08-28; App Review Guidelines rechecked 2026-08-26: [Manage app privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/), [App Review Guidelines 5.1.1](https://developer.apple.com/app-store/review/guidelines/), [platform version information](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information/).
@@ -25,7 +25,7 @@ The published page must:
 
 The app now exposes a native Privacy & data destination and conditionally shows an accessible external policy link only when `PublicAppLinks` accepts a canonical public HTTPS destination. Missing, placeholder, local, malformed, credential-bearing, query/fragment and non-canonical values fail closed. The tracked Production value remains empty, so there is no public policy link to claim or test yet.
 
-Source-derived, explicitly unhosted copy is in `PRIVACY_POLICY_CONTENT_DRAFT_V1.md`. It distinguishes the current empty-backend/disabled-feature state from future configured behavior and leaves legal controller, contact, jurisdiction, processors and retention as owner-required fields.
+The deployable static source package is in `public-site`. It contains privacy, support, privacy-choices, and terms templates plus a renderer/validator that rejects placeholders and incomplete owner inputs. `PRIVACY_POLICY_CONTENT_DRAFT_V1.md` remains the historical disabled-engine drafting baseline. The new public template covers the engine-enabled launch boundary but cannot be rendered for publication until the real controller, contact, processors, legal bases, retention, transfers, and host behavior are approved.
 
 ## Support page
 
@@ -44,7 +44,7 @@ The page must:
 - include applicable legal address/trader information and consumer disclosures selected by counsel;
 - remain reachable over valid HTTPS without authentication, redirects to unrelated products or broken contact controls.
 
-The app now exposes a native Help & safety destination and conditionally shows an accessible external support link through the same strict `PublicAppLinks` boundary. The tracked Production value remains empty. Source-derived, explicitly unhosted copy is in `SUPPORT_PAGE_CONTENT_DRAFT_V1.md`; it does not invent a contact, domain, operator or service level.
+The app now exposes a native Help & safety destination and conditionally shows an accessible external support link through the same strict `PublicAppLinks` boundary. The tracked Production value remains empty. The new `public-site/support/index.html` template does not invent a contact, domain, operator, phone, or service level and is visibly draft-only until a validated release render removes that state.
 
 ## Optional marketing URL
 
@@ -73,4 +73,4 @@ Run from a clean network before selecting the build:
 - App Store Connect metadata, in-app link and policy canonical URL are identical or intentionally redirected.
 - Archive a dated PDF/HTML or content hash for legal evidence without adding personal support submissions to git.
 
-No reachability test is authorized until the owner supplies the actual URLs. This package performs no deployment or external mutation.
+No reachability test is authorized until the owner supplies and separately authorizes the actual deployment. The local templates, validator regressions, HTML syntax, and responsive browser behavior can be tested without external mutation. The owner procedure is `DEPLOY_STATIC_LEGAL_SITE_V1.md`.

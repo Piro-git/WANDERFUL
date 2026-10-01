@@ -5,6 +5,7 @@ backend/.env.*
 backend/node_modules/
 .env
 .env.*
+OwnerPhoneTest.json
 
 # Xcode user state
 *.xcuserstate
@@ -18,3 +19,12 @@ backend/data/outdoor-evidence/
 backend/tmp/outdoor-import-*/
 backend/**/*.osm
 backend/**/*.osc
+
+# Local signing, deployment links and release evidence
+*.p8
+*.p12
+*.mobileprovision
+*.xcarchive/
+*.xcresult/
+*.bundle
+.vercel/

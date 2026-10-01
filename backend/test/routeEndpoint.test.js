@@ -10,6 +10,20 @@ import {
 } from "./routeTestSupport.js";
 
 describe("route endpoint", () => {
+  it("returns a stable distance-limit reason without calling the provider", async () => {
+    let calls = 0;
+    const endpoint = createRouteEndpoint({
+      env: developmentEnv(),
+      provider: { async route() { calls++; throw Error("Must not route"); } }
+    });
+    const result = await endpoint(pointToPointRequest({
+      points: [{ latitude: 51, longitude: 10 }, { latitude: 54, longitude: 10 }]
+    }));
+    assert.equal(result.statusCode, 400);
+    assert.equal(result.payload.error.code, "route_distance_limit");
+    assert.equal(calls, 0);
+  });
+
   it("returns a normalized successful response through a mocked provider", async () => {
     const expected = { provider: "graphhopper", ...graphHopperResponse() };
     const endpoint = createRouteEndpoint({

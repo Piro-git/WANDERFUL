@@ -1,0 +1,28 @@
+{
+  "result": "Failed",
+  "totalTestCount": 4,
+  "passedTests": 1,
+  "failedTests": 3,
+  "skippedTests": 0,
+  "startTime": 1790421776.358,
+  "finishTime": 1790421930.126,
+  "environment": {
+    "xcode": "26.5 (17F42)",
+    "simulator": "iOS 26.5 (23F77), iPhone 17 Pro, arm64",
+    "signing": "ad-hoc simulator; not distribution signing"
+  },
+  "failures": [
+    {
+      "test": "StoreKitCatalogTests/testCatalogLoadsTestOnlyWeeklyAndAnnualSubscriptions()",
+      "failure": "failed - StoreKit runtime gate failed: the bundled catalog was not exposed."
+    },
+    {
+      "test": "StoreKitTransactionLifecycleTests/testVerifiedRevocationIsProcessedAndFinishedWithoutGrantingAccess()",
+      "failure": "failed: caught error: \"notEntitled\""
+    },
+    {
+      "test": "StoreKitTransactionLifecycleTests/testVerifiedStoreKitPurchaseIsGrantedFinishedAndRemovedAfterExpiration()",
+      "failure": "failed: caught error: \"notEntitled\""
+    }
+  ]
+}

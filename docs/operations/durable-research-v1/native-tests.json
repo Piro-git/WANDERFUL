@@ -1,0 +1,12 @@
+{
+  "sourceCommit": "2b42bfa",
+  "passed": 114,
+  "failed": 0,
+  "result": "TEST EXECUTE SUCCEEDED",
+  "configuration": "Debug",
+  "simulatorOS": "iOS 26.5",
+  "signing": "ad_hoc",
+  "logSha256": "95f8eca4d795423f60a832256aa4b297f94144246131bc7937a67146ed522c05",
+  "xcresult": "/private/tmp/wanderful-durable-dd/Logs/Test/Test-TrailMind-2026.09.09_09-05-27-+0200.xcresult",
+  "releaseOnlyFactoryTestExecuted": false
+}

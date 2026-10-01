@@ -1174,7 +1174,8 @@ function createSyntheticCa(caPath, directory) {
     execFileSync("openssl", [
       "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
       "-days", "1", "-subj", "/CN=TrailMind Synthetic Preflight CA",
-      "-addext", "basicConstraints=critical,CA:TRUE",
+      "-config", fileURLToPath(new URL("../../config/synthetic-ca.cnf", import.meta.url)),
+      "-extensions", "synthetic_ca",
       "-keyout", keyPath, "-out", caPath
     ], { stdio: ["ignore", "ignore", "ignore"] });
     chmodSync(caPath, 0o600);

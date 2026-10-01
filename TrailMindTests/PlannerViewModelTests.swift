@@ -366,6 +366,44 @@ final class PlannerViewModelTests: XCTestCase {
         for _ in 0..<iterations { await Task.yield() }
     }
 
+    func testRoutingRejectionsKeepTheirActualReason() {
+        let distance = PlannerViewModel.userMessage(for: RoutingError.qualityRejected(.distanceOutsideEnvelope))
+        XCTAssertTrue(distance.contains("requested distance"))
+        XCTAssertFalse(distance.contains("loop"))
+        let quality = PlannerViewModel.userMessage(for: RoutingError.routeQualityRejected)
+        XCTAssertFalse(quality.contains("loop"))
+        XCTAssertTrue(PlannerViewModel.userMessage(for: RoutingError.loopRouteNotFound).contains("loop"))
+    }
+
+    func testResearchLoopRejectsLocalParserFallbackBeforeGeocodingOrRouting() async {
+        let prompts = [
+            "I am starting in Ilsenburg and would love a walk of roughly fifteen kilometres that brings me back there, with a couple of viewpoints along the way.",
+            "I'd like to stretch my legs above Ilsenburg and be back where I started after about 12 km.",
+            "Von Ilsenburg aus möchte ich heute zu Aussichtspunkten wandern und nach ungefähr 15 km wieder dort ankommen."
+        ]
+        for prompt in prompts {
+            let geocoder = StubGeocodingService(coordinates: ["Ilsenburg": start])
+            let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .loop))
+            let intent = makeIntent(rawPrompt: prompt, parserSource: .localRuleBased,
+                routeType: .loop, end: nil, distance: 15)
+            let viewModel = PlannerViewModel(
+                intentParsingProvider: FixedIntentParsingProvider(intent: intent),
+                geocodingService: geocoder,
+                routingCoordinator: router,
+                researchFeatureAvailable: { true }
+            )
+            viewModel.startPlanning(prompt: prompt)
+            await viewModel.generate()
+            guard case let .recoverableError(recovery) = viewModel.state else {
+                return XCTFail("Local parsing must not become a successful AI itinerary.")
+            }
+            XCTAssertEqual(recovery.kind, .intentUnavailable)
+            XCTAssertEqual(recovery.stage, .understanding)
+            XCTAssertTrue(geocoder.requests.isEmpty)
+            XCTAssertTrue(router.intents.isEmpty)
+        }
+    }
+
     func testIdleSubmitGenerationProducesOneVerifiedSuggestion() async throws {
         let geocoder = StubGeocodingService(coordinates: ["Ilsenburg": start, "Schierke": end])
         let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .pointToPoint))
@@ -395,6 +433,58 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(router.intents.first?.parsedIntent?.rawPrompt, "Ilsenburg nach Schierke")
         XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent.rawPrompt, "Ilsenburg nach Schierke")
         XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.localFallbackUsed, true)
+    }
+
+    func testResolvedEndpointsBeyondBackendLimitNeverReachRouter() async {
+        let geocoder = StubGeocodingService(coordinates: [
+            "Ilsenburg": start,
+            "Schierke": Coordinate(latitude: 48.1, longitude: 11.5)
+        ])
+        let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .pointToPoint))
+        let viewModel = makeViewModel(geocodingService: geocoder, routingCoordinator: router)
+        viewModel.startPlanning(prompt: "Ilsenburg nach Schierke")
+        await viewModel.generate()
+        guard case .recoverableError = viewModel.state else {
+            return XCTFail("An unsupported resolved distance must ask for corrected places before routing")
+        }
+        XCTAssertTrue(router.intents.isEmpty)
+        XCTAssertTrue(PlannerViewModel.userMessage(for: GeocodingServiceError.endpointsTooFar).contains("200 km"))
+    }
+
+    func testBerlinContextAndManualDestinationSelectionRespectRouteLimit() async throws {
+        let prompt = "Plan a hike from Brandenburger Tor, Berlin to Siegessäule, Berlin."
+        let startQuery = "Brandenburger Tor, Berlin"
+        let endQuery = "Siegessäule, Berlin"
+        let origin = locationCandidate(id: "berlin-origin", name: "Brandenburger Tor",
+            displayName: startQuery, coordinate: Coordinate(latitude: 52.5163, longitude: 13.3777), rank: 0)
+        let far = locationCandidate(id: "synthetic-far", name: "Siegessäule",
+            displayName: endQuery, coordinate: Coordinate(latitude: 48.1, longitude: 11.5), rank: 0)
+        let near = locationCandidate(id: "synthetic-near", name: "Siegessäule",
+            displayName: endQuery, coordinate: Coordinate(latitude: 52.5145, longitude: 13.3501), rank: 1)
+        for selection in [far, near] {
+            let resolver = PolicyLocationResolver(candidatesByQuery: [startQuery: [origin], endQuery: [far, near]])
+            let router = StubRoutingCoordinator(route: verifiedRoute(routeType: .pointToPoint))
+            let model = PlannerViewModel(
+                intentParsingProvider: FixedIntentParsingProvider(intent: makeIntent(
+                    rawPrompt: prompt, routeType: .pointToPoint, start: startQuery, end: endQuery, distance: nil)),
+                locationResolver: resolver, routingCoordinator: router)
+            model.startPlanning(prompt: prompt)
+            await model.generate()
+            XCTAssertNotNil(model.currentClarification)
+            XCTAssertEqual(resolver.contexts.map(\.originalQuery), [startQuery, endQuery])
+            XCTAssertEqual(resolver.contexts.last?.originalPrompt, prompt)
+            XCTAssertEqual(resolver.contexts.last?.preferredCoordinate, origin.coordinate)
+            model.submitClarification(.locationCandidate(selection))
+            await model.generate()
+            if selection.id == far.id {
+                XCTAssertTrue(router.intents.isEmpty, "Manual confirmation must not bypass the backend limit")
+                guard case .recoverableError = model.state else { return XCTFail("Unsupported endpoint must remain recoverable") }
+            } else {
+                XCTAssertEqual(router.intents.count, 1)
+                XCTAssertEqual(router.intents.first?.end, near.coordinate)
+                guard case .suggestionsReady = model.state else { return XCTFail("Corrected Berlin selection must reach routing") }
+            }
+        }
     }
 
     func testProfileFillsOnlyRawPromptFieldsThatWereOmitted() async throws {
@@ -603,7 +693,7 @@ final class PlannerViewModelTests: XCTestCase {
         XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent.rawPrompt, prompt)
     }
 
-    func testClarificationMergesOnlyTargetFieldAndPreservesOriginalIntent() async throws {
+    func testClarificationPreservesIntentWhenHardExclusionsBlockStandardRouting() async throws {
         let prompt = "Bike 42 km from Ilsenburg with views and no major roads"
         let intent = makeIntent(
             rawPrompt: prompt,
@@ -639,26 +729,30 @@ final class PlannerViewModelTests: XCTestCase {
         viewModel.submitClarification(.text("Schierke"))
         await viewModel.generate()
 
-        let routedIntent = try XCTUnwrap(router.intents.first?.parsedIntent)
-        XCTAssertEqual(routedIntent.rawPrompt, prompt)
-        XCTAssertEqual(routedIntent.activityType, .biking)
-        XCTAssertEqual(routedIntent.routeType, .pointToPoint)
-        XCTAssertEqual(routedIntent.startLocationQuery, "Ilsenburg")
-        XCTAssertEqual(routedIntent.endLocationQuery, "Schierke")
-        XCTAssertNil(routedIntent.regionQuery)
-        XCTAssertEqual(routedIntent.targetDistanceKm, 42)
-        XCTAssertEqual(routedIntent.targetDurationMinutes, 180)
-        XCTAssertEqual(routedIntent.difficulty, .challenging)
-        XCTAssertEqual(routedIntent.desiredFeatures, [.viewpoint, .forest])
-        XCTAssertEqual(routedIntent.avoidFeatures, [.majorRoads, .repeatedPath])
-        XCTAssertEqual(routedIntent.transportMode, .cycling)
-
-        guard case let .suggestionsReady(success) = viewModel.state else {
-            return XCTFail("Clarified request must succeed.")
+        // The baseline's hard-exclusion gate correctly refuses an unverified
+        // standard route. Inspect the preserved clarified intent at that boundary.
+        guard case let .recoverableError(recovery) = viewModel.state else {
+            return XCTFail("Unverifiable hard exclusions must remain recoverable.")
         }
-        XCTAssertEqual(success.originalPrompt, prompt)
-        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.intent, routedIntent)
-        XCTAssertEqual(success.suggestions.first?.route.intentDebugMetadata?.parserDebugInfo, debugInfo)
+        let prepared = try XCTUnwrap(recovery.preparedAttempt)
+        let clarifiedIntent = prepared.validatedIntent
+        XCTAssertEqual(clarifiedIntent.rawPrompt, prompt)
+        XCTAssertEqual(clarifiedIntent.activityType, .biking)
+        XCTAssertEqual(clarifiedIntent.routeType, .pointToPoint)
+        XCTAssertEqual(clarifiedIntent.startLocationQuery, "Ilsenburg")
+        XCTAssertEqual(clarifiedIntent.endLocationQuery, "Schierke")
+        XCTAssertNil(clarifiedIntent.regionQuery)
+        XCTAssertEqual(clarifiedIntent.targetDistanceKm, 42)
+        XCTAssertEqual(clarifiedIntent.targetDurationMinutes, 180)
+        XCTAssertEqual(clarifiedIntent.difficulty, .challenging)
+        XCTAssertEqual(clarifiedIntent.desiredFeatures, [.viewpoint, .forest])
+        XCTAssertEqual(clarifiedIntent.avoidFeatures, [.majorRoads, .repeatedPath])
+        XCTAssertEqual(clarifiedIntent.transportMode, .cycling)
+
+        XCTAssertEqual(recovery.originalPrompt, prompt)
+        XCTAssertEqual(recovery.kind, .malformedIntent)
+        XCTAssertEqual(prepared.parserDebugInfo, debugInfo)
+        XCTAssertTrue(router.intents.isEmpty)
     }
 
     func testMalformedValidatedIntentIsRecoverableWithoutGeocodingOrRouting() async {
@@ -1067,9 +1161,9 @@ final class PlannerViewModelTests: XCTestCase {
         }
         let metadata = try XCTUnwrap(success.suggestions.first?.route.planningMetadata)
         XCTAssertEqual(metadata.desiredFeatures, [.viewpoint, .forest, .quiet])
-        XCTAssertEqual(metadata.requestedFeatureSummary, "Requested: Views, Forest, Quiet route")
+        XCTAssertEqual(metadata.requestedFeatureSummary, "Preferences: Views, Forest, Quiet route")
         XCTAssertEqual(metadata.requestedDifficultySummary, "Requested: Easy")
-        XCTAssertTrue(metadata.requestedFeatureSummary?.hasPrefix("Requested:") == true)
+        XCTAssertTrue(metadata.requestedFeatureSummary?.hasPrefix("Preferences:") == true)
         XCTAssertTrue(success.suggestions.first?.route.isVerifiedRoutedResult == true)
     }
 
@@ -1489,6 +1583,20 @@ final class PlannerViewModelTests: XCTestCase {
         }
     }
 
+    func testPersonalizedExampleKeepsChosenPlaceSeparateFromPreferences() async throws {
+        let example = HomeRouteExample(
+            id: "personalized", title: "Your hike",
+            prompt: "Plan a 12 km hiking loop with forest and quiet paths",
+            symbol: "figure.hiking"
+        )
+        let prompt = try XCTUnwrap(example.completedPrompt(start: "  Salzburg  ", destination: ""))
+        let parsed = try await LocalIntentParsingProvider().parseIntent(rawPrompt: prompt)
+        XCTAssertEqual(parsed.startLocationQuery, "Salzburg")
+        XCTAssertEqual(parsed.routeType, .loop)
+        XCTAssertEqual(parsed.targetDistanceKm, 12)
+        XCTAssertTrue(parsed.desiredFeatures.contains(.forest))
+    }
+
     func testEveryHomeExampleUsesTheSameRealCoordinator() async {
         let coordinates = [
             "Ilsenburg": start,
@@ -1518,7 +1626,15 @@ final class PlannerViewModelTests: XCTestCase {
                 routingCoordinator: router
             )
 
-            viewModel.startPlanning(prompt: example.prompt)
+            XCTAssertNil(example.completedPrompt(start: "  ", destination: ""))
+            if example.needsDestination {
+                XCTAssertNil(example.completedPrompt(start: "Ilsenburg", destination: "  "))
+            }
+            guard let prompt = example.completedPrompt(start: "Ilsenburg", destination: "Schierke") else {
+                XCTFail("User-selected locations should complete the example")
+                continue
+            }
+            viewModel.startPlanning(prompt: prompt)
             await viewModel.generate()
 
             XCTAssertEqual(router.intents.count, 1, "Example did not reach routing: \(example.title)")
@@ -1526,7 +1642,7 @@ final class PlannerViewModelTests: XCTestCase {
                 XCTFail("Example did not reach verified suggestions: \(example.title)")
                 continue
             }
-            XCTAssertEqual(success.originalPrompt, example.prompt)
+            XCTAssertEqual(success.originalPrompt, prompt)
             XCTAssertTrue(success.suggestions.allSatisfy { $0.route.isVerifiedRoutedResult })
         }
     }

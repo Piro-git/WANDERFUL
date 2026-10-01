@@ -174,7 +174,10 @@ const OPERATOR_SQL_FILES = Object.freeze({
 const KNOWN_MIGRATION_FILES = Object.freeze([
   ...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.slice(0, 7),
   "008_outdoor_research_runtime_read_contract.sql",
-  ...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.slice(7)
+  ...SUPABASE_POSTGIS_ISOLATION_MIGRATIONS_V2.slice(7),
+  // Accounts remain disabled in this staging lane, but their tracked migration
+  // must be acknowledged by the fail-closed candidate-inventory check.
+  "012_apple_accounts.sql"
 ]);
 const DEPENDENCY_FILES = Object.freeze([
   "backend/package-lock.json",

@@ -1,0 +1,99 @@
+{
+  "publication": "local_only_no_image_bytes_in_this_branch",
+  "notice": "These screenshot files remain in the private local integration handoff and are not available from this repository.",
+  "tests": [
+    {
+      "attachments": [
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Packing list \u00b7 en_0_EB2707C1-BA30-4B4B-BF45-48ADB3B2A6DE.png",
+          "timestamp": 1790689915.708,
+          "localOnlyFileName": "148BF942-25CD-4B7E-8BEB-4CF5ED3ED3BD.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Packing list \u00b7 de_0_C9E0C009-B609-498F-9A3F-48BA7AC5EBAA.png",
+          "timestamp": 1790689897.287,
+          "localOnlyFileName": "E2C5C563-DFCE-475C-B9B9-9817BA02F7CE.png",
+          "publication": "not_uploaded_local_evidence_only"
+        }
+      ],
+      "testIdentifier": "DynamicEvidenceUITests/testPreparationUsesSelectedLanguageAndPackingControls()",
+      "testIdentifierURL": "test://com.apple.xcode/TrailMind/TrailMindUITests/DynamicEvidenceUITests/testPreparationUsesSelectedLanguageAndPackingControls"
+    },
+    {
+      "attachments": [
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Revised route \u2014 offline fixture_0_8D604A10-A95B-4A72-A9AE-A3F0CAD86E9F.png",
+          "timestamp": 1790689930.773,
+          "localOnlyFileName": "B58540D7-3334-44A4-AD44-D09FED227FB8.png",
+          "publication": "not_uploaded_local_evidence_only"
+        }
+      ],
+      "testIdentifier": "DynamicEvidenceUITests/testRevisionKeepsExcludedStopOutOfFinalListAndPreservesOriginalResearch()",
+      "testIdentifierURL": "test://com.apple.xcode/TrailMind/TrailMindUITests/DynamicEvidenceUITests/testRevisionKeepsExcludedStopOutOfFinalListAndPreservesOriginalResearch"
+    },
+    {
+      "attachments": [
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Stay source details \u2014 synthetic fixture_0_F700EF22-DDB2-47ED-97A8-F53ACFD22467.png",
+          "timestamp": 1790689938.599,
+          "localOnlyFileName": "6C097C69-D350-4A8C-B523-F4A7780AF83A.png",
+          "publication": "not_uploaded_local_evidence_only"
+        }
+      ],
+      "testIdentifier": "RouteStaysUITests/testCandidateSourcesAndMapAreDiscoverableWithoutPermissionClaims()",
+      "testIdentifierURL": "test://com.apple.xcode/TrailMind/TrailMindUITests/RouteStaysUITests/testCandidateSourcesAndMapAreDiscoverableWithoutPermissionClaims"
+    },
+    {
+      "attachments": [
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Stays unavailable_0_A5E0646C-8FF5-4D71-9145-F8FCD6F0FFE4.png",
+          "timestamp": 1790689948.467,
+          "localOnlyFileName": "66191C6F-8FBF-41E0-A20C-4F29ECD16AAB.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Stays empty_0_FD41B468-AC88-48B5-AD25-45EEA01D6351.png",
+          "timestamp": 1790689943.719,
+          "localOnlyFileName": "EC57CF93-5B18-490C-88F6-BF30F936159D.png",
+          "publication": "not_uploaded_local_evidence_only"
+        }
+      ],
+      "testIdentifier": "RouteStaysUITests/testEmptyAndOfflineStatesDoNotOfferInventedPlaces()",
+      "testIdentifierURL": "test://com.apple.xcode/TrailMind/TrailMindUITests/RouteStaysUITests/testEmptyAndOfflineStatesDoNotOfferInventedPlaces"
+    },
+    {
+      "attachments": [
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "German stays \u2014 accessibility XXXL_0_82757D7F-E0C8-4D20-86F1-368EC9E3D72C.png",
+          "timestamp": 1790689958.354,
+          "localOnlyFileName": "FA6158FA-14B1-4590-801E-05E1666A6CB2.png",
+          "publication": "not_uploaded_local_evidence_only"
+        }
+      ],
+      "testIdentifier": "RouteStaysUITests/testGermanAtLargestDynamicTypeAndStaleEvidence()",
+      "testIdentifierURL": "test://com.apple.xcode/TrailMind/TrailMindUITests/RouteStaysUITests/testGermanAtLargestDynamicTypeAndStaleEvidence"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Sign in with Apple: required external configuration
+
+This branch adds no Developer Portal, App Store Connect, Supabase, or deployment changes. Apple does **not** generally require an account for App Review; this is an optional product feature and must not gate route planning.
+
+Before enabling the feature, the account owner must: enable the Sign in with Apple capability for each shipped App ID (`com.trailmind.app` and any distinct staging ID), regenerate provisioning profiles, create and securely store a Sign in with Apple key, and configure the backend's Apple client IDs. The backend must generate the Apple client-secret JWT from the Team ID, Key ID, and private key in its secret manager; never ship it to iOS. Configure the server to exchange authorization codes at `/auth/token`, encrypt refresh tokens at rest, and call `/auth/revoke` before deleting app data.
+
+The client sends a high-entropy nonce to Apple and the server validates the matching nonce claim. Apple's published JWKS contains RSA signing keys, so the server validates Apple ID tokens as RS256; the developer-generated Apple client-secret JWT is a separate ES256 credential and never reaches iOS. Account deletion requests require fresh Apple authentication, revoke the stored Apple token successfully, delete only defined Wanderful server data, invalidate all sessions, then remove the Keychain session. Local saved routes and packing lists remain local and require a separate user action.

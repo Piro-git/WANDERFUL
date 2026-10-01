@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import {
@@ -78,10 +79,10 @@ const GIT_ATTESTATION_DIGEST = v4GitCandidateAttestationDigest({
   candidateCommit: CANDIDATE
 });
 const PROOF_AS_OF = "2026-08-18T09:30:00.000Z";
-const PUBLISHER = new URL(
+const PUBLISHER = fileURLToPath(new URL(
   "../scripts/publish-outdoor-adventure-targeted-live-route-quality-proof-v4.js",
   import.meta.url
-).pathname;
+));
 
 describe("V4 durable identity and future summary publication", () => {
   it("atomically writes a permission-bound artifact and rehydrates it", async () => {

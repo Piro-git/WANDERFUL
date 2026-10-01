@@ -61,7 +61,8 @@ describe("Supabase PostGIS isolation V2 disposable PostgreSQL contract", {
       "006_outdoor_route_membership_point_index.sql",
       "007_routable_highlight_access_geography_index.sql",
       "009_supabase_postgis_isolated_runtime_read_contract.sql",
-      "010_bounded_outdoor_import_schema_provisioning.sql"
+      "010_bounded_outdoor_import_schema_provisioning.sql",
+      "011_pin_security_invoker_function_search_paths.sql"
     ]);
     const extension = await admin.query(`
       SELECT namespace.nspname AS schema_name,

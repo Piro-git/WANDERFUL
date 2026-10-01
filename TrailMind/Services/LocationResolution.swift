@@ -357,6 +357,19 @@ enum LocationSemanticClassifier {
 }
 
 enum LocationResolutionPolicy {
+    // Matches the backend's point-to-point straight-line request limit.
+    static let maximumEndpointDistanceMeters = 200_000.0
+
+    static func endpointsExceedRouteLimit(start: Coordinate, end: Coordinate) -> Bool {
+        let radians = Double.pi / 180
+        let latitudeDelta = (end.latitude - start.latitude) * radians
+        let longitudeDelta = (end.longitude - start.longitude) * radians
+        let haversine = pow(sin(latitudeDelta / 2), 2)
+            + cos(start.latitude * radians) * cos(end.latitude * radians)
+            * pow(sin(longitudeDelta / 2), 2)
+        let distance = 6_371_000 * 2 * atan2(sqrt(haversine), sqrt(max(0, 1 - haversine)))
+        return distance > maximumEndpointDistanceMeters
+    }
     /// Auto-resolution requires both an absolute score and separation from the
     /// runner-up. A close tie is intentionally treated as a useful clarification.
     static let automaticResolutionThreshold = 0.72
@@ -379,6 +392,19 @@ enum LocationResolutionPolicy {
         let ranked = rank(candidates: candidates, for: context)
         guard let leading = ranked.first else {
             return .noResults(query: cleanQuery)
+        }
+
+        if context.routeType == .pointToPoint,
+           context.requestedField == .endLocationQuery,
+           let start = context.preferredCoordinate,
+           endpointsExceedRouteLimit(start: start, end: leading.candidate.coordinate) {
+            return .needsClarification(LocationClarification(
+                query: context.originalQuery,
+                question: "Which place should be the destination?",
+                supportingText: "The selected places are more than 200 km apart. Check the destination or choose a closer starting point.",
+                candidates: Array(ranked.map(\.candidate).prefix(maximumClarificationCandidates)),
+                allowsFreeText: true
+            ))
         }
 
         if !leading.candidate.semanticKind.isUsableRouteAnchor {
@@ -590,7 +616,7 @@ final class LocationResolutionService: LocationResolving {
                 return .unavailable
             case .emptyQuery:
                 return .noResults(query: context.originalQuery)
-            case .endpointsTooClose, .needsClarification:
+            case .endpointsTooClose, .endpointsTooFar, .needsClarification:
                 throw error
             }
         }

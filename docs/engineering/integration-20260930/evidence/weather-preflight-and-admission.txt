@@ -1,0 +1,9 @@
+ ready
+-------
+ t
+(1 row)
+
+ frozen_manifest_accepts_weather_grants
+----------------------------------------
+ f
+(1 row)

@@ -1,0 +1,20 @@
+{
+  "base": "83a99c0d9f4dc6e457437eca2a29f306d3b8233a",
+  "backend": {
+    "command": "node --test backend/test/dynamicResearch*.test.js",
+    "passed": 183,
+    "failed": 0
+  },
+  "ios": {
+    "initialFocusedPassed": 26,
+    "packingAfterLocalizationFixPassed": 9,
+    "finalTestBuild": "succeeded",
+    "finalTestExecution": "blocked: simulator Shutdown and ENOSPC; coordinator instructed no retry",
+    "finalUIAcceptance": false,
+    "iPhonePersistenceAcceptance": false
+  },
+  "liveMetadata": "live-metadata.json",
+  "liveRoutedPhotoAcceptance": false,
+  "privacyPatchReviewed": "2995fe1",
+  "privacyPatchBlindlyCherryPicked": false
+}

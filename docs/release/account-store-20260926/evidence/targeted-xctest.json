@@ -1,0 +1,44 @@
+{
+  "title": "Test - TrailMind",
+  "result": "Failed",
+  "totalTestCount": 43,
+  "passedTests": 40,
+  "failedTests": 3,
+  "skippedTests": 0,
+  "startTime": 1790421356.585,
+  "finishTime": 1790421730.421,
+  "suites": {
+    "AccountAuthenticationTests": {
+      "passed": 18,
+      "failed": 0
+    },
+    "PremiumAccessTests": {
+      "passed": 21,
+      "failed": 0
+    },
+    "StoreKitCatalogTests": {
+      "passed": 1,
+      "failed": 1
+    },
+    "StoreKitTransactionLifecycleTests": {
+      "passed": 0,
+      "failed": 2
+    }
+  },
+  "failures": [
+    {
+      "testName": "testCatalogLoadsTestOnlyWeeklyAndAnnualSubscriptions()",
+      "failureText": "failed - StoreKit runtime gate failed: the bundled catalog was not exposed."
+    },
+    {
+      "testName": "testVerifiedRevocationIsProcessedAndFinishedWithoutGrantingAccess()",
+      "failureText": "failed: caught error: \"notEntitled\""
+    },
+    {
+      "testName": "testVerifiedStoreKitPurchaseIsGrantedFinishedAndRemovedAfterExpiration()",
+      "failureText": "failed: caught error: \"notEntitled\""
+    }
+  ],
+  "environment": "Xcode 26.5 (17F42), iPhone 17 Pro Simulator iOS 26.5 (23F77)",
+  "scope": "Local XCTest; not Apple Sandbox, real Apple credentials or physical-device acceptance."
+}

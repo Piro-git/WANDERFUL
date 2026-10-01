@@ -53,3 +53,7 @@ Read in order:
 2. `DEPLOYMENT_AND_ROLLBACK_V1.md`
 3. `OUTAGE_DRAIN_AND_COLD_START_V1.md`
 4. `MONITORING_AND_ALERTING_V1.md`
+
+A separately opt-in normal-app research profile is documented in
+`../../durable-research-v1/DEPLOYMENT.md`. It does not turn this historical
+provider-off Render template into a live deployment receipt.

@@ -46,6 +46,7 @@ struct BackendOutdoorAdventurePlanningClientV1:
     private let adapter: ResearchGuidedRoutingContractAdapterV1
     private let adapterV2: ResearchGuidedRoutingContractAdapterV2
     private let usesRoutableHighlightAccessV2: Bool
+    private let usesResearchLedPlanning: Bool
     private let responseValidationDidFinish:
         @Sendable (Duration) -> Void
 
@@ -57,6 +58,7 @@ struct BackendOutdoorAdventurePlanningClientV1:
         adapter: ResearchGuidedRoutingContractAdapterV1? = nil,
         adapterV2: ResearchGuidedRoutingContractAdapterV2? = nil,
         usesRoutableHighlightAccessV2: Bool = false,
+        usesResearchLedPlanning: Bool = false,
         responseValidationDidFinish:
             @escaping @Sendable (Duration) -> Void = { _ in }
     ) {
@@ -72,6 +74,7 @@ struct BackendOutdoorAdventurePlanningClientV1:
             limits: limits.routeTransportLimits
         )
         self.usesRoutableHighlightAccessV2 = usesRoutableHighlightAccessV2
+        self.usesResearchLedPlanning = usesResearchLedPlanning
         self.responseValidationDidFinish =
             responseValidationDidFinish
     }
@@ -82,7 +85,7 @@ struct BackendOutdoorAdventurePlanningClientV1:
         try Task.checkCancellation()
         guard let baseURL,
               let endpoint = URL(
-                string: "api/outdoor-research/plan-route",
+                string: usesResearchLedPlanning ? "api/llm-plan-route" : "api/outdoor-research/plan-route",
                 relativeTo: baseURL
               )?.absoluteURL
         else {
@@ -95,10 +98,11 @@ struct BackendOutdoorAdventurePlanningClientV1:
             encoder.outputFormatting = [.sortedKeys]
             if usesRoutableHighlightAccessV2 {
                 body = try encoder.encode(
-                    OutdoorAdventurePlanningRequestV2(intent: request.intent)
+                    OutdoorAdventurePlanningRequestV2(intent: request.intent,
+                        planningContext: usesResearchLedPlanning ? request.planningContext ?? .unspecified : nil)
                 )
             } else {
-                body = try encoder.encode(request)
+                body = try encoder.encode(OutdoorAdventurePlanningRequestV1(intent: request.intent))
             }
         } catch {
             throw OutdoorAdventurePlanningClientFailure.invalidRequest
@@ -294,6 +298,30 @@ enum OutdoorAdventurePlanningClientFactory {
         authorizer: (any RouteSessionAuthorizing)? = nil,
         limits: OutdoorAdventurePlanningTransportLimitsV1 = .standard
     ) -> any OutdoorAdventurePlanningClientV1 {
+        makeConfigured(configuration: configuration, bundle: .main, session: session,
+                       authorizer: authorizer, limits: limits)
+    }
+
+    private static func makeConfigured(
+        configuration: WanderfulAppConfiguration?,
+        bundle: Bundle,
+        session: URLSession,
+        authorizer: (any RouteSessionAuthorizing)?,
+        limits: OutdoorAdventurePlanningTransportLimitsV1
+    ) -> any OutdoorAdventurePlanningClientV1 {
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        if let configuration, configuration.environment == .local {
+            guard let owner = OwnerPhoneTestConfiguration.loadForResearch(
+                bundle: bundle, configuration: configuration
+            ) else { return NoOpOutdoorAdventurePlanningClientV1() }
+            return BackendOutdoorAdventurePlanningClientV1(
+                baseURL: owner.baseURL, session: session,
+                authorizer: authorizer ?? OwnerPhoneTestAuthorizer(configuration: owner),
+                limits: limits, usesRoutableHighlightAccessV2: true,
+                usesResearchLedPlanning: true
+            )
+        }
+        #endif
         guard let configuration,
               configuration.features.researchGuidedPlanning,
               let baseURL = configuration.backend.configuredValue?.baseURL
@@ -306,7 +334,8 @@ enum OutdoorAdventurePlanningClientFactory {
             authorizer: authorizer,
             limits: limits,
             usesRoutableHighlightAccessV2:
-                configuration.features.routableHighlightAccess
+                configuration.features.routableHighlightAccess,
+            usesResearchLedPlanning: configuration.features.routableHighlightAccess
         )
     }
 
@@ -320,8 +349,9 @@ enum OutdoorAdventurePlanningClientFactory {
             infoDictionary: bundle.infoDictionary ?? [:],
             signedIdentity: WanderfulSignedLaneIdentity.value
         )
-        return makeDefault(
+        return makeConfigured(
             configuration: configuration,
+            bundle: bundle,
             session: session,
             authorizer: authorizer,
             limits: limits

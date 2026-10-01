@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    { "id": "useful-three-stop-loop", "expected": "routed" },
+    { "id": "point-to-point", "expected": "routed" },
+    { "id": "hallucinated-place", "expectedRejection": "geocoder_low_confidence" },
+    { "id": "ambiguous-name", "expectedRejection": "geocoder_ambiguous" },
+    { "id": "unreachable-stop", "expectedRejection": "waypoint_not_reached" },
+    { "id": "reordered-stops", "expectedRejection": "waypoint_order_invalid" },
+    { "id": "excessive-detour", "expectedRejection": "target_distance_exceeded" },
+    { "id": "bad-snapping", "expectedRejection": "snap_distance_exceeded" },
+    { "id": "backtracking", "expectedRejection": "excessive_backtracking" },
+    { "id": "malformed-statistics", "expectedRejection": "malformed_statistics" },
+    { "id": "inconsistent-statistics", "expectedRejection": "statistics_inconsistent" },
+    { "id": "malformed-geometry", "expectedRejection": "malformed_geometry" },
+    { "id": "wrong-activity-profile", "expectedRejection": "invalid_schema" },
+    { "id": "unverified-access", "expectedRejection": "access_unverified" },
+    { "id": "unverified-difficulty", "expectedRejection": "difficulty_unverified" },
+    { "id": "empty-llm-output", "expectedRejection": "invalid_schema" },
+    { "id": "provider-failure", "expectedRejection": "provider_failed" },
+    { "id": "provider-timeout", "expectedRejection": "provider_timed_out" },
+    { "id": "duplicate-candidate", "expectedRejection": "duplicate_candidate" },
+    { "id": "duplicate-route", "expectedRejection": "duplicate_route" },
+    { "id": "fallback-exhaustion", "expected": "no_viable_route" }
+  ]
+}

@@ -1,0 +1,289 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project TrailMind.xcodeproj -scheme TrailMind -configuration Debug -destination "platform=iOS Simulator,id=A9194E37-28A7-450E-9F30-95D0145D0486" -derivedDataPath /private/tmp/wanderful-durable-dd -clonedSourcePackagesDirPath "/Users/REDACTED/Library/Application Support/Wanderful-Recovery/SourcePackages" -disableAutomaticPackageResolution -skipPackageUpdates -parallel-testing-enabled NO "-only-testing:TrailMindTests/DurableResearchTransportTests" "-only-testing:TrailMindTests/DynamicResearchPlanningClientTests" "-only-testing:TrailMindTests/IntentParsingFoundationTests" "-only-testing:TrailMindTests/AppAttestServiceTests" "-only-testing:TrailMindTests/RouteSessionServiceTests" "-only-testing:TrailMindTests/AppEnvironmentTests" "-only-testing:TrailMindTests/PlannerViewModelTests" CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES test-without-building
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = -
+    CODE_SIGNING_ALLOWED = YES
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  Superscript: https://github.com/superwall/superscript-ios-next @ 1.0.14
+  Supabase: https://github.com/supabase/supabase-swift.git @ 2.55.1
+  xctest-dynamic-overlay: https://github.com/pointfreeco/xctest-dynamic-overlay @ 1.11.0
+  swift-http-types: https://github.com/apple/swift-http-types.git @ 1.6.0
+  swift-asn1: https://github.com/apple/swift-asn1.git @ 1.7.1
+  swift-crypto: https://github.com/apple/swift-crypto.git @ 4.5.1
+  swift-clocks: https://github.com/pointfreeco/swift-clocks @ 1.1.0
+  swift-concurrency-extras: https://github.com/pointfreeco/swift-concurrency-extras @ 1.4.1
+  SuperwallKit: https://github.com/superwall/Superwall-iOS @ 4.16.1
+
+Test Suite 'Selected tests' started at 2026-09-09 09:06:02.685.
+Test Suite 'TrailMindTests.xctest' started at 2026-09-09 09:06:02.709.
+Test Suite 'AppAttestServiceTests' started at 2026-09-09 09:06:02.710.
+Test Case '-[TrailMindTests.AppAttestServiceTests testAssertionUsesCanonicalClientDataHash]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testAssertionUsesCanonicalClientDataHash]' passed (0.517 seconds).
+Test Case '-[TrailMindTests.AppAttestServiceTests testAttestationFailureDoesNotSubmitRegistration]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testAttestationFailureDoesNotSubmitRegistration]' passed (0.103 seconds).
+Test Case '-[TrailMindTests.AppAttestServiceTests testExistingRegisteredKeySkipsGenerationAndAttestation]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testExistingRegisteredKeySkipsGenerationAndAttestation]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppAttestServiceTests testInvalidKeyDeletesItAndRegistersAReplacement]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testInvalidKeyDeletesItAndRegistersAReplacement]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppAttestServiceTests testKeychainPersistsOnlyTheInstallationKeyIdentifier]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testKeychainPersistsOnlyTheInstallationKeyIdentifier]' passed (0.399 seconds).
+Test Case '-[TrailMindTests.AppAttestServiceTests testNewKeyIsRegisteredAndPersisted]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testNewKeyIsRegisteredAndPersisted]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.AppAttestServiceTests testRegistrationChallengeFailureDoesNotAttest]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testRegistrationChallengeFailureDoesNotAttest]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppAttestServiceTests testUnsupportedProviderFailsWithSafeTypedError]' started.
+Test Case '-[TrailMindTests.AppAttestServiceTests testUnsupportedProviderFailsWithSafeTypedError]' passed (0.019 seconds).
+Test Suite 'AppAttestServiceTests' passed at 2026-09-09 09:06:03.811.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 1.044 (1.102) seconds
+Test Suite 'AppEnvironmentTests' started at 2026-09-09 09:06:03.813.
+Test Case '-[TrailMindTests.AppEnvironmentTests testBlankServicesSelectOnlyNoOpClientsAndNoCapabilities]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testBlankServicesSelectOnlyNoOpClientsAndNoCapabilities]' passed (0.056 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testBlankUnprovisionedRemoteBackendIsUnavailableAndPerformsNoNetwork]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testBlankUnprovisionedRemoteBackendIsUnavailableAndPerformsNoNetwork]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testBuiltInfoPlistMatchesCompiledEnvironmentAndControlledFlagsAreFalse]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testBuiltInfoPlistMatchesCompiledEnvironmentAndControlledFlagsAreFalse]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testCheckedInBuildMappingIsExactAndReleaseContainsNoStagingLaneValues]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testCheckedInBuildMappingIsExactAndReleaseContainsNoStagingLaneValues]' passed (0.009 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testEnvironmentSourceHasNoRuntimeOverrideChannel]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testEnvironmentSourceHasNoRuntimeOverrideChannel]' passed (0.011 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testExactCanonicalEnvironmentParsing]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testExactCanonicalEnvironmentParsing]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testFeatureFlagsAreIndependentExactAndFalseByDefault]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testFeatureFlagsAreIndependentExactAndFalseByDefault]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testInfoPlistIdentityOverridesCannotChangeCompiledLanePolicy]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testInfoPlistIdentityOverridesCannotChangeCompiledLanePolicy]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testMissingMalformedUnknownWhitespaceCaseAndDuplicateEnvironmentsReject]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testMissingMalformedUnknownWhitespaceCaseAndDuplicateEnvironmentsReject]' passed (0.003 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testMonetizationRejectsDuplicatePlaceholderAndSuperwallConflicts]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testMonetizationRejectsDuplicatePlaceholderAndSuperwallConflicts]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testMonetizationRequiresFlagProductsAndLegalDestinationsTogether]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testMonetizationRequiresFlagProductsAndLegalDestinationsTogether]' passed (0.015 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testMutableBackendIdentityCannotBeChangedWithTheInjectedURL]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testMutableBackendIdentityCannotBeChangedWithTheInjectedURL]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testMutableSupabaseIdentityCannotBeChangedWithTheInjectedURL]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testMutableSupabaseIdentityCannotBeChangedWithTheInjectedURL]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testOnlyExactLoopbackHTTPIsAllowedLocally]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testOnlyExactLoopbackHTTPIsAllowedLocally]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testProductIdentifiersCannotActivateStoreWhileFlagIsFalse]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testProductIdentifiersCannotActivateStoreWhileFlagIsFalse]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testProductionRejectsStagingEndpointAndStagingRejectsProductionEndpoint]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testProductionRejectsStagingEndpointAndStagingRejectsProductionEndpoint]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testRemoteEndpointsRequireCanonicalHTTPSAndIdentityPair]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testRemoteEndpointsRequireCanonicalHTTPSAndIdentityPair]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testRuntimeStateCannotChangeEnvironmentOrRevealSensitiveDiagnostics]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testRuntimeStateCannotChangeEnvironmentOrRevealSensitiveDiagnostics]' passed (0.031 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testSignedBuildMarkerCannotBeOverriddenByInfoPlist]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testSignedBuildMarkerCannotBeOverriddenByInfoPlist]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testSupabaseAcceptsPublishableAndLegacyAnonButRejectsSecretRoles]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testSupabaseAcceptsPublishableAndLegacyAnonButRejectsSecretRoles]' passed (0.004 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testSupabaseProjectIdentityCannotCrossEnvironments]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testSupabaseProjectIdentityCannotCrossEnvironments]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.AppEnvironmentTests testURLUserInfoQueryFragmentPathPortAndWhitespaceReject]' started.
+Test Case '-[TrailMindTests.AppEnvironmentTests testURLUserInfoQueryFragmentPathPortAndWhitespaceReject]' passed (0.001 seconds).
+Test Suite 'AppEnvironmentTests' passed at 2026-09-09 09:06:03.964.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 0.143 (0.150) seconds
+Test Suite 'DurableResearchTransportTests' started at 2026-09-09 09:06:03.964.
+Test Case '-[TrailMindTests.DurableResearchTransportTests testDenialReplayRateLimitOutageAndRepeatedExpiryDoNotLoop]' started.
+Test Case '-[TrailMindTests.DurableResearchTransportTests testDenialReplayRateLimitOutageAndRepeatedExpiryDoNotLoop]' passed (0.333 seconds).
+Test Case '-[TrailMindTests.DurableResearchTransportTests testExpiredSessionRenewsExactlyOnceAndAdoptsValidatedRoute]' started.
+Test Case '-[TrailMindTests.DurableResearchTransportTests testExpiredSessionRenewsExactlyOnceAndAdoptsValidatedRoute]' passed (0.175 seconds).
+Test Case '-[TrailMindTests.DurableResearchTransportTests testExplicitLocalLoopbackReusesDevelopmentAuthorization]' started.
+Test Case '-[TrailMindTests.DurableResearchTransportTests testExplicitLocalLoopbackReusesDevelopmentAuthorization]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.DurableResearchTransportTests testMissingInvalidOrMalformedConfigurationIsExplicit]' started.
+Test Case '-[TrailMindTests.DurableResearchTransportTests testMissingInvalidOrMalformedConfigurationIsExplicit]' passed (0.025 seconds).
+Test Case '-[TrailMindTests.DurableResearchTransportTests testNormalFactoryCreatesAttestedClientWithoutOwnerFlag]' started.
+Test Case '-[TrailMindTests.DurableResearchTransportTests testNormalFactoryCreatesAttestedClientWithoutOwnerFlag]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.DurableResearchTransportTests testTransportCancellationAndNetworkFailureStayTyped]' started.
+2026-09-09 09:06:04.504211+0200 TrailMind[17141:144907] [Default] Task <3E0AEEDA-F560-4373-92BC-28643AEE8A53>.<1> finished with error [-1009] Error Domain=NSURLErrorDomain Code=-1009 "(null)" UserInfo={_NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <3E0AEEDA-F560-4373-92BC-28643AEE8A53>.<1>"
+), _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <3E0AEEDA-F560-4373-92BC-28643AEE8A53>.<1>}
+Test Case '-[TrailMindTests.DurableResearchTransportTests testTransportCancellationAndNetworkFailureStayTyped]' passed (0.003 seconds).
+Test Suite 'DurableResearchTransportTests' passed at 2026-09-09 09:06:04.505.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.539 (0.541) seconds
+Test Suite 'DynamicResearchPlanningClientTests' started at 2026-09-09 09:06:04.505.
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testDynamicServiceErrorsStayServiceErrors]' started.
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testDynamicServiceErrorsStayServiceErrors]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testHardConstraintsAreEncodedWithoutRoundingOrSoftening]' started.
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testHardConstraintsAreEncodedWithoutRoundingOrSoftening]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testMeasuredBackendFixtureRetainsSourcesAndRejectsUnknownOrStaleIdentity]' started.
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testMeasuredBackendFixtureRetainsSourcesAndRejectsUnknownOrStaleIdentity]' passed (0.003 seconds).
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testMockProvenanceAndPlainModelSuccessCannotBecomeRoutes]' started.
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testMockProvenanceAndPlainModelSuccessCannotBecomeRoutes]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testOriginalPromptsAndEnumsSurviveNativeContractEncoding]' started.
+Test Case '-[TrailMindTests.DynamicResearchPlanningClientTests testOriginalPromptsAndEnumsSurviveNativeContractEncoding]' passed (0.008 seconds).
+Test Suite 'DynamicResearchPlanningClientTests' passed at 2026-09-09 09:06:04.520.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.014 (0.015) seconds
+Test Suite 'IntentParsingFoundationTests' started at 2026-09-09 09:06:04.520.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDebugMetadataShowsRemoteParserWithoutFallback]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDebugMetadataShowsRemoteParserWithoutFallback]' passed (0.072 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDebugParserModeCanBeConfiguredFromEnvironment]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDebugParserModeCanBeConfiguredFromEnvironment]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDebugRemoteParserRequestCannotBypassDisabledSignedGate]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDebugRemoteParserRequestCannotBypassDisabledSignedGate]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDesiredFeaturesRemainRequestedPreferencesOnly]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testDesiredFeaturesRemainRequestedPreferencesOnly]' passed (0.020 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testFixturePromptEvalCoversCurrentLocalParserContract]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testFixturePromptEvalCoversCurrentLocalParserContract]' passed (0.047 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testIntentDebugFormatterIncludesParserFallbackAndIntentFields]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testIntentDebugFormatterIncludesParserFallbackAndIntentFields]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testIntentRepairKeepsRequestedFeaturesAsPreferencesOnly]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testIntentRepairKeepsRequestedFeaturesAsPreferencesOnly]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testIntentRepairPreservesExplicitGenericMustHaveExperience]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testIntentRepairPreservesExplicitGenericMustHaveExperience]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testInvalidOrUnderspecifiedIntentProducesGracefulValidationError]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testInvalidOrUnderspecifiedIntentProducesGracefulValidationError]' passed (0.005 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testInvalidRemoteJSONFallsBackToLocalParserAndRecordsReason]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testInvalidRemoteJSONFallsBackToLocalParserAndRecordsReason]' passed (0.026 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLocalOnlyModeDoesNotAttemptRemote]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLocalOnlyModeDoesNotAttemptRemote]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLocalParserProviderPreservesPointToPointBehavior]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLocalParserProviderPreservesPointToPointBehavior]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLoopPromptCreatesValidLoopIntent]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLoopPromptCreatesValidLoopIntent]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLoopWithRegionQueryOnlyRepairsToStartLocationQuery]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testLoopWithRegionQueryOnlyRepairsToStartLocationQuery]' passed (0.000 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testMultiLineRelaxedRoundPromptUsesFirstValidLoop]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testMultiLineRelaxedRoundPromptUsesFirstValidLoop]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testMustHaveResearchExperienceConstraintUsesBoundedCount]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testMustHaveResearchExperienceConstraintUsesBoundedCount]' passed (0.000 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testPointToPointPromptCreatesValidPointToPointIntent]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testPointToPointPromptCreatesValidPointToPointIntent]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testPointToPointWithoutEndAsksForDestination]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testPointToPointWithoutEndAsksForDestination]' passed (0.000 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteFailureFallsBackToLocalParserAndRecordsReason]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteFailureFallsBackToLocalParserAndRecordsReason]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteHikeAroundLuneburgValidatesAsLoopWithoutEndLocation]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteHikeAroundLuneburgValidatesAsLoopWithoutEndLocation]' passed (0.013 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteNeedsClarificationFallsBackToLocalParserWhenLocalIntentIsValid]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteNeedsClarificationFallsBackToLocalParserWhenLocalIntentIsValid]' passed (0.003 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteParserDecodesSuccessfulBackendResponse]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteParserDecodesSuccessfulBackendResponse]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteParserForwardsFreeformPromptsVerbatimWithoutPresetSelection]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteParserForwardsFreeformPromptsVerbatimWithoutPresetSelection]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteParserRefreshesARejectedSessionOnce]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteParserRefreshesARejectedSessionOnce]' passed (0.004 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteProviderWithoutConfigurationDoesNotCallNetwork]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteProviderWithoutConfigurationDoesNotCallNetwork]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteRouteTypeNilCanNormalizeToLoopFromPromptAndRegion]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteRouteTypeNilCanNormalizeToLoopFromPromptAndRegion]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteRundwanderungPointToPointWithoutEndRepairsToLoop]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteRundwanderungPointToPointWithoutEndRepairsToLoop]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteTimeoutFallsBackToLocalParserAndRecordsReadableReason]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteTimeoutFallsBackToLocalParserAndRecordsReadableReason]' passed (0.005 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteValidationFailureFallsBackToLocalParserAndRecordsValidationError]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testRemoteValidationFailureFallsBackToLocalParserAndRecordsValidationError]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testUnreasonableDistanceProducesValidationError]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testUnreasonableDistanceProducesValidationError]' passed (0.000 seconds).
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testVaguePromptAsksForAreaOrStartLocation]' started.
+Test Case '-[TrailMindTests.IntentParsingFoundationTests testVaguePromptAsksForAreaOrStartLocation]' passed (0.000 seconds).
+Test Suite 'IntentParsingFoundationTests' passed at 2026-09-09 09:06:04.748.
+	 Executed 31 tests, with 0 failures (0 unexpected) in 0.217 (0.227) seconds
+Test Suite 'PlannerViewModelTests' started at 2026-09-09 09:06:04.748.
+Test Case '-[TrailMindTests.PlannerViewModelTests testAllSupportedActivitiesReachRoutingWithTheirTruthfulProfiles]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testAllSupportedActivitiesReachRoutingWithTheirTruthfulProfiles]' passed (0.020 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testAmbiguousCandidateChoiceDeterministicallyResumesRouting]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testAmbiguousCandidateChoiceDeterministicallyResumesRouting]' passed (0.086 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testBroadHikingRegionsClarifyBeforeRouting]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testBroadHikingRegionsClarifyBeforeRouting]' passed (0.004 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationDuringGeocodingRejectsLateSuccess]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationDuringGeocodingRejectsLateSuccess]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationDuringParsingRejectsLateSuccess]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationDuringParsingRejectsLateSuccess]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationDuringRoutingRejectsLateSuccess]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationDuringRoutingRejectsLateSuccess]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationIgnoringIntentOperationHardTimesOutAndLateResultIsIgnored]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testCancellationIgnoringIntentOperationHardTimesOutAndLateResultIsIgnored]' passed (0.025 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testClarificationPreservesIntentWhenHardExclusionsBlockStandardRouting]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testClarificationPreservesIntentWhenHardExclusionsBlockStandardRouting]' passed (0.010 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testDestinationResolutionUsesResolvedStartOnlyAsSoftHint]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testDestinationResolutionUsesResolvedStartOnlyAsSoftHint]' passed (0.010 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testEmptyPromptIsAnExplicitRecoverableInvalidPrompt]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testEmptyPromptIsAnExplicitRecoverableInvalidPrompt]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testEveryHomeExampleUsesTheSameRealCoordinator]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testEveryHomeExampleUsesTheSameRealCoordinator]' passed (0.005 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testExplicitEmptyRoutingResultEntersNoRoutes]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testExplicitEmptyRoutingResultEntersNoRoutes]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testExplicitPromptWinsOverEveryConflictingProfileDefault]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testExplicitPromptWinsOverEveryConflictingProfileDefault]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testGeocodingFailurePreservesPromptAndRetryUsesFreshAttemptThenSucceeds]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testGeocodingFailurePreservesPromptAndRetryUsesFreshAttemptThenSucceeds]' passed (0.007 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testIdleSubmitGenerationProducesOneVerifiedSuggestion]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testIdleSubmitGenerationProducesOneVerifiedSuggestion]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testMalformedValidatedIntentIsRecoverableWithoutGeocodingOrRouting]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testMalformedValidatedIntentIsRecoverableWithoutGeocodingOrRouting]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testMissingLoopStartClarifiesThenGeneratesWithoutChangingPrompt]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testMissingLoopStartClarifiesThenGeneratesWithoutChangingPrompt]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testMultipleVerifiedSuggestionsRemainInOneSuccessState]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testMultipleVerifiedSuggestionsRemainInOneSuccessState]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testNoProfileRetainsShippingParserAndEngineDefaults]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testNoProfileRetainsShippingParserAndEngineDefaults]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testNoRoutesRetryPreservesExplicitCandidateChoice]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testNoRoutesRetryPreservesExplicitCandidateChoice]' passed (0.010 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testOlderRequestCompletingAfterNewerSuccessIsIgnored]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testOlderRequestCompletingAfterNewerSuccessIsIgnored]' passed (0.003 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testOrdinaryPlanningPerformsNoOutdoorEvidenceRequestByDefault]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testOrdinaryPlanningPerformsNoOutdoorEvidenceRequestByDefault]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testPointToPointMissingOriginThenDestinationClarifiesInOrderAndGenerates]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testPointToPointMissingOriginThenDestinationClarifiesInOrderAndGenerates]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testProfileFillsOnlyRawPromptFieldsThatWereOmitted]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testProfileFillsOnlyRawPromptFieldsThatWereOmitted]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testQualifiedHikingSettlementResolvesWithoutGermanyBias]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testQualifiedHikingSettlementResolvesWithoutGermanyBias]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testRequestedPreferencesRemainExplicitlyRequestedOnSuccess]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testRequestedPreferencesRemainExplicitlyRequestedOnSuccess]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testResearchLoopRejectsLocalParserFallbackBeforeGeocodingOrRouting]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testResearchLoopRejectsLocalParserFallbackBeforeGeocodingOrRouting]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testRoutingRetryPreservesExplicitCandidateChoice]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testRoutingRetryPreservesExplicitCandidateChoice]' passed (0.017 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testRoutingUnavailableIsRecoverableWithoutSuccess]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testRoutingUnavailableIsRecoverableWithoutSuccess]' passed (0.002 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testSlowIntentOperationTimesOutWithPromptPreserved]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testSlowIntentOperationTimesOutWithPromptPreserved]' passed (0.007 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testSlowParserDebugMetadataIsBestEffortAndCannotBlockPlanning]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testSlowParserDebugMetadataIsBestEffortAndCannotBlockPlanning]' passed (0.014 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testUnavailableIntentProviderIsRecoverable]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testUnavailableIntentProviderIsRecoverable]' passed (0.004 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testUnverifiedRouteCannotReachSuccess]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testUnverifiedRouteCannotReachSuccess]' passed (0.015 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testVerifiedActivityMismatchCannotReachSuccessEvenBesideAValidSuggestion]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testVerifiedActivityMismatchCannotReachSuccessEvenBesideAValidSuggestion]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.PlannerViewModelTests testVerifiedRouteTypeMismatchCannotReachSuccess]' started.
+Test Case '-[TrailMindTests.PlannerViewModelTests testVerifiedRouteTypeMismatchCannotReachSuccess]' passed (0.002 seconds).
+Test Suite 'PlannerViewModelTests' passed at 2026-09-09 09:06:05.020.
+	 Executed 35 tests, with 0 failures (0 unexpected) in 0.264 (0.272) seconds
+Test Suite 'RouteSessionServiceTests' started at 2026-09-09 09:06:05.020.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testCachesAndAccountsForSessionCostInMemory]' started.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testCachesAndAccountsForSessionCostInMemory]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.RouteSessionServiceTests testCancellationDoesNotPersistSensitiveSessionDataElsewhere]' started.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testCancellationDoesNotPersistSensitiveSessionDataElsewhere]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.RouteSessionServiceTests testConcurrentConsumersAggregateTheirCostBeforeReusingSession]' started.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testConcurrentConsumersAggregateTheirCostBeforeReusingSession]' passed (0.045 seconds).
+Test Case '-[TrailMindTests.RouteSessionServiceTests testConcurrentConsumersRefreshWhenAggregateCostExceedsSessionBudget]' started.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testConcurrentConsumersRefreshWhenAggregateCostExceedsSessionBudget]' passed (0.044 seconds).
+Test Case '-[TrailMindTests.RouteSessionServiceTests testConcurrentConsumersShareOneRefresh]' started.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testConcurrentConsumersShareOneRefresh]' passed (0.023 seconds).
+Test Case '-[TrailMindTests.RouteSessionServiceTests testRefreshesBeforeExpiry]' started.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testRefreshesBeforeExpiry]' passed (0.001 seconds).
+Test Case '-[TrailMindTests.RouteSessionServiceTests testRefreshesWhenLocalBudgetWouldBeExhausted]' started.
+Test Case '-[TrailMindTests.RouteSessionServiceTests testRefreshesWhenLocalBudgetWouldBeExhausted]' passed (0.001 seconds).
+Test Suite 'RouteSessionServiceTests' passed at 2026-09-09 09:06:05.138.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.115 (0.117) seconds
+Test Suite 'TrailMindTests.xctest' passed at 2026-09-09 09:06:05.138.
+	 Executed 114 tests, with 0 failures (0 unexpected) in 2.336 (2.428) seconds
+Test Suite 'Selected tests' passed at 2026-09-09 09:06:05.138.
+	 Executed 114 tests, with 0 failures (0 unexpected) in 2.336 (2.453) seconds
+2026-09-09 09:06:05.514 xcodebuild[17094:139910] [MT] IDETestOperationsObserverDebug: 35.603 elapsed -- Testing started completed.
+2026-09-09 09:06:05.514 xcodebuild[17094:139910] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-09 09:06:05.514 xcodebuild[17094:139910] [MT] IDETestOperationsObserverDebug: 35.603 sec, +35.603 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/wanderful-durable-dd/Logs/Test/Test-TrailMind-2026.09.09_09-05-27-+0200.xcresult
+
+** TEST EXECUTE SUCCEEDED **
+
+Testing started

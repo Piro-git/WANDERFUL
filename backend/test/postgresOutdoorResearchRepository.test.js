@@ -20,6 +20,16 @@ const ANCHOR = { latitude: 51.8, longitude: 10.6 };
 const NOW = new Date("2026-07-24T12:00:00Z");
 
 describe("PostGIS outdoor research repository", () => {
+  it("rejects arbitrary cancellation functions and exposes the admitted choice", () => {
+    const pool = { async connect() {} };
+    for (const cancellationFunction of ["public.elevate", "pg_cancel_backend); SELECT 1 --", "", null]) {
+      if (cancellationFunction === null) continue;
+      assert.throws(() => new PostgresOutdoorResearchRepository({pool, cancellationFunction}), hasCode("invalid_dependencies"));
+    }
+    const scoped = "trailmind_control.cancel_active_outdoor_research_backend_integer";
+    assert.equal(new PostgresOutdoorResearchRepository({pool,cancellationFunction:scoped}).cancellationFunction, scoped);
+    assert.equal(new PostgresOutdoorResearchRepository({pool}).cancellationFunction, "pg_cancel_backend");
+  });
   it("derives exact mapped capabilities from one active governed snapshot", async () => {
     const harness = repositoryHarness({ snapshotRow: activeSnapshotRow() });
     const result = await harness.repository.withConsistentSnapshot({}, async (session) =>

@@ -1,3 +1,5 @@
+> Superseded release scope (2026-09-10): use [LAUNCH_V4_CURRENT_PACKAGE.md](LAUNCH_V4_CURRENT_PACKAGE.md). Statements below about disabled AI or foreground-only guidance describe an earlier build and must not be copied into current metadata. Historical validation is not evidence for the integrated V4 build.
+
 # Screenshot Capture Plan V1
 
 Status: **plan only; no screenshots or generated marketing assets were created**

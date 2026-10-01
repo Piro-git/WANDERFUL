@@ -1,0 +1,724 @@
+TAP version 13
+# Subtest: App Attest endpoints
+    # Subtest: creates independent 32-byte, one-time, five-minute challenges
+    ok 1 - creates independent 32-byte, one-time, five-minute challenges
+      ---
+      duration_ms: 3.5035
+      type: 'test'
+      ...
+    # Subtest: registers a key using a consumed challenge and hashed client data
+    ok 2 - registers a key using a consumed challenge and hashed client data
+      ---
+      duration_ms: 2.1705
+      type: 'test'
+      ...
+    # Subtest: issues an opaque session once and stores only its hash
+    ok 3 - issues an opaque session once and stores only its hash
+      ---
+      duration_ms: 1.756542
+      type: 'test'
+      ...
+    # Subtest: charges a route-session attempt before checking an unknown key
+    ok 4 - charges a route-session attempt before checking an unknown key
+      ---
+      duration_ms: 0.41425
+      type: 'test'
+      ...
+    # Subtest: fails closed in production with an in-memory repository
+    ok 5 - fails closed in production with an in-memory repository
+      ---
+      duration_ms: 0.192708
+      type: 'test'
+      ...
+    1..5
+ok 1 - App Attest endpoints
+  ---
+  duration_ms: 9.014125
+  type: 'suite'
+  ...
+# Subtest: dynamic rollout remains opt-in and requires bounded explicit budgets and safe lease
+ok 2 - dynamic rollout remains opt-in and requires bounded explicit budgets and safe lease
+  ---
+  duration_ms: 3.206583
+  type: 'test'
+  ...
+# Subtest: explicit research container retains database, secret and runtime hardening
+ok 3 - explicit research container retains database, secret and runtime hardening
+  ---
+  duration_ms: 8.758958
+  type: 'test'
+  ...
+# Subtest: schema3 preserves pre-provider route_session_expired and never invokes providers
+ok 4 - schema3 preserves pre-provider route_session_expired and never invokes providers
+  ---
+  duration_ms: 2.626708
+  type: 'test'
+  ...
+# Subtest: schema3 preserves pre-provider route_session_invalid and never invokes providers
+ok 5 - schema3 preserves pre-provider route_session_invalid and never invokes providers
+  ---
+  duration_ms: 0.286541
+  type: 'test'
+  ...
+# Subtest: schema3 preserves pre-provider route_session_exhausted and never invokes providers
+ok 6 - schema3 preserves pre-provider route_session_exhausted and never invokes providers
+  ---
+  duration_ms: 2.187209
+  type: 'test'
+  ...
+# Subtest: schema3 preserves pre-provider request_replayed and never invokes providers
+ok 7 - schema3 preserves pre-provider request_replayed and never invokes providers
+  ---
+  duration_ms: 0.105125
+  type: 'test'
+  ...
+# Subtest: schema3 preserves pre-provider app_attest_rate_limited and never invokes providers
+ok 8 - schema3 preserves pre-provider app_attest_rate_limited and never invokes providers
+  ---
+  duration_ms: 0.182084
+  type: 'test'
+  ...
+# Subtest: schema3 preserves pre-provider authorization_unavailable and never invokes providers
+ok 9 - schema3 preserves pre-provider authorization_unavailable and never invokes providers
+  ---
+  duration_ms: 1.029542
+  type: 'test'
+  ...
+# Subtest: first rollout rejects point-to-point before consuming authorization
+ok 10 - first rollout rejects point-to-point before consuming authorization
+  ---
+  duration_ms: 2.354666
+  type: 'test'
+  ...
+# Subtest: production authorizer fails closed on an in-memory repository
+ok 11 - production authorizer fails closed on an in-memory repository
+  ---
+  duration_ms: 1.820292
+  type: 'test'
+  ...
+# Subtest: session refresh does not reset installation/global budget or replay records (simulated repository)
+ok 12 - session refresh does not reset installation/global budget or replay records (simulated repository)
+  ---
+  duration_ms: 3.287666
+  type: 'test'
+  ...
+# Subtest: public app config pins exact distinct HTTPS origins and stays disabled without deployment
+ok 13 - public app config pins exact distinct HTTPS origins and stays disabled without deployment
+  ---
+  duration_ms: 0.581792
+  type: 'test'
+  ...
+# Subtest: production dynamic events expose outcomes and buckets, never prompts, tokens or locations
+ok 14 - production dynamic events expose outcomes and buckets, never prompts, tokens or locations
+  ---
+  duration_ms: 24.216917
+  type: 'test'
+  ...
+# Subtest: schema 3 passes original prompt through authorized tool loop with no fallback
+ok 15 - schema 3 passes original prompt through authorized tool loop with no fallback
+  ---
+  duration_ms: 3.975208
+  type: 'test'
+  ...
+# Subtest: new path is default off and rejects local-parser claims before provider work
+ok 16 - new path is default off and rejects local-parser claims before provider work
+  ---
+  duration_ms: 2.598833
+  type: 'test'
+  ...
+# Subtest: hard unsupported request releases authorization without model or routing calls
+ok 17 - hard unsupported request releases authorization without model or routing calls
+  ---
+  duration_ms: 0.2075
+  type: 'test'
+  ...
+# Subtest: failed model generation produces service failure and releases lease
+ok 18 - failed model generation produces service failure and releases lease
+  ---
+  duration_ms: 0.325833
+  type: 'test'
+  ...
+# Subtest: grounded provider rate_limited retains its native service outcome and releases authorization
+ok 19 - grounded provider rate_limited retains its native service outcome and releases authorization
+  ---
+  duration_ms: 0.612875
+  type: 'test'
+  ...
+# Subtest: grounded provider provider_unavailable retains its native service outcome and releases authorization
+ok 20 - grounded provider provider_unavailable retains its native service outcome and releases authorization
+  ---
+  duration_ms: 0.380084
+  type: 'test'
+  ...
+# Subtest: grounded provider provider_rejected retains its native service outcome and releases authorization
+ok 21 - grounded provider provider_rejected retains its native service outcome and releases authorization
+  ---
+  duration_ms: 0.448584
+  type: 'test'
+  ...
+# Subtest: grounded provider invalid_response retains its native service outcome and releases authorization
+ok 22 - grounded provider invalid_response retains its native service outcome and releases authorization
+  ---
+  duration_ms: 0.238667
+  type: 'test'
+  ...
+# Subtest: grounded provider configuration_missing retains its native service outcome and releases authorization
+ok 23 - grounded provider configuration_missing retains its native service outcome and releases authorization
+  ---
+  duration_ms: 0.765625
+  type: 'test'
+  ...
+# Subtest: grounded provider timed_out retains its native service outcome and releases authorization
+ok 24 - grounded provider timed_out retains its native service outcome and releases authorization
+  ---
+  duration_ms: 0.876417
+  type: 'test'
+  ...
+# Subtest: grounded provider cancelled retains its native service outcome and releases authorization
+ok 25 - grounded provider cancelled retains its native service outcome and releases authorization
+  ---
+  duration_ms: 0.535333
+  type: 'test'
+  ...
+# Subtest: unverified web evidence is unavailable, never an internal failure or fallback route
+ok 26 - unverified web evidence is unavailable, never an internal failure or fallback route
+  ---
+  duration_ms: 0.237708
+  type: 'test'
+  ...
+# Subtest: place identity and nearby Earth coordinate establish explicit photo link
+ok 27 - place identity and nearby Earth coordinate establish explicit photo link
+  ---
+  duration_ms: 5.232833
+  type: 'test'
+  ...
+# Subtest: mismatched identity, far coordinates and ambiguous imagery never select a photo
+ok 28 - mismatched identity, far coordinates and ambiguous imagery never select a photo
+  ---
+  duration_ms: 0.264542
+  type: 'test'
+  ...
+# Subtest: unrecognized licenses, missing credit, malicious URLs and wrong files are omitted
+ok 29 - unrecognized licenses, missing credit, malicious URLs and wrong files are omitted
+  ---
+  duration_ms: 0.875791
+  type: 'test'
+  ...
+# Subtest: explicit attribution overrides artist and stays plain text
+ok 30 - explicit attribution overrides artist and stays plain text
+  ---
+  duration_ms: 0.23225
+  type: 'test'
+  ...
+# Subtest: source reader never fetches model-provided URLs or missing IDs
+ok 31 - source reader never fetches model-provided URLs or missing IDs
+  ---
+  duration_ms: 0.736916
+  type: 'test'
+  ...
+# Subtest: native flow reaches evaluated route; web=false; revision=false; named=false
+ok 32 - native flow reaches evaluated route; web=false; revision=false; named=false
+  ---
+  duration_ms: 269.2675
+  type: 'test'
+  ...
+# Subtest: native flow reaches evaluated route; web=false; revision=true; named=false
+ok 33 - native flow reaches evaluated route; web=false; revision=true; named=false
+  ---
+  duration_ms: 182.408958
+  type: 'test'
+  ...
+# Subtest: native flow reaches evaluated route; web=true; revision=false; named=false
+ok 34 - native flow reaches evaluated route; web=true; revision=false; named=false
+  ---
+  duration_ms: 141.492708
+  type: 'test'
+  ...
+# Subtest: native flow reaches evaluated route; web=true; revision=true; named=false
+ok 35 - native flow reaches evaluated route; web=true; revision=true; named=false
+  ---
+  duration_ms: 167.407459
+  type: 'test'
+  ...
+# Subtest: native flow reaches evaluated route; web=true; revision=true; named=true
+ok 36 - native flow reaches evaluated route; web=true; revision=true; named=true
+  ---
+  duration_ms: 205.067166
+  type: 'test'
+  ...
+# Subtest: named resolution admits independently mapped places outside the category list and exact aliases
+ok 37 - named resolution admits independently mapped places outside the category list and exact aliases
+  ---
+  duration_ms: 32.29525
+  type: 'test'
+  ...
+# Subtest: named lookup refuses ambiguous, saturated, missing, similar-name and wrong-region identities
+ok 38 - named lookup refuses ambiguous, saturated, missing, similar-name and wrong-region identities
+  ---
+  duration_ms: 0.605
+  type: 'test'
+  ...
+# Subtest: named query uses exact escaped literals and bounded independently supplied region
+ok 39 - named query uses exact escaped literals and bounded independently supplied region
+  ---
+  duration_ms: 0.808667
+  type: 'test'
+  ...
+# Subtest: dynamic source discovery works without a region gate: Scotland
+ok 40 - dynamic source discovery works without a region gate: Scotland
+  ---
+  duration_ms: 1.51075
+  type: 'test'
+  ...
+# Subtest: dynamic source discovery works without a region gate: Japan
+ok 41 - dynamic source discovery works without a region gate: Japan
+  ---
+  duration_ms: 1.226916
+  type: 'test'
+  ...
+# Subtest: dynamic source discovery works without a region gate: New Zealand
+ok 42 - dynamic source discovery works without a region gate: New Zealand
+  ---
+  duration_ms: 0.971792
+  type: 'test'
+  ...
+# Subtest: source snapshots expire; old object edit dates are not confused with snapshot freshness
+ok 43 - source snapshots expire; old object edit dates are not confused with snapshot freshness
+  ---
+  duration_ms: 0.224292
+  type: 'test'
+  ...
+# Subtest: unknown categories and nonnumeric/model-supplied geography cannot enter query syntax
+ok 44 - unknown categories and nonnumeric/model-supplied geography cannot enter query syntax
+  ---
+  duration_ms: 0.767209
+  type: 'test'
+  ...
+# Subtest: out-of-area records, duplicate identities and malformed provenance are rejected or omitted
+ok 45 - out-of-area records, duplicate identities and malformed provenance are rejected or omitted
+  ---
+  duration_ms: 0.431834
+  type: 'test'
+  ...
+# Subtest: source URLs are constructed from validated identity; source text does not become tool input
+ok 46 - source URLs are constructed from validated identity; source text does not become tool input
+  ---
+  duration_ms: 0.336333
+  type: 'test'
+  ...
+# Subtest: empty coverage stays empty without mock fallback and cancellation makes no request
+ok 47 - empty coverage stays empty without mock fallback and cancellation makes no request
+  ---
+  duration_ms: 0.189208
+  type: 'test'
+  ...
+# Subtest: indexed search bounds retain exact radius admission at the dateline and poles
+ok 48 - indexed search bounds retain exact radius admission at the dateline and poles
+  ---
+  duration_ms: 0.429042
+  type: 'test'
+  ...
+# Subtest: arbitrary original prompts preserve stateless steps and measured feedback through model-led revision
+ok 49 - arbitrary original prompts preserve stateless steps and measured feedback through model-led revision
+  ---
+  duration_ms: 11.305375
+  type: 'test'
+  ...
+# Subtest: invented and unread IDs fail before any routing call
+ok 50 - invented and unread IDs fail before any routing call
+  ---
+  duration_ms: 1.0085
+  type: 'test'
+  ...
+# Subtest: model coordinates and unverified final selection cannot escape tool contracts
+ok 51 - model coordinates and unverified final selection cannot escape tool contracts
+  ---
+  duration_ms: 0.792042
+  type: 'test'
+  ...
+# Subtest: duplicate itineraries consume no second route and never trigger deterministic fallback
+ok 52 - duplicate itineraries consume no second route and never trigger deterministic fallback
+  ---
+  duration_ms: 0.901375
+  type: 'test'
+  ...
+# Subtest: generation cap and replay prevention stop further dependency calls
+ok 53 - generation cap and replay prevention stop further dependency calls
+  ---
+  duration_ms: 0.957625
+  type: 'test'
+  ...
+# Subtest: caller cancellation and deadline stop stalled providers with no follow-on work
+ok 54 - caller cancellation and deadline stop stalled providers with no follow-on work
+  ---
+  duration_ms: 11.666
+  type: 'test'
+  ...
+# Subtest: empty research and plain model text are not successful AI routes
+ok 55 - empty research and plain model text are not successful AI routes
+  ---
+  duration_ms: 0.336958
+  type: 'test'
+  ...
+# Subtest: documented Google tool request uses stateless history, no schema or automatic retries
+ok 56 - documented Google tool request uses stateless history, no schema or automatic retries
+  ---
+  duration_ms: 23.762833
+  type: 'test'
+  ...
+# Subtest: web mode requires grounded research before mapped selection and retains the complete display envelope
+ok 57 - web mode requires grounded research before mapped selection and retains the complete display envelope
+  ---
+  duration_ms: 5.887041
+  type: 'test'
+  ...
+# Subtest: web-mode failure cannot silently downgrade to mapped-only success
+ok 58 - web-mode failure cannot silently downgrade to mapped-only success
+  ---
+  duration_ms: 0.567625
+  type: 'test'
+  ...
+# Subtest: named resolution preserves mapped coordinates, requires inspection and bounds duplicate lookups
+ok 59 - named resolution preserves mapped coordinates, requires inspection and bounds duplicate lookups
+  ---
+  duration_ms: 0.6065
+  type: 'test'
+  ...
+# Subtest: ambiguous names, absent names and model coordinates cannot enter a route
+ok 60 - ambiguous names, absent names and model coordinates cannot enter a route
+  ---
+  duration_ms: 0.474709
+  type: 'test'
+  ...
+# Subtest: optional source outage retains only inspected identities and opens a no-retry circuit
+ok 61 - optional source outage retains only inspected identities and opens a no-retry circuit
+  ---
+  duration_ms: 1.008334
+  type: 'test'
+  ...
+# Subtest: source failure without inspected places and source configuration failures remain fatal
+ok 62 - source failure without inspected places and source configuration failures remain fatal
+  ---
+  duration_ms: 0.311667
+  type: 'test'
+  ...
+# Subtest: planning context exposes verified geography without granting model-coordinate routing
+ok 63 - planning context exposes verified geography without granting model-coordinate routing
+  ---
+  duration_ms: 2.580375
+  type: 'test'
+  ...
+# Subtest: failed stop feedback preserves reached IDs and the measured distance target for revision
+ok 64 - failed stop feedback preserves reached IDs and the measured distance target for revision
+  ---
+  duration_ms: 1.024084
+  type: 'test'
+  ...
+# Subtest: central routing receives source coordinates and evaluated path yields honest measured statistics
+ok 65 - central routing receives source coordinates and evaluated path yields honest measured statistics
+  ---
+  duration_ms: 2.498416
+  type: 'test'
+  ...
+# Subtest: strict distance, duration and missing elevation evidence reject with measured revision feedback
+ok 66 - strict distance, duration and missing elevation evidence reject with measured revision feedback
+  ---
+  duration_ms: 2.577209
+  type: 'test'
+  ...
+# Subtest: unsupported strict exclusions fail without spending a route call
+ok 67 - unsupported strict exclusions fail without spending a route call
+  ---
+  duration_ms: 0.215875
+  type: 'test'
+  ...
+# Subtest: soft distance deviation gives feedback but cannot become final success
+ok 68 - soft distance deviation gives feedback but cannot become final success
+  ---
+  duration_ms: 0.532208
+  type: 'test'
+  ...
+# Subtest: incorrect provenance, missing snaps and fabricated statistics are rejected
+ok 69 - incorrect provenance, missing snaps and fabricated statistics are rejected
+  ---
+  duration_ms: 4.986041
+  type: 'test'
+  ...
+# Subtest: strict road avoidance needs continuous allowed evidence
+ok 70 - strict road avoidance needs continuous allowed evidence
+  ---
+  duration_ms: 0.746459
+  type: 'test'
+  ...
+# Subtest: confirmed missing connection is revision feedback; service errors and cancellation remain failures
+ok 71 - confirmed missing connection is revision feedback; service errors and cancellation remain failures
+  ---
+  duration_ms: 1.211958
+  type: 'test'
+  ...
+# Subtest: a place beyond the strict approach threshold is identified for model revision
+ok 72 - a place beyond the strict approach threshold is identified for model revision
+  ---
+  duration_ms: 0.339833
+  type: 'test'
+  ...
+# Subtest: pilot location limit reserves start and end before spending provider calls
+ok 73 - pilot location limit reserves start and end before spending provider calls
+  ---
+  duration_ms: 0.333041
+  type: 'test'
+  ...
+# Subtest: UTF-8 provider citations become exact native UTF-16 ranges for accented, emoji and mixed-script text
+ok 74 - UTF-8 provider citations become exact native UTF-16 ranges for accented, emoji and mixed-script text
+  ---
+  duration_ms: 5.651375
+  type: 'test'
+  ...
+# Subtest: partial UTF-8 scalars and malformed Unicode cannot produce native citation ranges
+ok 75 - partial UTF-8 scalars and malformed Unicode cannot produce native citation ranges
+  ---
+  duration_ms: 1.441417
+  type: 'test'
+  ...
+# Subtest: grounded answer preserves full text, citation offsets, suggestions and retrieval provenance
+ok 76 - grounded answer preserves full text, citation offsets, suggestions and retrieval provenance
+  ---
+  duration_ms: 0.598209
+  type: 'test'
+  ...
+# Subtest: model claims alone, search without page read, and failed page retrieval cannot count as completed research
+ok 77 - model claims alone, search without page read, and failed page retrieval cannot count as completed research
+  ---
+  duration_ms: 0.708125
+  type: 'test'
+  ...
+# Subtest: malformed citations, private URLs and oversized provider suggestions are rejected
+ok 78 - malformed citations, private URLs and oversized provider suggestions are rejected
+  ---
+  duration_ms: 0.5565
+  type: 'test'
+  ...
+# Subtest: documented web-search and URL-context request preserves original prompt without model coordinates or schema guessing
+ok 79 - documented web-search and URL-context request preserves original prompt without model coordinates or schema guessing
+  ---
+  duration_ms: 24.767792
+  type: 'test'
+  ...
+# Subtest: search-only success completes exactly one separately accounted page-read stage
+ok 80 - search-only success completes exactly one separately accounted page-read stage
+  ---
+  duration_ms: 25.14975
+  type: 'test'
+  ...
+# Subtest: failed or omitted page reads never become research success and are not retried
+ok 81 - failed or omitted page reads never become research success and are not retried
+  ---
+  duration_ms: 21.381958
+  type: 'test'
+  ...
+# Subtest: exhausted generation budget prevents the second page-read request
+ok 82 - exhausted generation budget prevents the second page-read request
+  ---
+  duration_ms: 0.469
+  type: 'test'
+  ...
+# Subtest: attested intent endpoint
+    # Subtest: fails closed in production without durable authorization
+    ok 1 - fails closed in production without durable authorization
+      ---
+      duration_ms: 1.893708
+      type: 'test'
+      ...
+    # Subtest: consumes weighted intent cost from the same opaque session used by routing
+    ok 2 - consumes weighted intent cost from the same opaque session used by routing
+      ---
+      duration_ms: 5.016917
+      type: 'test'
+      ...
+    # Subtest: allows unauthenticated parsing only with explicit local opt-in
+    ok 3 - allows unauthenticated parsing only with explicit local opt-in
+      ---
+      duration_ms: 0.199833
+      type: 'test'
+      ...
+    1..3
+ok 83 - attested intent endpoint
+  ---
+  duration_ms: 9.498083
+  type: 'suite'
+  ...
+# Subtest: production operations
+    # Subtest: emits a bounded presence-only production preflight report
+    ok 1 - emits a bounded presence-only production preflight report
+      ---
+      duration_ms: 1.259417
+      type: 'test'
+      ...
+    # Subtest: blocks missing durable configuration, malformed flags and unsafe production modes
+    ok 2 - blocks missing durable configuration, malformed flags and unsafe production modes
+      ---
+      duration_ms: 1.729208
+      type: 'test'
+      ...
+    # Subtest: requires coherent provider and research dependencies without printing them
+    ok 3 - requires coherent provider and research dependencies without printing them
+      ---
+      duration_ms: 0.520958
+      type: 'test'
+      ...
+    # Subtest: keeps the remote intent and evidence providers outside the closed-beta surface
+    ok 4 - keeps the remote intent and evidence providers outside the closed-beta surface
+      ---
+      duration_ms: 0.271791
+      type: 'test'
+      ...
+    # Subtest: returns nonzero from the deterministic preflight CLI contract
+    ok 5 - returns nonzero from the deterministic preflight CLI contract
+      ---
+      duration_ms: 0.798875
+      type: 'test'
+      ...
+    # Subtest: sanitizes operational events before writing structured JSON
+    ok 6 - sanitizes operational events before writing structured JSON
+      ---
+      duration_ms: 1.067625
+      type: 'test'
+      ...
+    # Subtest: serves zero-detail liveness and fail-closed cached readiness
+    ok 7 - serves zero-detail liveness and fail-closed cached readiness
+      ---
+      duration_ms: 28.433959
+      type: 'test'
+      ...
+    # Subtest: rejects late work before parsing or endpoint authorization once draining
+    ok 8 - rejects late work before parsing or endpoint authorization once draining
+      ---
+      duration_ms: 8.586209
+      type: 'test'
+      ...
+    # Subtest: configures bounded Node HTTP timeouts and probes only required pools
+    ok 9 - configures bounded Node HTTP timeouts and probes only required pools
+      ---
+      duration_ms: 0.386417
+      type: 'test'
+      ...
+    # Subtest: drains gracefully, closes pools and aborts in-flight work at the deadline
+    ok 10 - drains gracefully, closes pools and aborts in-flight work at the deadline
+      ---
+      duration_ms: 0.560084
+      type: 'test'
+      ...
+    # Subtest: uses one total shutdown budget and cleans up partial pool construction
+    ok 11 - uses one total shutdown budget and cleans up partial pool construction
+      ---
+      duration_ms: 1.398958
+      type: 'test'
+      ...
+    # Subtest: forces a nonzero process exit after a signal drain deadline
+    ok 12 - forces a nonzero process exit after a signal drain deadline
+      ---
+      duration_ms: 0.949042
+      type: 'test'
+      ...
+    1..12
+ok 84 - production operations
+  ---
+  duration_ms: 46.71275
+  type: 'suite'
+  ...
+# Subtest: route-session integration
+    # Subtest: rejects a route timeout that can outlive its provider lease
+    ok 1 - rejects a route timeout that can outlive its provider lease
+      ---
+      duration_ms: 0.68225
+      type: 'test'
+      ...
+    # Subtest: allows several loop variants concurrently through one assertion session
+    ok 2 - allows several loop variants concurrently through one assertion session
+      ---
+      duration_ms: 8.914375
+      type: 'test'
+      ...
+    # Subtest: never calls GraphHopper when the request ID is replayed
+    ok 3 - never calls GraphHopper when the request ID is replayed
+      ---
+      duration_ms: 2.743917
+      type: 'test'
+      ...
+    1..3
+ok 85 - route-session integration
+  ---
+  duration_ms: 13.257708
+  type: 'suite'
+  ...
+# Subtest: intent server
+    # Subtest: exports a Vercel-compatible request handler
+    ok 1 - exports a Vercel-compatible request handler
+      ---
+      duration_ms: 1.694167
+      type: 'test'
+      ...
+    # Subtest: serves POST /api/parse-intent
+    ok 2 - serves POST /api/parse-intent
+      ---
+      duration_ms: 2.098666
+      type: 'test'
+      ...
+    # Subtest: dispatches POST /api/llm-plan-route through the injected boundary
+    ok 3 - dispatches POST /api/llm-plan-route through the injected boundary
+      ---
+      duration_ms: 0.475084
+      type: 'test'
+      ...
+    1..3
+ok 86 - intent server
+  ---
+  duration_ms: 5.005
+  type: 'suite'
+  ...
+# Subtest: staging OCI artifact
+    # Subtest: pins Node 22, uses a non-root runtime and excludes package managers
+    ok 1 - pins Node 22, uses a non-root runtime and excludes package managers
+      ---
+      duration_ms: 9.933792
+      type: 'test'
+      ...
+    # Subtest: uses an explicit build-context allowlist
+    ok 2 - uses an explicit build-context allowlist
+      ---
+      duration_ms: 1.51675
+      type: 'test'
+      ...
+    # Subtest: passes the deterministic application-context secret and content scan
+    ok 3 - passes the deterministic application-context secret and content scan
+      ---
+      duration_ms: 139.621625
+      type: 'test'
+      ...
+    # Subtest: requires Node 22 or later in package metadata
+    ok 4 - requires Node 22 or later in package metadata
+      ---
+      duration_ms: 0.89975
+      type: 'test'
+      ...
+    # Subtest: keeps the machine-readable environment contract in sync with admission
+    ok 5 - keeps the machine-readable environment contract in sync with admission
+      ---
+      duration_ms: 1.2315
+      type: 'test'
+      ...
+    1..5
+ok 87 - staging OCI artifact
+  ---
+  duration_ms: 154.001541
+  type: 'suite'
+  ...
+1..87
+# tests 112
+# suites 6
+# pass 112
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1322.019417

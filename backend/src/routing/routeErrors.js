@@ -1,4 +1,5 @@
 const ERROR_DEFINITIONS = Object.freeze({
+  route_distance_limit: [400, "The requested distance exceeds the planning limit."],
   invalid_request: [400, "The route request is invalid."],
   invalid_coordinates: [400, "One or more coordinates are invalid."],
   unsupported_profile: [400, "The requested routing profile is not supported."],

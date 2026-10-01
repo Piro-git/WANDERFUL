@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import {
   ReleasePackageValidationError,
@@ -624,9 +626,12 @@ function validatorOptions() {
 }
 
 function applePackageInput() {
-  const packageUrl = new URL("../../docs/release/app-store-v1/", import.meta.url);
-  const readJson = (name) => JSON.parse(readFileSync(new URL(name, packageUrl), "utf8"));
-  const readText = (name) => readFileSync(new URL(name, packageUrl), "utf8");
+  // These tests exercise the sealed V1 validator and its historical manifest.
+  // Current release drafts evolve independently and are not sealed V1 proof.
+  const readText = (name) => execFileSync("git", ["show",
+    `adea2c08540e87f0acd7eebb976c72eab8eb76c3:docs/release/app-store-v1/${name}`
+  ], { cwd: fileURLToPath(new URL("../../", import.meta.url)), encoding: "utf8" });
+  const readJson = (name) => JSON.parse(readText(name));
   return {
     audit: readJson("APPLE_RELEASE_READINESS_AUDIT_V1.json"),
     blockers: readJson("RELEASE_BLOCKERS_V1.json"),

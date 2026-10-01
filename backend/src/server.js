@@ -1,7 +1,15 @@
 import { createServer } from "node:http";
 import { AppAttestError, appAttestErrorResult } from "./appAttest/appAttestErrors.js";
 import { createAppAttestRuntime } from "./appAttest/appAttestRuntime.js";
+import { createAppleAccountRuntime } from "./accounts/accountRuntime.js";
+import { createWeatherEndpoint } from "./weather/weatherEndpoint.js";
+import { createPreparationEndpoint } from "./preparation/preparationEndpoint.js";
 import { createIntentSessionEndpoint } from "./appAttest/intentSessionEndpoint.js";
+import { createLLMFirstPlanningEndpoint } from "./llmPlanning/llmFirstPlanningEndpoint.js";
+import {
+  LLM_FIRST_PLANNING_POLICY_V1,
+  llmFirstPlanningEnabled
+} from "./llmPlanning/llmFirstPlanningPolicy.js";
 import { intentError, intentErrorResult } from "./parseIntent.js";
 import { createOutdoorAdventurePlanningEndpoint } from "./outdoorAdventure/outdoorAdventureEndpoint.js";
 import {
@@ -33,6 +41,21 @@ export function createIntentRequestHandler(options = {}) {
   const routeProvider = options.provider ?? lazyGraphHopperProvider(options);
   const appAttestRuntime = options.appAttestRuntime ?? createAppAttestRuntime(options);
   const appAttestEndpoint = options.appAttestEndpoint ?? appAttestRuntime.endpoint;
+  const appleAccountRuntime = options.appleAccountRuntime ?? createAppleAccountRuntime({
+    env: options.env ?? process.env,
+    pool: options.accountPostgresPool ?? options.postgresPool,
+    deleteOwnedCloudData: options.deleteOwnedAccountCloudData
+  });
+  const accountEndpoint = options.accountEndpoint ?? appleAccountRuntime?.endpoint;
+  const weatherEndpoint = options.weatherEndpoint ?? createWeatherEndpoint({
+    ...options, appAttestRepository: appAttestRuntime.repository,
+    authorizer: options.authorizer ?? appAttestRuntime.routeAuthorizer
+  });
+  const preparationEndpoint = options.preparationEndpoint ?? createPreparationEndpoint({
+    ...options,
+    appAttestRepository: appAttestRuntime.repository,
+    authorizer: options.authorizer ?? appAttestRuntime.routeAuthorizer
+  });
   const intentEndpoint = options.intentEndpoint ?? createIntentSessionEndpoint({
     ...options,
     appAttestRepository: appAttestRuntime.repository,
@@ -61,6 +84,16 @@ export function createIntentRequestHandler(options = {}) {
   const outdoorAdventurePlanningEndpoint =
     options.outdoorAdventurePlanningEndpoint ??
     createOutdoorAdventurePlanningEndpoint({
+      ...options,
+      provider: routeProvider,
+      appAttestRepository: appAttestRuntime.repository,
+      authorizer: options.authorizer ??
+        (appAttestRuntime.repository
+          ? appAttestRuntime.routeAuthorizer
+          : undefined)
+    });
+  const llmFirstPlanningEndpoint = options.llmFirstPlanningEndpoint ??
+    createLLMFirstPlanningEndpoint({
       ...options,
       provider: routeProvider,
       appAttestRepository: appAttestRuntime.repository,
@@ -104,6 +137,14 @@ export function createIntentRequestHandler(options = {}) {
       const knownPostRoute = request.method === "POST" && isKnownPostPath(request.url);
       let body = {};
       if (knownPostRoute) {
+        if (request.url === LLM_FIRST_PLANNING_POLICY_V1.endpointPath &&
+            !llmFirstPlanningEnabled(options.env ?? process.env)) {
+          const result = await llmFirstPlanningEndpoint({}, {
+            headers: request.headers,
+            signal: cancellation.signal
+          });
+          return sendJson(response, result.statusCode, result.payload, result.headers);
+        }
         if (
           request.url ===
             OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath &&
@@ -131,6 +172,9 @@ export function createIntentRequestHandler(options = {}) {
           ) {
             throw outdoorAdventureOrchestrationError("invalid_request");
           }
+          if (request.url === LLM_FIRST_PLANNING_POLICY_V1.endpointPath) {
+            throw outdoorAdventureOrchestrationError("invalid_request");
+          }
           throw routeError("invalid_request", { message: "Content-Type must be application/json." });
         }
         body = await readJsonBody(
@@ -153,8 +197,12 @@ export function createIntentRequestHandler(options = {}) {
           routeEndpoint,
           outdoorEvidenceEndpoint,
           outdoorAdventurePlanningEndpoint,
+          llmFirstPlanningEndpoint,
           appAttestEndpoint,
-          intentEndpoint
+          intentEndpoint,
+          accountEndpoint,
+          preparationEndpoint,
+          weatherEndpoint
         }
       );
       return sendJson(response, result.statusCode, result.payload, result.headers);
@@ -165,6 +213,17 @@ export function createIntentRequestHandler(options = {}) {
       }
       if (error instanceof RouteError) {
         const result = routeErrorResult(error);
+        try {
+          options.logger?.info({
+            event: "route_http_rejected",
+            statusCode: result.statusCode,
+            errorCode: result.payload.error.code,
+            validationReason: error.message === "Request body must be valid JSON."
+              ? "malformed_json"
+              : error.message === "Content-Type must be application/json."
+                ? "content_type" : undefined
+          });
+        } catch { /* Diagnostics never change the HTTP response. */ }
         return sendJson(response, result.statusCode, result.payload);
       }
       if (error instanceof OutdoorEvidenceError) {
@@ -229,6 +288,21 @@ export async function handleIntentHttpRequest(request, options = {}) {
       });
     }
 
+    if (request.method === "POST" && request.url?.startsWith("/api/account/")) {
+      if (!options.accountEndpoint) return { statusCode: 404, payload: { error: "Not found" } };
+      return await options.accountEndpoint(request.url, request.body, { headers: request.headers, signal: request.signal });
+    }
+
+    if (request.method === "POST" && request.url === "/api/route-weather") {
+      const endpoint = options.weatherEndpoint ?? createWeatherEndpoint(options);
+      return await endpoint(request.body, { headers: request.headers, signal: request.signal });
+    }
+
+    if (request.method === "POST" && request.url === "/api/preparation") {
+      const endpoint = options.preparationEndpoint ?? createPreparationEndpoint(options);
+      return await endpoint(request.body, { headers: request.headers, signal: request.signal });
+    }
+
     if (request.method === "POST" && request.url === "/api/outdoor-evidence/corridor") {
       const endpoint = options.outdoorEvidenceEndpoint ?? createOutdoorEvidenceEndpoint(options);
       return await endpoint(request.body, {
@@ -245,6 +319,17 @@ export async function handleIntentHttpRequest(request, options = {}) {
     ) {
       const endpoint = options.outdoorAdventurePlanningEndpoint ??
         createOutdoorAdventurePlanningEndpoint(options);
+      return await endpoint(request.body, {
+        headers: request.headers,
+        signal: request.signal,
+        requestId: request.requestId
+      });
+    }
+
+    if (request.method === "POST" &&
+        request.url === LLM_FIRST_PLANNING_POLICY_V1.endpointPath) {
+      const endpoint = options.llmFirstPlanningEndpoint ??
+        createLLMFirstPlanningEndpoint(options);
       return await endpoint(request.body, {
         headers: request.headers,
         signal: request.signal,
@@ -396,24 +481,34 @@ function safeAdditionalHeaders(headers) {
 function isKnownPostPath(url) {
   return url === "/api/parse-intent" || url === "/api/route" ||
     url === "/api/outdoor-evidence/corridor" ||
+    url === LLM_FIRST_PLANNING_POLICY_V1.endpointPath ||
     url === OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath ||
     url === "/api/app-attest/challenge" || url === "/api/app-attest/register" ||
-    url === "/api/app-attest/route-session";
+    url === "/api/app-attest/route-session" ||
+    url === "/api/account/apple/sign-in" || url === "/api/account/sign-out" ||
+    url === "/api/account/delete" || url === "/api/preparation" || url === "/api/route-weather";
 }
 
 function bodyLimit(url, env) {
   if (url === "/api/route") return routeBodyLimit(env);
   if (url === "/api/outdoor-evidence/corridor") return outdoorEvidenceBodyLimit(env);
+  if (url === LLM_FIRST_PLANNING_POLICY_V1.endpointPath) {
+    return 524_288; // Bounded full-geometry condition recheck; schema 3 retains its own 16 KiB limit.
+  }
   if (url === OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath) {
     return outdoorAdventureOrchestrationConfigurationV1(env).requestBytes;
   }
   if (url?.startsWith("/api/app-attest/")) return 262_144;
+  if (url?.startsWith("/api/account/")) return 32_768;
+  if (url === "/api/preparation") return 2_048;
+  if (url === "/api/route-weather") return 524_288;
   return 16_384;
 }
 
 function requestContract(url) {
   if (url === "/api/parse-intent") return "intent";
   if (url === "/api/outdoor-evidence/corridor") return "outdoorEvidence";
+  if (url === LLM_FIRST_PLANNING_POLICY_V1.endpointPath) return "outdoorAdventure";
   if (url === OUTDOOR_ADVENTURE_ORCHESTRATION_POLICY_V1.endpointPath) {
     return "outdoorAdventure";
   }

@@ -17,9 +17,13 @@
     ],
     "app_category": "public.app-category.navigation",
     "usage_descriptions": {
+      "NSLocationWhenInUseUsageDescription": "Wanderful uses your precise location during active Route Guidance, including when the screen is locked or you use another app, to show your position and progress. Pause or end guidance to stop location updates.",
       "NSMicrophoneUsageDescription": "Wanderful uses the microphone to turn your spoken route request into text.",
       "NSSpeechRecognitionUsageDescription": "Apple Speech can send captured audio to Apple's servers for processing. Wanderful does not retain raw audio or send it to its own backend."
-    }
+    },
+    "background_modes": [
+      "location"
+    ]
   },
   "environment": {
     "name_info_key": "TRAILMIND_APP_ENVIRONMENT",
@@ -36,17 +40,36 @@
     "RESEARCH_GUIDED_PLANNING_ENABLED": "false",
     "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": "false",
     "SUPABASE_ONBOARDING_SYNC_ENABLED": "false",
-    "SUPERWALL_ENABLED": "false"
+    "SUPERWALL_ENABLED": "false",
+    "MONETIZATION_ENABLED": "false",
+    "WANDERFUL_ACCOUNT_ENABLED": "false",
+    "WANDERFUL_APPLE_SIGN_IN_ENABLED": "false",
+    "ROUTE_WEATHER_ENABLED": "false"
   },
   "service_configuration": {
     "INTENT_BACKEND_BASE_URL": "",
     "SUPABASE_PROJECT_URL": "",
     "SUPABASE_PUBLISHABLE_KEY": "",
-    "SUPERWALL_API_KEY": ""
+    "SUPERWALL_API_KEY": "",
+    "WANDERFUL_PREMIUM_WEEKLY_PRODUCT_ID": "",
+    "WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID": ""
   },
   "public_link_configuration": {
     "WANDERFUL_PRIVACY_POLICY_URL": "",
-    "WANDERFUL_SUPPORT_URL": ""
+    "WANDERFUL_SUPPORT_URL": "",
+    "WANDERFUL_TERMS_OF_USE_URL": ""
+  },
+  "monetization": {
+    "feature_flag_info_key": "MONETIZATION_ENABLED",
+    "superwall_flag_info_key": "SUPERWALL_ENABLED",
+    "weekly_product_info_key": "WANDERFUL_PREMIUM_WEEKLY_PRODUCT_ID",
+    "annual_product_info_key": "WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID",
+    "privacy_policy_info_key": "WANDERFUL_PRIVACY_POLICY_URL",
+    "terms_of_use_info_key": "WANDERFUL_TERMS_OF_USE_URL",
+    "required_binary_markers": [
+      "Restore purchases",
+      "Manage subscription"
+    ]
   },
   "distribution": {
     "expected_team_identifier_environment_variable": "TRAILMIND_EXPECTED_TEAM_IDENTIFIER"
@@ -139,10 +162,8 @@
     "OPENROUTER_API_KEY",
     "GOOGLE_API_KEY",
     "NSAppTransportSecurity",
-    "UIBackgroundModes",
     "NSLocalNetworkUsageDescription",
     "NSBonjourServices",
-    "NSLocationWhenInUseUsageDescription",
     "NSLocationAlwaysUsageDescription",
     "NSLocationAlwaysAndWhenInUseUsageDescription",
     "NSLocationTemporaryUsageDescriptionDictionary"
@@ -159,7 +180,7 @@
     "GraphHopper calculates route geometry",
     "OpenStreetMap data is available",
     "Elevation data by Mapterhorn",
-    "Wanderful is a planning aid, not live navigation."
+    "Route Guidance is a planning aid, not a safety guarantee."
   ],
   "forbidden_binary_markers": [
     "--trailmind-ui-accessibility-xxxl",
@@ -173,9 +194,7 @@
     "MockRoutingService",
     "RouteEditAIView",
     "FakeVoicePlanningService",
-    "RemoteAIIntentParsingProvider",
     "RemoteWithLocalFallbackIntentParsingProvider",
-    "parse-intent",
     "German directions",
     "German instructions",
     "Bitte gib einen Ortsnamen",
@@ -184,18 +203,27 @@
     "Start und Ziel konnten",
     "eine realistische Distanz",
     "Harz Waterfall Weekend",
-    "Lüneburg Forest Loop",
+    "L\u00fcneburg Forest Loop",
     "Sunset Ridge Walk",
     "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "LIVE ROUTING DEMO",
     "Edit with AI",
     "Live trail geometry",
+    "Live loop routing",
+    "This live route",
+    "Add your key to Configuration/Local.xcconfig",
+    "builds a real route",
+    "Real routes. Honest guidance.",
+    "distinct real loop options",
+    "focused planner for real outdoor routes",
     "trail-network data",
     "guaranteed safe",
     "guaranteed scenic",
     "better than Komoot",
     "example.com/privacy",
     "example.com/support",
+    "test.app.wanderful.premium",
+    "local.storekit.test",
     "TrailMindTests",
     "TrailMindUITests"
   ]

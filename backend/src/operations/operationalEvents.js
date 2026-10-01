@@ -11,6 +11,10 @@ const EVENT_SCHEMAS = Object.freeze({
     "resultState", "activity", "routeType", "regionId", "proposalCount",
     "attemptCount", "routeResultCount", "durationBucket", "errorCode"
   ]),
+  llm_first_planning_completed: Object.freeze([
+    "resultState", "acceptedCount", "rejectedCount", "fallbackAttemptCount", "durationBucket", "errorCode"
+  ]),
+  dynamic_research_admitted: Object.freeze(["requestCostUnits", "dailyRequestLimit"]),
   intent_lease_release_failed: Object.freeze([]),
   service_started: Object.freeze(["releaseStage"]),
   service_start_failed: Object.freeze(["errorCode"]),
@@ -76,7 +80,7 @@ function safeField(name, value) {
   if (name === "capability") {
     return [
       "route_provider", "intent_provider", "outdoor_evidence",
-      "outdoor_research", "routable_highlight_access"
+      "outdoor_research", "routable_highlight_access", "dynamic_research"
     ].includes(value) ? value : undefined;
   }
   if (name === "pressure") {
@@ -99,7 +103,7 @@ function safeField(name, value) {
     return ["staging", "closed_beta", "public"].includes(value) ? value : undefined;
   }
   if (name.endsWith("Ms")) return durationBucket(value);
-  if (["proposalCount", "attemptCount", "routeResultCount", "pointCount"].includes(name)) {
+  if (["proposalCount", "attemptCount", "routeResultCount", "pointCount", "acceptedCount", "rejectedCount", "fallbackAttemptCount", "requestCostUnits", "dailyRequestLimit"].includes(name)) {
     return countBucket(value);
   }
   if (name === "statusCode") {

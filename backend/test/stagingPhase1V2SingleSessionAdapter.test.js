@@ -149,6 +149,25 @@ describe("staging Phase 1 V2 one-session adapter", () => {
     }
   });
 
+  it("accepts the observed managed postgres attributes and rejects the old false assumptions", async () => {
+    for (const identityOverride of [
+      { rolinherit: false },
+      { rolreplication: false },
+      { rolbypassrls: false }
+    ]) {
+      const events = [];
+      const Client = fakeClientClass({ events, identityOverride });
+      const fixture = await authorizationFixture();
+      await assert.rejects(runAuthorizedStagingPhase1V2SingleSession({
+        admissionRequest: fixture.request,
+        ...boundaries(events)
+      }, dependencies(Client)), fixedError("identity"));
+      assert.equal(Client.instances.length, 1);
+      assert.equal(Client.instances[0].ended, true);
+      assert.equal(events.includes("receipt:persist"), false);
+    }
+  });
+
   it("rejects reserved DNS answers and every unproved TLS property", async () => {
     for (const address of [
       "127.0.0.1", "10.0.0.1", "100.64.0.1", "192.0.2.1",
@@ -506,7 +525,7 @@ function fakeClientClass(options) {
       const sql = String(text);
       if (sql.includes("phase1-v2:identity")) {
         if (options.failIdentity) throw options.failIdentity;
-        return result(identityRow());
+        return result({ ...identityRow(), ...options.identityOverride });
       }
       if (sql.includes("phase1-v2:timeouts")) return result({ ok: true });
       if (sql.includes("phase1-v2:session-attestation")) {
@@ -528,11 +547,12 @@ function fakeClientClass(options) {
           idle_transaction_timeout: "5s",
           transaction_timeout: "35s",
           rolcanlogin: true,
+          rolinherit: true,
           rolsuper: false,
           rolcreatedb: true,
           rolcreaterole: true,
-          rolreplication: false,
-          rolbypassrls: false,
+          rolreplication: true,
+          rolbypassrls: true,
           can_read_all_settings: true,
           foundation_lock_held: lockHeld
         });
@@ -556,7 +576,7 @@ function fakeClientClass(options) {
       }
       if (sql.includes("phase1-v2:shared-acl")) return rows(SHARED_ACL);
       if (sql.includes("phase1-v2:provider-acl-plan")) return rows(PROVIDER_PLAN);
-      if (sql.includes("Phase 1 Supabase PostGIS-isolation V2 candidate")) {
+      if (sql.includes("Phase 1 Supabase PostGIS-isolation V2 pre-step")) {
         if (options.failPreStep) throw options.failPreStep;
         options.events.push("client:pre");
         this.state.pre = true;
@@ -754,7 +774,8 @@ async function authorizationFixture() {
   execFileSync("openssl", [
     "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
     "-days", "1", "-subj", "/CN=TrailMind Adapter Test CA",
-    "-addext", "basicConstraints=critical,CA:TRUE",
+    "-config", realpathSync(new URL("../config/synthetic-ca.cnf", import.meta.url)),
+    "-extensions", "synthetic_ca",
     "-keyout", caKeyPath, "-out", caPath
   ], { stdio: ["ignore", "ignore", "ignore"] });
   unlinkSync(caKeyPath);
@@ -951,21 +972,22 @@ function identityRow() {
     current_user: "postgres",
     backend_pid: PID,
     server_version_num: 170_000,
-    shared_preload_libraries: "supautils",
-    supautils_privileged_role: "postgres",
+    supautils_privileged_role: "supabase_privileged_role",
     supautils_superuser: "supabase_admin",
     supautils_legacy_superuser: "supabase_admin",
     supautils_privileged_extensions: "postgis",
     is_superuser: "off",
     rolcanlogin: true,
+    rolinherit: true,
     rolsuper: false,
     rolcreatedb: true,
     rolcreaterole: true,
-    rolreplication: false,
-    rolbypassrls: false,
+    rolreplication: true,
+    rolbypassrls: true,
     can_read_all_settings: true,
     supabase_admin_superuser: true,
-    postgres_cannot_set_supabase_admin: true
+    postgres_cannot_set_supabase_admin: true,
+    exact_supabase_privileged_role: true
   };
 }
 

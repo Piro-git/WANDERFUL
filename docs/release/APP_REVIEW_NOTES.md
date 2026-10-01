@@ -9,7 +9,7 @@ Replace every bracketed field and verify the exact uploaded build before copying
 
 TrailMind is an iPhone-only, portrait route-planning app for same-day hiking, trail running, and biking. It is a planning aid, not live navigation.
 
-Language/market note: TrailMind is currently a Germany-first English-interface beta. Interface copy, errors, and requested route instructions are English; the local parser accepts supported German and English route-request forms. Unqualified place searches are intentionally biased toward Germany. The owner must approve the matching primary locale, territory, and reviewer path before submission.
+Language/market note (scope updated 2026-09-10): The product targets any supported, resolved place, without a Harz or Germany-first requirement. Verify interface languages, accepted prompt forms, routing coverage, and place disambiguation against the exact uploaded build. The owner must approve the primary locale, distribution territories, and a pre-verified reviewer route before submission; this scope does not imply worldwide coverage.
 
 No account or login is required. TrailMind does not access the device's current location; the reviewer enters a place name for the route start.
 
