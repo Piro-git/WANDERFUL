@@ -40,6 +40,8 @@ jobs:
       - name: Run backend fixture tests (no provider or database credentials)
         working-directory: backend
         run: npm test -- --test-concurrency=2 --test-reporter=tap
+      - name: Run independent route acceptance contracts
+        run: node --test backend/quality-gates/routeAcceptance.test.js
       - name: Check generated deployment configuration
         run: node backend/scripts/configure-research-app.js --check
       - name: Run release verifier self-tests (synthetic artifacts)
