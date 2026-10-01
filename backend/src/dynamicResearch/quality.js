@@ -2,6 +2,10 @@ import {fetchBoundedJson} from '../llmPlanning/adapters/providerHttp.js';
 import {safeLabel} from './places.js';
 
 const object=properties=>({type:'object',properties,required:Object.keys(properties),additionalProperties:false});
+// Free-form model prose is never proof of a field condition. Reject explicit
+// assurances here; the final user-facing assessment is separately built from
+// measured route data so other languages or phrasings cannot become claims.
+const unsupportedAssurance=text=>/\b(?:guaranteed?|definitely|certainly)\s+(?:to\s+be\s+)?safe\b|\b(?:route|trail|hike|walk)\s+is\s+safe\b|\b(?:has|provides|offers|contains)\s+(?:safe\s+)?(?:drinking|potable)\s+water\b|\bgarantiert\s+sicher\b|\b(?:hat|bietet)\s+trinkwasser\b/i.test(text);
 export const QUALITY_TOOL={type:'function',name:'review_route_quality',description:'Evaluate the original request against only this measured itinerary and supplied source evidence. Complete with a concise assessment or request a meaningful revision. Never create facts or route geometry.',parameters:object({
   decision:{type:'string',enum:['complete','partial','revise','reject']},
   summary:{type:'string',minLength:1,maxLength:600},
@@ -15,6 +19,7 @@ export function validateQualityReview(value,{selectedPlaces,consideredPlaces,web
     !Array.isArray(value.remainingWishes)||value.remainingWishes.length>12||value.remainingWishes.some(x=>!safeLabel(x,240))||
     !Array.isArray(value.evidenceIds)||value.evidenceIds.length>12||new Set(value.evidenceIds).size!==value.evidenceIds.length)fail();
   if(value.decision==='partial'&&!value.remainingWishes.length)fail();
+  if([value.summary,...value.remainingWishes].some(unsupportedAssurance))fail();
   const selected=new Set(selectedPlaces.map(p=>p.id));
   const allowed=new Set([...selected,...(webResearch?.routeEvidence?.claims??[]).filter(c=>selected.has(c.placeId)).map(c=>c.id),...(localConditions?.notices??[]).map(n=>n.id)]);
   if(value.evidenceIds.some(id=>!allowed.has(id)))fail();
@@ -22,6 +27,14 @@ export function validateQualityReview(value,{selectedPlaces,consideredPlaces,web
   // Natural-language exclusions must remain explainable; name substring checks
   // confuse negation and legitimate names such as Brocken / Kleiner Brocken.
   return {schemaVersion:1,...value};
+}
+
+export function publicQualityReview(review,statistics) {
+  const distance=statistics?.distanceMeters;
+  if(!Number.isFinite(distance)||distance<=0)throw Object.assign(new TypeError('invalid_quality_review'),{code:'invalid_quality_review'});
+  return {...review,
+    summary:`GraphHopper measured ${(distance/1000).toFixed(1)} km. Review the mapped stops and current conditions before starting.`,
+    remainingWishes:review.remainingWishes.length?['Some requested preferences remain unverified.']:[]};
 }
 export function createGeminiQualityReview({apiKey,model,fetchImpl=globalThis.fetch}) {
   return async(context,{signal}={})=>{

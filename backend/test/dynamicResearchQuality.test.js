@@ -97,6 +97,23 @@ test('the final reviewer may explicitly offer a checked partial match with remai
  assert.deepEqual(f.counts(),{routes:2,reviews:2});assert.equal(result.statistics.distanceMeters,13000);
  assert.equal(result.qualityReview.decision,'partial');assert.equal(result.qualityReview.remainingWishes.length,1);
 });
+test('unsupported safety and drinking-water assurances cannot become a reviewed route',async()=>{
+ const f=closingFixture('complete');
+ f.deps.reviewPlan=async()=>({decision:'complete',summary:'This route is guaranteed safe and has drinking water.',remainingWishes:[],evidenceIds:[]});
+ await assert.rejects(f.run(),{code:'invalid_quality_review'});
+ for(const summary of ['Die Route ist garantiert sicher.','Die Route hat Trinkwasser.']) {
+   assert.throws(()=>validateQualityReview({decision:'complete',summary,remainingWishes:[],evidenceIds:[]},{selectedPlaces:[]}),{code:'invalid_quality_review'});
+ }
+});
+test('final review copy uses measured data even when model prose makes an unknown-language claim',async()=>{
+ const f=closingFixture('complete');
+ f.deps.reviewPlan=async()=>({decision:'complete',summary:'Questa escursione è sicura e offre acqua potabile.',
+   remainingWishes:['Acqua disponibile.'],evidenceIds:[]});
+ const result=await f.run();
+ assert.equal(result.qualityReview.summary,'GraphHopper measured 12.0 km. Review the mapped stops and current conditions before starting.');
+ assert.deepEqual(result.qualityReview.remainingWishes,['Some requested preferences remain unverified.']);
+ assert.doesNotMatch(JSON.stringify(result.qualityReview),/acqua|sicura/i);
+});
 test('review capacity is held before a route, even at generation and route boundaries',async()=>{
  for(const limits of [{generations:2},{generations:3},{routes:1},{qualityReviews:1}]) {
   const f=closingFixture('complete',limits);await assert.rejects(f.run(),{code:'research_no_acceptable_route'});

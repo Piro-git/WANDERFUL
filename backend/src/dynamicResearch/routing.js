@@ -48,8 +48,16 @@ export function createDynamicItineraryRouter({provider}) {
     }
     const path=providerResponse?.paths?.[0];
     // Statistics are disclosed only after validating real geometry, instructions and provenance.
-    const quality=evaluateLLMRouteCandidateV1({intent:{...intent,targetDistanceKm:null},routeRequest,requestedWaypoints:points,providerResponse});
-    if(!quality.accepted)return {accepted:false,reasonCode:quality.reasonCode};
+    const quality=evaluateLLMRouteCandidateV1({intent:{...intent,targetDistanceKm:null},routeRequest,requestedWaypoints:points,providerResponse,
+      maximumWaypointApproachMeters:100});
+    if(!quality.accepted) {
+      const failed=quality.failedWaypointIndex;
+      const unreachedPlaceId=Number.isInteger(failed)&&failed>0&&failed<=places.length&&
+        ['waypoint_snap_exceeded','waypoint_not_reached'].includes(quality.reasonCode)
+        ? places[failed-1].id : null;
+      return {accepted:false,reasonCode:quality.reasonCode,
+        ...(unreachedPlaceId?{unreachedPlaceIds:[unreachedPlaceId]}:{})};
+    }
     const statistics={distanceMeters:path.distance,durationSeconds:path.time/1000,elevationGainMeters:path.ascend??null};
     const rejected=reasonCode=>({accepted:false,reasonCode,statistics});
     const unreached=quality.waypointChecks.filter(c=>c.snapDistanceMeters>100||c.routeApproachMeters>100);

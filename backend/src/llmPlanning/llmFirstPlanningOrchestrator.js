@@ -135,6 +135,12 @@ export async function planLLMFirstAdventureV1(
 
 export function evaluateLLMRouteCandidateV1(input) {
   try {
+    const maximumWaypointApproachMeters = input.maximumWaypointApproachMeters ??
+      POLICY.limits.maximumWaypointApproachMeters;
+    if (!Number.isFinite(maximumWaypointApproachMeters) || maximumWaypointApproachMeters <= 0 ||
+        maximumWaypointApproachMeters > POLICY.limits.maximumWaypointApproachMeters) {
+      reject("malformed_geometry");
+    }
     const expectedProfile = profileFor(input.intent.activityType);
     if (input.routeRequest.profile !== expectedProfile) reject("activity_profile_mismatch");
     const expectedRouteType = input.intent.routeType;
@@ -174,7 +180,8 @@ export function evaluateLLMRouteCandidateV1(input) {
     if (!snaps || snaps.length !== input.requestedWaypoints.length) {
       reject("waypoint_snap_unavailable");
     }
-    const waypointChecks = verifyWaypoints(input.requestedWaypoints, snaps, coordinates);
+    const waypointChecks = verifyWaypoints(input.requestedWaypoints, snaps, coordinates,
+      maximumWaypointApproachMeters);
 
     const target = input.intent.targetDistanceKm;
     const targetDeviationRatio = target === null
@@ -217,7 +224,8 @@ export function evaluateLLMRouteCandidateV1(input) {
     };
   } catch (error) {
     if (error instanceof CandidateRejected) {
-      return { accepted: false, reasonCode: error.reasonCode };
+      return { accepted: false, reasonCode: error.reasonCode,
+        ...(error.failedWaypointIndex === undefined ? {} : { failedWaypointIndex: error.failedWaypointIndex }) };
     }
     return { accepted: false, reasonCode: "malformed_geometry" };
   }
@@ -481,31 +489,28 @@ function routeRequestFor(candidate) {
   return validateRouteRequest({ ...common, preferences });
 }
 
-function verifyWaypoints(requested, snapped, path) {
+function verifyWaypoints(requested, snapped, path, maximumApproachMeters) {
   const checks = [];
-  let minimumPathIndex = 0;
+  let minimumProgress = 0;
   for (let index = 0; index < requested.length; index += 1) {
     const snapDistanceMeters = haversine(requested[index], snapped[index]);
     if (snapDistanceMeters > POLICY.limits.maximumWaypointSnapMeters) {
-      reject("waypoint_snap_exceeded");
+      reject("waypoint_snap_exceeded", index);
     }
-    const approach = closestPathPoint(path, snapped[index], minimumPathIndex);
-    if (approach.distanceMeters > POLICY.limits.maximumWaypointApproachMeters) {
+    const approach = closestPathPoint(path, snapped[index], minimumProgress, maximumApproachMeters);
+    if (approach.distanceMeters > maximumApproachMeters) {
       const globalApproach = closestPathPoint(path, snapped[index], 0);
-      reject(
-        globalApproach.distanceMeters <= POLICY.limits.maximumWaypointApproachMeters &&
-        globalApproach.index < minimumPathIndex
-          ? "waypoint_order_invalid"
-          : "waypoint_not_reached"
-      );
+      const outOfOrder = globalApproach.distanceMeters <= maximumApproachMeters &&
+        globalApproach.progress < minimumProgress;
+      reject(outOfOrder ? "waypoint_order_invalid" : "waypoint_not_reached",
+        outOfOrder ? undefined : index);
     }
-    if (approach.index < minimumPathIndex) reject("waypoint_order_invalid");
-    minimumPathIndex = approach.index;
+    minimumProgress = approach.progress;
     checks.push({
       waypointIndex: index,
       snapDistanceMeters: round(snapDistanceMeters, 3),
       routeApproachMeters: round(approach.distanceMeters, 3),
-      routePointIndex: approach.index
+      routePointIndex: Math.ceil(approach.progress)
     });
   }
   if (checks.some((check, index) => index > 0 &&
@@ -774,14 +779,50 @@ function resample(coordinates, maximumCount) {
   return result;
 }
 
-function closestPathPoint(path, target, minimumIndex) {
-  let best = { index: minimumIndex, distanceMeters: Number.POSITIVE_INFINITY };
-  for (let index = minimumIndex; index < path.length; index += 1) {
-    const distanceMeters = haversine(path[index], target);
-    if (distanceMeters < best.distanceMeters) best = { index, distanceMeters };
+function closestPathPoint(path, target, minimumProgress, firstWithinMeters) {
+  let best = { progress: minimumProgress,
+    distanceMeters: minimumProgress === path.length - 1 ? haversine(path.at(-1), target) : Number.POSITIVE_INFINITY };
+  const point = unitVector(target);
+  for (let index = Math.min(Math.floor(minimumProgress), path.length - 2); index < path.length - 1; index += 1) {
+    const start = unitVector(path[index]), finish = unitVector(path[index + 1]);
+    const normal = cross(start, finish);
+    const normalLength = Math.sqrt(dot(normal, normal));
+    const length = Math.atan2(normalLength, dot(start, finish));
+    const lowerFraction = Math.max(0, minimumProgress - index);
+    let fraction, closest;
+    if (normalLength < 1e-12) {
+      if (dot(start, finish) <= 0) continue; // Antipodal arc is ambiguous.
+      fraction = lowerFraction;
+      closest = start;
+    } else {
+      const tangent = cross(scale(normal, 1 / normalLength), start);
+      const along = Math.atan2(dot(point, tangent), dot(point, start));
+      const lower = length * lowerFraction;
+      const angles = [lower, length];
+      if (along >= lower && along <= length) angles.push(along);
+      const candidates = angles.map(angle=>({angle,position:add(scale(start,Math.cos(angle)),scale(tangent,Math.sin(angle)))}));
+      const nearest = candidates.reduce((chosen,candidate)=>dot(point,candidate.position)>dot(point,chosen.position)?candidate:chosen);
+      fraction = nearest.angle / length;
+      closest = nearest.position;
+    }
+    const progress = index + fraction;
+    const separation = cross(point,closest);
+    const distanceMeters = 6_371_000 * Math.atan2(Math.sqrt(dot(separation,separation)),dot(point,closest));
+    const candidate = { progress, distanceMeters };
+    if (firstWithinMeters !== undefined && distanceMeters <= firstWithinMeters) return candidate;
+    if (distanceMeters < best.distanceMeters) best = candidate;
   }
   return best;
 }
+
+function unitVector({latitude,longitude}) {
+  const lat=latitude*Math.PI/180,lon=longitude*Math.PI/180;
+  return {x:Math.cos(lat)*Math.cos(lon),y:Math.cos(lat)*Math.sin(lon),z:Math.sin(lat)};
+}
+function dot(a,b) {return a.x*b.x+a.y*b.y+a.z*b.z;}
+function cross(a,b) {return {x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x};}
+function scale(a,value) {return {x:a.x*value,y:a.y*value,z:a.z*value};}
+function add(a,b) {return {x:a.x+b.x,y:a.y+b.y,z:a.z+b.z};}
 
 function decodeCoordinate(input) {
   if (!Array.isArray(input) || (input.length !== 2 && input.length !== 3) ||
@@ -882,8 +923,8 @@ function round(value, places) {
   return Math.round(value * scale) / scale;
 }
 
-function reject(reasonCode) {
-  throw new CandidateRejected(reasonCode);
+function reject(reasonCode, failedWaypointIndex) {
+  throw new CandidateRejected(reasonCode, failedWaypointIndex);
 }
 
 function cancelled() {
@@ -902,9 +943,10 @@ function deepFreeze(value) {
 }
 
 class CandidateRejected extends Error {
-  constructor(reasonCode) {
+  constructor(reasonCode, failedWaypointIndex) {
     super(reasonCode);
     this.reasonCode = reasonCode;
+    this.failedWaypointIndex = failedWaypointIndex;
   }
 }
 

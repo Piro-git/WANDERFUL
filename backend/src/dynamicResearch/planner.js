@@ -1,5 +1,5 @@
 import {wantsRouteStays,researchRouteStays} from './routeStays.js';
-import {validateQualityReview} from './quality.js';
+import {publicQualityReview,validateQualityReview} from './quality.js';
 import {unknownAccess} from './access.js';
 import {boundsFor,containsBounds,evaluateConditions,mergeConditionSnapshots} from './localConditions.js';
 import {reconcileRouteEvidence} from './evidence.js';
@@ -340,7 +340,7 @@ export async function planDynamicResearch(request,deps,{signal,limits=DYNAMIC_LI
               active();
               const refreshed=measured.path?.points?.coordinates?conditionsForRoute(measured.path.points.coordinates,selected):localConditions;
               if(refreshed.blockingNoticeIds.length)fail('active_official_restriction');
-              return {...measured,routeId,places:sourcedPlaces,localConditions:refreshed,...(routeStays?{routeStays}:{}),...(qualityReview?{qualityReview}:{}),
+              return {...measured,routeId,places:sourcedPlaces,localConditions:refreshed,...(routeStays?{routeStays}:{}),...(qualityReview?{qualityReview:publicQualityReview(qualityReview,measured.statistics)}:{}),
                 ...(finalWeb?{webResearch:finalWeb}:{}),plannerSource:'gemini_tools',counts:{...counts}};
             } else {
               reviewReserved=false; // Rejected geometry did not consume its held quality turn.
