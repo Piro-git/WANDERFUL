@@ -24,6 +24,13 @@ test('schema 3 passes original prompt through authorized tool loop with no fallb
  assert.deepEqual(f.counts(),{turn:2,releases:1,authorizations:1});
  assert.equal(f.logs.at(-1).fallbackAttemptCount,0);assert.ok(!JSON.stringify(f.logs).includes(request.prompt));
 });
+test('an operator generation ceiling stops the endpoint before another provider generation or route',async()=>{
+ const f=fixture();f.options.env={...env,DYNAMIC_RESEARCH_MAX_GENERATIONS:'1'};
+ let routes=0;f.options.dynamicResearchDependencies.route=async()=>{routes++;assert.fail('route after budget exhaustion');};
+ const result=await createLLMFirstPlanningEndpoint(f.options)(request);
+ assert.notEqual(result.statusCode,200);assert.equal(f.counts().turn,1);
+ assert.equal(routes,0);assert.equal(f.counts().releases,1);
+});
 test('new path is default off and rejects local-parser claims before provider work',async()=>{
  for(const [body,settings] of [[request,{...env,DYNAMIC_RESEARCH_ENABLED:undefined}],[{...request,parserSource:'localParser'},env],[{...request,extra:true},env]]) {
   const f=fixture();const result=await createLLMFirstPlanningEndpoint({...f.options,env:settings})(body);

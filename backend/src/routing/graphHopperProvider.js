@@ -44,7 +44,7 @@ export function createGraphHopperProvider(options = {}) {
         }
         throw error;
       }
-      const upstreamRequest = buildGraphHopperRequest(request, configuration);
+      const upstreamRequest = buildGraphHopperRequest(request, configuration, context);
 
       if (context.signal?.aborted) throw routeError("request_cancelled");
       const circuitToken = circuit.acquire(configuration.circuit);
@@ -100,7 +100,7 @@ export function createGraphHopperProvider(options = {}) {
   };
 }
 
-export function buildGraphHopperRequest(request, configuration) {
+export function buildGraphHopperRequest(request, configuration, context = {}) {
   const url = new URL(`${configuration.baseUrl.replace(/\/+$/, "")}/route`);
   url.searchParams.set("key", configuration.apiKey);
 
@@ -113,6 +113,9 @@ export function buildGraphHopperRequest(request, configuration) {
     instructions: true,
     details: request.includePathDetails
   };
+  // Internal caller option, not a client-supplied route field. Dynamic stop
+  // verification needs the returned geometry before response simplification.
+  if (context.unsimplifiedGeometry === true) payload.way_point_max_distance = 0;
 
   if (request.algorithm) payload.algorithm = request.algorithm;
   if (request.algorithm === "round_trip") {

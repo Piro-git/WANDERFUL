@@ -33,7 +33,7 @@ import {
   LLM_FIRST_PLANNING_POLICY_V1,
   llmFirstPlanningEnabled
 } from "./llmFirstPlanningPolicy.js";
-import { dynamicResearchBudgetConfiguration } from "../operations/dynamicResearchBudget.js";
+import { dynamicResearchBudgetConfiguration, dynamicResearchExecutionLimits } from "../operations/dynamicResearchBudget.js";
 
 const POLICY = LLM_FIRST_PLANNING_POLICY_V1;
 const AUTHORIZATION_COST = 12;
@@ -143,7 +143,9 @@ export function createLLMFirstPlanningEndpoint(options = {}) {
         // Schema 3 never falls back to an unresearched planner. Record the
         // explicit zero in the privacy-safe completion receipt as well.
         fallbackAttemptCount = 0;
-        const route = await planDynamicResearch(request, dependencies, { signal: context.signal });
+        const route = await planDynamicResearch(request, dependencies, {
+          signal: context.signal, limits: dynamicResearchExecutionLimits(env)
+        });
         const payload = { schemaVersion: 3, state: "routed", route };
         if (Buffer.byteLength(JSON.stringify(payload), "utf8") > POLICY.limits.maximumResponseBytes) {
           throw outdoorAdventureOrchestrationError("response_too_large");

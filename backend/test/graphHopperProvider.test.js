@@ -42,6 +42,16 @@ describe("GraphHopper provider", () => {
     assert.equal(body["ch.disable"], true);
   });
 
+  it("requests unsimplified geometry only for the internal strict-geometry lane", () => {
+    for (const fixture of [pointToPointRequest, loopRequest, alternativeRouteRequest, multiPointLoopRequest]) {
+      const request = validateRouteRequest(fixture());
+      const regular = JSON.parse(buildGraphHopperRequest(request, CONFIGURATION).init.body);
+      const strict = JSON.parse(buildGraphHopperRequest(request, CONFIGURATION, { unsimplifiedGeometry: true }).init.body);
+      assert.equal(regular.way_point_max_distance, undefined);
+      assert.deepEqual(strict, { ...regular, way_point_max_distance: 0 });
+    }
+  });
+
   it("constructs supported round-trip settings and flexible routing", () => {
     const request = validateRouteRequest(loopRequest());
     const body = JSON.parse(buildGraphHopperRequest(request, CONFIGURATION).init.body);

@@ -1,4 +1,4 @@
-import {validCoordinate} from './places.js';
+import {validCoordinate,distanceMeters} from './places.js';
 import {evaluateLLMRouteCandidateV1} from '../llmPlanning/llmFirstPlanningOrchestrator.js';
 import {validateRouteRequest} from '../routing/routeValidation.js';
 import {RouteError} from '../routing/routeErrors.js';
@@ -37,7 +37,7 @@ export function createDynamicItineraryRouter({provider}) {
       locale:'en',includeElevation:true,includeInstructions:true,includePathDetails:['surface','road_class','hike_rating']});
     let providerResponse;
     try {
-      providerResponse=await provider.route(routeRequest,{signal});
+      providerResponse=await provider.route(routeRequest,{signal,unsimplifiedGeometry:true});
     } catch (error) {
       // A provider-confirmed missing connection is itinerary feedback, not a service outage.
       // The state machine may ask the model for a distinct revision inside the same route budget.
@@ -57,6 +57,9 @@ export function createDynamicItineraryRouter({provider}) {
         ? places[failed-1].id : null;
       return {accepted:false,reasonCode:quality.reasonCode,
         ...(unreachedPlaceId?{unreachedPlaceIds:[unreachedPlaceId]}:{})};
+    }
+    if (flatGeometryStatisticsConflict(quality.path)) {
+      return {accepted:false,reasonCode:'invalid_statistics'};
     }
     const statistics={distanceMeters:path.distance,durationSeconds:path.time/1000,elevationGainMeters:path.ascend??null};
     const rejected=reasonCode=>({accepted:false,reasonCode,statistics});
@@ -83,4 +86,26 @@ export function createDynamicItineraryRouter({provider}) {
       explanation:target==null?'Gemini selected and ordered sourced places. GraphHopper calculated the route.':
         `Gemini selected and ordered sourced places. GraphHopper measured ${(path.distance/1000).toFixed(1)} km against your requested ${target} km.`};
   };
+}
+
+function flatGeometryStatisticsConflict(path) {
+  const points = path.points.coordinates;
+  // Do not mistake a sparse 2D chord or real elevation for an invalid distance.
+  // Tighten only complete, flat 3D evidence with explicitly zero ascent/descent.
+  if (path.ascend !== 0 || path.descend !== 0 ||
+      points.some(p => p.length !== 3 || !Number.isFinite(p[2]))) return false;
+  const baseElevation = points[0][2];
+  if (points.some(p => Math.abs(p[2] - baseElevation) > 0.1)) return false;
+  let horizontal = 0;
+  for (let i = 1; i < points.length; i++) {
+    horizontal += distanceMeters(
+      {longitude:points[i-1][0],latitude:points[i-1][1]},
+      {longitude:points[i][0],latitude:points[i][1]});
+  }
+  // Screening allowance: 1% for geodesic/model differences, minimum 10m.
+  // Extra vertices must not buy a larger error budget for the same route.
+  // This screens unresolved conflicts; it is not a universal error bound for
+  // simplification. Hosted behaviour still requires a live provider receipt.
+  const allowance = Math.max(10, horizontal * 0.01);
+  return Math.abs(path.distance - horizontal) > allowance;
 }

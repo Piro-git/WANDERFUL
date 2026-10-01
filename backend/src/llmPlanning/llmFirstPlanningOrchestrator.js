@@ -505,12 +505,22 @@ function verifyWaypoints(requested, snapped, path, maximumApproachMeters) {
       reject(outOfOrder ? "waypoint_order_invalid" : "waypoint_not_reached",
         outOfOrder ? undefined : index);
     }
-    minimumProgress = approach.progress;
+    // A tolerated source-to-snap gap plus a tolerated snap-to-line gap must not
+    // double the actual source waypoint's approach allowance.
+    const sourceApproach = closestPathPoint(path, requested[index], minimumProgress, maximumApproachMeters);
+    if (sourceApproach.distanceMeters > maximumApproachMeters) {
+      const globalApproach = closestPathPoint(path, requested[index], 0);
+      const outOfOrder = globalApproach.distanceMeters <= maximumApproachMeters &&
+        globalApproach.progress < minimumProgress;
+      reject(outOfOrder ? "waypoint_order_invalid" : "waypoint_not_reached",
+        outOfOrder ? undefined : index);
+    }
+    minimumProgress = Math.max(approach.progress, sourceApproach.progress);
     checks.push({
       waypointIndex: index,
       snapDistanceMeters: round(snapDistanceMeters, 3),
-      routeApproachMeters: round(approach.distanceMeters, 3),
-      routePointIndex: Math.ceil(approach.progress)
+      routeApproachMeters: round(Math.max(approach.distanceMeters, sourceApproach.distanceMeters), 3),
+      routePointIndex: Math.ceil(minimumProgress)
     });
   }
   if (checks.some((check, index) => index > 0 &&
