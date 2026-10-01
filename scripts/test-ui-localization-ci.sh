@@ -26,6 +26,7 @@ PY
 result_path="$RUNNER_TEMP/ui-localization.xcresult"
 log_path="$RUNNER_TEMP/ui-localization.log"
 xcodebuild -version
+python3 scripts/test-ui-localization-result-verifier.py
 printf 'Source SHA: %s\nSimulator SDK: %s\n' "$(git rev-parse HEAD)" "$sdk_version" >> "$GITHUB_STEP_SUMMARY"
 set +e
 xcodebuild test -quiet -onlyUsePackageVersionsFromResolvedFile \
@@ -36,6 +37,7 @@ xcodebuild test -quiet -onlyUsePackageVersionsFromResolvedFile \
   -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM= \
   -only-testing:TrailMindTests/RouteLocalizedCopyTests \
+  -only-testing:TrailMindTests/SavedRouteStoreTests \
   -only-testing:TrailMindTests/HikingRouteQualityEngineTests \
   -only-testing:TrailMindTests/RouteComparisonAccessibilityTests \
   -only-testing:TrailMindTests/DynamicResearchPlanningClientTests \
@@ -59,20 +61,6 @@ if [[ "$build_status" != 0 ]]; then
   exit "$build_status"
 fi
 xcrun xcresulttool get test-results summary --path "$result_path" > "$RUNNER_TEMP/ui-localization-summary.json"
-python3 - "$RUNNER_TEMP/ui-localization-summary.json" "$log_path" "$GITHUB_STEP_SUMMARY" <<'PY'
-import json, sys
-summary = json.load(open(sys.argv[1]))
-passed, failed, skipped = (summary.get(k, 0) for k in ('passedTests', 'failedTests', 'skippedTests'))
-assert passed >= 110 and failed == 0 and skipped == 0, 'Incomplete or failing simulator acceptance'
-log = open(sys.argv[2]).read()
-for test in ('testLanguageChangesPresentationWithoutRewritingTheRoute',
-             'testExistingNamesRemainVerbatimWithoutFreshGeneratedOutcome',
-             'testGermanComparisonKeepsFactsAndUnknownTechnicalDifficulty',
-             'testEvidenceUsesTypedCodeRatherThanTranslatingUntrustedCopy',
-             'testLocalizedEvidenceRetainsMeasuredPercentagesAndCoverageLimits',
-             'testRouteCopyAndStatisticsUseSelectedLanguage'):
-    assert any(test in line and 'passed' in line for line in log.splitlines()), f'Required regression did not pass: {test}'
-with open(sys.argv[3], 'a') as output:
-    output.write(f'Tests: {passed} passed; {failed} failed; {skipped} skipped.\n')
-print(f'Tests: {passed} passed; {failed} failed; {skipped} skipped.')
-PY
+xcrun xcresulttool get test-results tests --path "$result_path" > "$RUNNER_TEMP/ui-localization-tests.json"
+python3 scripts/verify-ui-localization-results.py \
+  "$RUNNER_TEMP/ui-localization-summary.json" "$RUNNER_TEMP/ui-localization-tests.json" "$GITHUB_STEP_SUMMARY"

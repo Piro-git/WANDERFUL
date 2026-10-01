@@ -49,8 +49,8 @@ struct RouteLocalizedCopy {
         }
     }
     var title: String {
-        // Only a fresh generated planning result gets a neutral local title.
-        // Imported, saved and user-owned titles keep their exact wording.
+        // Only results carrying validated generated-planning status get a local title.
+        // Legacy, imported and user-owned names have no marker and stay verbatim.
         guard route.dynamicRouteOutcome != nil else { return route.title }
         let location = route.location.trimmingCharacters(in: .whitespacesAndNewlines)
         return [activity, routeType, location, distance].filter { !$0.isEmpty }.joined(separator: " · ")

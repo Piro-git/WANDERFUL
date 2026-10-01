@@ -17,6 +17,14 @@ struct RouteComparisonAccessibilitySummary: Equatable {
                                "\(copy.activity), geschätzte Anstrengung: \(copy.difficulty)"))
         parts.append(copy.text("\(copy.distance) distance, \(copy.climb) climb, \(copy.duration) time",
                                "\(copy.distance) Strecke, \(copy.climb) Aufstieg, \(copy.duration) Zeit"))
+        if let outcome = route.dynamicRouteOutcome {
+            if outcome.isPartial {
+                parts.append(copy.text("Partial match; some preferences remain unresolved",
+                                       "Teilweise passend; einige Wünsche bleiben offen"))
+            } else if outcome.hasUnresolvedWishes {
+                parts.append(copy.text("Some preferences remain unconfirmed", "Einige Wünsche sind noch nicht bestätigt"))
+            }
+        }
         if let limitation = researchPresentation?.limitations.first {
             // Research source wording retains its independent locale contract.
             parts.append(copy.text("Important limitation: ", "Wichtige Einschränkung: ") + limitation.title)

@@ -22,6 +22,100 @@ final class SavedRouteStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testGeneratedOutcomeSurvivesFileStoreRoundTripAndLanguageChange() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-evidence-revised-offline.json")
+        var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: fixture)) as? [String: Any])
+        var payload = try XCTUnwrap(envelope["route"] as? [String: Any])
+        var review = try XCTUnwrap(payload["qualityReview"] as? [String: Any])
+        review["decision"] = "partial"
+        payload["qualityReview"] = review
+        envelope["route"] = payload
+        let request = RoutePlanningRequest(routeType: .loop, startQuery: "Offline village", endQuery: nil,
+            activityType: .hiking, graphHopperProfile: "foot", targetDistanceKm: 6,
+            targetDurationMinutes: nil, difficulty: .moderate, desiredFeatures: [])
+        let date = try XCTUnwrap(PlanningEvidenceDate.parse("2026-09-07T01:00:00Z"))
+        let route = try BackendDynamicResearchPlanningClient.validate(JSONSerialization.data(withJSONObject: envelope),
+            request: request, start: Coordinate(latitude: 57.2, longitude: -4.7), end: nil,
+            context: .unspecified, now: date).suggestion.route
+        XCTAssertEqual(route.dynamicRouteOutcome, .init(isPartial: true, hasUnresolvedWishes: true))
+        let directory = makeDirectoryURL()
+        _ = try await LocalSavedRouteStore(directoryURL: directory).save(route, at: date)
+        let result = try await LocalSavedRouteStore(directoryURL: directory).load()
+        let restored = try XCTUnwrap(result.snapshots.first?.route)
+        XCTAssertEqual(result.skippedRecordCount, 0)
+        XCTAssertEqual(restored.dynamicRouteOutcome, route.dynamicRouteOutcome)
+        XCTAssertEqual(restored.title, route.title)
+        XCTAssertEqual(restored.path, route.path)
+        XCTAssertEqual(restored.distanceKilometers, route.distanceKilometers)
+        XCTAssertEqual(restored.durationHours, route.durationHours)
+        XCTAssertEqual(restored.elevationGainMeters, route.elevationGainMeters)
+        XCTAssertEqual(restored.provenance, route.provenance)
+        XCTAssertTrue(restored.isVerifiedRoutedResult)
+        XCTAssertNil(restored.dynamicResearchExplanation)
+        XCTAssertNil(restored.dynamicWebResearch)
+        for language in AppLanguage.allCases {
+            let before = RouteLocalizedCopy(route: route, language: language)
+            let after = RouteLocalizedCopy(route: restored, language: language)
+            XCTAssertEqual(after.title, before.title)
+            XCTAssertEqual(after.summary, before.summary)
+            XCTAssertEqual(after.outcomeDetails, before.outcomeDetails)
+            let spoken = RouteComparisonAccessibilitySummary(route: restored, comparisonLabel: nil, language: language)
+            XCTAssertTrue(spoken.label.contains(language == .german ? "Teilweise passend" : "Partial match"))
+            XCTAssertTrue(after.summary.contains(language == .german ? "Teilweise passend" : "Partial match"))
+            XCTAssertTrue(after.outcomeExplanation.contains(language == .german
+                ? "Trinkwasserverfügbarkeit sind nicht bestätigt" : "drinking water availability are not verified"))
+        }
+        let stored = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: directory
+            .appendingPathComponent(route.id.uuidString).appendingPathExtension("json"))) as? [String: Any])
+        let outcome = try XCTUnwrap(stored["dynamicRouteOutcome"] as? [String: Bool])
+        XCTAssertEqual(outcome, ["isPartial": true, "hasUnresolvedWishes": true])
+        XCTAssertNil(stored["dynamicResearchExplanation"])
+    }
+
+    @MainActor
+    func testMissingOutcomeMetadataPreservesExistingNamesWithoutRewritingFile() async throws {
+        let directory = makeDirectoryURL()
+        let route = makeCompleteRoute()
+        _ = try await LocalSavedRouteStore(directoryURL: directory).save(route, at: .now)
+        let url = directory.appendingPathComponent(route.id.uuidString).appendingPathExtension("json")
+        var record = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        record.removeValue(forKey: "dynamicRouteOutcome")
+        let originalBytes = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys])
+        try originalBytes.write(to: url, options: .atomic)
+        let result = try await LocalSavedRouteStore(directoryURL: directory).load()
+        let restored = try XCTUnwrap(result.snapshots.first?.route)
+        XCTAssertNil(restored.dynamicRouteOutcome)
+        for language in AppLanguage.allCases {
+            let copy = RouteLocalizedCopy(route: restored, language: language)
+            XCTAssertEqual(copy.title, route.title)
+            XCTAssertEqual(copy.summary, route.summary)
+        }
+        XCTAssertEqual(try Data(contentsOf: url), originalBytes)
+    }
+
+    @MainActor
+    func testInvalidStoredOutcomeIsRejectedWithoutChangingTheRecord() async throws {
+        for metadata: [String: Any] in [
+            ["isPartial": true, "hasUnresolvedWishes": false],
+            ["isPartial": "true", "hasUnresolvedWishes": true]
+        ] {
+            let directory = makeDirectoryURL()
+            let route = makeCompleteRoute()
+            _ = try await LocalSavedRouteStore(directoryURL: directory).save(route, at: .now)
+            let url = directory.appendingPathComponent(route.id.uuidString).appendingPathExtension("json")
+            var record = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+            record["dynamicRouteOutcome"] = metadata
+            let bytes = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys])
+            try bytes.write(to: url, options: .atomic)
+            let result = try await LocalSavedRouteStore(directoryURL: directory).load()
+            XCTAssertTrue(result.snapshots.isEmpty)
+            XCTAssertEqual(result.skippedRecordCount, 1)
+            XCTAssertEqual(try Data(contentsOf: url), bytes)
+        }
+    }
+
+    @MainActor
     func testStayEvidencePersistsOfflineWithOriginalAgeAndRouteBinding() async throws {
         let directory = makeDirectoryURL()
         var route = makeCompleteRoute()
@@ -404,6 +498,8 @@ final class SavedRouteStoreTests: XCTestCase {
         XCTAssertEqual(restored.path, route.path)
         XCTAssertEqual(restored.distanceKilometers, route.distanceKilometers)
         XCTAssertEqual(restored.provenance, .unverified(.legacyRecord))
+        XCTAssertNil(restored.dynamicRouteOutcome)
+        XCTAssertEqual(RouteLocalizedCopy(route: restored, language: .german).title, route.title)
         XCTAssertFalse(restored.isVerifiedRoutedResult)
         XCTAssertThrowsError(try DefaultGPXService().exportRouteAsGPX(route: restored)) { error in
             guard

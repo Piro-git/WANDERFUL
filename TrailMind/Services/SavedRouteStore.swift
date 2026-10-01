@@ -268,6 +268,9 @@ actor LocalSavedRouteStore: SavedRouteStore {
 
         try await MainActor.run {
             try RouteEligibilityPolicy.validate(route, for: .persistence)
+            if let outcome = route.dynamicRouteOutcome, outcome.isPartial && !outcome.hasUnresolvedWishes {
+                throw SavedRouteStoreError.writeFailed
+            }
         }
         do {
             try createDirectoryIfNeeded()
@@ -640,6 +643,7 @@ nonisolated private struct PersistedRoute: Codable {
     let dynamicResearchStops: [DynamicResearchStop]?
     let routeStays: RouteStays?
     let dynamicResearchExplanation: String?
+    let dynamicRouteOutcome: PersistedDynamicRouteOutcome?
 
     @MainActor init(route: TrailRoute, createdAt: Date, savedAt: Date) {
         schemaVersion = LocalSavedRouteStore.currentSchemaVersion
@@ -672,6 +676,8 @@ nonisolated private struct PersistedRoute: Codable {
         dynamicResearchStops = route.dynamicResearchStops.isEmpty ? nil : route.dynamicResearchStops
         // Source-bound model synthesis is response-scoped like its Google grounding.
         dynamicResearchExplanation = nil
+        // Store only the validated planning status, never localized or model prose.
+        dynamicRouteOutcome = route.dynamicRouteOutcome.map(PersistedDynamicRouteOutcome.init)
     }
 
     @MainActor var snapshot: SavedRouteSnapshot {
@@ -727,6 +733,9 @@ nonisolated private struct PersistedRoute: Codable {
             try route.localConditions?.validate()
             route.dynamicResearchStops = dynamicResearchStops ?? []
             route.dynamicResearchExplanation = dynamicResearchExplanation
+            if schemaVersion == LocalSavedRouteStore.currentSchemaVersion {
+                route.dynamicRouteOutcome = try dynamicRouteOutcome?.value
+            }
             try BackendDynamicResearchPlanningClient.validateStoredEvidence(route.dynamicResearchStops)
             try PersistedRouteValidator.validate(route)
             if schemaVersion == LocalSavedRouteStore.currentSchemaVersion {
@@ -737,6 +746,25 @@ nonisolated private struct PersistedRoute: Codable {
                 savedAt: savedAt,
                 createdAt: createdAt
             )
+        }
+    }
+}
+
+/// Optional additive metadata. Missing in old records means no generated-title
+/// override; loading never infers status from old English summaries.
+nonisolated private struct PersistedDynamicRouteOutcome: Codable {
+    let isPartial: Bool
+    let hasUnresolvedWishes: Bool
+
+    @MainActor init(_ outcome: DynamicRouteOutcome) {
+        isPartial = outcome.isPartial
+        hasUnresolvedWishes = outcome.hasUnresolvedWishes
+    }
+
+    @MainActor var value: DynamicRouteOutcome {
+        get throws {
+            guard !isPartial || hasUnresolvedWishes else { throw PersistedRouteError.invalidRecord }
+            return DynamicRouteOutcome(isPartial: isPartial, hasUnresolvedWishes: hasUnresolvedWishes)
         }
     }
 }
