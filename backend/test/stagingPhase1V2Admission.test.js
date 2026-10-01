@@ -364,7 +364,8 @@ async function authorizationFixture({
   execFileSync("openssl", [
     "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
     "-days", "1", "-subj", "/CN=TrailMind Admission Test CA",
-    "-addext", "basicConstraints=critical,CA:TRUE",
+    "-config", realpathSync(new URL("../config/synthetic-ca.cnf", import.meta.url)),
+    "-extensions", "synthetic_ca",
     "-keyout", caKeyPath, "-out", caPath
   ], { stdio: ["ignore", "ignore", "ignore"] });
   unlinkSync(caKeyPath);
