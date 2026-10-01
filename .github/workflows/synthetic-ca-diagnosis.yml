@@ -1,4 +1,4 @@
-name: Synthetic CA diagnosis
+name: Synthetic platform diagnosis
 on:
   push:
     branches: ['codex/source-review-ci-probe-20261001']
@@ -9,27 +9,20 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          node-version: '22'
-      - name: Inspect synthetic CA properties only
+          ref: df4e6421c5075cb76bb3be59a1127136c8497892
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Trace only synthetic verifier fixtures
         shell: bash
         run: |
-          node --input-type=module <<'JS'
-          import {execFileSync} from 'node:child_process';
-          import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
-          import {tmpdir} from 'node:os';
-          import {join} from 'node:path';
-          import {X509Certificate} from 'node:crypto';
-          for (const config of [[], ['-config', '/dev/null']]) {
-            const dir=mkdtempSync(join(tmpdir(),'ca-probe-'));
-            try {
-              execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-sha256','-days','1','-subj','/CN=Synthetic Probe CA','-addext','basicConstraints=critical,CA:TRUE',...config,'-keyout',join(dir,'key.pem'),'-out',join(dir,'ca.pem')],{stdio:'ignore'});
-              const c=new X509Certificate(readFileSync(join(dir,'ca.pem')));
-              console.log(JSON.stringify({node:process.version,openssl:execFileSync('openssl',['version'],{encoding:'utf8'}).trim(),emptyConfig:config.length>0,ca:c.ca,validFrom:c.validFrom,validTo:c.validTo,now:new Date().toISOString()}));
-              const text=execFileSync('openssl',['x509','-in',join(dir,'ca.pem'),'-text','-noout'],{encoding:'utf8'});
-              const start=text.indexOf('X509v3 extensions');
-              console.log(text.slice(start,text.indexOf('Signature Algorithm',start)));
-            } finally {rmSync(dir,{recursive:true});}
-          }
-          JS
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/verify-release-artifact.sh')
+          s=p.read_text().replace('profile_expiration_is_future() {','profile_expiration_is_future() {\n  set -x').replace('signing_certificate_matches_profile() {','signing_certificate_matches_profile() {\n  set -x').replace('validate_provisioning_profile() {','validate_provisioning_profile() {\n  set -x')
+          p.write_text(s)
+          p=Path('scripts/test-release-artifact-verifier.sh')
+          p.write_text(p.read_text().replace('plutil -p "$LAST_REPORT"','jq . "$LAST_REPORT"'))
+          PY
+          zsh scripts/test-release-artifact-verifier.sh
