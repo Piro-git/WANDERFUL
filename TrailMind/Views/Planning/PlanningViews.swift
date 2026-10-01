@@ -601,7 +601,7 @@ struct RouteSuggestionsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: TrailSpacing.section) {
+            LazyVStack(alignment: .leading, spacing: TrailSpacing.section) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(routeCountTitle)
                         .font(.trailTitle)
@@ -631,36 +631,10 @@ struct RouteSuggestionsView: View {
                 }
 
                 ForEach(suggestions) { suggestion in
-                    let researchPresentation =
-                        researchPresentations[suggestion.id]
-                    let accessibilitySummary =
-                        RouteComparisonAccessibilitySummary(
-                            route: suggestion.route,
-                            comparisonLabel: suggestion.explanation,
-                            researchPresentation: researchPresentation
-                        )
-                    NavigationLink {
-                        RouteDetailView(
-                            route: suggestion.route,
-                            researchPresentation: researchPresentation
-                        )
-                    } label: {
-                        RouteCard(
-                            route: suggestion.route,
-                            comparisonLabel: suggestion.explanation,
-                            qualityExplanations: RouteQualityExplanationGenerator.explanations(
-                                for: suggestion.route,
-                                debugMetadata: suggestion.debugMetadata,
-                                maximumCount: 3
-                            ),
-                            researchPresentation: researchPresentation
-                        )
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(accessibilitySummary.label)
-                        .accessibilityHint(accessibilitySummary.hint)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("route.open.\(suggestion.route.id.uuidString)")
+                    RouteSuggestionCardRow(
+                        suggestion: suggestion,
+                        researchPresentation: researchPresentations[suggestion.id]
+                    )
                 }
 
                 Button(action: onStartOver) {

@@ -1,0 +1,42 @@
+{
+  "devicesAndConfigurations" : [
+    {
+      "device" : {
+        "architecture" : "arm64",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "modelName" : "iPhone 17 Pro",
+        "osBuildNumber" : "23F77",
+        "osVersion" : "26.5",
+        "platform" : "iOS Simulator"
+      },
+      "expectedFailures" : 0,
+      "failedTests" : 0,
+      "passedTests" : 10,
+      "skippedTests" : 0,
+      "testPlanConfiguration" : {
+        "configurationId" : "1",
+        "configurationName" : "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription" : "TrailMind · Built with macOS 26.4.1",
+  "expectedFailures" : 0,
+  "failedTests" : 0,
+  "finishTime" : 1790760988.433,
+  "passedTests" : 10,
+  "result" : "Passed",
+  "skippedTests" : 0,
+  "startTime" : 1790760695.088,
+  "statistics" : [
+
+  ],
+  "testFailures" : [
+
+  ],
+  "title" : "Test - TrailMind",
+  "topInsights" : [
+
+  ],
+  "totalTestCount" : 10
+}

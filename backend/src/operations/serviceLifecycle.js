@@ -214,7 +214,7 @@ export async function probeRequiredPools(pools, timeoutMs, options = {}) {
   await withDeadline(Promise.all(probes), timeoutMs, setTimeoutImpl, clearTimeoutImpl);
 }
 
-function createRuntimePools(env, PoolClass, owned = [], onPoolError) {
+export function createRuntimePools(env, PoolClass, owned = [], onPoolError) {
   const required = [];
   const appConfig = appAttestDatabaseConfiguration(env);
   const appAdmission = stagingDatabaseAdmissionProbe(env, "runtime");

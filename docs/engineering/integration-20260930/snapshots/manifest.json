@@ -1,0 +1,119 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "681935D0-C038-4137-A6AD-7E493DEC290E.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Map fallback · slow_0_2777F9EC-43E4-4E5D-8A66-CF0AC5D11547.png",
+        "timestamp" : 1790761205.515
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "667BA86F-DEB1-4B05-BD4F-3015ED04F964.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Map fallback · corrupt_0_3D258129-E35B-4850-B521-3996EB5FD770.png",
+        "timestamp" : 1790761197.277
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "ECFD66D8-636B-4996-8C63-D4A105AFA146.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Map fallback · offline_0_1B430699-4027-4661-8475-539A124E5351.png",
+        "timestamp" : 1790761190.16
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "F489FE01-6F21-4B0B-B873-742505B7A564.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Map fallback · invalid_0_8DE45B62-F13D-4D41-B326-D1B46145A213.png",
+        "timestamp" : 1790761183.032
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "6EEB7AFF-5B19-4A71-ADC3-7D38C2020840.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Map fallback · none_0_2B085816-896E-4D22-9F1D-6AC36D0A13A1.png",
+        "timestamp" : 1790761175.057
+      }
+    ],
+    "testIdentifier" : "RouteCardPhotoUITests/testFallbacksAndPendingImageKeepRouteNavigable()",
+    "testIdentifierURL" : "test://com.apple.xcode/TrailMind/TrailMindUITests/RouteCardPhotoUITests/testFallbacksAndPendingImageKeepRouteNavigable"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "BE3DB101-93A1-4EE8-B92B-0EA1E631694C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Card source · de largest type_0_07445584-4A61-468A-B321-12D353DA50A4.png",
+        "timestamp" : 1790761224.128
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "85C7332A-993B-4CC3-88C9-ACC455561F7C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Card photo · de largest type_0_7CB41E52-CA12-41A8-88DD-003E0389AA7D.png",
+        "timestamp" : 1790761222.051
+      }
+    ],
+    "testIdentifier" : "RouteCardPhotoUITests/testLargestGermanTextKeepsSourceReachable()",
+    "testIdentifierURL" : "test://com.apple.xcode/TrailMind/TrailMindUITests/RouteCardPhotoUITests/testLargestGermanTextKeepsSourceReachable"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "ACBE4034-3E3F-4EEE-9591-F413704F25F2.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Card source · de_0_0C3BAF58-6286-4285-92E9-520338826BC8.png",
+        "timestamp" : 1790761244.508
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "4EF0305B-6E71-4D3C-8E5E-577169811CE4.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Card photo · de_0_6EABB4F3-2E50-4FB7-9B0F-6351B2105028.png",
+        "timestamp" : 1790761242.149
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "D69D068B-55FC-4880-8837-4E9C51C37858.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Card source · en_0_3BC05001-B2F0-474E-A598-9DD5CE5F8FCC.png",
+        "timestamp" : 1790761232.194
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "A9194E37-28A7-450E-9F30-95D0145D0486",
+        "deviceName" : "iPhone 17 Pro",
+        "exportedFileName" : "A4363798-3F59-4945-925A-B0A003961CB9.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "Card photo · en_0_DB55E3D0-421C-4A6E-A526-4FA70B4CBBB9.png",
+        "timestamp" : 1790761229.849
+      }
+    ],
+    "testIdentifier" : "RouteCardPhotoUITests/testSourceActionIsSeparateFromNavigationInBothLanguages()",
+    "testIdentifierURL" : "test://com.apple.xcode/TrailMind/TrailMindUITests/RouteCardPhotoUITests/testSourceActionIsSeparateFromNavigationInBothLanguages"
+  }
+]

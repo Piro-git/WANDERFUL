@@ -1,6 +1,5 @@
 import Foundation
 import CryptoKit
-import CoreLocation
 
 nonisolated struct DynamicResearchCoordinate: Codable, Hashable, Sendable {
     let latitude: Double
@@ -249,7 +248,7 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
         }
         let dates = ISO8601DateFormatter()
         dates.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        var minimumIndex = 0
+        var minimumPosition = 0.0
         for stop in stops {
             guard stop.coordinate.isValid, !stop.name.isEmpty, stop.name.count <= 180,
                   !stop.name.contains("<"), !stop.name.contains(">"),
@@ -266,12 +265,11 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
             try stop.access?.validate(place: stop, now: now, requireFresh: true)
             guard stop.access?.state != .excluded else { throw OutdoorAdventurePlanningClientFailure.invalidResponse }
             let target = stop.access?.state == .documented ? stop.access?.target?.coordinate ?? stop.coordinate : stop.coordinate
-            let location = CLLocation(latitude: target.latitude, longitude: target.longitude)
-            guard let index = route.path.indices.dropFirst(minimumIndex).first(where: { index in
-                let point = route.path[index]
-                return location.distance(from: CLLocation(latitude: point.latitude, longitude: point.longitude)) <= 100
-            }) else { throw OutdoorAdventurePlanningClientFailure.invalidResponse }
-            minimumIndex = index
+            guard let position = RouteStopGeometry.firstPosition(of: target, on: route.path,
+                after: minimumPosition, maximumDistanceMeters: 100) else {
+                throw OutdoorAdventurePlanningClientFailure.invalidResponse
+            }
+            minimumPosition = position
             if let photo = stop.photo { try validatePhoto(photo, stop: stop) }
         }
         if let web = result["webResearch"] as? [String: Any] {
@@ -303,7 +301,10 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
                   decision != "partial" || !remaining.isEmpty else {
                 throw OutdoorAdventurePlanningClientFailure.invalidResponse
             }
-            route.dynamicResearchExplanation = ((decision == "partial" ? ["Partial match — some wishes remain open."] : []) + [summary] + remaining).joined(separator: "\n")
+            // Free model prose has no independently verified claim mapping. Validate
+            // the envelope, but never promote summary/remainingWishes to route facts.
+            route.dynamicResearchExplanation = trustedExplanation(for: route,
+                partial: decision == "partial", hasUnresolvedWishes: !remaining.isEmpty)
         } else if requiresWebResearch {
             throw OutdoorAdventurePlanningClientFailure.invalidResponse
         }
@@ -317,8 +318,20 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
             }
         }
         route.dynamicResearchStops = stops
-        route.dynamicResearchExplanation = route.dynamicResearchExplanation ?? "Gemini selected and ordered these sourced places. GraphHopper measured \(route.distanceLabel). Mapped categories do not verify current views, access or safety."
+        route.dynamicResearchExplanation = route.dynamicResearchExplanation ?? trustedExplanation(for: route,
+            partial: false, hasUnresolvedWishes: false)
         return DynamicResearchPlanningResult(suggestion: RouteSuggestion(route: route, explanation: route.dynamicResearchExplanation ?? route.whyItMatches))
+    }
+
+    private static func trustedExplanation(for route: TrailRoute, partial: Bool, hasUnresolvedWishes: Bool) -> String {
+        var parts = [String]()
+        if partial { parts.append("Partial match — the planner left some preferences unresolved.") }
+        parts.append("GraphHopper calculated \(route.distanceLabel).")
+        if hasUnresolvedWishes {
+            parts.append("Review the route against your original request; not all preferences are confirmed.")
+        }
+        parts.append("Current access, safety and drinking water availability are not verified. Check weather, local rules and trail conditions before starting.")
+        return parts.joined(separator: "\n")
     }
 
     static func validateStoredEvidence(_ stops: [DynamicResearchStop]) throws {

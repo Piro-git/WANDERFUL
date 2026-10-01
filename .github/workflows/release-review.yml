@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - 'codex/source-review-*'
+      - 'codex/release-recovery-*'
   workflow_dispatch:
 
 permissions:

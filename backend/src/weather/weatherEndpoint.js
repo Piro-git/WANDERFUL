@@ -4,7 +4,8 @@ import {InMemoryRouteRateLimiter} from '../routing/routeRateLimiter.js';
 import {AppAttestError,appAttestErrorResult} from '../appAttest/appAttestErrors.js';
 import {RouteError,routeErrorResult} from '../routing/routeErrors.js';
 import {validateWeatherRequest,createRouteWeather} from './routeWeather.js';
-import {createMetNorwayProvider} from './metNorway.js';
+import {createDurableMetNorwayProvider} from './durableMetNorway.js';
+import {PostgresWeatherStore} from './postgresWeatherStore.js';
 
 export function createWeatherEndpoint(options={}) {
   const env=options.env??process.env;
@@ -24,7 +25,14 @@ export function createWeatherEndpoint(options={}) {
       if(!weather) {
         let provider;
         if(env.ROUTE_WEATHER_ENABLED==='true') {
-          try {provider=options.weatherProvider??createMetNorwayProvider({userAgent:env.ROUTE_WEATHER_USER_AGENT,fetchImpl:options.fetchImpl,now:options.now});} catch {}
+          try {
+            // Tests may inject a provider. Real deployments must use the shared
+            // app-security database; absence or schema failure stays unavailable.
+            provider=options.weatherProvider??createDurableMetNorwayProvider({
+              store:options.weatherStore??new PostgresWeatherStore({pool:options.weatherPostgresPool??options.appAttestRepository?.pool}),
+              userAgent:env.ROUTE_WEATHER_USER_AGENT,fetchImpl:options.fetchImpl,now:options.now
+            });
+          } catch {}
         }
         weather=createRouteWeather({provider,now:options.now});
       }

@@ -63,7 +63,9 @@ struct DynamicEvidenceUITestView: View {
     }
 
     var body: some View {
-        if ProcessInfo.processInfo.arguments.contains("--trailmind-ui-photo-source") {
+        if ProcessInfo.processInfo.arguments.contains("--trailmind-ui-card-photo") {
+            RouteCardPhotoUITestView(route: route)
+        } else if ProcessInfo.processInfo.arguments.contains("--trailmind-ui-photo-source") {
             // Source sheet only: no image or metadata request, no real place/photo claim.
             CommonsPhotoSourceView(photo: CommonsRoutePhoto(stopID: "synthetic-ui-credit", wikidataID: nil,
                 imageURL: URL(string: "https://fixture.invalid/photo.jpg")!,

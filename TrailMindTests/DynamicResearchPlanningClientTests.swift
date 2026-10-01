@@ -290,7 +290,8 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
                 let result = try BackendDynamicResearchPlanningClient.validate(data, request: request,
                     start: start, end: nil, context: .unspecified, now: now, requiresWebResearch: true)
                 XCTAssertTrue(result.suggestion.route.dynamicResearchExplanation?.contains("Partial match") == true)
-                XCTAssertTrue(result.suggestion.route.dynamicResearchExplanation?.contains("Requested distance is not reached") == true)
+                XCTAssertFalse(result.suggestion.route.dynamicResearchExplanation?.contains("Requested distance is not reached") == true)
+                XCTAssertTrue(result.suggestion.explanation.contains("not all preferences are confirmed"))
             } else {
                 XCTAssertThrowsError(try BackendDynamicResearchPlanningClient.validate(data, request: request,
                     start: start, end: nil, context: .unspecified, now: now, requiresWebResearch: true))
@@ -299,6 +300,54 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
         let message = PlannerViewModel.userMessage(for: OutdoorAdventurePlanningClientFailure.noAcceptableRoute)
         XCTAssertTrue(message.contains("in this attempt"))
         XCTAssertTrue(message.contains("hard limits"))
+    }
+
+    func testStopsInsideSparseSegmentsRemainAcceptedWithoutWeakeningOrderOrDistance() throws {
+        let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-research-offline.json")
+        var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        var route = try XCTUnwrap(envelope["route"] as? [String: Any])
+        var stops = try XCTUnwrap(route["places"] as? [[String: Any]])
+        // Midpoint of the first ~1.6 km segment: >800 m from either vertex.
+        stops[0]["coordinate"] = ["latitude": 57.205, "longitude": -4.69]
+        let now = PlanningEvidenceDate.parse("2026-09-07T01:00:00Z")!
+        func validate(_ places: [[String: Any]]) throws -> DynamicResearchPlanningResult {
+            route["places"] = places; envelope["route"] = route
+            return try BackendDynamicResearchPlanningClient.validate(JSONSerialization.data(withJSONObject: envelope),
+                request: request, start: start, end: nil, context: .unspecified, now: now)
+        }
+        let valid = try validate(stops)
+        XCTAssertEqual(valid.suggestion.route.dynamicResearchStops.count, 3)
+        XCTAssertEqual(valid.suggestion.route.dynamicResearchStops.first?.coordinate.latitude, 57.205)
+        XCTAssertThrowsError(try validate([stops[1], stops[0], stops[2]]), "Reversed stops remain invalid")
+        stops[0]["coordinate"] = ["latitude": 57.3, "longitude": -4.69]
+        XCTAssertThrowsError(try validate(stops), "Off-route stops remain invalid")
+    }
+
+    func testQualityReviewCannotPromoteUnverifiedSafetyOrWaterClaims() throws {
+        let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-evidence-revised-offline.json")
+        var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        var route = try XCTUnwrap(envelope["route"] as? [String: Any])
+        let now = PlanningEvidenceDate.parse("2026-09-07T01:00:00Z")!
+        for decision in ["complete", "partial"] {
+            for claim in ["This route is guaranteed safe and has drinking water.",
+                          "Die Strecke ist garantiert sicher; Trinkwasser ist überall verfügbar.",
+                          "Water can be drunk without treatment and all trails are open."] {
+                route["qualityReview"] = ["schemaVersion": 1, "decision": decision,
+                    "summary": claim, "remainingWishes": [claim], "evidenceIds": []]
+                route["explanation"] = claim
+                envelope["route"] = route
+                let result = try BackendDynamicResearchPlanningClient.validate(JSONSerialization.data(withJSONObject: envelope),
+                    request: request, start: start, end: nil, context: .unspecified, now: now, requiresWebResearch: true)
+                let explanation = try XCTUnwrap(result.suggestion.route.dynamicResearchExplanation)
+                XCTAssertFalse(explanation.contains(claim))
+                XCTAssertFalse(result.suggestion.explanation.contains(claim))
+                XCTAssertTrue(explanation.contains(result.suggestion.route.distanceLabel))
+                XCTAssertTrue(explanation.contains("drinking water availability are not verified"))
+                XCTAssertEqual(explanation.contains("Partial match"), decision == "partial")
+            }
+        }
     }
 
     func testCurrentResearchAttributionIsDecodedValidatedAndNotPersisted() throws {

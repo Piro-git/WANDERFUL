@@ -105,12 +105,18 @@ struct CommonsRoutePhotoGallery: View {
 
 struct CommonsPhotoSourceView: View {
     let photo: CommonsRoutePhoto
+    var placeName: String? = nil
     @Environment(AppLanguageController.self) private var languageController
     @Environment(\.dismiss) private var dismiss
     private var isGerman: Bool { languageController.language == .german }
     var body: some View {
         NavigationStack {
             List {
+                if let placeName {
+                    Section(isGerman ? "Ort" : "Place") {
+                        Text(placeName).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 Section(isGerman ? "Urheberangabe" : "Attribution") {
                     Text(photo.author).fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("route.commons.credit")
