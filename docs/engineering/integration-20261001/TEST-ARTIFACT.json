@@ -1,0 +1,15 @@
+{
+  "CFBundleIdentifier": "com.trailmind.app.local",
+  "CFBundleVersion": "1",
+  "DTSDKName": "iphonesimulator26.5",
+  "TRAILMIND_APP_ENVIRONMENT": "local",
+  "TRAILMIND_APP_ATTEST_ENVIRONMENT": "development",
+  "ROUTE_WEATHER_ENABLED": "false",
+  "MONETIZATION_ENABLED": "false",
+  "WANDERFUL_ACCOUNT_ENABLED": "false",
+  "RESEARCH_GUIDED_PLANNING_ENABLED": "false",
+  "REMOTE_INTENT_ENABLED": "false",
+  "DIRECT_GRAPHHOPPER_ENABLED": "false",
+  "backendURLIsEmpty": true,
+  "executableSHA256": "b61878bfe066d8caa02e220b9cc67666026e79dd7c93b556663e2b378e6abc49"
+}

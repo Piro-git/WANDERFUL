@@ -1,0 +1,1133 @@
+{
+  "localSource": "e96b99cbacb4c6838e25855b433e257e7565bcb2",
+  "publishedSource": "1c1e18249257b9cf70dce33012f27dd8c1af0e7e",
+  "tree": "12f1ac6f16730809b70f895e2d9811a697fe4fc6",
+  "previousTestedSource": "1594e69cbc26ce7c564689ddd36f0c7395f9c3bd",
+  "entries": [
+    {
+      "path": "Configuration/Development.xcconfig",
+      "sha256": "26f1a82b4b6887b22ee4cd7e98d8a7c5188d7177debb47aefbca4bfaf5f52520",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "Configuration/Local.xcconfig.example",
+      "sha256": "4016ee1eed46a40cc42ecea22895f2852e0d765af5f0408a6978780c078c2205",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "Configuration/Production.xcconfig",
+      "sha256": "ad5026aa005e8d4378a2e5bcd78d914b6164ca1a22cbe3bb7c96729f78e2c8bc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "Configuration/ResearchDeployment.json",
+      "sha256": "2a16fe99ea9ce3354493304693d69e7f67fc8dda9f2e28bd68a5ba4571dfe78c",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "Configuration/ResearchDeployment.xcconfig",
+      "sha256": "2ba1214276b0167f78ca445a3e15c0bff8e56d6fc0fcb3b374000d90381c8a77",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "Configuration/Shared.xcconfig",
+      "sha256": "7e76946f2b439aba2dddb28ac452d5f5af77a32af20f33193d70077572b24946",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "Configuration/Staging.xcconfig",
+      "sha256": "c948c6e7f47a90e52b4947cbadae9e964e2c702b48002502f4ad6d086afd1939",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "Configuration/TrailMind-Info.plist",
+      "sha256": "12ba9ad6cc045737db23561ff91b80784557fd3dfbc3e710d45a7e9de331a5e7",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind.xcodeproj/project.pbxproj",
+      "sha256": "18e605da6a27963f52c5c241b7dc813f0b12b7adbf93b8555076b440b0fe3ab2",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "sha256": "33124daa7399f3780d141508e46f5123c522219e28890deaebccb65319df6062",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind.xcodeproj/xcshareddata/xcschemes/TrailMind Staging.xcscheme",
+      "sha256": "ecae3cc58026747633f8eb271ee01dd1e3d93e8dc0e0e8c2d7ef951d09f221d8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind.xcodeproj/xcshareddata/xcschemes/TrailMind.xcscheme",
+      "sha256": "90384ae006025c161d52bf5221450c56f1c881bce94fce7d6fdb0d9ee0816af4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/App/TrailMindApp.swift",
+      "sha256": "e714c377edb4bc8621e16ebf2c15038e5671829f9ac2ae1d56fd0431e86934bc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "sha256": "cb3b12c7009c68c6b4c303cf0b548edf19fd8c7ff01cb69ca9e31c2e44848ea4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/AppIcon.appiconset/TrailMindAppIcon.png",
+      "sha256": "fe547e9fb23950bc95525e356c4a2d4447fd385020beddf3965f2c7a07decd13",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/Contents.json",
+      "sha256": "0fd49ba3c3585c709678e0046a821c3c60685ec7063720d30d3a3448be3a208b",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingActivityJourney.imageset/Contents.json",
+      "sha256": "1d12eb2301f466fc8c9408d9bb3b36d19b93c713ac0fc3564000d689a281e400",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingActivityJourney.imageset/onboarding-activity-journey.png",
+      "sha256": "2e5ed2f92ede2f78efae393800e62137da861b00f51e1a5ff24b7fe5da5c3075",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingAvoidancesJourney.imageset/Contents.json",
+      "sha256": "2f95ef69219207c8e3de2685c4c702d1418859deb42d2f0b347b82fc0111d4b8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingAvoidancesJourney.imageset/onboarding-avoidances-journey.png",
+      "sha256": "0f68a13ef818e042456d59e321e6a29e6528685c9221ea759a09b09902a6f9c4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingComfortJourney.imageset/Contents.json",
+      "sha256": "172157d5a4fb5cd56e6da4131e06337aaf1dbf12fcebf082eac35ae39086c131",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingComfortJourney.imageset/onboarding-comfort-journey.png",
+      "sha256": "a4cc2a984063862c1c2ed161b80393c9205a33a3679a6fd69f8774f8716f4f97",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingDreamOutcome.imageset/Contents.json",
+      "sha256": "ef17c88a7bfe4f780787865716ece275468cc13f102a3e0af7a2ab3fa912b654",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingDreamOutcome.imageset/onboarding-dream-outcome.png",
+      "sha256": "44a9e0aee2f39e8e3d4dba552ade269e6ad825cda32b48509b7af2bbf336580c",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingExperiencesJourney.imageset/Contents.json",
+      "sha256": "570b2fec614954bf05d54797bc0e118c9374f4d879668d65416155eff4053739",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingExperiencesJourney.imageset/onboarding-experiences-journey.png",
+      "sha256": "480a06e9dc3da1bcdcb12ece7e803c38624d16b5a8f66414d1c52aa22341a299",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingProfileJourney.imageset/Contents.json",
+      "sha256": "3bf1b98c96fb3cdfaa53910d2cdbc5d2ac5ac02610b8ac58043e1de6e5659b57",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingProfileJourney.imageset/onboarding-profile-journey.png",
+      "sha256": "5b29a95a4ecc676a66d23bcd25ff1ddc586714c388f9f8b7447b063c95bc0ef0",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingRouteShapeJourney.imageset/Contents.json",
+      "sha256": "3e6b354874dda77c8a89196f6386fbe74c82acd8e4bae275b40d1ca88935e318",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingRouteShapeJourney.imageset/onboarding-route-shape-journey.png",
+      "sha256": "6e665ec1945525c4d6453d1b2378a9ef91425653e6754f56abb6c8d634687a0e",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingTrustJourney.imageset/Contents.json",
+      "sha256": "6d8f1e1f23514f0bb1a8f652f457646d8d160fd58381bdb7230cb911bb6218d2",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingTrustJourney.imageset/onboarding-trust-journey.png",
+      "sha256": "e76442c948bf0aab3ea248f6af893592b9a81b19fa2a0d4764341813f47cd65b",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Data/MockRoutes.swift",
+      "sha256": "bda0a91929433cf8276be73ad41764dae26e3941a01e61ee695f1f9e42e7d95a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Localizable.xcstrings",
+      "sha256": "5fd586b1fec15e30ed0de99875a2461078f5a6a3a427832346bb0c8f5a94a449",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Models/AdventureModels.swift",
+      "sha256": "360ec50c830bb74df4a53738a58cd279802c7dac0490eb8a8cbad2aab7081c34",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Models/HikePreparation.swift",
+      "sha256": "4d714621c5a60b2bb79a801504249dcfd60ffaa0d87794b10dca145fe8adb44e",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Models/HikingPreferenceProfile.swift",
+      "sha256": "0a94be59e24e10f819bac62af58d651fbc08e6d5286bdb7835c2c9edf5fa502a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Models/PreparationEnrichment.swift",
+      "sha256": "0c5825b88b8e3e939763d73a0409c6351c0e0d1bf8eb5f27c537aabc659af13a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Models/RouteStays.swift",
+      "sha256": "cf4244e6a1c2b7459644b5f9bc9bc24cd2f4bd88d7254cd8fff5d89935bdfd74",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Models/RouteWeather.swift",
+      "sha256": "b4067c6b37bb44cbbd8a18487b9c613d3297040c6de1de3b95e8ae1303885733",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/PrivacyInfo.xcprivacy",
+      "sha256": "bbcd71eafdcf15382ce7d9a024231739269843c21072e89a5d803b20dfe350f9",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/RouteWeather.xcstrings",
+      "sha256": "05625949fc9542a35a850a7e96336a71a45d39e722527c9ef04899910293bb7f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AccountAccess.swift",
+      "sha256": "7a1d9c24dced0d99ded9b2a99f9e1a14e9d79a53459cc4a328680f11a726107d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AccountService.swift",
+      "sha256": "e0d12b5f2278d42b4120d8151499e2268028ba233da4a56166ce0b33ecf597f0",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AccountSessionStore.swift",
+      "sha256": "39a26511e6e2de83a7d5b7f54f5f78ce820b148c77a3438c9a6dd3606a1656fc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AdventureResearchIntentAdapter.swift",
+      "sha256": "26b164bdbf1f221c10520c10dd5610b34dfd12a3e11cfcb2054e150e15c4adfd",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AppAttestService.swift",
+      "sha256": "c4a6612b4563d183df5c62b21eb4c5604f8e8404cf6ff130718b1e10606a6d9c",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AppEnvironment.swift",
+      "sha256": "d9d26dad323d1ce7802bbce36a1e047bc73eca36e38686ed65afe44910d3e3a9",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AppLanguage.swift",
+      "sha256": "4aabca0d3ce02a8775e7781bf1892dfd60e76d6e78fcfacddbe8436ce12b9f0b",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/AppleAccountAuthentication.swift",
+      "sha256": "ebad94b7e8de19c6cfd0621b94c2b98ab7381d167221f837d2f48cb7e15f3144",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/BackendOutdoorRouteEvidenceProvider.swift",
+      "sha256": "df98fe2afd444e72811cf8ee0c84248d4d3303fe7f9e14366acf2ea695a0971c",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/BackendRouteGateway.swift",
+      "sha256": "52716577732946822bfc36f1025412a045b1c560e250bffee557cb9d398091d0",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/DynamicResearchPlanningClient.swift",
+      "sha256": "63f9d9d598c060a5fc64c8181bbc9117f1183ce43267d0ca3744c2046dae85e4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/DynamicWebResearch.swift",
+      "sha256": "bda0b24b42097c4d6b865a7c1cfb67f8a6cc07dd942e7f10d1609909d356c3a2",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/GPXExporter.swift",
+      "sha256": "43469ba3f274ccbb7f117b32a5eaa52f5165a01d7b040500c88d08412b8e3a32",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/GeocodingService.swift",
+      "sha256": "2a3b65dca112c98ceb6c2b3cafaa56b327baa0a222a14c95d9cbb0ae048d608e",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/GraphHopperClient.swift",
+      "sha256": "249b4d688fe2add52ddf77a9b22081f2b45af4e5ac5bc99c86b3f72a5be1bc6f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/GraphHopperConfiguration.swift",
+      "sha256": "edc1d19fb877569970328f4678d9b742644e1e6d9629ad024b0bcdabbd6d124e",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/HikingPreferenceProfileResolver.swift",
+      "sha256": "02fff66653f19ad62695be37cfac8f3443a6534cf92e0f6276c812d88e794ecc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/HikingPreferenceProfileStore.swift",
+      "sha256": "ba5c67b15d1684a138def193458228b98ce4c4bb110a761ea96b03cc4620cfc0",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/HikingPreferenceProfileSync.swift",
+      "sha256": "87aed4d6178b1ea292d2cc8e37f45497a3fda42bdbbf4efb2865712975e46a25",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/HikingRouteQualityEngine.swift",
+      "sha256": "d9bb31317b7ae37ad5a5ccfca7ff45edf3b53bb664c75b68de35e47d147bf52a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/HikingRouteQualityPolicy.swift",
+      "sha256": "72fc0ba6fbb38acb402fe4b4b24df7c988dfb9c993664f1a8a4fa48162c40483",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/IntentParsingFoundation.swift",
+      "sha256": "ae2b8386dd249ee37ae9b0bb3ca73daa207a1cd310df0229f6a25bdd7e2c93dc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/LocationResolution.swift",
+      "sha256": "35ef85fec967fea97c51a13df7bf8e40f2f66f1e21710618445b7efb3e8e87d0",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/OutdoorAdventurePlanningClient.swift",
+      "sha256": "b710168ecf06d967af96323c9dc7361a6ad81e2e566b5e1489f3acce00381f39",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/OutdoorAdventurePlanningContracts.swift",
+      "sha256": "9ccc6ebd1b075fc1b11516f5e37522ce2c42d239ef649f5d6f7469f54e621833",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/OutdoorAdventurePlanningCoordinator.swift",
+      "sha256": "d4b5cf43a24b532d3959d2b9c1c133e243fb346158870ad204452f5a4a0d0cba",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/OwnerAccessClient.swift",
+      "sha256": "1ecf1c01f1dfc1e8c68ce0bef10fe9d3fa6e44974fe056de8133436e38922ccb",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/OwnerAccessKeychainSigner.swift",
+      "sha256": "b70bc4e739c7cf5c2a8522952e8d066217f4af7375ab5f83effae83ed38cbd36",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/OwnerAccessProof.swift",
+      "sha256": "19bfd0460b58c46c77fe202d96c5d5db001941729a77ed89bfcdd0f223df42cb",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/OwnerPhoneTestConfiguration.swift",
+      "sha256": "285885d3ae63e81f6332781e103b143ce0bcbf21252540e6a3f70fe69de36bc5",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/PremiumAccess.swift",
+      "sha256": "d1064e0048538141b23a8b451a15da805ee57873b3f00306d191343b49d443e8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/PreparationPersonalizationClient.swift",
+      "sha256": "c194f348b13f8c885f6b2833ebf5801cf1575fee2e7119147b5eee0a6f6d1c4a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/PublicAppLinks.swift",
+      "sha256": "a8ad31c59af19b499b80ff7bf633d74ce479b07134d6030588bb606618b69e6e",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/ResearchDeploymentIdentity.swift",
+      "sha256": "b9601e8e3fab3e4db995b5a509aee711cd41366bfa251015672693038ceb2c59",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/ResearchGuidedRoutingAdapter.swift",
+      "sha256": "1f965a805554f20a09bb6212d50ad69a0cca50ce16b6b8d872b0cbf240b2d078",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/ResearchGuidedRoutingAdapterV2.swift",
+      "sha256": "7b363afe9986f25053b465835e92df9353fc936e53f29673ac7b5c08915bc7f8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/ResearchPromptConstraints.swift",
+      "sha256": "4767c72dfa31d5951a08e00443e0c6b8db3bef76648e31dcce587abdb10e33f9",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteAlternativeQuality.swift",
+      "sha256": "e986757e2e65ab786753fd5781580cdf3ab4dd8db3e93b9c634dbc2e656646dd",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteEvidence.swift",
+      "sha256": "1f7264adecfefe86618c6bd56575cc2aeb30336dc0936784f086e6917fb42d2b",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteGuidanceConnectivity.swift",
+      "sha256": "dd4fae5de995b1741a54062d686e0577f3763d7f99f160198c063e00995b0a67",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteGuidanceGeometry.swift",
+      "sha256": "01ce3591a3b57fe2f6fc574de9c408684a203bf4222f3f7924c3a77e9de16ce6",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteLocationService.swift",
+      "sha256": "7a3f0d26be311ee8738299ac525f62ecb042e556572c8bafc104994f7f7f95e9",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RoutePlanningEvidence.swift",
+      "sha256": "20778591527e76fb8053a450edf6d7b955b71502a1c043e87ca9819b8cb1b195",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RoutePromptParser.swift",
+      "sha256": "ea98434542cc2fb8aa7c26da7a2442bc9c760249ea3c6bde12281952d4298164",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteSessionService.swift",
+      "sha256": "768730e7df19a43c5df5999e3f33b14d31c24ceb7af647aed026ba868553dcef",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteStopGeometry.swift",
+      "sha256": "d86c7d2c215d3cd673bb9ff02d52f058d284da30c792769bdd70cafad7ac57df",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteThumbnailService.swift",
+      "sha256": "7a3332249a1be94a45471e52075899903dad7b47aa97d6a6549a78c9c74fff44",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteTransportLimits.swift",
+      "sha256": "67cb929091291e3b02d16a786d576f135edf93ca57dbd885025e16f65f0cf227",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RouteWeatherClient.swift",
+      "sha256": "7fc168569f40a9a6103f66c401e2f8a9a0d6566e8f6a0371337e7358a1d3f1ed",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/RoutingFoundation.swift",
+      "sha256": "ea5b6f3684a818a8b94d09cbee2cb3a627b53e7de6c1c54887cc96901d1269de",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/SavedRouteStore.swift",
+      "sha256": "83a0427476ceddad0d36d346d5efbe672998f859c71da4d8d2ed70fc26f57e36",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/SecureInstallationStore.swift",
+      "sha256": "41d74c771ab89d277f33484a3a8362522590e9c5daa1ab9608093af3aee84cbc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/SuperwallOnboardingClient.swift",
+      "sha256": "fda11b0de8376717cfc77487196ecdaeb2c317ff2e52a739af02c86cdf79ddac",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/TrailServices.swift",
+      "sha256": "e4fc4a9d775c87fc131af2dfd4660276c1513dfe8b7a95b19ac73d2fc9649fa4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/VoicePlanningService.swift",
+      "sha256": "e60785861e70f6ef14ca1408b63d4847ba09d980b623c2353b158accbfb37ec1",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Services/WikimediaCommonsPhotoResolver.swift",
+      "sha256": "812077ffb608abb4c052b1478dc538d6605d981cf32747f0aab88c8d6ee19f82",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Testing/DynamicEvidenceUITestView.swift",
+      "sha256": "9be18be5bbd3b09a05c57d19db560c0314551e6ea270689a78e827cba08432e2",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Testing/RouteCardPhotoUITestView.swift",
+      "sha256": "14069539e529fd2420666e40f1d84d25819e904879339e2aa217e30bf67e751f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Testing/StagingProofLaunchSupport.swift",
+      "sha256": "57b10fb3b41240b1a820cd099c9ecf02fad23c755823ebc5230ae3da4d66a746",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Testing/UITestLaunchSupport.swift",
+      "sha256": "3896dad2836269a9238b2d467a228f6fe8bf5eed9f47e9136800b34645f79a5d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Theme/TrailTheme.swift",
+      "sha256": "d1427f0dc1f09312eccaeb7fc83aba126c62f4730330a8b2ab8f7146894becb8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/TrailMindDebug.entitlements",
+      "sha256": "982966c654b14e92b7d145d93c119c6debc84ba7449f36cdcb8ffb8d8cade0ed",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/TrailMindRelease.entitlements",
+      "sha256": "ed464295880ba5a788d12e2248ba1cbd3d9592dd817de1fdeef5d2746e3711a9",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/ViewModels/AppModels.swift",
+      "sha256": "07227cd52a6dccdb69ddfc844bc42fea21f95316beec497e3a1cb38ad8137531",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/ViewModels/PlannerViewModel.swift",
+      "sha256": "e77e7f21aadb917169c3d19d64a4dc3765935380bd95583084af49fc3b228846",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/ViewModels/RouteGuidanceModel.swift",
+      "sha256": "6eab1e38a8695c565b4b88071f1680385f7a958df3b11fa3ddebdb88cc340bda",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/ViewModels/SavedRoutesModel.swift",
+      "sha256": "5d11220b148f7bc0aa3f14ee726588709dc50051157db74affcd7e385f620c05",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/ViewModels/VoicePlanningModel.swift",
+      "sha256": "ebf58de1d24fbc4dac11200d59b1bcf4c1ce308969e2b12c98bb2ac1a54a7e39",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/AIEdit/RouteEditAIView.swift",
+      "sha256": "7542c533e1a24e4c186639449f6394c616b0adcb561437f8790d38f2e5fc1abb",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Home/HomeView.swift",
+      "sha256": "8f732d89908b9cc8ffc83370f820879da36f4284694f59472940c439623f763b",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/AppLanguageSelectionView.swift",
+      "sha256": "2872f4e4f4ab6bc6060250061dde6919b32f9830d2548349fc56b2f5f71f8862",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/OnboardingComponents.swift",
+      "sha256": "9a808d89f6ece5e45c78e2531973fbc0301c14e5c89b45030d280e33b4c82b8f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/OnboardingProfileBridge.swift",
+      "sha256": "c6c2943af82937f83825706250e2718e83196df3b6fbeabce76516a80232413c",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/OnboardingView.swift",
+      "sha256": "e1c42c6a64fc385275b5e9a55d3a5a0a0976cebcf1161755c27c5644ddbb9fd0",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/SuperwallOnboardingHost.swift",
+      "sha256": "44af67bdb2cac1b8840894cb3cd051ee6b114b76acd4557befb96fcfe40ecef2",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Planning/PlanningViews.swift",
+      "sha256": "3660230fbe62b3f8a1b63b4890954d2976cb4fc04b4410185b9b53682f77c1d3",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Premium/PremiumPaywallView.swift",
+      "sha256": "947d3914983b63d69089dd497160cbfe79c3211aa9538972f95570aba410b689",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Preparation/HikePreparationView.swift",
+      "sha256": "6c70ff263e7676cc1ea76d26a87bc285adc4ce23110b9b2ac09c1644e7ed8afe",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Profile/AccountView.swift",
+      "sha256": "42020de07baa044a453d2c269df177ad05b12e5f0f8e9260a37c7083e29e3387",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Profile/HikingProfileViews.swift",
+      "sha256": "51a89514a243f6feb6e1c94d4f3b53beb9b5ac52c24698abfb0e72585811e2b8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Profile/ProfilePreferencesView.swift",
+      "sha256": "2ded254a6fe260d7be73dc56282336b480db4935b28688e053f6263a7be8ddd9",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Profile/TrailMindAboutContent.swift",
+      "sha256": "e8cdb60ca677b2f7a0dd6b917ecc8b3d7de1dd0140761f2c542d31a0384c37e1",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Research/ResearchPresentationViews.swift",
+      "sha256": "0cd5e629d6fbccaa495bb493def798b691c389e313cf9e9f53efcdc185edcb89",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Research/ResearchRoutePresentation.swift",
+      "sha256": "ae939cbae3ad4dc1f8f44f01aeb0db6c5f9b4e91bf33bec856ef6b0f1efc72b3",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/CommonsRoutePhotoGallery.swift",
+      "sha256": "a5e28c9c5a725243f6899e212ced2c7c1c1c9b92e188151a1536e9a5b511955b",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/DynamicResearchStopsView.swift",
+      "sha256": "eadc1f9f0474366c212c06718084b71ed8b8894aaa7952d786f827d96e10d6da",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/DynamicWebResearchView.swift",
+      "sha256": "2290545ba01d59cad50002e03264d6f969fe9f4316ca6d35a63e3b57d45dc8d3",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteCardStopPhoto.swift",
+      "sha256": "53d07e5070c1522de81f14cf7a380169f7c8e734455edfd8dfbe1df22ed74b68",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteComponents.swift",
+      "sha256": "c6b8a1cf98c10b3df3937bd2833d44f9fe8a45df3e31d8a78b2992aa94222a9a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteDetailView.swift",
+      "sha256": "a3f7dd4aee25f6b52c3386984baa4053ea90dc92ae0c77d25cfa7fd927d05caa",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteGuidanceView.swift",
+      "sha256": "718f6402cabe929ec9b620c8c968c982f2697af263e405ea5e41ccec2ac7e436",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteLocalConditionsView.swift",
+      "sha256": "bd3b69454566a45a1612137c24d4c71a9930fbaa00d9f4bf28e2e70f83ca45cf",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteOfflinePreparationView.swift",
+      "sha256": "fcd35d28814bbabfcf9146df2544b17083e6a552dcc16c89740ff101ca2a4e4f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteStaysView.swift",
+      "sha256": "a23548177849585456a8904a30b883fd244d345506a5ec8313f820c073540e3d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteWeatherCard.swift",
+      "sha256": "724ebeba276c0997317ce615e64a17f8b8844107877226d18df5029113c68f90",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Saved/SavedRoutesView.swift",
+      "sha256": "274521b58e92205d1336f40a9d5dd7035b7d1243757451ec2b5511783f22d77c",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMind/Views/Shared/SharedComponents.swift",
+      "sha256": "4f66d5e6f1fa514599e7eded60bdb0c0d5c7a554ca5b5fd147aa16e1c048c193",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/AccountAuthenticationTests.swift",
+      "sha256": "1240aaaea17cd91e0045bdc1e3ad8ddd8017dfd9f7289e4a6cdf94faf036de82",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/AdventureResearchIntentAdapterTests.swift",
+      "sha256": "d35747fa394de4dc4eb9cf42466d98fc231d3df16dd54da773f8285281fcc81d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/AppAttestServiceTests.swift",
+      "sha256": "7ac1f1b4990233e62b6dae5e7c7c53d52a9121c9dd39ef1e464227b42535cf50",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/AppEnvironmentTests.swift",
+      "sha256": "3432e292b5362e20cbafcf461ecce4283451ee19dde85782f41e2ad5abcc0952",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/AppLanguageTests.swift",
+      "sha256": "29e1a27c7c418a9e0f48668c5f752e0d31ea7c7eb388ec335a0cc6d74a3bcdad",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/BackendRouteClientTests.swift",
+      "sha256": "5d89859bab02ba92780cc790ef0d50d55e429eb92935ad32af77972d7c050cb8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/DurableResearchTransportTests.swift",
+      "sha256": "2757e69f052bbde42c64a3a38c905bc668e4a87584db19bb0aa498188eda58f1",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/DynamicResearchPlanningClientTests.swift",
+      "sha256": "d756e5ee188bea9df7a6478eccbd2e47460fb8a485f5a2a96a5a295a9fe754d2",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/DynamicWebResearchTests.swift",
+      "sha256": "d8160b63c7bd33f860e04305ac0801119c673ec2d59d4f682bb5a19da2f770c5",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/conditions-ilsenburg-recorded.json",
+      "sha256": "5770a7829cdff443f37c98b9943aa81cadb2b3f900708c5261f22826eac8bbac",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/conditions-innsbruck-recorded.json",
+      "sha256": "5df682ee5ecd9385640da7e040045685755b881a7993729d7c4ee27cc5416631",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-evidence-revised-offline.json",
+      "sha256": "fed3f80962fabb35e15c05223f20c687653189a4bdda190a161dfadd1836f8f8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-research-offline.json",
+      "sha256": "f49e9a0604c1f8e4646556f190b8f26747c59524e63e88ec90f962e963e9d3e8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-source-passage-offline.json",
+      "sha256": "9160df6db1083e1fc4a364377188d56acd861febfdb80850480a33ddf5042533",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-web-unicode.json",
+      "sha256": "ebf510bfc5e1e0b36decc854eeeb8471f5b067e60ca2aab3857e0609839023f6",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/hiking_route_quality_v1_eval.json",
+      "sha256": "82b877528f9b40f79b1cadaf6c1143e62c87aeb84e27140ff365c5057dcad43a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/location_resolution_eval.json",
+      "sha256": "af1739651f1b3e1155d3e3fda8c60b079a31dfb947a12e6df5b85e40c128c2ad",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/outdoor_adventure_planning_v1_contract_corpus.json",
+      "sha256": "d41bc24447259ff0bd1c6290c2cc6abe83f3db7c9d3aafb3a771fb9f23487613",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/outdoor_adventure_planning_v2_contract_corpus.json",
+      "sha256": "07c96d672ff28065892906b300343cd1d2f8ee03e9efae9914e8f7742df0987a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/prompt_intent_eval.json",
+      "sha256": "327c0a3260f4a0bba0ad71448c84521ebbdfc7d59a2dc15ada0c536c890e5bd1",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/research-led-itinerary.json",
+      "sha256": "7436a689c2d15553c95c0676e0c4b5bfeb54fee14bccddb5f84db16e093f91ea",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/research_guided_routed_alternatives_v1.json",
+      "sha256": "fa8d61b46e47bd74ee2cb78026ed7f0c46e64f9d770243dc4e00abbc1893f095",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/route-stays-offline.json",
+      "sha256": "7bf5120f3a95c0a2f81b0a207ac0a5690050c0536177f6fd5641758c476cd05a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/Fixtures/route_quality_eval.json",
+      "sha256": "bbf6ec8e3988e247674b991b55a1c5646389f34addee538be6cc6106799f2ab5",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/GPXExporterTests.swift",
+      "sha256": "cd922b951f2068bd3dadce2102e25e01eb2133b40d6b5fbb6e6573caa1825c45",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/GeocodingServiceTests.swift",
+      "sha256": "16f9abe138e9911f1adc780a379d6da89ba6e9be0e6cb24c7ce127423a385422",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/GlobalFixesAcceptanceTests.swift",
+      "sha256": "9f5385da7cb6c151c08515a7eabf87d87470ff10c3e0df6a4a91783e39b1594e",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/GraphHopperClientTests.swift",
+      "sha256": "f19e502bdb8af31c257b514e73c27cb3f98efc6b7a5544e8dd5c08f60032b2bd",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/HikePreparationTests.swift",
+      "sha256": "cadeb2b97139568e82609dab69bb91e7f1f465c838c3b66858dc320ba7e018cc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileResolverTests.swift",
+      "sha256": "dd2f68eec47e885b2b24c596e6556698a06a9c4d67490d6e0d422f90073b8121",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileStoreTests.swift",
+      "sha256": "a183e398dde8774e9b7c78c67cfd9328e4fa5ad5aa7fba85b2ecf224f246eae7",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileSyncTests.swift",
+      "sha256": "0f19208b052743f614b792c4320af4a68f05d2068291069d2d4fd4804ad63504",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileTests.swift",
+      "sha256": "abf72d7e92dc24605be498449190bc6621e640d080bc675b85f4ef13fd4effd1",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/HikingRouteQualityEngineTests.swift",
+      "sha256": "f875ebc44792cf5026b1e2067bb1a9d7c82faa4bdaa3f5f291613a28500e0fb4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/IntentEvaluationSupport.swift",
+      "sha256": "55acfff8ba2b33e3dd8237261195119d7c99740778cb3fa2f7e39905241a36a1",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/IntentEvaluationTests.swift",
+      "sha256": "c02e77a02e42b7a7cf8f8ddafb4253c72ff41c79b807a17efd3e59afb6a3a8cf",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/IntentParsingFoundationTests.swift",
+      "sha256": "67af73c2e14b46bd04325d583615cc395e16f74dac82f159abebff82e059fcce",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/LocationResolutionTests.swift",
+      "sha256": "681fd2765c47282dd47d3b8c2360da91bed38249af86b08338e2f9684ca9b260",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OnboardingProfileBridgeTests.swift",
+      "sha256": "baf7add9cbdd7970b73508bd7563e577f42a8f7010d53d688a5e5e3af5d42f63",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningClientTests.swift",
+      "sha256": "116bd0b5f5fc96f4c4d71cbc381c4eecd10325cd42a425656644975fb3414af8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningContractCorpusTests.swift",
+      "sha256": "079d0d090bc46b0de01727f8da11923f2fbcd37295f3af8f7568f4493e675bee",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningContractCorpusV2Tests.swift",
+      "sha256": "1ebaa7f3c84996c842be34d404e38b32a4f4b33a0d3ed9d261120d552c7590e8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningCoordinatorTests.swift",
+      "sha256": "5dda14b75d86dd3051bbb0b2be68eea4390b921dd63b2bd390f129780ec0a239",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OutdoorRouteEvidenceTests.swift",
+      "sha256": "85106b66c8e3a30cc3ea5a6df1382bb41659d877f6d2d5a0f87c74a2acfc4f1f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OwnerAccessClientTests.swift",
+      "sha256": "56f7ce1e2cd3fecad6a6b003a5d2ec72761c7d558a602f6052d92fdb537b64d3",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OwnerAccessIntegrationTests.swift",
+      "sha256": "b9286fabd8917d8375db3a185ceeff9764fb86b6c3449fe8fd2f87707244b819",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OwnerAccessProofTests.swift",
+      "sha256": "af450b0cf6a6048d34fec2d8be417e0611b27b230cf1bd4598b1c52d72beef00",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/OwnerPhoneTestConfigurationTests.swift",
+      "sha256": "9e8096234695551bea0d80cf77f2c0202d4bff69f6903b3b89ec2a344010e260",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/PlannerViewModelResearchGuidedPlanningTests.swift",
+      "sha256": "d0227628b11622d62e3cfe16f3f522d2c1826b8d867264458763f3f6aecf3388",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/PlannerViewModelTests.swift",
+      "sha256": "48c02c3f90875813994ba26874a3cf4eba59f15fb871a92428a58f003bd7dd9d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/PlanningAccessibilityIdentifierTests.swift",
+      "sha256": "d334b4afb57c7929e9d087ad3ff6e78880b05823f8d857b35e97032dfb8ec143",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/PremiumAccessTests.swift",
+      "sha256": "ae49d7afa08d5056e934b88c2406db8869304e431a63fad2c20baf9d3c4fa684",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/PrivacyReleaseContentTests.swift",
+      "sha256": "a6e4a2b714b00a732fe2c95a5750b9995bd9bde22f800868638442448f84f70d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/PublicAppLinksTests.swift",
+      "sha256": "c94c17649f24d227024093e8dfa278c3f478b0103d038b0d05bc140f7beb85b6",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/ReleaseSurfaceTruthTests.swift",
+      "sha256": "27ac1219d406beaec767b66d91d98587d6d9ac3e11409858980550db3bd0f4fc",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/ResearchGuidedRoutingAdapterTests.swift",
+      "sha256": "a5a84cd11ea55bc232140e4cc5bcee0901a7963a625597be867d19c378aa0fb8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/ResearchPromptConstraintsTests.swift",
+      "sha256": "e9bf194fbd71f4eef97954106a5735bb85be6fed18254002b35280ba9065bea9",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/ResearchRoutePresentationTests.swift",
+      "sha256": "1e7730f7da5146c27ba6649aea078e136e2887ee7c041f4d9c8dd436dc2fe1f5",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteCardStopPhotoTests.swift",
+      "sha256": "ad547a14b74b41900b51489e97421e9045efd9692ead16f4faf8cb69c4963cb7",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteComparisonAccessibilityTests.swift",
+      "sha256": "f9ab210bce5e72e59985c45ebc1e4ad9f758defec56550ae79ccc3cfabc8241f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteGuidanceTests.swift",
+      "sha256": "c7f2017aab3312cc8c2ff150aa794526d6866a1fba9231a197283d40758eecf2",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RoutePlanningEvidenceTests.swift",
+      "sha256": "219ce4056cc149e974be4bfc359e2775e1f3c5e63633916e27625befe5670d54",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RoutePromptParserTests.swift",
+      "sha256": "d94d6c65470546b558399c3c949444a6919dfe8d77932bd8d589648512d7e856",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteQualityEvaluationSupport.swift",
+      "sha256": "645c8c4b5ae79e3ad353341cf9671eb3ce14a0287c3469e1910d2ea42b608491",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteQualityEvaluationTests.swift",
+      "sha256": "60af652809dd8134d095774a235c6a48bffb1493752f24d7d3d258b228bf41a5",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteStaysTests.swift",
+      "sha256": "613c3421adbb54d6c57da763380b5ccfd6873d6f865e9ca4d089ece1b7ea846a",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteStopGeometryTests.swift",
+      "sha256": "811e1cdbdc0bea22a140fb49d2f9b8bc233cd8e20a71aff986276c8501cc4f44",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteThumbnailServiceTests.swift",
+      "sha256": "a6b7218f405891d428f5319b4916d0babebb0bf90ba250d9484c2f751e9ea761",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RouteWeatherTests.swift",
+      "sha256": "3723328aaeeab35c263cec53ac783b692e7ec3b1afa0aa29975bc43e147a95e8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/RoutingFoundationTests.swift",
+      "sha256": "23506dc4d7ac89012b00618152249c793c3113de6134f434b5d09ab2860db2a4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/SavedRouteStoreTests.swift",
+      "sha256": "7a522b3381d447ef41b1e215f6f21f708a8726a65a640dc7dfd0e14347271e05",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/StagingProofLaunchSupportTests.swift",
+      "sha256": "8e5b8b5805f0685f5eec41227380945a1f3c6662e0e5549f6138c5c4ac7091d8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/StoreKit/Wanderful.storekit",
+      "sha256": "fa912389f12540bbdbf8054b68f95b7b6b52724630ef50f0c03710cece9f52d6",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/StoreKitCatalogTests.swift",
+      "sha256": "508d29ad1bf188ecf09828e7d3ed01c5fa7be34b621db2b058432c73d8f12b00",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/StoreKitTransactionLifecycleTests.swift",
+      "sha256": "9d8964df53cd1860c846a14fe5a99e69748229ff03e1e2c200e28fc4ffb16055",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/SuperwallOnboardingClientTests.swift",
+      "sha256": "8550db5827817692369bd1fd7642f515ea7f29a5e2a47cb69c0985783db1a096",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/TestRouteFixtures.swift",
+      "sha256": "40737892f77f580fa5cc851fece7ee531d375f5bba2a9e949c7c45223b3c78b5",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/TrailThemeAccessibilityTests.swift",
+      "sha256": "577749ed164cd2750c5f7413f271d32cd50172cce73745e1e4ae714925eef495",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/UserPreferencesStoreTests.swift",
+      "sha256": "a98e02d36a8281f6da4e3429d80a872be3d4e8715d5b0228ca8cc0a640893b3f",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/VoicePlanningModelTests.swift",
+      "sha256": "453e0085c2246381f8190e4571c372c1ae107adae940237545ea08474c571301",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindTests/WikimediaCommonsPhotoResolverTests.swift",
+      "sha256": "054ff9db97a237c03eda6d9acf513514d63837734ab7837fd20cc53ad4fdc32d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindUITests/DynamicEvidenceUITests.swift",
+      "sha256": "244a466d8141e929a4d36c8cbcfe158f0fc7343ab4ad824765a174753cc3193d",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindUITests/RouteCardPhotoUITests.swift",
+      "sha256": "2471d30508a2a2aa85123ea010a48199f7d5d340783cd7b467abe0a9cb2ed6b8",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindUITests/RouteStaysUITests.swift",
+      "sha256": "ffd509e5f6109acfc0864242056df9339b315a6946c16b2615e467f28f10f073",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindUITests/TrailMindCriticalPathUITests.swift",
+      "sha256": "00d4d530e5e215780df36ed5558b64457f7a4de4c0624e5cade50b8c7edba5e4",
+      "matchesPreviousSource": true
+    },
+    {
+      "path": "TrailMindUITests/TrailMindStagingProofUITests.swift",
+      "sha256": "ef2985eda3235e00fb3716c22b01e75d37e078ee1cfee0d60d730786fc298d0d",
+      "matchesPreviousSource": true
+    }
+  ]
+}
