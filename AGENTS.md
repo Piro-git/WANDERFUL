@@ -1,5 +1,11 @@
 # AGENTS.md — TrailMind / EasyWander
 
+## Cross-device development — updated 2026-10-10
+
+Read `CLOUD_HANDOFF.md` before continuing from Codex Cloud or a new checkout. Use the published October recovery baseline on `codex/cloud-workspace-20261010`; `main` is an older snapshot. The handoff maps the preserved backend, iOS, QA and StoreKit branches and explains unresolved integration and release gates. Do not infer that separate backups are already integrated.
+
+Cloud setup uses Node 22+, locked backend dependencies and credential-free fixture checks. Preserve complete Git history for provenance tests. Keep iOS/Xcode and physical-device validation on an appropriate Apple environment; report unsupported checks honestly. Personal Mac skills are not automatically synced to Cloud. Never transfer local secrets, signing material or personal Codex authentication. Commit/push intended work when switching execution environments; reopening the same Cloud chat preserves that task's own workspace.
+
 ## Geographic product scope — updated 2026-09-10
 
 The product goal is route planning for any supported place that can be resolved and routed with available providers and data. Harz is neither a target-market priority nor a prerequisite. Do not restrict planning, examples, or future work to Germany or a fixed regional allowlist as a product requirement. This is not a promise of worldwide coverage: unresolved places, missing data, and provider limits must remain explicit.
