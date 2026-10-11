@@ -2,6 +2,8 @@
 // database-backed App Attest authorizer enforces the corresponding daily
 // windows; this module makes an operator explicitly choose their cap before
 // that authorizer is reachable. It is not a provider-currency meter.
+import { DYNAMIC_LIMITS } from "../dynamicResearch/planner.js";
+
 export const DYNAMIC_RESEARCH_REQUEST_COST = 12;
 export const MAXIMUM_DAILY_DYNAMIC_RESEARCH_REQUESTS = 10;
 
@@ -37,7 +39,19 @@ export function dynamicResearchBudgetConfiguration(env) {
 }
 
 export function assertDynamicResearchBudget(env) {
+  if (env.DYNAMIC_RESEARCH_ENABLED === "true") dynamicResearchExecutionLimits(env);
   return dynamicResearchBudgetConfiguration(env);
+}
+
+export function dynamicResearchExecutionLimits(env) {
+  return Object.freeze({
+    ...DYNAMIC_LIMITS,
+    generations: boundedInteger(env.DYNAMIC_RESEARCH_MAX_GENERATIONS ?? DYNAMIC_LIMITS.generations,
+      1, DYNAMIC_LIMITS.generations),
+    currentInformationGenerations: boundedInteger(
+      env.DYNAMIC_RESEARCH_MAX_CURRENT_INFORMATION_GENERATIONS ?? DYNAMIC_LIMITS.currentInformationGenerations,
+      1, DYNAMIC_LIMITS.currentInformationGenerations)
+  });
 }
 
 function boundedInteger(value, minimum, maximum) {

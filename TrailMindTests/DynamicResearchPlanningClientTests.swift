@@ -31,6 +31,62 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
         }
     }
 
+    func testSelectedInterfaceLanguageEncodesNativeManeuverLocaleWithoutChangingIntent() throws {
+        let suite = "InstructionLanguage.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let controller = AppLanguageController(defaults: defaults)
+        // Prompt language and UI language deliberately differ.
+        let prompt = "Plan a loop from São Vicente with a waterfall."
+        var bodies: [[String: Any]] = []
+        for language in [AppLanguage.german, .english] {
+            controller.select(language)
+            let data = try BackendDynamicResearchPlanningClient.requestBody(prompt: prompt, request: request,
+                start: start, end: nil, context: .unspecified, language: controller.language)
+            var body = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(body.removeValue(forKey: "locale") as? String, language.rawValue)
+            XCTAssertEqual(body["prompt"] as? String, prompt)
+            XCTAssertEqual(body["locationName"] as? String, request.startQuery)
+            bodies.append(body)
+        }
+        XCTAssertEqual(try JSONSerialization.data(withJSONObject: bodies[0], options: [.sortedKeys]),
+                       try JSONSerialization.data(withJSONObject: bodies[1], options: [.sortedKeys]))
+    }
+
+    func testOlderNativeCallerDefaultsToEnglishAndUnsupportedLocaleCannotBeEncoded() throws {
+        let data = try BackendDynamicResearchPlanningClient.requestBody(prompt: "Eine Runde bitte", request: request,
+            start: start, end: nil, context: .unspecified)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(body["locale"] as? String, "en")
+        for unsupported in ["fr", "de-DE", "EN", "", "de;en"] {
+            XCTAssertNil(AppLanguage(rawValue: unsupported))
+        }
+    }
+
+    func testProviderManeuversRemainVerbatimAndFingerprintBound() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-research-offline.json")
+        var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        var rawRoute = try XCTUnwrap(envelope["route"] as? [String: Any])
+        var path = try XCTUnwrap(rawRoute["path"] as? [String: Any])
+        var instructions = try XCTUnwrap(path["instructions"] as? [[String: Any]])
+        let now = ISO8601DateFormatter().date(from: "2026-09-07T01:00:00Z")!
+        var routes: [TrailRoute] = []
+        for text in ["Continue", "Geradeaus auf dem markierten Weg"] {
+            instructions[0]["text"] = text
+            path["instructions"] = instructions; rawRoute["path"] = path; envelope["route"] = rawRoute
+            let route = try BackendDynamicResearchPlanningClient.validate(JSONSerialization.data(withJSONObject: envelope),
+                request: request, start: start, end: nil, context: .unspecified, now: now).suggestion.route
+            XCTAssertEqual(route.routeInstructions.first?.text, text)
+            XCTAssertEqual(route.withPlanningMetadata(nil).routeInstructions, route.routeInstructions)
+            routes.append(route)
+        }
+        XCTAssertEqual(routes[0].path, routes[1].path)
+        XCTAssertEqual(routes[0].distanceKilometers, routes[1].distanceKilometers)
+        XCTAssertNotEqual(RouteGuidanceFingerprint.make(path: routes[0].path, instructions: routes[0].routeInstructions),
+                          RouteGuidanceFingerprint.make(path: routes[1].path, instructions: routes[1].routeInstructions))
+    }
+
     func testMockProvenanceAndPlainModelSuccessCannotBecomeRoutes() throws {
         for source in ["localParser", "mock", "deterministic"] {
             let data = try JSONSerialization.data(withJSONObject: ["schemaVersion": 3, "state": "routed",
@@ -343,9 +399,19 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
                 let explanation = try XCTUnwrap(result.suggestion.route.dynamicResearchExplanation)
                 XCTAssertFalse(explanation.contains(claim))
                 XCTAssertFalse(result.suggestion.explanation.contains(claim))
-                XCTAssertTrue(explanation.contains(result.suggestion.route.distanceLabel))
+                // The stored planning explanation is explicitly English; the host
+                // device locale must not change this expected decimal separator.
+                let englishDistance = RouteLocalizedCopy(route: result.suggestion.route, language: .english).distance
+                XCTAssertTrue(explanation.contains(englishDistance))
                 XCTAssertTrue(explanation.contains("drinking water availability are not verified"))
                 XCTAssertEqual(explanation.contains("Partial match"), decision == "partial")
+                XCTAssertEqual(result.suggestion.route.dynamicRouteOutcome,
+                               DynamicRouteOutcome(isPartial: decision == "partial", hasUnresolvedWishes: true))
+                for language in AppLanguage.allCases {
+                    let copy = RouteLocalizedCopy(route: result.suggestion.route, language: language)
+                    XCTAssertFalse(copy.outcomeExplanation.contains(claim))
+                    XCTAssertFalse(copy.outcomeExplanation.contains("GraphHopper"))
+                }
             }
         }
     }

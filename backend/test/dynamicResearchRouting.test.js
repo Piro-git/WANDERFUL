@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createDynamicItineraryRouter} from '../src/dynamicResearch/routing.js';
 import {routeError} from '../src/routing/routeErrors.js';
 import {distanceMeters} from '../src/dynamicResearch/places.js';
+import {buildGraphHopperRequest} from '../src/routing/graphHopperProvider.js';
 const points=[{latitude:57.2,longitude:-4.7},{latitude:57.21,longitude:-4.68},{latitude:57.22,longitude:-4.7},{latitude:57.21,longitude:-4.72},{latitude:57.2,longitude:-4.7}];
 const geom=points=>({type:'LineString',coordinates:points.map(p=>[p.longitude,p.latitude])});
 function response() {
@@ -18,6 +19,21 @@ test('central routing receives source coordinates and evaluated path yields hone
  const result=await route(input);
  assert.equal(result.accepted,true);assert.equal(calls,1);assert.equal(result.statistics.distanceMeters,response().paths[0].distance);
  assert.equal(result.geometryProvider,'graphhopper');assert.equal(result.waypointChecks.length,5);
+});
+for(const locale of [undefined,'en','de'])test(`dynamic routing forwards explicit UI locale ${locale??'omitted'} to GraphHopper without changing instructions`,async()=>{
+ const expected=locale??'en';
+ const r=response();r.paths[0].instructions[0].text=expected==='de'?'Geradeaus gehen':'Continue straight';
+ const route=createDynamicItineraryRouter({provider:{route:async request=>{
+  assert.equal(request.locale,expected);
+  const body=JSON.parse(buildGraphHopperRequest(request,{baseUrl:'https://graphhopper.com/api/1',apiKey:'offline-fixture'},{unsimplifiedGeometry:true}).init.body);
+  assert.equal(body.locale,expected);assert.equal(body.instructions,true);assert.equal(body.way_point_max_distance,0);
+  return r;
+ }}});
+ // English prompt + German UI, and German prompt + omitted locale: prompt language has no effect.
+ const result=await route({...input,request:{...input.request,prompt:locale==='de'?'Plan a loop':'Plane eine Rundwanderung',...(locale===undefined?{}:{locale})}});
+ assert.equal(result.accepted,true);
+ assert.deepEqual(result.path.instructions,r.paths[0].instructions);
+ assert.equal(result.statistics.distanceMeters,r.paths[0].distance);
 });
 test('strict distance, duration and missing elevation evidence reject with measured revision feedback',async()=>{
  for(const constraints of [{maximumDistanceKm:4},{maximumDurationMinutes:10},{maximumElevationGainMeters:50}]) {

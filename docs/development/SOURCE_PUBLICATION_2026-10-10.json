@@ -1,0 +1,620 @@
+{
+  "formatVersion": 1,
+  "purpose": "Publish current source and tests without local credentials or private execution receipts",
+  "baseCommit": "94bfa66a6e50a5e24bcea52e45e75dfaa64c8652",
+  "sourceCommits": {
+    "backend": "b6661b0ca7b1a712f7063bc397389d9eefc4dd06"
+  },
+  "selection": "source snapshot for backend",
+  "privateRuntimeEvidenceIncluded": false,
+  "files": [
+    {
+      "path": ".github/workflows/ui-localization.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f8a06add5dbadfcb572cf13185d8a284cafdad2",
+      "sourceSha": "2f8a06add5dbadfcb572cf13185d8a284cafdad2",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Localizable.xcstrings",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "173a53ee5e9e3d70e3f907eb0dda781ecbbaa060",
+      "sourceSha": "173a53ee5e9e3d70e3f907eb0dda781ecbbaa060",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Models/AdventureModels.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c3c0e9d01c6379fd515c40b50850b325d606b46f",
+      "sourceSha": "c3c0e9d01c6379fd515c40b50850b325d606b46f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/AppLanguage.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6eacff46982b229765e0b59801c92ec3baeda0a",
+      "sourceSha": "e6eacff46982b229765e0b59801c92ec3baeda0a",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/DynamicResearchPlanningClient.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d9c2ceb0cc45c02e9fc21e780d4b10bcbe1806b",
+      "sourceSha": "3d9c2ceb0cc45c02e9fc21e780d4b10bcbe1806b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/RouteLocalizedCopy.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f21776efd94d7c0bdb3ffe2b6845637b27a612c1",
+      "sourceSha": "f21776efd94d7c0bdb3ffe2b6845637b27a612c1",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/SavedRouteStore.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b6407924c7a04392de6328690a7a1b41510b09c1",
+      "sourceSha": "b6407924c7a04392de6328690a7a1b41510b09c1",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/ViewModels/PlannerViewModel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33b761ab0a687eb8407db82450cd5a91485e1002",
+      "sourceSha": "33b761ab0a687eb8407db82450cd5a91485e1002",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Home/HomeView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2754f464ff29f00b72d66b88ac5274d06c98ff97",
+      "sourceSha": "2754f464ff29f00b72d66b88ac5274d06c98ff97",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Planning/PlanningViews.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dd0b7ec92d292f276f0a55a44a41bdc86f14c725",
+      "sourceSha": "dd0b7ec92d292f276f0a55a44a41bdc86f14c725",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteCardStopPhoto.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d53e62931680c6c7614d87103cb7f44277ff0d6",
+      "sourceSha": "3d53e62931680c6c7614d87103cb7f44277ff0d6",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteComponents.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d7f272c252e9eff7945cea2516cc6e831889ce0",
+      "sourceSha": "9d7f272c252e9eff7945cea2516cc6e831889ce0",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteDetailView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba3f119e2dcd64107a5d0edaef7575ac9977e720",
+      "sourceSha": "ba3f119e2dcd64107a5d0edaef7575ac9977e720",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Shared/SharedComponents.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3e1a7453c43e0bba8b2025115f464ba3015376f",
+      "sourceSha": "d3e1a7453c43e0bba8b2025115f464ba3015376f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/DurableResearchTransportTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "036476d1cb503ae307513f01b8bd44fec88c154b",
+      "sourceSha": "036476d1cb503ae307513f01b8bd44fec88c154b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/DynamicResearchPlanningClientTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22b884561e7d47b7069c655b111550f9384e7204",
+      "sourceSha": "22b884561e7d47b7069c655b111550f9384e7204",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/HikingRouteQualityEngineTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b11206338ee51a82ebaae5d1ba6f8cd159bb3615",
+      "sourceSha": "b11206338ee51a82ebaae5d1ba6f8cd159bb3615",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/RouteLocalizedCopyTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1ba8297380f8451dc0ea03b8034dfb4f56c0dbd",
+      "sourceSha": "d1ba8297380f8451dc0ea03b8034dfb4f56c0dbd",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/SavedRouteStoreTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5242236cb14c69b064f297e4c65de0a5d84f984",
+      "sourceSha": "f5242236cb14c69b064f297e4c65de0a5d84f984",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindUITests/RouteCardPhotoUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "051835c27f572b1e801d966b7ef70bc46b7966d5",
+      "sourceSha": "051835c27f572b1e801d966b7ef70bc46b7966d5",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/api/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1cc4f90150358d75ab0113ea060f1b261cccc80",
+      "sourceSha": "b1cc4f90150358d75ab0113ea060f1b261cccc80",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/config/vercel-pilot-v1.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "854218bee427046fa9e064eb411fe69896779771",
+      "sourceSha": "854218bee427046fa9e064eb411fe69896779771",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/dynamicResearch/contract.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23c092327fc2b307063ebcab6ee5d76dc532057a",
+      "sourceSha": "23c092327fc2b307063ebcab6ee5d76dc532057a",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/dynamicResearch/evidence.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "181a99871fb8aad01e0980762b444eb75d4423ee",
+      "sourceSha": "181a99871fb8aad01e0980762b444eb75d4423ee",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/dynamicResearch/routing.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be5a5d20f02698ac1e5fadfcd348e63a0a69a88b",
+      "sourceSha": "be5a5d20f02698ac1e5fadfcd348e63a0a69a88b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/dynamicResearch/webResearch.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a9b55ea155f97c98abfa66337126b6a0ca476fc",
+      "sourceSha": "4a9b55ea155f97c98abfa66337126b6a0ca476fc",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningEndpoint.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78937bdce8f0e3d1dd190999a002e88d16b2570f",
+      "sourceSha": "78937bdce8f0e3d1dd190999a002e88d16b2570f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningOrchestrator.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23d9600c8c960e9b0ff6b947d586eb5d904380a8",
+      "sourceSha": "23d9600c8c960e9b0ff6b947d586eb5d904380a8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/operations/dynamicResearchBudget.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d31cdf176d1174a715538f3510246dd7d734cc7b",
+      "sourceSha": "d31cdf176d1174a715538f3510246dd7d734cc7b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/operations/vercelDatabaseCA.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "975a32b8b268c56deed93a6a65e181f94991a086",
+      "sourceSha": "975a32b8b268c56deed93a6a65e181f94991a086",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/003_private_owner_bootstrap_20261005.sql",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64b8561031d42a91dbe99b9a8164844fc509fe89",
+      "sourceSha": "64b8561031d42a91dbe99b9a8164844fc509fe89",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/ownerDynamicPlanning.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1be8a01d0bd80c2823f6eb98d31ac047e1e7e2b",
+      "sourceSha": "a1be8a01d0bd80c2823f6eb98d31ac047e1e7e2b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/ownerService.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b670d716fc211aced79f1cc4d9d6672ab70a20d",
+      "sourceSha": "0b670d716fc211aced79f1cc4d9d6672ab70a20d",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/postgresOwnerRepository.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "277a2db9aeab0eade8d4e090e89bcc2aae2a758b",
+      "sourceSha": "277a2db9aeab0eade8d4e090e89bcc2aae2a758b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/privatePlanningDiagnostics.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "413e583d5a8760bbfabe36b4cdd7c5c391bec7e9",
+      "sourceSha": "413e583d5a8760bbfabe36b4cdd7c5c391bec7e9",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/vercelOwnerRuntime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "001d2930d4555537dff808b4c921b5c928756636",
+      "sourceSha": "001d2930d4555537dff808b4c921b5c928756636",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/routing/graphHopperProvider.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "803a169f431047424dbb33e939855f4bf3fd33e3",
+      "sourceSha": "803a169f431047424dbb33e939855f4bf3fd33e3",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchEndpoint.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60da1866a406f1cad69f689cfccb92f945d16d20",
+      "sourceSha": "60da1866a406f1cad69f689cfccb92f945d16d20",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchNativeFlow.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b908356b1d928684eba62262c63b6991dab12afc",
+      "sourceSha": "b908356b1d928684eba62262c63b6991dab12afc",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchRouting.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a00fbaca69f720d0fe79b0297a75a7991277918",
+      "sourceSha": "4a00fbaca69f720d0fe79b0297a75a7991277918",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchStatistics.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d68ae27051ef9ace7c04f4bbb77085ea8502a4aa",
+      "sourceSha": "d68ae27051ef9ace7c04f4bbb77085ea8502a4aa",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/fixtures/supabase-public-ca-20261005.pem",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d693669b23c340c57a3457bdc8b6fefe1806cc5",
+      "sourceSha": "3d693669b23c340c57a3457bdc8b6fefe1806cc5",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/graphHopperProvider.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57d801f231ab65e203585cc7793bf8cd7d78239b",
+      "sourceSha": "57d801f231ab65e203585cc7793bf8cd7d78239b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/ownerAccessPostgres.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "811e4cc3bcfd033ac03c49b9e5571021ad9d6fd8",
+      "sourceSha": "811e4cc3bcfd033ac03c49b9e5571021ad9d6fd8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/ownerDynamicPlanning.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "752d074e0f7338aa271e18b092fe730adbabf34b",
+      "sourceSha": "752d074e0f7338aa271e18b092fe730adbabf34b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/privatePlanningDiagnostics.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "013c0d0aad74a3b018befda35f5d6888fa21a220",
+      "sourceSha": "013c0d0aad74a3b018befda35f5d6888fa21a220",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/routeSourceReconciliation20261003.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f23f8546e3743183e9ff32f4b6593b5f65adfa0b",
+      "sourceSha": "f23f8546e3743183e9ff32f4b6593b5f65adfa0b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/vercelDatabaseCA.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ede6aa2018184d5a53b5141b9b3450cfc7e3a6d8",
+      "sourceSha": "ede6aa2018184d5a53b5141b9b3450cfc7e3a6d8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/vercelOwnerMount.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87db57993cc88847b2f45ea98c7be4e27c6c5fac",
+      "sourceSha": "87db57993cc88847b2f45ea98c7be4e27c6c5fac",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/webResearchOptionalCitationTitle.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c2abaa2b0dcf2822df1d661fabdcec303c71dc0a",
+      "sourceSha": "c2abaa2b0dcf2822df1d661fabdcec303c71dc0a",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/activate-owner-credential-input.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "235c756c7112ffc0059d35381475e94963ec228d",
+      "sourceSha": "235c756c7112ffc0059d35381475e94963ec228d",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/complete-owner-credential.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a27b2e189f1979cb41095f64a4ffb25da64b919",
+      "sourceSha": "489348c9ec159c0318b41d825e06a30abc8277a3",
+      "portableAdaptation": true
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/launch-owner-credential.command",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "164f1ec530c7323d76df3afa2aae097a18f31119",
+      "sourceSha": "164f1ec530c7323d76df3afa2aae097a18f31119",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/owner-activation.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "32adfc953e06fe1f684dc106bd13caaa232f6e3d",
+      "sourceSha": "32adfc953e06fe1f684dc106bd13caaa232f6e3d",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/prepare-owner-admission.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b546eeaced43e193bddd7f4c99fc8078abcbafe",
+      "sourceSha": "6b546eeaced43e193bddd7f4c99fc8078abcbafe",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/prepare-owner-admission.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5b51b143673c39329ce5242fad59ee8e91ca8729",
+      "sourceSha": "5b51b143673c39329ce5242fad59ee8e91ca8729",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/prepare-public-ca.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "abd8fa4b798f1dd00f24806a890d45a790d2bc21",
+      "sourceSha": "abd8fa4b798f1dd00f24806a890d45a790d2bc21",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/prepare-public-ca.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db9a1ad6f164fe38413b8c874fc4eef7af852a05",
+      "sourceSha": "db9a1ad6f164fe38413b8c874fc4eef7af852a05",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/run-owner-admission-preparation-postgres-20261009.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bfcb125528a8a0c0df2fdb0059b0af4c7c53dbb6",
+      "sourceSha": "39929d61e5216edb60521421af98f29bd8fc21fd",
+      "portableAdaptation": true
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/run-owner-bootstrap-pg-20261007.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33ba6adc2b8601e3dfd9bf55b58a91c4d23fe3c2",
+      "sourceSha": "d1def102636af8fe2602845c44a8319ad37f682d",
+      "portableAdaptation": true
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/run-owner-bound-activation-20261007.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "51920797b1657abbd3abcde6d6c49fe75d75e806",
+      "sourceSha": "b51ac3cac71b095287784fd759fc76ccbd30c3dd",
+      "portableAdaptation": true
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/test-owner-admission-preparation-postgres.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f85828a9c0076797dcb2cc8b046812997b1e572",
+      "sourceSha": "9f85828a9c0076797dcb2cc8b046812997b1e572",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/test_owner_bound_activation.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ae92b272068a6081397ca2a02ac5e53b95976d3",
+      "sourceSha": "9ae92b272068a6081397ca2a02ac5e53b95976d3",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/test_owner_credential_flow.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b21d0ce51f3cd5bf42c201f587b3ed746d2bf0af",
+      "sourceSha": "b21d0ce51f3cd5bf42c201f587b3ed746d2bf0af",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/test_owner_credential_psql.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ee44c3923db6236fc5ec84104f5eca3eceff07c",
+      "sourceSha": "6ee44c3923db6236fc5ec84104f5eca3eceff07c",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/operations/vercel-live-20261004/verify-owner-runtime-input.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7875bc1e6aa90bfd14161830a930e9607feb2c1f",
+      "sourceSha": "7875bc1e6aa90bfd14161830a930e9607feb2c1f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e94faf1ee14204122097907cd8ef72ffae5844d8",
+      "sourceSha": "e94faf1ee14204122097907cd8ef72ffae5844d8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/config/owner-inputs.placeholder.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dec247c0417f497c65c9e894afac1a7d7344654e",
+      "sourceSha": "dec247c0417f497c65c9e894afac1a7d7344654e",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/privacy-choices/index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "604b6cd6aecaa868300d7d51fbd39ae306dca9e1",
+      "sourceSha": "604b6cd6aecaa868300d7d51fbd39ae306dca9e1",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/privacy/index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5008bda7db9b62c922851bb12810511d2d2b802",
+      "sourceSha": "d5008bda7db9b62c922851bb12810511d2d2b802",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/support/index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1f14aa6ff02be6dbb18a5980a561ebbf1314ecc6",
+      "sourceSha": "1f14aa6ff02be6dbb18a5980a561ebbf1314ecc6",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/tools/test_validate_public_site.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8372b78017a6bf19a0279afe44654057bd53ac08",
+      "sourceSha": "8372b78017a6bf19a0279afe44654057bd53ac08",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/tools/validate_public_site.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eed421124b19b498f78ecb5dcb154053da00fcc6",
+      "sourceSha": "eed421124b19b498f78ecb5dcb154053da00fcc6",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/test-ui-localization-ci.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b4f1917f157575fb596cb390c11056d4adfaa9e",
+      "sourceSha": "9b4f1917f157575fb596cb390c11056d4adfaa9e",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/test-ui-localization-result-verifier.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f16f9fe0d1596151ec2aba7d44350c8f814802b",
+      "sourceSha": "9f16f9fe0d1596151ec2aba7d44350c8f814802b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/verify-ui-localization-results.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da3b67b4961bfea0bde166c8cac981382fbd4cf2",
+      "sourceSha": "da3b67b4961bfea0bde166c8cac981382fbd4cf2",
+      "portableAdaptation": false
+    }
+  ]
+}

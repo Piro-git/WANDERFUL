@@ -61,11 +61,11 @@ struct SectionHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.trailSection)
                 .foregroundStyle(theme.graphite)
             if let subtitle {
-                Text(subtitle)
+                Text(LocalizedStringKey(subtitle))
                     .font(.subheadline)
                     .foregroundStyle(theme.secondaryText)
             }
@@ -88,7 +88,7 @@ struct StatPill: View {
             Text(value)
                 .font(.headline)
                 .foregroundStyle(theme.graphite)
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption)
                 .foregroundStyle(theme.secondaryText)
         }
@@ -97,11 +97,12 @@ struct StatPill: View {
 }
 
 struct DifficultyBadge: View {
+    @Environment(AppLanguageController.self) private var languageController
     @Environment(TrailTheme.self) private var theme
     let difficulty: RouteDifficulty
 
     var body: some View {
-        Label(difficulty.rawValue, systemImage: difficulty.symbol)
+        Label(RouteLocalizedCopy.difficulty(difficulty, language: languageController.language), systemImage: difficulty.symbol)
             .font(.caption.weight(.semibold))
             .foregroundStyle(theme.forest)
             .padding(.horizontal, 11)

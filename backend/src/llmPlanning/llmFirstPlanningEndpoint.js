@@ -1,3 +1,4 @@
+import {safePrivateFailure} from '../ownerAccess/privatePlanningDiagnostics.js';
 import {validateConditionRecheck,recheckConditions} from '../dynamicResearch/recheck.js';
 import {createConditionLookup} from '../dynamicResearch/conditionSources.js';
 import {validateDynamicRequest} from '../dynamicResearch/contract.js';
@@ -33,7 +34,7 @@ import {
   LLM_FIRST_PLANNING_POLICY_V1,
   llmFirstPlanningEnabled
 } from "./llmFirstPlanningPolicy.js";
-import { dynamicResearchBudgetConfiguration } from "../operations/dynamicResearchBudget.js";
+import { dynamicResearchBudgetConfiguration, dynamicResearchExecutionLimits } from "../operations/dynamicResearchBudget.js";
 
 const POLICY = LLM_FIRST_PLANNING_POLICY_V1;
 const AUTHORIZATION_COST = 12;
@@ -55,6 +56,7 @@ export function createLLMFirstPlanningEndpoint(options = {}) {
     let rejectedCount;
     let fallbackAttemptCount;
     let errorCode;
+    let privateDiagnostic;
     try {
       if (!llmFirstPlanningEnabled(env)) {
         throw outdoorAdventureOrchestrationError("feature_unavailable");
@@ -143,7 +145,9 @@ export function createLLMFirstPlanningEndpoint(options = {}) {
         // Schema 3 never falls back to an unresearched planner. Record the
         // explicit zero in the privacy-safe completion receipt as well.
         fallbackAttemptCount = 0;
-        const route = await planDynamicResearch(request, dependencies, { signal: context.signal });
+        const route = await planDynamicResearch(request, dependencies, {
+          signal: context.signal, limits: dynamicResearchExecutionLimits(env)
+        });
         const payload = { schemaVersion: 3, state: "routed", route };
         if (Buffer.byteLength(JSON.stringify(payload), "utf8") > POLICY.limits.maximumResponseBytes) {
           throw outdoorAdventureOrchestrationError("response_too_large");
@@ -212,6 +216,7 @@ export function createLLMFirstPlanningEndpoint(options = {}) {
       fallbackAttemptCount = payload.diagnostics.fallbackAttemptCount;
       return { statusCode: 200, payload };
     } catch (error) {
+      privateDiagnostic=safePrivateFailure(error);
       // Preserve exact pre-provider session outcomes for the schema-3 transport.
       // Only expiry is renewable; replay, exhausted budget and denial never become retries.
       if ([3,4].includes(body?.schemaVersion) && error instanceof AppAttestError) {
@@ -238,7 +243,8 @@ export function createLLMFirstPlanningEndpoint(options = {}) {
           rejectedCount,
           fallbackAttemptCount,
           durationBucket: outdoorAdventureDurationBucket(Math.max(0, now() - startedAt)),
-          errorCode
+          errorCode,
+          ...(privateDiagnostic??{})
         });
       } catch {
         // Diagnostics intentionally exclude prompts, names, and coordinates.
