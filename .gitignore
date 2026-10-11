@@ -5,6 +5,12 @@ backend/.env.*
 backend/node_modules/
 .env
 .env.*
+
+# Local operator outputs and deployment bindings
+.local-evidence/
+.deploy/
+__pycache__/
+*.pyc
 OwnerPhoneTest.json
 
 # Xcode user state

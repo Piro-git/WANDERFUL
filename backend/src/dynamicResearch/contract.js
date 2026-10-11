@@ -6,7 +6,9 @@ function fields(value,required,optional=[]) {
 function coordinate(value) {fields(value,['latitude','longitude']);if(!validCoordinate(value))fail();}
 export function validateDynamicRequest(body) {
   if(Buffer.byteLength(JSON.stringify(body)??'')>16384)fail();
-  fields(body,['schemaVersion','prompt','anchor','end','intent','constraints','parserSource'],['researchMode','locationName','plannedStartAt','preferences']);
+  fields(body,['schemaVersion','prompt','anchor','end','intent','constraints','parserSource'],['researchMode','locationName','plannedStartAt','preferences','locale']);
+  // Explicit UI language only; omitted by older clients means English instructions.
+  if(body.locale!==undefined&&!['en','de'].includes(body.locale))fail();
   if(body.schemaVersion!==3||body.parserSource!=='remoteAI'||typeof body.prompt!=='string'||!body.prompt.trim()||body.prompt.length>4000||body.prompt.includes('\u0000'))fail();
   if(body.researchMode!==undefined&&!['mapped_places','web_and_map'].includes(body.researchMode))fail();
   if(body.researchMode==='web_and_map'&&(typeof body.locationName!=='string'||!body.locationName.trim()||body.locationName.length>200))fail();

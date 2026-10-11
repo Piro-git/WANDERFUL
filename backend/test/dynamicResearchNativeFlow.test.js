@@ -8,7 +8,7 @@ import {createOwnerProviderBudget} from '../scripts/owner-phone-provider-budget.
 
 // Synthetic provider fixtures, exercised through the real private HTTP routing/composition.
 // This is deliberately not a live provider acceptance test.
-for (const {web,revise,named=false} of [{web:false,revise:false},{web:false,revise:true},{web:true,revise:false},{web:true,revise:true},{web:true,revise:true,named:true}]) test(`native flow reaches evaluated route; web=${web}; revision=${revise}; named=${named}`,async t=>{
+for (const {web,revise,named=false,locale} of [{web:false,revise:false},{web:false,revise:true},{web:true,revise:false},{web:true,revise:true},{web:true,revise:true,named:true},{web:false,revise:false,locale:'en'},{web:true,revise:true,locale:'de'}]) test(`native flow reaches evaluated route; web=${web}; revision=${revise}; named=${named}; locale=${locale??'omitted'}`,async t=>{
  const fixture=JSON.parse(fs.readFileSync(new URL('../../TrailMindTests/Fixtures/dynamic-research-offline.json',import.meta.url),'utf8'));
  const directory=fs.mkdtempSync('/private/tmp/wanderful-dynamic-native-offline-');fs.chmodSync(directory,0o700);
  const token=randomBytes(32).toString('base64url');
@@ -50,11 +50,12 @@ for (const {web,revise,named=false} of [{web:false,revise:false},{web:false,revi
    type:'node',id:i+1,version:1,timestamp:'2020-01-01T00:00:00Z',lat:p.coordinate.latitude,lon:p.coordinate.longitude,tags:{name:p.name,...(named?{}:{tourism:'viewpoint'})}})).filter(p=>!named||query.includes(JSON.stringify(p.tags.name)))});
   }
   if(target.hostname==='graphhopper.com') {
-   const body=JSON.parse(init.body);assert.equal(body.profile,'foot');routeCalls++;
+   const body=JSON.parse(init.body);assert.equal(body.profile,'foot');assert.equal(body.locale,locale??'en');routeCalls++;
    if(revise && routeCalls===1)return new Response(JSON.stringify({message:'Connection not found'}),{status:422,headers:{'Content-Type':'application/json'}});
    const geometry={...fixture.route.path.points,coordinates:revise?[...fixture.route.path.points.coordinates].reverse():fixture.route.path.points.coordinates};
    assert.deepEqual(body.points,geometry.coordinates);
-   return json({paths:[{...fixture.route.path,points:geometry}],snapped_waypoints:geometry});
+   const instructions=fixture.route.path.instructions.map(i=>({...i,text:locale==='de'?'Geradeaus gehen':i.text}));
+   return json({paths:[{...fixture.route.path,points:geometry,instructions}],snapped_waypoints:geometry});
   }
   assert.fail('unexpected upstream');
  }});
@@ -63,15 +64,16 @@ for (const {web,revise,named=false} of [{web:false,revise:false},{web:false,revi
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));budget.close();fs.rmSync(directory,{recursive:true});});
  const post=(path,body)=>fetch(`http://127.0.0.1:${server.address().port}${path}`,{method:'POST',headers:{'content-type':'application/json',authorization:`TrailMindRouteSession ${token}`,'x-trailmind-request-id':randomUUID()},body:JSON.stringify(body)});
- const parseResponse=await post('/api/parse-intent',{prompt,locale:'en',userLocationHint:null});
+ const parseResponse=await post('/api/parse-intent',{prompt,locale:locale??'en',userLocationHint:null});
  assert.equal(parseResponse.status,200);const remote=await parseResponse.json();assert.equal(remote.parserSource,'remoteAI');
  // Apple geocoding is represented by a fixture coordinate; no live Apple request is claimed.
- const body={schemaVersion:3,parserSource:remote.parserSource,prompt,...(web?{researchMode:'web_and_map',locationName:remote.startLocationQuery}:{}),anchor:{latitude:57.2,longitude:-4.7},end:null,
+ const body={schemaVersion:3,parserSource:remote.parserSource,prompt,...(locale?{locale}:{}),...(web?{researchMode:'web_and_map',locationName:remote.startLocationQuery}:{}),anchor:{latitude:57.2,longitude:-4.7},end:null,
   intent:{activityType:remote.activityType,routeType:remote.routeType,targetDistanceKm:remote.targetDistanceKm,difficulty:remote.difficulty},
   constraints:{maximumDistanceKm:null,maximumDurationMinutes:null,maximumElevationGainMeters:null,hardAvoidances:[]}};
  const response=await post('/api/llm-plan-route',body);assert.equal(response.status,200);
  const result=await response.json();assert.equal(result.route.plannerSource,'gemini_tools');assert.equal(result.route.places.length,3);
  assert.equal(result.route.statistics.distanceMeters,fixture.route.path.distance);assert.equal(result.route.geometryProvider,'graphhopper');
+ assert.deepEqual(result.route.path.instructions,fixture.route.path.instructions.map(i=>({...i,text:locale==='de'?'Geradeaus gehen':i.text})));
  assert.equal(result.route.webResearch?.provider,web?'google_grounding':undefined);
  if(web) {const block=result.route.webResearch.blocks[0];assert.equal(block.text,groundedText);assert.equal(block.citations[0].endIndex,groundedText.length);}
  if(named) {assert.ok(result.route.places.every(p=>p.category==='named_place'));assert.equal(result.route.counts.resolutions,3);}

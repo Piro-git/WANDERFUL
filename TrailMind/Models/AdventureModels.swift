@@ -1,5 +1,11 @@
 import Foundation
 
+/// Validated planner state only. Free provider prose never becomes interface copy.
+struct DynamicRouteOutcome: Hashable, Sendable {
+    let isPartial: Bool
+    let hasUnresolvedWishes: Bool
+}
+
 enum ActivityType: String, CaseIterable, Codable, Identifiable, Hashable, Sendable {
     case hiking = "Hiking"
     case biking = "Biking"
@@ -1538,6 +1544,7 @@ struct TrailRoute: Identifiable, Hashable {
     var localConditions: RouteLocalConditions? = nil
     var dynamicResearchStops: [DynamicResearchStop] = []
     var dynamicResearchExplanation: String? = nil
+    var dynamicRouteOutcome: DynamicRouteOutcome? = nil
     let id: UUID
     let provenance: RouteProvenance
     let title: String
@@ -1664,6 +1671,7 @@ struct TrailRoute: Identifiable, Hashable {
         result.dynamicWebResearch = dynamicWebResearch
         result.dynamicResearchStops = dynamicResearchStops
         result.dynamicResearchExplanation = dynamicResearchExplanation
+        result.dynamicRouteOutcome = dynamicRouteOutcome
         return result
     }
 
@@ -1698,6 +1706,7 @@ struct TrailRoute: Identifiable, Hashable {
         result.dynamicWebResearch = dynamicWebResearch
         result.dynamicResearchStops = dynamicResearchStops
         result.dynamicResearchExplanation = dynamicResearchExplanation
+        result.dynamicRouteOutcome = dynamicRouteOutcome
         return result
     }
 
@@ -1738,6 +1747,7 @@ struct TrailRoute: Identifiable, Hashable {
         result.dynamicWebResearch = dynamicWebResearch
         result.dynamicResearchStops = dynamicResearchStops
         result.dynamicResearchExplanation = dynamicResearchExplanation
+        result.dynamicRouteOutcome = dynamicRouteOutcome
         return result
     }
 

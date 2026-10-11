@@ -2,7 +2,7 @@
 
 ## Cross-device development — updated 2026-10-10
 
-Read `CLOUD_HANDOFF.md` before continuing from Codex Cloud or a new checkout. Use the published October recovery baseline on `codex/cloud-workspace-20261010`; `main` is an older snapshot. The handoff maps the preserved backend, iOS, QA and StoreKit branches and explains unresolved integration and release gates. Do not infer that separate backups are already integrated.
+Read `CLOUD_HANDOFF.md` before continuing from Codex Cloud or a new checkout. Use `codex/latest-20261010` for the current combined development source. `docs/development/SOURCE_PUBLICATION_2026-10-10.json` maps each imported source file to its original Git blob and records portable operator-script adaptations. The separate backup branches preserve each source variant; their private execution receipts and credentials are kept outside the public repository. Earlier publication receipts describe their dated candidates, not this updated source. Do not infer live readiness or App Store approval from source publication.
 
 Cloud setup uses Node 22+, locked backend dependencies and credential-free fixture checks. Preserve complete Git history for provenance tests. Keep iOS/Xcode and physical-device validation on an appropriate Apple environment; report unsupported checks honestly. Personal Mac skills are not automatically synced to Cloud. Never transfer local secrets, signing material or personal Codex authentication. Commit/push intended work when switching execution environments; reopening the same Cloud chat preserves that task's own workspace.
 

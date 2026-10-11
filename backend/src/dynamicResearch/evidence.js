@@ -1,6 +1,7 @@
 import {isDeepStrictEqual} from 'node:util';
 import {validateWebResearchEnvelope} from './webResearch.js';
-import {matchSourcePassage,sourceURL} from './sourceDocuments.js';
+import {matchSourcePassage} from './sourceDocuments.js';
+import {publicSourceURL} from './publicSources.js';
 
 const fail=()=>{throw Object.assign(new TypeError('invalid_route_evidence'),{code:'invalid_route_evidence'});};
 export function osmSourceURL(id) {
@@ -20,7 +21,13 @@ export function reconcileRouteEvidence(web,{routeId,selectedPlaces,inspectedPlac
     !Array.isArray(inspectedPlaces)||inspectedPlaces.length>10)fail();
   if(!Array.isArray(sourceDocuments)||sourceDocuments.length>3)fail();
   for(const doc of sourceDocuments) {
-    if(!sourceURL(doc?.url)||!sourceURL(doc?.requestedURL)||!Number.isFinite(Date.parse(doc.retrievedAt))||
+    // Generic lookup already fetches through the DNS-pinned public HTTPS path.
+    // Reconciliation must admit those documents without extending regional adapters.
+    const url=publicSourceURL(doc?.url),requestedURL=publicSourceURL(doc?.requestedURL);
+    const canonicalURL=doc?.canonicalURL==null?null:publicSourceURL(doc.canonicalURL);
+    if(!url||!requestedURL||url.hostname!==requestedURL.hostname||
+      doc.canonicalURL!=null&&(!canonicalURL||canonicalURL.hostname!==url.hostname)||
+      !Number.isFinite(Date.parse(doc.retrievedAt))||
       !Array.isArray(doc.entities)||doc.entities.length>30||!Array.isArray(doc.passages)||doc.passages.length>80||
       doc.passages.some(p=>typeof p.text!=='string'||p.text.length>1200||!Array.isArray(p.identityURLs))||
       doc.entities.some(e=>typeof e.name!=='string'||!Array.isArray(e.identityURLs)))fail();

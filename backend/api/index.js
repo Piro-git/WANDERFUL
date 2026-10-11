@@ -1,4 +1,5 @@
 import pg from "pg";
+import { prepareVercelDatabaseCA } from "../src/operations/vercelDatabaseCA.js";
 import { createIntentRequestHandler } from "../src/server.js";
 import { createAppAttestRuntime } from "../src/appAttest/appAttestRuntime.js";
 import { PostgresAppAttestRepository } from "../src/appAttest/postgresAppAttestRepository.js";
@@ -31,6 +32,7 @@ export function createVercelHandler(options = {}) {
       try {
         if (!runtime) {
           requireVerifiedDatabaseTLS(env);
+          prepareVercelDatabaseCA(env);
           const owned = [];
           try {
             const pools = createRuntimePools(env, options.PoolClass ?? pg.Pool, owned,
