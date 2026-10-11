@@ -570,6 +570,7 @@ struct PlanningRecoveryView: View {
 }
 
 struct RouteSuggestionsView: View {
+    @Environment(AppLanguageController.self) private var languageController
     @Environment(TrailTheme.self) private var theme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let prompt: String
@@ -601,9 +602,9 @@ struct RouteSuggestionsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: TrailSpacing.section) {
+            LazyVStack(alignment: .leading, spacing: TrailSpacing.section) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(routeCountTitle)
+                    Text(LocalizedStringKey(routeCountTitle))
                         .font(.trailTitle)
                     Text("Built around “\(prompt)”")
                         .font(.body)
@@ -619,7 +620,7 @@ struct RouteSuggestionsView: View {
                         )
                 }
 
-                if let notice {
+                if let notice = localizedNotice {
                     PlanningNoticeView(message: notice, symbol: "info.circle.fill")
                 }
 
@@ -631,36 +632,10 @@ struct RouteSuggestionsView: View {
                 }
 
                 ForEach(suggestions) { suggestion in
-                    let researchPresentation =
-                        researchPresentations[suggestion.id]
-                    let accessibilitySummary =
-                        RouteComparisonAccessibilitySummary(
-                            route: suggestion.route,
-                            comparisonLabel: suggestion.explanation,
-                            researchPresentation: researchPresentation
-                        )
-                    NavigationLink {
-                        RouteDetailView(
-                            route: suggestion.route,
-                            researchPresentation: researchPresentation
-                        )
-                    } label: {
-                        RouteCard(
-                            route: suggestion.route,
-                            comparisonLabel: suggestion.explanation,
-                            qualityExplanations: RouteQualityExplanationGenerator.explanations(
-                                for: suggestion.route,
-                                debugMetadata: suggestion.debugMetadata,
-                                maximumCount: 3
-                            ),
-                            researchPresentation: researchPresentation
-                        )
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(accessibilitySummary.label)
-                        .accessibilityHint(accessibilitySummary.hint)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("route.open.\(suggestion.route.id.uuidString)")
+                    RouteSuggestionCardRow(
+                        suggestion: suggestion,
+                        researchPresentation: researchPresentations[suggestion.id]
+                    )
                 }
 
                 Button(action: onStartOver) {
@@ -687,6 +662,13 @@ struct RouteSuggestionsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    private var localizedNotice: String? {
+        if suggestions.count == 1, let route = suggestions.first?.route, route.dynamicRouteOutcome != nil {
+            return RouteLocalizedCopy(route: route, language: languageController.language).outcomeExplanation
+        }
+        return notice
+    }
+
     private var requestedPreferenceDisclosure: String? {
         var summaries: [String] = []
         for suggestion in suggestions {
@@ -697,7 +679,7 @@ struct RouteSuggestionsView: View {
             }
         }
         guard !summaries.isEmpty else { return nil }
-        return "\(summaries.joined(separator: " · ")). These are requested preferences, not verified guarantees."
+        return "\(summaries.joined(separator: " · ")). These are planning preferences, not verified guarantees."
     }
 
     private var routeCountTitle: String {

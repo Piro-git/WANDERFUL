@@ -1,5 +1,19 @@
 # AGENTS.md — TrailMind / EasyWander
 
+## Cross-device development — updated 2026-10-10
+
+Read `CLOUD_HANDOFF.md` before continuing from Codex Cloud or a new checkout. Use `codex/latest-20261010` for the current combined development source. `docs/development/SOURCE_PUBLICATION_2026-10-10.json` maps each imported source file to its original Git blob and records portable operator-script adaptations. The separate backup branches preserve each source variant; their private execution receipts and credentials are kept outside the public repository. Earlier publication receipts describe their dated candidates, not this updated source. Do not infer live readiness or App Store approval from source publication.
+
+Cloud setup uses Node 22+, locked backend dependencies and credential-free fixture checks. Preserve complete Git history for provenance tests. Keep iOS/Xcode and physical-device validation on an appropriate Apple environment; report unsupported checks honestly. Personal Mac skills are not automatically synced to Cloud. Never transfer local secrets, signing material or personal Codex authentication. Commit/push intended work when switching execution environments; reopening the same Cloud chat preserves that task's own workspace.
+
+## Geographic product scope — updated 2026-09-10
+
+The product goal is route planning for any supported place that can be resolved and routed with available providers and data. Harz is neither a target-market priority nor a prerequisite. Do not restrict planning, examples, or future work to Germany or a fixed regional allowlist as a product requirement. This is not a promise of worldwide coverage: unresolved places, missing data, and provider limits must remain explicit.
+
+Real regional adapters retain their actual coverage boundaries; regional fixtures and dated evaluation receipts remain evidence for those cases only. They neither define the product territory nor prove support elsewhere. Ask for or resolve the user's intended place instead of silently substituting a preset region. Example prompts illustrate syntax, not verified routes or a list of supported destinations.
+
+Earlier implementation summaries and roadmaps below are historical context, not a verified current feature inventory or an instruction to restart completed work. Verify current behavior against the source and build under review; current user instructions take precedence.
+
 ## Project Identity
 
 TrailMind is an iOS-first, SwiftUI-native outdoor route planning app.
@@ -72,7 +86,9 @@ The core product magic:
 
 From casual intent:
 
-> “Mach mir eine schöne 15 km Rundwanderung um Ilsenburg mit Aussicht.”
+> “Mach mir eine schöne 15 km Rundwanderung ab [Startort] mit Aussicht.”
+
+Replace `[Startort]` with the user’s intended place; resolve and route it before claiming a result.
 
 To real route options:
 
@@ -101,7 +117,7 @@ Initial target users:
 - weekend adventurers
 - people who like Komoot but want easier planning
 - people who plan with ChatGPT but manually transfer routes into map apps
-- Germany-first users, especially Harz, Lüneburg, Brocken, Schierke, Ilsenburg, Amelinghausen
+- people planning at any supported, resolved location, without a preferred country or region
 
 Initial activity focus:
 
@@ -281,7 +297,7 @@ Distance-aware alternative rules:
 
 ### Point-to-point prompts
 
-Supported examples:
+Illustrative prompt forms (place names are examples, not a geographic requirement):
 
 - `Ilsenburg nach Schierke`
 - `von Ilsenburg nach Brocken`
@@ -304,7 +320,7 @@ Flow:
 
 ### Loop prompts
 
-Supported examples:
+Illustrative prompt forms (place names are examples, not a geographic requirement):
 
 - `15 km Rundwanderung um Ilsenburg`
 - `Rundtour bei Schierke ca. 12 km`

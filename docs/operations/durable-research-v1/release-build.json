@@ -1,0 +1,23 @@
+{
+  "configuration": "Release",
+  "ownerTestFlag": false,
+  "codeSigningAllowed": false,
+  "sdk": "iphonesimulator",
+  "result": "BUILD SUCCEEDED",
+  "sourceCommit": "2b42bfa",
+  "logSha256": "f4b4055841ccd6ec6932b683eb040c4aa41a8bf4beb2456268288df565eaab2f",
+  "logPath": "/private/tmp/durable-release-final.log",
+  "bundleIdentifier": "com.trailmind.app",
+  "architectures": [
+    "arm64"
+  ],
+  "earlierBothArchitectureBuild": {
+    "sourceCommit": "cfd4a79",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "result": "BUILD SUCCEEDED",
+    "logSha256": "a2fb7f7924d60ed7dbcfe4146347bac4ef0faf0a285d4df72a68b441f706ea45"
+  }
+}

@@ -395,7 +395,8 @@ function createTestCa(caPath, root) {
   execFileSync("openssl", [
     "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256",
     "-days", "1", "-subj", "/CN=TrailMind Launcher Test CA",
-    "-addext", "basicConstraints=critical,CA:TRUE",
+    "-config", realpathSync(new URL("../config/synthetic-ca.cnf", import.meta.url)),
+    "-extensions", "synthetic_ca",
     "-keyout", keyPath, "-out", caPath
   ], { stdio: ["ignore", "ignore", "ignore"] });
   unlinkSync(keyPath);

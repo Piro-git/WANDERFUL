@@ -459,26 +459,46 @@ function createSession({
         await attestLocked(lock);
         await query(
           `SELECT pg_catalog.set_config(
-                    'trailmind.phase1_v2_run_id', $1, false
+                    'trailmind.phase1_v2_bootstrap_contract', $1, false
+                  ),
+                  pg_catalog.set_config(
+                    'trailmind.phase1_v2_project_ref', $2, false
+                  ),
+                  pg_catalog.set_config(
+                    'trailmind.phase1_v2_project_name', $3, false
+                  ),
+                  pg_catalog.set_config(
+                    'trailmind.phase1_v2_database_name', $4, false
+                  ),
+                  pg_catalog.set_config(
+                    'trailmind.phase1_v2_bootstrap_backend_pid', $5, false
+                  ),
+                  pg_catalog.set_config(
+                    'trailmind.phase1_v2_run_id', $6, false
                   ),
                   pg_catalog.set_config(
                     'trailmind.phase1_v2_authorization_binding_digest',
-                    $2, false
+                    $7, false
                   ),
                   pg_catalog.set_config(
-                    'trailmind.phase1_v2_candidate_commit', $3, false
+                    'trailmind.phase1_v2_candidate_commit', $8, false
                   ),
                   pg_catalog.set_config(
-                    'trailmind.phase1_v2_candidate_tree', $4, false
+                    'trailmind.phase1_v2_candidate_tree', $9, false
                   ),
                   pg_catalog.set_config(
-                    'trailmind.phase1_v2_operator_digests_digest', $5, false
+                    'trailmind.phase1_v2_operator_digests_digest', $10, false
                   ),
                   pg_catalog.set_config(
                     'trailmind.phase1_v2_provider_acl_restore_plan_digest',
-                    $6, false
+                    $11, false
                   )`,
           [
+            "managed-supabase-postgres-v1",
+            admission.projectRef,
+            STAGING_PHASE1_V2_TARGET.projectName,
+            "postgres",
+            String(backendPid),
             admission.runId,
             admission.authorizationBindingDigest,
             admission.candidateCommit,
@@ -701,8 +721,6 @@ function createSession({
              pg_catalog.pg_backend_pid()::integer AS backend_pid,
              current_setting('server_version_num')::integer
                AS server_version_num,
-             current_setting('shared_preload_libraries')
-               AS shared_preload_libraries,
              current_setting('supautils.privileged_role', true)
                AS supautils_privileged_role,
              current_setting('supautils.superuser', true)
@@ -714,6 +732,7 @@ function createSession({
                AS supautils_privileged_extensions,
              current_setting('is_superuser') AS is_superuser,
              role_record.rolcanlogin,
+             role_record.rolinherit,
              role_record.rolsuper,
              role_record.rolcreatedb,
              role_record.rolcreaterole,
@@ -728,7 +747,22 @@ function createSession({
                AS supabase_admin_superuser,
              NOT pg_catalog.pg_has_role(
                'postgres', 'supabase_admin', 'SET'
-             ) AS postgres_cannot_set_supabase_admin
+             ) AS postgres_cannot_set_supabase_admin,
+             EXISTS (
+               SELECT 1
+                 FROM pg_catalog.pg_roles privileged_role
+                WHERE privileged_role.rolname = 'supabase_privileged_role'
+                  AND NOT privileged_role.rolcanlogin
+                  AND privileged_role.rolinherit
+                  AND NOT privileged_role.rolsuper
+                  AND NOT privileged_role.rolcreatedb
+                  AND NOT privileged_role.rolcreaterole
+                  AND NOT privileged_role.rolreplication
+                  AND NOT privileged_role.rolbypassrls
+                  AND pg_catalog.pg_has_role(
+                    current_user, privileged_role.rolname, 'USAGE'
+                  )
+             ) AS exact_supabase_privileged_role
         FROM pg_catalog.pg_roles role_record
        WHERE role_record.rolname = current_user
     `);
@@ -738,10 +772,8 @@ function createSession({
       identity.rows[0].session_user !== "postgres" ||
       identity.rows[0].current_user !== "postgres" ||
       Math.trunc(identity.rows[0].server_version_num / 10_000) !== 17 ||
-      !settingListIncludes(
-        identity.rows[0].shared_preload_libraries, "supautils"
-      ) ||
-      identity.rows[0].supautils_privileged_role !== "postgres" ||
+      identity.rows[0].supautils_privileged_role !==
+        "supabase_privileged_role" ||
       ![
         identity.rows[0].supautils_superuser,
         identity.rows[0].supautils_legacy_superuser
@@ -751,14 +783,16 @@ function createSession({
       ) ||
       identity.rows[0].is_superuser !== "off" ||
       identity.rows[0].rolcanlogin !== true ||
+      identity.rows[0].rolinherit !== true ||
       identity.rows[0].rolsuper !== false ||
       identity.rows[0].rolcreatedb !== true ||
       identity.rows[0].rolcreaterole !== true ||
-      identity.rows[0].rolreplication !== false ||
-      identity.rows[0].rolbypassrls !== false ||
+      identity.rows[0].rolreplication !== true ||
+      identity.rows[0].rolbypassrls !== true ||
       identity.rows[0].can_read_all_settings !== true ||
       identity.rows[0].supabase_admin_superuser !== true ||
       identity.rows[0].postgres_cannot_set_supabase_admin !== true ||
+      identity.rows[0].exact_supabase_privileged_role !== true ||
       !Number.isInteger(identity.rows[0].backend_pid) ||
       identity.rows[0].backend_pid <= 0 ||
       !Number.isInteger(client.processID) || client.processID <= 0 ||
@@ -803,6 +837,7 @@ function createSession({
                AS idle_transaction_timeout,
              current_setting('transaction_timeout') AS transaction_timeout,
              role_record.rolcanlogin,
+             role_record.rolinherit,
              role_record.rolsuper,
              role_record.rolcreaterole,
              role_record.rolreplication,
@@ -836,10 +871,11 @@ function createSession({
       row.application_name !== STAGING_PHASE1_V2_APPLICATION_NAME ||
       row.is_superuser !== "off" ||
       row.rolcanlogin !== true ||
+      row.rolinherit !== true ||
       row.rolsuper !== false ||
       row.rolcreaterole !== true ||
-      row.rolreplication !== false ||
-      row.rolbypassrls !== false ||
+      row.rolreplication !== true ||
+      row.rolbypassrls !== true ||
       !timeoutEquals(row.statement_timeout, STATEMENT_TIMEOUT_MILLISECONDS) ||
       !timeoutEquals(row.lock_timeout, LOCK_TIMEOUT_MILLISECONDS) ||
       !timeoutEquals(
@@ -951,8 +987,8 @@ function createSession({
                AS extensions_public_create,
              role_record.rolcanlogin AND NOT role_record.rolsuper
                AND role_record.rolcreaterole
-               AND NOT role_record.rolreplication
-               AND NOT role_record.rolbypassrls
+               AND role_record.rolreplication
+               AND role_record.rolbypassrls
                AS shared_acl_mutation_authorized
         FROM pg_catalog.pg_database database_record
         JOIN pg_catalog.pg_roles role_record

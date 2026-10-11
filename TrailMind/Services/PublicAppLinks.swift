@@ -3,6 +3,7 @@ import Foundation
 enum PublicAppLinkKind: String, CaseIterable, Sendable {
     case privacyPolicy = "WANDERFUL_PRIVACY_POLICY_URL"
     case support = "WANDERFUL_SUPPORT_URL"
+    case termsOfUse = "WANDERFUL_TERMS_OF_USE_URL"
 }
 
 enum PublicAppLinkConfiguration: Equatable, Sendable {
@@ -19,6 +20,7 @@ enum PublicAppLinkConfiguration: Equatable, Sendable {
 struct WanderfulPublicLinks: Equatable, Sendable {
     let privacyPolicy: PublicAppLinkConfiguration
     let support: PublicAppLinkConfiguration
+    let termsOfUse: PublicAppLinkConfiguration
 
     static var current: WanderfulPublicLinks {
         resolve(infoDictionary: Bundle.main.infoDictionary ?? [:])
@@ -31,11 +33,14 @@ struct WanderfulPublicLinks: Equatable, Sendable {
             ),
             support: configuration(
                 value: infoDictionary[PublicAppLinkKind.support.rawValue]
+            ),
+            termsOfUse: configuration(
+                value: infoDictionary[PublicAppLinkKind.termsOfUse.rawValue]
             )
         )
     }
 
-    static func configuration(value: Any?) -> PublicAppLinkConfiguration {
+    nonisolated static func configuration(value: Any?) -> PublicAppLinkConfiguration {
         guard let value else { return .unavailable }
         guard let rawValue = value as? String else { return .invalid }
         guard !rawValue.isEmpty else { return .unavailable }
@@ -61,7 +66,7 @@ struct WanderfulPublicLinks: Equatable, Sendable {
         return .configured(url)
     }
 
-    private static func isValidPublicHost(_ host: String) -> Bool {
+    nonisolated private static func isValidPublicHost(_ host: String) -> Bool {
         guard host == host.lowercased(),
               host.utf8.count <= 253,
               host.contains("."),

@@ -19,6 +19,7 @@ enum GeocodingServiceError: LocalizedError {
     case noResults(query: String)
     case requestInProgress
     case endpointsTooClose
+    case endpointsTooFar
     case needsClarification(query: String)
     case network
     case unavailable
@@ -34,6 +35,8 @@ enum GeocodingServiceError: LocalizedError {
             "Place search is already in progress. Try again in a moment."
         case .endpointsTooClose:
             "Start and destination could not be distinguished. Use more specific place names."
+        case .endpointsTooFar:
+            "The selected places are more than 200 km apart. Check the start and destination before planning again."
         case let .needsClarification(query):
             "“\(query)” needs a more specific town, valley or trailhead."
         case .network:
@@ -113,21 +116,14 @@ final class NativeGeocodingService: GeocodingService, LocationCandidateProviding
             subAdministrativeArea: nearbyContext?.subAdministrativeArea,
             administrativeArea: nearbyContext?.administrativeArea
         )
-        let searchRegion = Self.searchRegion(for: cleanQuery, near: context.preferredCoordinate)
-        guard let geocodingRequest = MKGeocodingRequest(addressString: contextualQuery) else {
-            throw GeocodingServiceError.noResults(query: cleanQuery)
-        }
-        geocodingRequest.preferredLocale = Locale(identifier: context.localeIdentifier)
-        if let searchRegion {
-            geocodingRequest.region = MKCoordinateRegion(
-                center: searchRegion.center,
-                latitudinalMeters: searchRegion.radius * 2,
-                longitudinalMeters: searchRegion.radius * 2
-            )
-        }
+        // Natural-language route endpoints include landmarks and trailheads,
+        // which address-only geocoding can silently turn into unrelated streets.
+        let search = MKLocalSearch(request: Self.placeSearchRequest(
+            query: contextualQuery, near: context.preferredCoordinate
+        ))
 
         do {
-            let mapItems = try await geocodingRequest.mapItems
+            let mapItems = try await search.start().mapItems
             try Task.checkCancellation()
             var candidates = mapItems.enumerated().map { index, mapItem in
                 Self.candidate(from: mapItem, query: cleanQuery, providerRank: index)
@@ -165,7 +161,7 @@ final class NativeGeocodingService: GeocodingService, LocationCandidateProviding
             }
             return candidates
         } catch is CancellationError {
-            geocodingRequest.cancel()
+            search.cancel()
             throw CancellationError()
         } catch let error as GeocodingServiceError {
             throw error
@@ -181,6 +177,23 @@ final class NativeGeocodingService: GeocodingService, LocationCandidateProviding
         } catch {
             throw GeocodingServiceError.failed(message: error.localizedDescription)
         }
+    }
+
+    static func placeSearchRequest(
+        query: String,
+        near preferredCoordinate: Coordinate?
+    ) -> MKLocalSearch.Request {
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = query
+        request.resultTypes = [.address, .pointOfInterest]
+        if let region = searchRegion(for: query, near: preferredCoordinate) {
+            request.region = MKCoordinateRegion(
+                center: region.center,
+                latitudinalMeters: region.radius * 2,
+                longitudinalMeters: region.radius * 2
+            )
+        }
+        return request
     }
 
     static func contextualizedQuery(

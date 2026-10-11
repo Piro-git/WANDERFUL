@@ -1,5 +1,7 @@
 # TrailMind Golden Set V1 — Closed-Beta Acceptance Policy
 
+Scope note — 2026-09-10: This document preserves the earlier bounded regional pilot proposal and its evidence requirements. It is not the current product territory, an instruction to restart that rollout, or a live admission receipt. Current product scope is any supported, resolved place (see `AGENTS.md`); actual regional adapter boundaries and unproved gates remain unchanged.
+
 Status: **PREPARED, UNPROVED, NO-GO**
 
 This policy defines the minimum future evidence for enabling research-guided hiking and trail-running loops in one bounded region. It does not approve the current build, V4, a cohort, or public release. Every requirement begins unproved until new V4-or-later receipts and the existing closed-beta checklist establish it.

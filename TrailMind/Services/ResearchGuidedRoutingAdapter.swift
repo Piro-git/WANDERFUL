@@ -107,6 +107,7 @@ enum ResearchMappedSourceBasisV1: String, Hashable, Sendable {
 }
 
 struct ResearchSelectedWaypointV1: Hashable, Sendable {
+    var sourcedDisplayName: String? = nil
     let entityID: UUID
     let coordinate: Coordinate
     let highlightCategory: ResearchHighlightCategoryV1

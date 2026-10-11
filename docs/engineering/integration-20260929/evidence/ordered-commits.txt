@@ -1,0 +1,17 @@
+fd96d7b7b9b5e4652eb3eeb18ed5329b865bb1dd Bind Commons photos to verified place and file identities
+b2bb6b71efe2f2b05e23ff1ea7683af48def6ded Accept canonical Commons license URLs without trailing slash
+7027b32da2526a66a6191a29fc3f58e93eeff938 Localize packing controls and preserve saved checklist identity
+d410318d1e4d06d8d84fc6412ef51d317525c332 Show a single compact stop gallery with accessible source details
+3fcae6a433ab2290b7b0537f8cc25f0ffb36be71 Document photo and packing verification with outstanding device gates
+4ff8bde6de6ea7cc533d2200552937458f188d40 Remove trailing whitespace from photo and packing handoff
+d1854a2f5775c08c226ee50ee7f22b98acf6f78c feat: add bounded route weather previews with MET Norway
+2d322681fb685984bf8227e4a70f33c7079c7449 fix: reclaim expired weather cache entries on demand
+eebb7209dd4e2d40a35dd3ecfb7794bd531294fb fix: gate weather visibility and simplify forecast card
+383a73bb8640cce3fe877826021d05754d03fb2e fix: use plain language for precipitation average
+e2f8ba8e48e84cf3d8aed6f8f9a5407fbc0709e0 Add source-bound overnight candidates near accepted route geometry
+3398399b09217a82ba0e45aadd90903d6fcdcd99 Choose overnight search anchor by cumulative route length
+fc71af8ae07532678b583660e5c615b238066b58 Show trustworthy route stays with native source details and offline age
+8e85fdd34e5463270b69425ec6263aae943279ad Document route stays validation and integration gates
+f166a18d4ce8e30313d2e8dd2d2870f8a62339cd Remove trailing whitespace from route stays test
+59ef2e3158ac736da62fdba219b632ff18daeb7c Integrate privacy release gates and require weather disabled
+3e21da6abc5d3638f72b104969a9f3d805ad5914 Verify packing restart persistence and accessible photo credits

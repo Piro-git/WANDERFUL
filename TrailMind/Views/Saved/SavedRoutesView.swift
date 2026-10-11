@@ -338,6 +338,7 @@ private struct SavedRouteRow: View {
                 RouteDetailView(route: snapshot.route)
             } label: {
                 RouteCard(route: snapshot.route)
+                    .trailCard()
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("saved.route.\(snapshot.id.uuidString.lowercased())")

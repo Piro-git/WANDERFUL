@@ -509,6 +509,7 @@ private struct ResearchGuidedRoutedEnvelopeValidatorV2 {
         else { throw invalid() }
         return SelectedHighlight(
             waypoint: ResearchSelectedWaypointV1(
+                sourcedDisplayName: access.displayName,
                 entityID: entityID,
                 coordinate: evidence,
                 highlightCategory: category,
@@ -670,7 +671,8 @@ private struct ResearchGuidedRoutedEnvelopeValidatorV2 {
             entityID: entityID,
             category: category,
             evidenceCoordinate: evidence,
-            routingCoordinate: routing
+            routingCoordinate: routing,
+            displayName: isNull(value["displayName"]) ? nil : try string(value["displayName"])
         )
     }
 
@@ -1335,6 +1337,7 @@ private struct ResearchGuidedRoutedEnvelopeValidatorV2 {
         let category: ResearchHighlightCategoryV1
         let evidenceCoordinate: Coordinate
         let routingCoordinate: Coordinate
+        let displayName: String?
     }
 
     private struct SelectedHighlight {

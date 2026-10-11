@@ -1,3 +1,5 @@
+import { assertDynamicResearchBudget } from "../operations/dynamicResearchBudget.js";
+import { DYNAMIC_LIMITS } from "../dynamicResearch/planner.js";
 import { appAttestError } from "./appAttestErrors.js";
 import {
   assertRequestId,
@@ -36,6 +38,13 @@ function createSessionAuthorizer(options, scope, configuration) {
       if (!Number.isInteger(context.cost) || context.cost < 1) {
         throw appAttestError("route_session_invalid");
       }
+      // Check every admission, including fresh sessions and midnight budget rollover.
+      // Reserve enough validity for the complete lease; never reset durable counters.
+      try {
+        assertDynamicResearchBudget(env);
+      } catch {
+        throw appAttestError("authorization_unavailable");
+      }
       const access = await repository.consumeRouteAccess({
         scope,
         tokenHash: hashOpaqueValue(token),
@@ -64,10 +73,10 @@ function createSessionAuthorizer(options, scope, configuration) {
 
 export function routeAuthorizationConfiguration(env = process.env) {
   const leaseTtlMs =
-    integer(env.ROUTE_GLOBAL_LEASE_TTL_SECONDS, 90, 10, 600) * 1_000;
+    integer(env.ROUTE_GLOBAL_LEASE_TTL_SECONDS, env.DYNAMIC_RESEARCH_ENABLED === "true" ? 180 : 90, 10, 600) * 1_000;
   const timeoutMs =
     integer(env.ROUTE_REQUEST_TIMEOUT_MS, 30_000, 1_000, 60_000);
-  if (timeoutMs > leaseTtlMs - LEASE_TIMEOUT_MARGIN_MS) {
+  if (Math.max(timeoutMs, env.DYNAMIC_RESEARCH_ENABLED === "true" ? DYNAMIC_LIMITS.deadlineMs : 0) > leaseTtlMs - LEASE_TIMEOUT_MARGIN_MS) {
     throw appAttestError("authorization_unavailable");
   }
   return {

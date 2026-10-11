@@ -17,7 +17,12 @@ struct LoopSearchPolicy: Hashable, Sendable {
         self.targetSuggestionCount = targetSuggestionCount
         self.minimumComparableSuggestionCount = minimumComparableSuggestionCount
         self.totalBudgetSeconds = totalBudgetSeconds
+        #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+        // The temporary owner backend admits one request at a time.
+        self.maximumConcurrentRequests = 1
+        #else
         self.maximumConcurrentRequests = maximumConcurrentRequests
+        #endif
     }
 }
 
@@ -99,11 +104,33 @@ struct RoutingResult {
 enum RoutingError: LocalizedError, Equatable {
     case loopRouteNotFound
     case routeQualityRejected
+    case qualityRejected(RouteQualityRejection)
 
     var errorDescription: String? {
         switch self {
         case .loopRouteNotFound:
             "GraphHopper couldn’t build a loop route from this start. Try a nearby trailhead or a different duration."
+        case let .qualityRejected(reason):
+            switch reason {
+            case .distanceOutsideEnvelope:
+                "The mapped route doesn’t match the requested distance. Adjust the distance or choose different start and finish points."
+            case .durationOutsideEnvelope:
+                "The mapped route doesn’t match the requested duration. Adjust the time or choose different start and finish points."
+            case .extremeDetour:
+                "The mapped route takes a very large detour. Try nearby start or finish points."
+            case .knownTechnicalDifficultyAboveEasyRequest:
+                "The mapped route includes sections that are too demanding for an easy route. Choose another destination or adjust the difficulty."
+            case .excessiveKnownMajorRoadExposure:
+                "The mapped route uses too many major roads for your preferences. Try different places or adjust that preference."
+            case .openLoop, .excessiveBacktracking, .excessiveSelfOverlap, .degenerateLoopShape:
+                "The returned loop doesn’t form a suitable round trip. Try another starting point or distance."
+            case .routeTypeMismatch, .activityMismatch:
+                "The returned route doesn’t match the requested activity or route type. Edit the request and try again."
+            case .invalidGeometry, .unusableEvidencePayload:
+                "The returned route contains incomplete or inconsistent map data. Try nearby start or finish points."
+            case .nearDuplicateGeometry:
+                "No distinct route option was found. Try another destination or distance."
+            }
         case .routeQualityRejected:
             "The routing provider did not return a structurally usable route. Try nearby start or finish points."
         }
@@ -158,6 +185,9 @@ struct RoutingCoordinator: RoutingCoordinating {
                     maximumSuggestions: RouteAlternativeQualityPolicy.preBaseline.maximumSuggestions
                 )
                 guard !normalization.suggestions.isEmpty else {
+                    if let reason = normalization.rejectionCounts.keys.sorted().compactMap(RouteQualityRejection.init(rawValue:)).first {
+                        throw RoutingError.qualityRejected(reason)
+                    }
                     throw RoutingError.routeQualityRejected
                 }
                 return RoutingResult(
@@ -205,7 +235,7 @@ struct RoutingCoordinator: RoutingCoordinating {
             where routingIntent.request.routeType == .loop && error.shouldTryLoopFallback
         {
             let notice = error.isFlexibleModeUnavailable
-                ? "GraphHopper round trips need flexible mode on this API plan, so Wanderful built loop options from normal routed segments."
+                ? "GraphHopper round trips need flexible mode for this request, so Wanderful built loop options from normal routed segments."
                 : "GraphHopper could not build a direct round trip, so Wanderful tried alternate loop shapes from the same start."
             do {
                 let fallback = try await fallbackSearch(
@@ -265,7 +295,7 @@ struct RoutingCoordinator: RoutingCoordinating {
             )
             let comparableSuggestions = combinedNormalization.suggestions
             let notice = comparableSuggestions.count >= loopSearchPolicy.minimumComparableSuggestionCount
-                ? "Wanderful found distinct real loop options from the same start for comparison."
+                ? "Wanderful found distinct routed loop options from the same start for comparison."
                 : nil
             return loopResult(
                 suggestions: comparableSuggestions,

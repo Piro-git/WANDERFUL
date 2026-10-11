@@ -694,6 +694,13 @@ export class PostgresOutdoorResearchRepository {
       throw outdoorResearchExecutorError("invalid_dependencies");
     }
     this.cancellationPool = options.cancellationPool;
+    this.cancellationFunction = options.cancellationFunction ?? "pg_cancel_backend";
+    if (!new Set([
+      "pg_cancel_backend",
+      "trailmind_control.cancel_active_outdoor_research_backend_integer"
+    ]).has(this.cancellationFunction)) {
+      throw outdoorResearchExecutorError("invalid_dependencies");
+    }
     this.statementTimeoutMs = boundedExecutorTimeout(
       options.statementTimeoutMs,
       policy.defaultStatementTimeoutMs,
@@ -739,7 +746,8 @@ export class PostgresOutdoorResearchRepository {
       }
       cancellationPromise = cancelActivePostgresQuery(
         this.cancellationPool,
-        client.processID
+        client.processID,
+        this.cancellationFunction
       );
     };
     try {
@@ -982,13 +990,13 @@ class PostgresOutdoorResearchSnapshotSession {
   }
 }
 
-async function cancelActivePostgresQuery(pool, processId) {
+async function cancelActivePostgresQuery(pool, processId, cancellationFunction) {
   if (!Number.isInteger(processId) || processId < 1) return false;
   let cancellationClient;
   try {
     cancellationClient = await pool.connect();
     const result = await cancellationClient.query(
-      "SELECT pg_cancel_backend($1) AS cancelled",
+      `SELECT ${cancellationFunction}($1) AS cancelled`,
       [processId]
     );
     return result.rows?.[0]?.cancelled === true;

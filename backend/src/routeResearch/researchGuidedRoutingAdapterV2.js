@@ -1,7 +1,7 @@
 import { createGraphHopperProvider } from "../routing/graphHopperProvider.js";
 import { RouteError } from "../routing/routeErrors.js";
 import { validateRouteRequest } from "../routing/routeValidation.js";
-import { validateResearchGuidedRouteCandidatePlanV2 } from "./researchGuidedRouteCandidatePlannerV2.js";
+import { validateResearchGuidedRouteCandidatePlanV2, materializeResearchItineraryV2 } from "./researchGuidedRouteCandidatePlannerV2.js";
 import {
   closestPointOnPath,
   deriveResearchGuidedRouteAttemptIdV2,
@@ -33,7 +33,9 @@ export async function routeResearchGuidedCandidatesV2(
     plan.proposals.length === 0 || plan.anchor.state !== "resolved"
   ) return emptyEnvelope(plan);
 
-  const prepared = plan.proposals.map((proposal, index) =>
+  const proposals = settings.itinerarySelection
+    ? [materializeResearchItineraryV2(plan, settings.itinerarySelection)] : plan.proposals;
+  const prepared = proposals.map((proposal, index) =>
     prepareAttempt(plan, proposal, index, deps.validateRouteRequest)
   );
   if (plan.normalizedIntent.routeType !== "loop") {
@@ -94,7 +96,7 @@ function validatedDependencies(value) {
 function validatedOptions(value) {
   if (!value || typeof value !== "object" || Array.isArray(value) ||
       Object.keys(value).some((key) => ![
-        "signal", "maximumConcurrency", "operationTimeoutMilliseconds"
+        "signal", "maximumConcurrency", "operationTimeoutMilliseconds", "itinerarySelection"
       ].includes(key))) {
     throw new ResearchGuidedRoutingAdapterError("invalid_options");
   }
@@ -111,7 +113,7 @@ function validatedOptions(value) {
          typeof value.signal?.addEventListener !== "function"))) {
     throw new ResearchGuidedRoutingAdapterError("invalid_options");
   }
-  return { signal: value.signal, maximumConcurrency, operationTimeoutMilliseconds };
+  return { signal: value.signal, maximumConcurrency, operationTimeoutMilliseconds, itinerarySelection: value.itinerarySelection };
 }
 
 function prepareAttempt(plan, proposal, proposalIndex, requestValidator) {

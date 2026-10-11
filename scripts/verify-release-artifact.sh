@@ -154,7 +154,7 @@ contract_is_valid() {
     (.environment.name == "production") and
     (.environment.app_attest_info_key == "TRAILMIND_APP_ATTEST_ENVIRONMENT") and
     (.environment.app_attest_environment == "production") and
-    (.feature_flags | type == "object" and length == 9) and
+    (.feature_flags | type == "object" and length == 13) and
     (.feature_flags | keys | sort) == ([
       "DIRECT_GRAPHHOPPER_ENABLED",
       "INSECURE_LOCAL_BACKEND_AUTH_ENABLED",
@@ -164,17 +164,29 @@ contract_is_valid() {
       "RESEARCH_GUIDED_PLANNING_ENABLED",
       "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED",
       "SUPABASE_ONBOARDING_SYNC_ENABLED",
-      "SUPERWALL_ENABLED"
+      "SUPERWALL_ENABLED",
+      "MONETIZATION_ENABLED",
+      "ROUTE_WEATHER_ENABLED",
+      "WANDERFUL_ACCOUNT_ENABLED",
+      "WANDERFUL_APPLE_SIGN_IN_ENABLED"
     ] | sort) and
     (.feature_flags | all(to_entries[]; .value == "false")) and
-    (.service_configuration | type == "object" and length == 4) and
+    (.service_configuration | type == "object" and length == 6) and
     (.service_configuration | all(to_entries[]; .value == "")) and
-    (.public_link_configuration | type == "object" and length == 2) and
+    (.public_link_configuration | type == "object" and length == 3) and
     (.public_link_configuration | keys | sort) == ([
       "WANDERFUL_PRIVACY_POLICY_URL",
-      "WANDERFUL_SUPPORT_URL"
+      "WANDERFUL_SUPPORT_URL",
+      "WANDERFUL_TERMS_OF_USE_URL"
     ] | sort) and
     (.public_link_configuration | all(to_entries[]; .value == "")) and
+    (.monetization.feature_flag_info_key == "MONETIZATION_ENABLED") and
+    (.monetization.superwall_flag_info_key == "SUPERWALL_ENABLED") and
+    (.monetization.weekly_product_info_key == "WANDERFUL_PREMIUM_WEEKLY_PRODUCT_ID") and
+    (.monetization.annual_product_info_key == "WANDERFUL_PREMIUM_ANNUAL_PRODUCT_ID") and
+    (.monetization.privacy_policy_info_key == "WANDERFUL_PRIVACY_POLICY_URL") and
+    (.monetization.terms_of_use_info_key == "WANDERFUL_TERMS_OF_USE_URL") and
+    (.monetization.required_binary_markers | type == "array" and length == 2) and
     (.distribution.expected_team_identifier_environment_variable ==
       "TRAILMIND_EXPECTED_TEAM_IDENTIFIER") and
     (.platforms["simulator-app"].allowed_architectures | type == "array" and length > 0) and
@@ -183,6 +195,7 @@ contract_is_valid() {
     (.privacy_manifest.filename == "PrivacyInfo.xcprivacy") and
     (.privacy_manifest.expected | type == "object") and
     (.privacy_manifest.embedded_expected | type == "object" and length == 2) and
+    (.product.background_modes == ["location"]) and
     (.forbidden_info_keys | type == "array") and
     (.forbidden_info_value_markers | type == "array" and length > 0) and
     (.required_binary_markers | type == "array" and length > 0) and
@@ -327,6 +340,35 @@ validate_info_contract() {
     record_failure "public_link_configuration_contract"
   fi
 
+  if print -r -- "$info_json" | jq -e \
+      --slurpfile contract "$RELEASE_VERIFIER_CONTRACT" '
+      $contract[0].monetization as $m |
+      . as $info |
+      ($info[$m.feature_flag_info_key] == "false" and
+       $info[$m.superwall_flag_info_key] == "false" and
+       $info[$m.weekly_product_info_key] == "" and
+       $info[$m.annual_product_info_key] == "") or
+      ($info[$m.feature_flag_info_key] == "true" and
+       $info[$m.superwall_flag_info_key] == "false" and
+       ($info[$m.weekly_product_info_key] | type == "string" and
+        test("^[A-Za-z0-9][A-Za-z0-9._-]{1,253}[A-Za-z0-9]$") and
+        contains(".")) and
+       ($info[$m.annual_product_info_key] | type == "string" and
+        test("^[A-Za-z0-9][A-Za-z0-9._-]{1,253}[A-Za-z0-9]$") and
+        contains(".")) and
+       $info[$m.weekly_product_info_key] != $info[$m.annual_product_info_key] and
+       ($info[$m.privacy_policy_info_key] | type == "string" and
+        test("^https://[a-z0-9][a-z0-9.-]+\\.[a-z]{2,}(/[^?#]*)?$") and
+        (ascii_downcase | contains("placeholder") | not)) and
+       ($info[$m.terms_of_use_info_key] | type == "string" and
+        test("^https://[a-z0-9][a-z0-9.-]+\\.[a-z]{2,}(/[^?#]*)?$") and
+        (ascii_downcase | contains("placeholder") | not)))
+    ' >/dev/null 2>&1; then
+    record_pass "monetization_configuration_contract"
+  else
+    record_failure "monetization_configuration_contract"
+  fi
+
   forbidden_value_markers="$(jq -c '.forbidden_info_value_markers' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || forbidden_value_markers='[]'
   if print -r -- "$info_json" | jq -e --argjson forbidden "$forbidden_value_markers" '
       ([.. | strings | ascii_downcase] as $values |
@@ -340,7 +382,11 @@ validate_info_contract() {
   actual_usage="$(print -r -- "$info_json" | jq -cS \
     'with_entries(select(.key | test("^NS.*UsageDescription$")))' 2>/dev/null)" || actual_usage="invalid"
   expected_usage="$(jq -cS '.product.usage_descriptions' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)" || expected_usage="invalid"
-  if [[ "$actual_usage" == "$expected_usage" ]]; then
+  # Only explicitly started Route Guidance may continue with When In Use access.
+  # Exact equality rejects missing, duplicate and unrelated background modes.
+  if [[ "$actual_usage" == "$expected_usage" ]] &&
+     print -r -- "$info_json" | jq -e --slurpfile contract "$RELEASE_VERIFIER_CONTRACT" \
+       '.UIBackgroundModes == $contract[0].product.background_modes' >/dev/null 2>&1; then
     record_pass "permission_contract"
   else
     record_failure "permission_contract"
@@ -552,6 +598,20 @@ validate_binary() {
     record_failure "required_attribution_markers"
   fi
 
+  required_markers_valid=true
+  while IFS= read -r marker; do
+    [[ -z "$marker" ]] && continue
+    if [[ "$binary_strings" != *"$marker"* ]]; then
+      required_markers_valid=false
+      break
+    fi
+  done < <(jq -r '.monetization.required_binary_markers[]' "$RELEASE_VERIFIER_CONTRACT" 2>/dev/null)
+  if [[ "$required_markers_valid" == true ]]; then
+    record_pass "monetization_management_paths"
+  else
+    record_failure "monetization_management_paths"
+  fi
+
   if grep -Eq -- \
       '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|AIza[0-9A-Za-z_-]{35}|sk-(proj-)?[0-9A-Za-z_-]{24,}|ghp_[0-9A-Za-z]{30,}' \
       <<< "$binary_strings"; then
@@ -668,6 +728,13 @@ profile_expiration_is_future() {
   [[ "$expiration_epoch" == <1-> && "$current_epoch" == <1-> && "$expiration_epoch" -gt "$current_epoch" ]]
 }
 
+profile_array_json() {
+  # macOS 15 can reject direct JSON extraction when another profile field
+  # contains a plist date or data value. Isolate the value as a plist first.
+  plutil -extract "$2" xml1 -o - "$1" 2>/dev/null |
+    plutil -convert json -o - - 2>/dev/null
+}
+
 signing_certificate_matches_profile() {
   local app_path="$1"
   local profile_plist="$2"
@@ -718,17 +785,17 @@ validate_provisioning_profile() {
     record_failure "provisioning_profile_contract"
     return 0
   fi
-  profile_teams="$(plutil -extract TeamIdentifier json -o - "$decoded_profile" 2>/dev/null)" || {
+  profile_teams="$(profile_array_json "$decoded_profile" TeamIdentifier)" || {
     record_failure "provisioning_profile_contract"
     return 0
   }
-  profile_prefixes="$(plutil -extract ApplicationIdentifierPrefix json -o - "$decoded_profile" 2>/dev/null)" || profile_prefixes='[]'
+  profile_prefixes="$(profile_array_json "$decoded_profile" ApplicationIdentifierPrefix)" || profile_prefixes='[]'
   profile_app_identifier="$(plutil -extract 'Entitlements.application-identifier' raw -o - "$decoded_profile" 2>/dev/null)" || profile_app_identifier=""
   profile_team_identifier="$(plutil -extract 'Entitlements.com\.apple\.developer\.team-identifier' raw -o - "$decoded_profile" 2>/dev/null)" || profile_team_identifier=""
   profile_app_attest="$(plutil -extract 'Entitlements.com\.apple\.developer\.devicecheck\.appattest-environment' raw -o - "$decoded_profile" 2>/dev/null)" || profile_app_attest=""
   profile_get_task_allow="$(plutil -extract 'Entitlements.get-task-allow' raw -o - "$decoded_profile" 2>/dev/null)" || profile_get_task_allow="missing"
   profile_beta_reports_active="$(plutil -extract 'Entitlements.beta-reports-active' raw -o - "$decoded_profile" 2>/dev/null)" || profile_beta_reports_active="missing"
-  if plutil -extract ProvisionedDevices json -o - "$decoded_profile" >/dev/null 2>&1; then
+  if plutil -extract ProvisionedDevices xml1 -o - "$decoded_profile" >/dev/null 2>&1; then
     profile_has_provisioned_devices=true
   fi
   if plutil -extract ProvisionsAllDevices raw -o - "$decoded_profile" >/dev/null 2>&1; then

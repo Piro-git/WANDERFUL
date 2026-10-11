@@ -16,6 +16,8 @@ struct TrailMindAboutCredit: Identifiable, Equatable, Sendable {
 }
 
 enum TrailMindPermissionCopy {
+    static let locationWhenInUse =
+        "Wanderful uses your precise location during active Route Guidance, including when the screen is locked or you use another app, to show your position and progress. Pause or end guidance to stop location updates."
     static let microphone =
         "Wanderful uses the microphone to turn your spoken route request into text."
     static let appleSpeechServerDisclosure =
@@ -38,20 +40,16 @@ enum TrailMindAboutAccessibilityID {
 
 enum TrailMindAboutContent {
     static let releasePromptParsingDetail =
-        "Release builds parse your full typed route request on this device. They do not send the full prompt to a remote AI provider."
-
-    #if DEBUG
-    static let currentPromptParsingDetail =
-        releasePromptParsingDetail + " This developer build can use a separately configured remote parser for evaluation."
-    #else
+        "Online planning sends your route request, places, coordinates and relevant planning preferences to Wanderful's backend. When AI planning is enabled, Google Gemini helps interpret the request and research route context. GraphHopper calculates the route geometry."
     static let currentPromptParsingDetail = releasePromptParsingDetail
-    #endif
+    static let onlinePlanningPermissionDetail =
+        "Allow Wanderful to send this request, requested places or coordinates, and relevant Trail Profile preferences to its backend. AI planning uses Google Gemini; research services receive relevant searches and GraphHopper receives routing coordinates and constraints. This includes follow-up answers and retries for this request. Avoid including private information you do not want these services to receive."
 
     static let currentCapabilityItems = [
         TrailMindAboutItem(
             id: "about.capability.naturalLanguagePlanning",
             title: "Natural-language planning",
-            detail: "Describe a same-day hike, trail run or bike route with a start, destination, distance or time.",
+            detail: "Describe a hike, trail run or bike route with a start, destination, distance or time. Planning needs an internet connection and depends on available places, paths and provider data.",
             symbol: "text.bubble.fill"
         ),
         TrailMindAboutItem(
@@ -65,6 +63,12 @@ enum TrailMindAboutContent {
             title: "Local saved plans",
             detail: "New saves accept only verified routed results. Recovered legacy records remain labeled unverified.",
             symbol: "bookmark.fill"
+        ),
+        TrailMindAboutItem(
+            id: "about.capability.routeGuidance",
+            title: "Route Guidance",
+            detail: "For an intact verified route, show your position, progress and mapped routing instructions. Active guidance can continue during screen lock and app changes; pause or end it to stop location updates.",
+            symbol: "location.north.circle.fill"
         )
     ]
 
@@ -78,14 +82,20 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.data.deviceLocation",
             title: "Device location",
-            detail: "Wanderful does not currently access your device's location. Enter a place name when choosing a route start.",
-            symbol: "location.slash.fill"
+            detail: "During active Route Guidance, Wanderful uses your precise location to show position and progress, including during screen lock and app changes. Pause or end guidance to stop updates. No location track is stored or sent by Wanderful. If the app is terminated, reopen it and resume guidance manually.",
+            symbol: "location.fill"
         ),
         TrailMindAboutItem(
             id: "about.data.routing",
             title: "Geocoding and routing",
             detail: "Apple geocoding resolves the place names you enter. Wanderful then sends route coordinates and routing constraints to its backend, which asks GraphHopper to calculate the route.",
             symbol: "point.bottomleft.forward.to.point.topright.scurvepath"
+        ),
+        TrailMindAboutItem(
+            id: "about.data.photos",
+            title: "Place photos",
+            detail: "Opening route stops can send mapped place identifiers and photo file names to Wikidata and Wikimedia Commons. Images load from Wikimedia servers; these services receive your network address. Photos do not confirm current access or route conditions.",
+            symbol: "photo"
         ),
         TrailMindAboutItem(
             id: "about.data.savedRoutes",
@@ -120,7 +130,7 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.boundary.review",
             title: "Review before starting",
-            detail: "Wanderful is a planning aid, not live navigation. Check weather, trail conditions, closures, local rules and water availability.",
+            detail: "Route Guidance is a planning aid, not a safety guarantee. Check signs, weather, trail conditions, closures, local rules and water availability. Saved route data does not download the Apple basemap; offline maps are not provided. AI planning and route recalculation are unavailable without an internet connection.",
             symbol: "checklist"
         ),
         TrailMindAboutItem(
@@ -148,6 +158,18 @@ enum TrailMindAboutContent {
 
     static let helpItems = [
         TrailMindAboutItem(
+            id: "about.help.ai",
+            title: "AI-assisted planning",
+            detail: "AI helps understand and research your request. It can be mistaken or incomplete. A routing service calculates the mapped path; review each result and any source dates before choosing it.",
+            symbol: "sparkles"
+        ),
+        TrailMindAboutItem(
+            id: "about.help.support",
+            title: "Reporting a problem",
+            detail: "Include the app version, iOS version, what you tried and the error shown. Remove private places and personal details from screenshots. Never send passwords or API keys. The support website below provides contact details when available.",
+            symbol: "lifepreserver.fill"
+        ),
+        TrailMindAboutItem(
             id: "about.help.location",
             title: "Name a specific start",
             detail: "Use a town, trailhead or landmark. Wanderful asks you to clarify broad or ambiguous regions before routing.",
@@ -156,13 +178,13 @@ enum TrailMindAboutContent {
         TrailMindAboutItem(
             id: "about.help.retry",
             title: "If a route cannot finish",
-            detail: "Try the request again, or edit it to use a clearer place, distance, duration or route type.",
+            detail: "Check your connection and retry once. If planning still fails, edit the place or constraints. No result means no usable plan was returned; it does not prove that no path exists.",
             symbol: "arrow.clockwise"
         ),
         TrailMindAboutItem(
             id: "about.help.verify",
-            title: "Review the route",
-            detail: "Compare the mapped geometry and verified route statistics. Requested preferences remain labeled separately when they are not verified.",
+            title: "Understand your results",
+            detail: "Compare route shape, distance, estimated time and elevation. Closest Match refers to the requested distance, not safety. Requested preferences and research findings are separate from routed facts; read their sources and limitations.",
             symbol: "checkmark.circle.fill"
         )
     ]

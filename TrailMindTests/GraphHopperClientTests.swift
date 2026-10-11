@@ -3,6 +3,16 @@ import XCTest
 @testable import TrailMind
 
 final class GraphHopperClientTests: XCTestCase {
+    func testMissingProviderErrorIsUserSafe() {
+        XCTAssertEqual(
+            GraphHopperError.missingAPIKey.localizedDescription,
+            "Route planning is unavailable because the routing service is not configured."
+        )
+        XCTAssertFalse(
+            GraphHopperError.missingAPIKey.localizedDescription.contains("Local.xcconfig")
+        )
+    }
+
     @MainActor
     func testFlexibleModeErrorUsesFriendlyDescription() {
         let error = GraphHopperError.api(
@@ -14,7 +24,7 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertTrue(error.isFlexibleModeUnavailable)
         XCTAssertEqual(
             error.localizedDescription,
-            "Live loop routing needs GraphHopper flexible mode, which is not available on this API plan."
+            "Loop route planning needs GraphHopper flexible mode, which is not available on this API plan."
         )
     }
 
@@ -51,7 +61,7 @@ final class GraphHopperClientTests: XCTestCase {
         XCTAssertEqual(route.planningMetadata?.targetDistanceKm, 15)
         XCTAssertEqual(route.planningMetadata?.targetDurationMinutes, 120)
         XCTAssertEqual(route.planningMetadata?.desiredFeatures, [.viewpoint, .quiet])
-        XCTAssertTrue(route.whyItMatches.contains("Requested: Views, Quiet route"))
+        XCTAssertTrue(route.whyItMatches.contains("Preferences: Views, Quiet route"))
         XCTAssertTrue(route.whyItMatches.contains("route instructions returned by GraphHopper"))
         XCTAssertFalse(route.whyItMatches.localizedCaseInsensitiveContains("German instructions"))
         XCTAssertEqual(route.highlights.last?.title, "Route directions")

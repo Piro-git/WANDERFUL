@@ -89,7 +89,7 @@ function validateCumulativeDistance(points, maxDistanceMeters) {
   for (let index = 1; index < points.length; index += 1) {
     distanceMeters += haversineDistance(points[index - 1], points[index]);
     if (distanceMeters > maxDistanceMeters) {
-      throw routeError("invalid_request", {
+      throw routeError("route_distance_limit", {
         message: `The route points exceed the ${maxDistanceMeters} metre request limit.`
       });
     }
@@ -123,6 +123,9 @@ function validateRoundTrip(roundTrip, limits) {
 
   const minDistance = limits.minDistanceMeters ?? DEFAULT_MIN_DISTANCE_METERS;
   const maxDistance = limits.maxDistanceMeters ?? DEFAULT_MAX_DISTANCE_METERS;
+  if (Number.isFinite(roundTrip.distanceMeters) && roundTrip.distanceMeters > maxDistance) {
+    throw routeError("route_distance_limit");
+  }
   if (
     !Number.isFinite(roundTrip.distanceMeters) || roundTrip.distanceMeters < minDistance ||
     roundTrip.distanceMeters > maxDistance

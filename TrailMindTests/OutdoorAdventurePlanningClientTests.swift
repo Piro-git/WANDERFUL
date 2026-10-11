@@ -9,6 +9,59 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         OutdoorAdventurePlanningURLProtocolStub.reset(responses: [])
     }
 
+    #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+    func testOwnerResearchRequiresBothFlagsAndCurrentCredential() async throws {
+        for (research, access, expiry) in [
+            ("false", "true", Optional(Date.now.timeIntervalSince1970 + 60)),
+            ("true", "false", Optional(Date.now.timeIntervalSince1970 + 60)),
+            ("true", "true", nil),
+            ("true", "true", Optional(Date.now.timeIntervalSince1970 - 1))
+        ] {
+            let bundle = try makeConfigurationBundle([
+                "RESEARCH_GUIDED_PLANNING_ENABLED": research,
+                "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": access
+            ], ownerExpiry: expiry)
+            XCTAssertFalse(TrailMindBackendConfiguration.researchGuidedPlanningEnabled(bundle: bundle))
+            XCTAssertFalse(TrailMindBackendConfiguration.routableHighlightAccessEnabled(bundle: bundle))
+            let authorizer = RecordingOutdoorAdventurePlanningAuthorizer()
+            let client = OutdoorAdventurePlanningClientFactory.makeDefault(
+                bundle: bundle, session: makeTestSession(), authorizer: authorizer
+            )
+            XCTAssertTrue(client is NoOpOutdoorAdventurePlanningClientV1)
+            let result = try await client.plan(.init(intent: try validIntent()))
+            XCTAssertEqual(result.state, .unsupported)
+            let costs = await authorizer.costs()
+            XCTAssertTrue(costs.isEmpty)
+        }
+        XCTAssertTrue(OutdoorAdventurePlanningURLProtocolStub.capturedRequests().isEmpty)
+    }
+
+    func testOwnerResearchFactoryUsesPrivateURLAuthorizationAndNativeSchemaTwo() async throws {
+        let bundle = try makeConfigurationBundle([
+            "RESEARCH_GUIDED_PLANNING_ENABLED": "true",
+            "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": "true"
+        ], ownerExpiry: Date.now.timeIntervalSince1970 + 60)
+        XCTAssertTrue(TrailMindBackendConfiguration.researchGuidedPlanningEnabled(bundle: bundle))
+        XCTAssertTrue(TrailMindBackendConfiguration.routableHighlightAccessEnabled(bundle: bundle))
+        OutdoorAdventurePlanningURLProtocolStub.reset(responses: [
+            .init(statusCode: 200, data: try v2CorpusEnvelope(named: "noViable"))
+        ])
+        let client = OutdoorAdventurePlanningClientFactory.makeDefault(
+            bundle: bundle, session: makeTestSession()
+        )
+        let result = try await client.plan(.init(intent: try validIntent()))
+        XCTAssertEqual(result.state, .noViableRoute)
+        let sent = try XCTUnwrap(OutdoorAdventurePlanningURLProtocolStub.capturedRequests().first)
+        XCTAssertEqual(sent.url?.absoluteString, "https://owner.example.com/api/llm-plan-route")
+        XCTAssertEqual(sent.value(forHTTPHeaderField: "Authorization"),
+                       "TrailMindRouteSession " + String(repeating: "A", count: 43))
+        XCTAssertNotNil(sent.value(forHTTPHeaderField: "X-TrailMind-Request-ID"))
+        let root = try jsonDictionary(XCTUnwrap(OutdoorAdventurePlanningURLProtocolStub.requestBodies().first))
+        XCTAssertEqual(root["schemaVersion"] as? Int, 2)
+        XCTAssertNotNil(root["planningContext"])
+    }
+    #endif
+
     func testFeatureFlagMissingFalseAndMalformedValuesStayDisabled() throws {
         let values: [Any?] = [
             nil,
@@ -52,6 +105,11 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
                 "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
                 "RESEARCH_GUIDED_PLANNING_ENABLED": value
             ])
+            #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+            // Owner research requires both signed flags and its private credential.
+            XCTAssertFalse(TrailMindBackendConfiguration.researchGuidedPlanningEnabled(bundle: bundle))
+            XCTAssertTrue(OutdoorAdventurePlanningClientFactory.makeDefault(bundle: bundle) is NoOpOutdoorAdventurePlanningClientV1)
+            #else
             XCTAssertTrue(
                 TrailMindBackendConfiguration.researchGuidedPlanningEnabled(
                     bundle: bundle
@@ -62,6 +120,7 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
                     bundle: bundle
                 ) is BackendOutdoorAdventurePlanningClientV1
             )
+            #endif
         }
 
         let invalidURLBundle = try makeConfigurationBundle([
@@ -98,15 +157,16 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
             )
         }
         for value in ["true"] {
-            XCTAssertTrue(
-                TrailMindBackendConfiguration.routableHighlightAccessEnabled(
-                    bundle: try makeConfigurationBundle([
-                        "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
-                        "RESEARCH_GUIDED_PLANNING_ENABLED": "true",
-                        "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": value
-                    ])
-                )
-            )
+            let bundle = try makeConfigurationBundle([
+                "INTENT_BACKEND_BASE_URL": "http://127.0.0.1:3000",
+                "RESEARCH_GUIDED_PLANNING_ENABLED": "true",
+                "ROUTABLE_HIGHLIGHT_ACCESS_ENABLED": value
+            ])
+            #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+            XCTAssertFalse(TrailMindBackendConfiguration.routableHighlightAccessEnabled(bundle: bundle))
+            #else
+            XCTAssertTrue(TrailMindBackendConfiguration.routableHighlightAccessEnabled(bundle: bundle))
+            #endif
         }
         XCTAssertFalse(
             TrailMindBackendConfiguration.routableHighlightAccessEnabled(
@@ -138,6 +198,78 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
         let root = try jsonDictionary(body)
         XCTAssertEqual(Set(root.keys), ["schemaVersion", "intent"])
         XCTAssertEqual(root["schemaVersion"] as? Int, 2)
+    }
+
+    func testResearchLedCallerConsumesBackendGeneratedSyntheticFixture() async throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/research-led-itinerary.json")
+        let fixture = try jsonDictionary(Data(contentsOf: url))
+        XCTAssertEqual(fixture["syntheticFixture"] as? Bool, true)
+        let request = try XCTUnwrap(fixture["request"] as? [String: Any])
+        let response = try XCTUnwrap(fixture["response"] as? [String: Any])
+        let intent = try AdventureResearchIntentV1(validatingJSONObject: request["intent"] as Any)
+        OutdoorAdventurePlanningURLProtocolStub.reset(responses: [
+            .init(statusCode: 200, data: try jsonData(response))
+        ])
+        let authorizer = RecordingOutdoorAdventurePlanningAuthorizer()
+        let client = BackendOutdoorAdventurePlanningClientV1(
+            baseURL: URL(string: "https://example.com")!, session: makeTestSession(),
+            authorizer: authorizer, usesRoutableHighlightAccessV2: true,
+            usesResearchLedPlanning: true
+        )
+        let context = ResearchLedPlanningContext(maximumDistanceKm: nil,
+            maximumDurationMinutes: nil, distanceOrigin: "prompt", preferenceOrigin: "saved_profile")
+        let result = try await client.plan(.init(intent: intent, planningContext: context))
+        XCTAssertTrue(result.state == .partial || result.state == .routed)
+        switch result {
+        case let .partial(state), let .routed(state):
+            XCTAssertEqual(state.routeSelection.alternatives.first?.researchProvenance.selectedWaypoints.first?.sourcedDisplayName,
+                "Synthetic mapped viewpoint")
+        default: XCTFail("Expected the synthetic routed result")
+        }
+        let sent = try XCTUnwrap(OutdoorAdventurePlanningURLProtocolStub.capturedRequests().first)
+        XCTAssertEqual(sent.url?.path, "/api/llm-plan-route")
+        let sentBody = try jsonDictionary(XCTUnwrap(OutdoorAdventurePlanningURLProtocolStub.requestBodies().first))
+        XCTAssertEqual(Set(sentBody.keys), ["schemaVersion", "intent", "planningContext"])
+        let sentContext = try XCTUnwrap(sentBody["planningContext"] as? [String: Any])
+        XCTAssertEqual(sentContext["preferenceOrigin"] as? String, "saved_profile")
+        XCTAssertTrue(sentContext["maximumDistanceKm"] is NSNull)
+        let costs = await authorizer.costs()
+        XCTAssertEqual(costs, [12])
+    }
+
+    func testMaximumPhrasesAreKeptSeparateFromApproximateTargets() async throws {
+        for (prompt, distance, minutes) in [
+            ("A loop from Ilsenburg, at most 15 km and maximum 3 hours", 15.0, 180.0),
+            ("A loop from Ilsenburg, 15 km maximum, 3 hours no more", 15.0, 180.0),
+            ("Rundwanderung ab Ilsenburg, höchstens 12,5 km und maximal 150 Minuten", 12.5, 150.0)
+        ] {
+            let parsed = try await LocalIntentParsingProvider().parseIntent(rawPrompt: prompt)
+            let context = ResearchLedPlanningContext(intent: ValidatedAdventureIntent(intent: parsed),
+                distanceFromProfile: false, preferencesFromProfile: true)
+            XCTAssertEqual(context.maximumDistanceKm, distance)
+            XCTAssertEqual(context.maximumDurationMinutes, minutes)
+        }
+        let parsed = try await LocalIntentParsingProvider().parseIntent(rawPrompt: "About 15 km loop from Ilsenburg")
+        let context = ResearchLedPlanningContext(intent: ValidatedAdventureIntent(intent: parsed),
+            distanceFromProfile: false, preferencesFromProfile: true)
+        XCTAssertNil(context.maximumDistanceKm)
+        XCTAssertNil(context.maximumDurationMinutes)
+    }
+
+    func testResearchLedHardLimitsAndTruthfulSoftDistanceExplanation() throws {
+        let context = ResearchLedPlanningContext(maximumDistanceKm: 15,
+            maximumDurationMinutes: 180, distanceOrigin: "prompt", preferenceOrigin: "saved_profile")
+        XCTAssertTrue(context.accepts(distanceKilometers: 15, durationHours: 3))
+        XCTAssertFalse(context.accepts(distanceKilometers: 15.1, durationHours: 2))
+        XCTAssertFalse(context.accepts(distanceKilometers: 14, durationHours: 3.1))
+        let soft = ResearchLedPlanningContext(maximumDistanceKm: nil,
+            maximumDurationMinutes: nil, distanceOrigin: "prompt", preferenceOrigin: "saved_profile")
+        let explanation = soft.explanation(targetDistanceKm: 15, actualDistanceKm: 16.2)
+        XCTAssertTrue(explanation.contains("saved hiking profile"))
+        XCTAssertTrue(explanation.contains("16.2 km"))
+        XCTAssertTrue(explanation.contains("approximate 15.0 km"))
+        XCTAssertFalse(explanation.contains("safe"))
     }
 
     func testDisabledClientPerformsNoAuthorizationOrNetworkWork() async throws {
@@ -1070,7 +1202,7 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
     }
 
     private func makeConfigurationBundle(
-        _ values: [String: Any]
+        _ values: [String: Any], ownerExpiry: Double? = nil
     ) throws -> Bundle {
         let identifier = UUID().uuidString.lowercased()
         let bundleURL = FileManager.default.temporaryDirectory
@@ -1110,6 +1242,14 @@ final class OutdoorAdventurePlanningClientTests: XCTestCase {
                 isDirectory: false
             )
         )
+        if let ownerExpiry {
+            let credential: [String: Any] = [
+                "baseURL": "https://owner.example.com/",
+                "token": String(repeating: "A", count: 43), "expiresAt": ownerExpiry
+            ]
+            try JSONSerialization.data(withJSONObject: credential)
+                .write(to: bundleURL.appendingPathComponent("OwnerPhoneTest.json"))
+        }
         addTeardownBlock {
             try? FileManager.default.removeItem(at: bundleURL)
         }

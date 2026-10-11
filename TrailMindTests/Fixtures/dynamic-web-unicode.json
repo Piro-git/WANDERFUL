@@ -1,0 +1,110 @@
+[
+  {
+    "provider": "google_grounding",
+    "retrievedAt": "2026-09-08T00:00:00.000Z",
+    "blocks": [
+      {
+        "text": "Schöne Aussicht Ende",
+        "citations": [
+          {
+            "url": "https://park.example.org/ridge",
+            "title": "Schöne Aussicht",
+            "startIndex": 0,
+            "endIndex": 15
+          }
+        ]
+      }
+    ],
+    "searchSuggestions": [
+      "<div>Offline fixture</div>"
+    ],
+    "retrievedSourceURLs": [
+      "https://park.example.org/ridge"
+    ],
+    "observedSearchQueries": 1,
+    "limitations": [
+      "Web citations attribute source statements; they do not verify current access, safety, water or route geometry."
+    ]
+  },
+  {
+    "provider": "google_grounding",
+    "retrievedAt": "2026-09-08T00:00:00.000Z",
+    "blocks": [
+      {
+        "text": "🥾 Weg: Schöne Aussicht 🌄 Ende",
+        "citations": [
+          {
+            "url": "https://park.example.org/ridge",
+            "title": "Schöne Aussicht 🌄",
+            "startIndex": 8,
+            "endIndex": 26
+          }
+        ]
+      }
+    ],
+    "searchSuggestions": [
+      "<div>Offline fixture</div>"
+    ],
+    "retrievedSourceURLs": [
+      "https://park.example.org/ridge"
+    ],
+    "observedSearchQueries": 1,
+    "limitations": [
+      "Web citations attribute source statements; they do not verify current access, safety, water or route geometry."
+    ]
+  },
+  {
+    "provider": "google_grounding",
+    "retrievedAt": "2026-09-08T00:00:00.000Z",
+    "blocks": [
+      {
+        "text": "日本語: 山と滝 Ende",
+        "citations": [
+          {
+            "url": "https://park.example.org/ridge",
+            "title": "山と滝",
+            "startIndex": 5,
+            "endIndex": 8
+          }
+        ]
+      }
+    ],
+    "searchSuggestions": [
+      "<div>Offline fixture</div>"
+    ],
+    "retrievedSourceURLs": [
+      "https://park.example.org/ridge"
+    ],
+    "observedSearchQueries": 1,
+    "limitations": [
+      "Web citations attribute source statements; they do not verify current access, safety, water or route geometry."
+    ]
+  },
+  {
+    "provider": "google_grounding",
+    "retrievedAt": "2026-09-08T00:00:00.000Z",
+    "blocks": [
+      {
+        "text": "é — العربية Ende",
+        "citations": [
+          {
+            "url": "https://park.example.org/ridge",
+            "title": "العربية",
+            "startIndex": 5,
+            "endIndex": 12
+          }
+        ]
+      }
+    ],
+    "searchSuggestions": [
+      "<div>Offline fixture</div>"
+    ],
+    "retrievedSourceURLs": [
+      "https://park.example.org/ridge"
+    ],
+    "observedSearchQueries": 1,
+    "limitations": [
+      "Web citations attribute source statements; they do not verify current access, safety, water or route geometry."
+    ]
+  }
+]

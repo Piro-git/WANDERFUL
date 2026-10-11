@@ -1,8 +1,22 @@
 import CoreLocation
+import MapKit
 import XCTest
 @testable import TrailMind
 
 final class GeocodingServiceTests: XCTestCase {
+    @MainActor
+    func testEndpointSearchIncludesLandmarksAndAddressesWithOriginalLocality() {
+        let start = Coordinate(latitude: 52.5163, longitude: 13.3777)
+        for query in ["Siegessäule, Berlin", "Schierke", "123 Main Street, London"] {
+            let request = NativeGeocodingService.placeSearchRequest(query: query, near: start)
+            XCTAssertEqual(request.naturalLanguageQuery, query)
+            XCTAssertTrue(request.resultTypes.contains(.pointOfInterest))
+            XCTAssertTrue(request.resultTypes.contains(.address))
+            XCTAssertEqual(request.region.center.latitude, start.latitude, accuracy: 0.000001)
+            XCTAssertEqual(request.region.center.longitude, start.longitude, accuracy: 0.000001)
+        }
+    }
+
     func testUserFacingErrorsAreDeterministicEnglish() {
         let cases: [(GeocodingServiceError, String)] = [
             (.emptyQuery, "Enter a place name."),

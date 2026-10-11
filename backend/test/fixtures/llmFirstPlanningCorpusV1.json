@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "llm-first-route-planning-v1",
+  "cases": [
+    { "id": "useful_three_stop_loop", "mode": "orchestrator", "expectedState": "routed" },
+    { "id": "hallucinated_start", "mode": "orchestrator", "expectedReason": "geocoder_no_results" },
+    { "id": "ambiguous_start", "mode": "orchestrator", "expectedReason": "geocoder_ambiguous" },
+    { "id": "empty_llm_candidates_fallback", "mode": "orchestrator", "expectedState": "routed" },
+    { "id": "duplicate_candidates", "mode": "orchestrator", "expectedReason": "duplicate_candidate" },
+    { "id": "provider_failure_and_fallback_exhaustion", "mode": "orchestrator", "expectedReason": "fallback_exhausted" },
+    { "id": "llm_timeout", "mode": "orchestrator", "expectedReason": "llm_timed_out" },
+    { "id": "cancelled", "mode": "orchestrator", "expectedError": "cancelled" },
+    { "id": "reordered_stops", "mode": "eligibility", "expectedReason": "waypoint_order_invalid" },
+    { "id": "unreachable_stop", "mode": "eligibility", "expectedReason": "waypoint_not_reached" },
+    { "id": "bad_snapping", "mode": "eligibility", "expectedReason": "waypoint_snap_exceeded" },
+    { "id": "excessive_detour", "mode": "eligibility", "expectedReason": "excessive_detour" },
+    { "id": "excessive_backtracking", "mode": "eligibility", "expectedReason": "excessive_backtracking" },
+    { "id": "malformed_statistics", "mode": "eligibility", "expectedReason": "invalid_statistics" },
+    { "id": "malformed_geometry", "mode": "eligibility", "expectedReason": "malformed_geometry" },
+    { "id": "wrong_activity_profile", "mode": "eligibility", "expectedReason": "activity_profile_mismatch" },
+    { "id": "target_distance_deviation", "mode": "eligibility", "expectedReason": "target_distance_deviation" },
+    { "id": "invalid_loop_shape", "mode": "eligibility", "expectedReason": "loop_shape_invalid" },
+    { "id": "difficulty_evidence_conflict", "mode": "eligibility", "expectedReason": "difficulty_evidence_conflict" },
+    { "id": "access_evidence_conflict", "mode": "eligibility", "expectedReason": "access_evidence_conflict" }
+  ]
+}

@@ -1,5 +1,13 @@
 # TrailMind / EasyWander — Complete Project Context
 
+## Geographic product scope — updated 2026-09-10
+
+The product goal is route planning for any supported place that can be resolved and routed with available providers and data. Harz is neither a target-market priority nor a prerequisite. Do not restrict planning, examples, or future work to Germany or a fixed regional allowlist as a product requirement. This is not a promise of worldwide coverage: unresolved places, missing data, and provider limits must remain explicit.
+
+Real regional adapters retain their actual coverage boundaries; regional fixtures and dated evaluation receipts remain evidence for those cases only. They neither define the product territory nor prove support elsewhere. Ask for or resolve the user's intended place instead of silently substituting a preset region. Example prompts illustrate syntax, not verified routes or a list of supported destinations.
+
+Earlier implementation summaries and roadmaps below are historical context, not a verified current feature inventory or an instruction to restart completed work. Verify current behavior against the source and build under review; current user instructions take precedence.
+
 ## 1. High-level product vision
 
 TrailMind is an iOS-first AI-native outdoor route planning app.
@@ -86,7 +94,7 @@ Initial target users:
 * weekend adventurers
 * people who like Komoot but want easier planning
 * people who plan with ChatGPT but then manually transfer to route apps
-* users in Germany first, especially Harz / Lüneburg / outdoor weekend regions
+* people planning at any supported, resolved location, without a preferred country or region
 
 Initial activity focus:
 
@@ -94,7 +102,7 @@ Initial activity focus:
 * trail running
 * biking
 
-The first geographic test areas are:
+Historical geographic test examples (not current product territory or prerequisites):
 
 * Harz
 * Ilsenburg

@@ -6,6 +6,13 @@ backend/node_modules/
 .env
 .env.*
 
+# Local operator outputs and deployment bindings
+.local-evidence/
+.deploy/
+__pycache__/
+*.pyc
+OwnerPhoneTest.json
+
 # Xcode user state
 *.xcuserstate
 xcuserdata/
@@ -18,3 +25,12 @@ backend/data/outdoor-evidence/
 backend/tmp/outdoor-import-*/
 backend/**/*.osm
 backend/**/*.osc
+
+# Local signing, deployment links and release evidence
+*.p8
+*.p12
+*.mobileprovision
+*.xcarchive/
+*.xcresult/
+*.bundle
+.vercel/

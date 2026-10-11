@@ -1,0 +1,14 @@
+{
+  "testedSourceCommit": "3e724597828f0ece6136e321e052da4b06b3539f",
+  "backendTree": "115b2950a5ea2f6809cead8306f2bd0c6e55dfa2",
+  "branch": "codex/integrated-candidate-20260929",
+  "trackedDefaultFlags": {
+    "ROUTE_WEATHER_ENABLED": false,
+    "MONETIZATION_ENABLED": false,
+    "WANDERFUL_ACCOUNT_ENABLED": false
+  },
+  "deployed": false,
+  "physicalDeviceInstalled": false,
+  "cloudMigrationApplied": false,
+  "weatherMigrationBlocked": "New weather table grants violate frozen App Attest runtime privilege admission."
+}

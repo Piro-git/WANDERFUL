@@ -292,7 +292,7 @@ struct OnboardingView: View {
             step: .welcome,
             eyebrow: "FROM IDEA TO TRAIL",
             title: "Your perfect day, mapped.",
-            body: "Describe the adventure. Wanderful builds a real route with distance, time and elevation."
+            body: "Describe the adventure. Wanderful calculates a routed option with distance, time and elevation."
         ),
         Page(
             step: .activity,
@@ -327,8 +327,8 @@ struct OnboardingView: View {
         Page(
             step: .trust,
             eyebrow: "PLAN WITH CLEAR LIMITS",
-            title: "Real routes. Honest guidance.",
-            body: "Wanderful calculates geometry and measured stats, but it is a planning aid—not live navigation."
+            title: "Routed options. Honest guidance.",
+            body: "Wanderful combines AI-assisted planning with routed geometry and estimated stats. Review the route and current conditions before starting."
         ),
         Page(
             step: .ready,
@@ -403,6 +403,13 @@ struct OnboardingView: View {
             HStack {
                 TrailMindMark()
                 Spacer(minLength: 12)
+                Button("Skip personalization") {
+                    draft = Draft()
+                    commitPreferences()
+                }
+                .font(.subheadline.weight(.semibold))
+                .accessibilityHint("Opens planning without adding preference defaults.")
+                .accessibilityIdentifier("onboarding.skipPersonalization")
             }
             .foregroundStyle(theme.onBrandPrimary)
             .padding(.horizontal, 22)

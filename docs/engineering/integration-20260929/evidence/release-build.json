@@ -1,0 +1,28 @@
+{
+  "schema": "xcodebuildmcp.output.build-result",
+  "schemaVersion": "3",
+  "didError": false,
+  "error": null,
+  "data": {
+    "summary": {
+      "status": "SUCCEEDED",
+      "durationMs": 132737,
+      "target": "simulator"
+    },
+    "artifacts": {
+      "buildLogPath": "~/Library/Developer/XcodeBuildMCP/workspaces/EasyWander-d3f5c9563e5d/logs/build_sim_2026-09-29T14-03-08-263Z_pid5292_dea70661.log"
+    },
+    "diagnostics": {
+      "warnings": [
+        {
+          "message": "'init()' was deprecated in iOS 26.0: Use init(windowScene:) instead.",
+          "location": "/Users/REDACTED/.codex/worktrees/c025/EasyWander/iphone-candidate/TrailMind/Services/AppleAccountAuthentication.swift:67"
+        }
+      ],
+      "errors": []
+    }
+  },
+  "nextSteps": [
+    "Get built app path in simulator derived data: get_sim_app_path({ simulatorId: \"A9194E37-28A7-450E-9F30-95D0145D0486\", scheme: \"TrailMind\", platform: \"iOS Simulator\", derivedDataPath: \"/private/tmp/wanderful-integrated-dd-20260929\" })"
+  ]
+}

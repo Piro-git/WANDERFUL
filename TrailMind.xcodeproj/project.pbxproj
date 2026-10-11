@@ -152,6 +152,7 @@
 			buildPhases = (
 				A10000000000000000000024 /* Sources */,
 				A10000000000000000000023 /* Frameworks */,
+				E50000000000000000000003 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -218,6 +219,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				de,
 				Base,
 			);
 			mainGroup = A10000000000000000000004;
@@ -240,6 +242,13 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		A10000000000000000000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E50000000000000000000003 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (

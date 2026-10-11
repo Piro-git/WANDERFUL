@@ -163,7 +163,7 @@ async function withCluster(label, operation) {
         `-c unix_socket_directories='${socket}' -c port=${port} ` +
         `-c dynamic_library_path='${root}' ` +
         `-c shared_preload_libraries=supautils ` +
-        `-c supautils.privileged_role=postgres ` +
+        `-c supautils.privileged_role=supabase_privileged_role ` +
         `-c supautils.superuser=supabase_admin ` +
         `-c supautils.privileged_extensions_superuser=supabase_admin ` +
         `-c supautils.privileged_extensions=postgis`,
@@ -193,12 +193,17 @@ function provisionManagedFixture(cluster) {
     CREATE ROLE dashboard_user NOLOGIN NOINHERIT;
     CREATE ROLE supabase_auth_admin NOLOGIN NOINHERIT;
     CREATE ROLE supabase_storage_admin NOLOGIN NOINHERIT;
-    CREATE ROLE postgres LOGIN NOINHERIT NOSUPERUSER
-      CREATEDB CREATEROLE NOREPLICATION NOBYPASSRLS;
+    CREATE ROLE supabase_privileged_role
+      NOLOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
+      NOREPLICATION NOBYPASSRLS;
+    CREATE ROLE postgres LOGIN INHERIT NOSUPERUSER
+      CREATEDB CREATEROLE REPLICATION BYPASSRLS;
     GRANT pg_signal_backend TO postgres
       WITH INHERIT FALSE, SET FALSE, ADMIN TRUE;
     GRANT pg_read_all_settings TO postgres
       WITH INHERIT TRUE, SET FALSE, ADMIN FALSE;
+    GRANT supabase_privileged_role TO postgres
+      WITH INHERIT TRUE, SET TRUE, ADMIN FALSE;
     CREATE ROLE trailmind_v2_operator LOGIN NOINHERIT NOSUPERUSER
       CREATEDB CREATEROLE NOREPLICATION NOBYPASSRLS;
     ALTER DATABASE postgres OWNER TO postgres;
@@ -829,7 +834,12 @@ async function runRealImporterWorkflow(cluster) {
 }
 
 function executePsqlFile(cluster, path, user) {
-  const recoverySettings = path === preMigration ? [
+  const recoverySettings = [preMigration, postMigration].includes(path) ? [
+    "-c", "SET trailmind.phase1_v2_bootstrap_contract = 'managed-supabase-postgres-v1'",
+    "-c", "SET trailmind.phase1_v2_project_ref = 'mbvzwsrtqcrwhvykugcd'",
+    "-c", "SET trailmind.phase1_v2_project_name = 'TrailMind Outdoor Staging V1'",
+    "-c", "SET trailmind.phase1_v2_database_name = 'postgres'",
+    "-c", "SELECT pg_catalog.set_config('trailmind.phase1_v2_bootstrap_backend_pid', pg_catalog.pg_backend_pid()::text, false)",
     "-c", `SET trailmind.phase1_v2_run_id = '${recoveryFixture.runId}'`,
     "-c", `SET trailmind.phase1_v2_authorization_binding_digest = '${recoveryFixture.authorizationDigest}'`,
     "-c", `SET trailmind.phase1_v2_candidate_commit = '${recoveryFixture.candidateCommit}'`,

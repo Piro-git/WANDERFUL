@@ -4,6 +4,110 @@ import XCTest
 
 @MainActor
 final class BackendRouteClientTests: XCTestCase {
+    func testOfflineHTTPContract() async throws {
+        guard ProcessInfo.processInfo.environment["WANDERFUL_OFFLINE_CONTRACT_TEST"] == "1" else {
+            throw XCTSkip("Requires backend/scripts/offline-ios-route-contract.js (mock upstream only)")
+        }
+        let gateway = BackendRouteGateway(
+            baseURL: URL(string: "http://127.0.0.1:48175")!,
+            session: URLSession(configuration: .ephemeral),
+            authorizer: OfflineContractAuthorizer()
+        )
+        let client = GraphHopperClient(gateway: gateway)
+        for targetDistance in [nil, 2.1] as [Double?] {
+            let request = RoutePlanningRequest(
+                routeType: .pointToPoint,
+                startQuery: "Brandenburger Tor, Berlin",
+                endQuery: "Siegessäule, Berlin",
+                activityType: .hiking,
+                graphHopperProfile: "foot",
+                targetDistanceKm: targetDistance,
+                targetDurationMinutes: nil,
+                difficulty: nil,
+                desiredFeatures: []
+            )
+            let routes = try await client.calculatePointToPointRouteVariants(
+                request: request,
+                start: Coordinate(latitude: 52.5163, longitude: 13.3777),
+                end: Coordinate(latitude: 52.5145, longitude: 13.3501)
+            )
+            let route = try XCTUnwrap(routes.first)
+            XCTAssertEqual(route.distanceKilometers, 2.1, accuracy: 0.001)
+            XCTAssertEqual(route.path.count, 3)
+            XCTAssertEqual(route.path.first?.latitude, 52.5163)
+            XCTAssertEqual(route.path.last?.longitude, 13.3501)
+            XCTAssertEqual(route.path.compactMap(\.elevationMeters), [35, 40, 33])
+            XCTAssertTrue(route.isVerifiedRoutedResult)
+            guard case let .routed(provenance) = route.provenance else {
+                return XCTFail("Mock provider response must survive actual backend and Swift decoding")
+            }
+            XCTAssertEqual(provenance.provider, .graphHopper)
+            XCTAssertEqual(provenance.strategy, .backend)
+        }
+    }
+    func testKnownBackendFailuresExplainReasonWithoutExposingRawMessage() async throws {
+        let cases: [(String, Int, String)] = [
+            ("route_distance_limit", 400, "exceeds the planning limit"),
+            ("invalid_coordinates", 400, "Check the start and destination"),
+            ("unsupported_profile", 400, "activity or route type"),
+            ("unsupported_algorithm", 400, "activity or route type"),
+            ("routing_rate_limited", 503, "busy right now"),
+            ("routing_unavailable", 503, "temporarily unavailable"),
+            ("configuration_missing", 503, "temporarily unavailable"),
+            ("invalid_request", 400, "Check the places, activity and distance"),
+            ("request_too_large", 413, "Check the places, activity and distance"),
+            ("route_not_found", 422, "couldn’t find a mapped route"),
+            ("route_timed_out", 504, "taking longer than expected"),
+            ("unknown_failure", 400, "couldn’t calculate this route")
+        ]
+        for (code, status, expected) in cases {
+            let data = try JSONSerialization.data(withJSONObject: [
+                "error": ["code": code, "message": "private-provider-secret: route too long"]
+            ])
+            URLProtocolStub.reset(responses: [.init(statusCode: status, data: data)])
+            do {
+                _ = try await makeGateway().route(Self.backendRequest)
+                XCTFail("Expected rejection for \(code)")
+            } catch {
+                let message = PlannerViewModel.userMessage(for: error)
+                XCTAssertTrue(message.contains(expected), "\(code): \(message)")
+                XCTAssertFalse(message.contains("private-provider-secret"))
+                if code != "route_distance_limit" {
+                    XCTAssertFalse(message.contains("exceeds the planning limit"))
+                }
+            }
+        }
+    }
+
+    func testMissingConfigurationFailsBeforeAuthorizationOrHTTP() async {
+        URLProtocolStub.reset(responses: [])
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [URLProtocolStub.self]
+        let authorizer = ConfigurationFailureAuthorizer()
+        let gateway = BackendRouteGateway(
+            baseURL: nil,
+            session: URLSession(configuration: configuration),
+            authorizer: authorizer
+        )
+        do {
+            _ = try await gateway.route(Self.backendRequest)
+            XCTFail("Missing configuration must fail closed")
+        } catch {
+            XCTAssertEqual(error as? AppAttestServiceError, .configurationUnavailable)
+            XCTAssertEqual(PlannerViewModel.userMessage(for: error),
+                "Route planning isn’t configured for this app installation. Contact support to complete setup.")
+        }
+        let calls = await authorizer.calls
+        XCTAssertEqual(calls, 0)
+        XCTAssertTrue(URLProtocolStub.requestBodies().isEmpty)
+    }
+
+    func testAuthorizationErrorsRemainVisibleToPlanner() {
+        for error in [AppAttestServiceError.authorizationDenied, .rateLimited, .networkUnavailable] {
+            XCTAssertEqual(PlannerViewModel.userMessage(for: error), error.localizedDescription)
+        }
+    }
+
     func testBackendGatewayUsesBoundedTransportAndExactNamedCoordinateBody() async throws {
         URLProtocolStub.reset(
             responses: [.init(statusCode: 200, data: Self.routeResponse, chunkSize: 37)]
@@ -581,6 +685,13 @@ final class BackendRouteClientTests: XCTestCase {
     }
 }
 
+private actor OfflineContractAuthorizer: RouteSessionAuthorizing {
+    func authorization(cost: Int) async throws -> RouteSessionAuthorization {
+        RouteSessionAuthorization(token: String(repeating: "A", count: 43), requestID: UUID())
+    }
+    func invalidate(token: String) async {}
+}
+
 private actor StaticRouteAuthorizer: RouteSessionAuthorizing {
     func authorization(cost: Int) async throws -> RouteSessionAuthorization {
         RouteSessionAuthorization(
@@ -663,4 +774,13 @@ private actor CancellationIgnoringRouteGateway: BackendRouteGatewayRouting {
     }
 
     func hasStarted() -> Bool { started }
+}
+
+private actor ConfigurationFailureAuthorizer: RouteSessionAuthorizing {
+    private(set) var calls = 0
+    func authorization(cost: Int) async throws -> RouteSessionAuthorization {
+        calls += 1
+        throw AppAttestServiceError.authorizationDenied
+    }
+    func invalidate(token: String) async {}
 }

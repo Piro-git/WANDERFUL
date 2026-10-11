@@ -5,6 +5,7 @@ const ERROR_DEFINITIONS = Object.freeze({
   authorization_unavailable: [503, "Outdoor-adventure planning authorization is unavailable."],
   rate_limited: [429, "Outdoor-adventure planning is temporarily busy. Please try again later."],
   unsupported: [422, "This outdoor-adventure planning request is not supported."],
+  research_no_acceptable_route: [422, "The checked routes did not provide an acceptable match within this planning attempt. Try adjusting your request; your hard limits were preserved."],
   research_unavailable: [503, "Outdoor research is temporarily unavailable."],
   routing_unavailable: [503, "Outdoor routing is temporarily unavailable."],
   timed_out: [504, "Outdoor-adventure planning timed out. Please try again."],

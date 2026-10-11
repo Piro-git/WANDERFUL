@@ -1,0 +1,48 @@
+{
+  "publication": "local_only_no_image_bytes_in_this_branch",
+  "notice": "These screenshot files remain in the private local integration handoff and are not available from this repository.",
+  "tests": [
+    {
+      "attachments": [
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Photo credit links \u00b7 en_0_3D85E2EF-5C5C-4FD0-BB79-D3CDF74CBF26.png",
+          "timestamp": 1790690416.576,
+          "localOnlyFileName": "7509E31B-C3B6-4987-A775-B44F7E201492.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Photo credit top \u00b7 en_0_C9D74A6E-AB46-4CC4-BF32-40943D331BC8.png",
+          "timestamp": 1790690401.802,
+          "localOnlyFileName": "28062793-ED83-4D96-8854-6F3A445EAB96.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Photo credit links \u00b7 de_0_A862793A-1EFA-4216-8A39-A436EC5A7B04.png",
+          "timestamp": 1790690394.859,
+          "localOnlyFileName": "546206BE-CBBE-4253-AECE-8B63CD808363.png",
+          "publication": "not_uploaded_local_evidence_only"
+        },
+        {
+          "configurationName": "Test Scheme Action",
+          "deviceName": "iPhone 17 Pro",
+          "isAssociatedWithFailure": false,
+          "suggestedHumanReadableName": "Photo credit top \u00b7 de_0_54454D6D-8B22-494C-B2D4-577FB4B2F112.png",
+          "timestamp": 1790690379.15,
+          "localOnlyFileName": "E3816677-B719-4EAB-AEA7-7D11EF9D443B.png",
+          "publication": "not_uploaded_local_evidence_only"
+        }
+      ],
+      "testIdentifier": "DynamicEvidenceUITests/testLongPhotoCreditInBothLanguagesAtLargestTextSize()",
+      "testIdentifierURL": "test://com.apple.xcode/TrailMind/TrailMindUITests/DynamicEvidenceUITests/testLongPhotoCreditInBothLanguagesAtLargestTextSize"
+    }
+  ]
+}

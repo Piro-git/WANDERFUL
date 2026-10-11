@@ -5,12 +5,20 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         case onboarding
         case onboardingLoading = "onboarding-loading"
         case core
+        case premium
         case failOnce = "fail-once"
         case noRoutes = "no-routes"
         case researchComplete = "research-complete"
         case researchPartial = "research-partial"
         case researchFallback = "research-fallback"
         case researchClarification = "research-clarification"
+        case guidance
+        case guidanceOffRoute = "guidance-off-route"
+        case guidanceComplete = "guidance-complete"
+        case guidanceDenied = "guidance-denied"
+        case guidanceReducedAccuracy = "guidance-reduced-accuracy"
+        case guidanceRestricted = "guidance-restricted"
+        case guidanceDirect = "guidance-direct"
     }
 
     private let pointToPointRouteID = "11111111-1111-4111-8111-111111111111"
@@ -78,7 +86,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         app.buttons["onboarding.interest.views"].tap()
         continueButton.tap()
         XCTAssertTrue(
-            app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5),
+            app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5),
             "Continue should advance to the planning-safety step."
         )
 
@@ -157,7 +165,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             continueButton.tap()
         }
 
-        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5))
         continueButton.tap()
         XCTAssertTrue(
             app.staticTexts["Open by default, ready for your request"]
@@ -201,7 +209,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         noExperiences.tap()
         continueButton.tap()
 
-        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5))
         continueButton.tap()
         XCTAssertTrue(
             app.staticTexts["Meet the starting point for your adventures."]
@@ -244,7 +252,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
             continueButton.tap()
         }
 
-        XCTAssertTrue(app.staticTexts["Real routes. Honest guidance."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Routed options. Honest guidance."].waitForExistence(timeout: 5))
         XCTAssertTrue(waitUntilHittable(continueButton, in: app, maximumSwipes: 12))
         continueButton.tap()
         XCTAssertTrue(
@@ -263,6 +271,101 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(app.buttons["route.saveToggle"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["route.exportGPX"].waitForExistence(timeout: 5))
         XCTAssertFalse(element("route.unverifiedNotice", in: app).exists)
+    }
+
+    @MainActor
+    func testMonetizationDisabledLeavesGuestFlowAndProfileUnchanged() {
+        let app = launch(.core)
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        openPointToPointRoute(in: app)
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        let profile = app.tabBars.buttons["Profile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        profile.tap()
+        XCTAssertFalse(element("premium.profile.status", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.profile.restore"].exists)
+        XCTAssertFalse(app.buttons["premium.profile.manage"].exists)
+    }
+
+    @MainActor
+    func testPremiumAppearsOnlyAfterVerifiedRouteAndHasRequiredControls() {
+        let app = launch(.premium)
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        tapHomeExample(
+            "home.example.pointToPoint",
+            in: app,
+            until: element("planning.suggestions", in: app)
+        )
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+        XCTAssertFalse(app.buttons["premium.entry"].exists)
+
+        let routeLink = routeAction(titled: "Ilsenburg to Schierke Route", in: app)
+        XCTAssertTrue(routeLink.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            tap(routeLink, until: element("route.detail", in: app), timeout: 8)
+        )
+
+        let premiumEntry = app.buttons["premium.entry"]
+        XCTAssertTrue(waitUntilHittable(premiumEntry, in: app, maximumSwipes: 18))
+        premiumEntry.tap()
+
+        XCTAssertTrue(element("premium.paywall", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(element("premium.product.weekly", in: app).waitForExistence(timeout: 8))
+        XCTAssertTrue(element("premium.product.annual", in: app).exists)
+        XCTAssertTrue(app.buttons["premium.subscribe.weekly"].exists)
+        XCTAssertTrue(app.buttons["premium.subscribe.annual"].exists)
+
+        let close = app.buttons["premium.close"]
+        XCTAssertTrue(close.exists)
+        XCTAssertTrue(waitUntilHittable(app.buttons["premium.restore"], in: app, maximumSwipes: 12))
+        XCTAssertTrue(app.buttons["premium.manage"].exists)
+        XCTAssertTrue(app.links["premium.privacy"].exists)
+        XCTAssertTrue(app.links["premium.terms"].exists)
+        XCTAssertTrue(element("premium.renewalDisclosure", in: app).exists)
+
+        close.tap()
+        XCTAssertTrue(element("route.detail", in: app).waitForExistence(timeout: 5))
+        XCTAssertFalse(element("premium.paywall", in: app).exists)
+    }
+
+    @MainActor
+    func testPremiumPaywallRemainsReachableAtAccessibilityXXXL() {
+        let app = launch(
+            .premium,
+            extraArguments: [
+                "--trailmind-ui-accessibility-xxxl",
+                "--trailmind-ui-dark-mode",
+                "-UIAccessibilityDarkerSystemColorsEnabled",
+                "YES",
+                "-UIAccessibilityReduceMotionEnabled",
+                "YES"
+            ]
+        )
+        openPointToPointRoute(in: app)
+        let premiumEntry = app.buttons["premium.entry"]
+        XCTAssertTrue(waitUntilHittable(premiumEntry, in: app, maximumSwipes: 24))
+        premiumEntry.tap()
+
+        XCTAssertTrue(element("premium.paywall", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            waitUntilHittable(
+                app.buttons["premium.subscribe.annual"],
+                in: app,
+                maximumSwipes: 20
+            )
+        )
+        XCTAssertTrue(
+            waitUntilHittable(app.buttons["premium.restore"], in: app, maximumSwipes: 20)
+        )
+        XCTAssertTrue(app.buttons["premium.manage"].exists)
+        captureScreen(named: "premium-accessibility-xxxl-dark")
     }
 
     @MainActor
@@ -308,7 +411,7 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         )
 
         let requestSummary = app.staticTexts[
-            "Built around “15 km Rundwanderung um Ilsenburg”"
+            "Built around “Plan a 15 km hiking loop around Ilsenburg”"
         ]
         XCTAssertTrue(requestSummary.waitForExistence(timeout: 5))
         XCTAssertEqual(
@@ -356,7 +459,9 @@ final class TrailMindCriticalPathUITests: XCTestCase {
 
     @MainActor
     func testNativePrivacyAndHelpRemainReachableWithoutConfiguredWebLinks() {
-        let app = launch(.core)
+        // This test asserts English labels. Override the launch argument domain,
+        // without changing the user's persisted interface-language preference.
+        let app = launch(.core, extraArguments: ["-wanderful.interfaceLanguage", "en"])
         let profile = app.tabBars.buttons["Profile"]
         XCTAssertTrue(profile.waitForExistence(timeout: 5))
         profile.tap()
@@ -588,6 +693,38 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     }
 
     @MainActor
+    func testOnlinePermissionResetsAfterClosingComposer() {
+        let app = launch(.core)
+        for allowBeforeClosing in [false, true] {
+            let prompt = openComposer(in: app)
+            prompt.tap()
+            prompt.typeText("Plan a 12 km loop")
+            dismissKeyboardIfPresent(in: app)
+            XCTAssertFalse(app.buttons["composer.submit"].isEnabled)
+            XCTAssertEqual(app.switches["planning.onlinePermission"].value as? String, "0")
+            if allowBeforeClosing {
+                allowOnlinePlanning(in: app)
+                XCTAssertTrue(app.buttons["composer.submit"].isEnabled)
+            }
+            let close = app.buttons["Close"]
+            XCTAssertTrue(close.waitForExistence(timeout: 5))
+            close.tap()
+            XCTAssertTrue(prompt.waitForNonExistence(timeout: 5))
+            XCTAssertFalse(element("planning.suggestions", in: app).exists)
+        }
+        _ = openComposer(in: app)
+        dismissKeyboardIfPresent(in: app)
+        XCTAssertEqual(app.switches["planning.onlinePermission"].value as? String, "0")
+        XCTAssertFalse(app.buttons["composer.submit"].isEnabled)
+    }
+
+    @MainActor
+    func testOnboardingCanSkipPersonalization() {
+        let app = launch(.onboarding)
+        XCTAssertTrue(tap(app.buttons["onboarding.skipPersonalization"], until: app.buttons["home.typeInstead"]))
+    }
+
+    @MainActor
     func testMissingLocationClarificationContinuesWithoutNetwork() {
         let app = launch(.core)
         let prompt = openComposer(in: app)
@@ -596,6 +733,8 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         dismissKeyboardIfPresent(in: app)
 
         let submit = app.buttons["composer.submit"]
+        XCTAssertFalse(submit.isEnabled, "Online planning requires explicit permission")
+        allowOnlinePlanning(in: app)
         XCTAssertTrue(waitUntilHittable(submit, in: app))
         XCTAssertTrue(
             tap(
@@ -701,6 +840,123 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     }
 
     @MainActor
+    func testRouteGuidanceStartPermissionPauseResumeAndEnd() {
+        let app = launch(.guidance)
+        openPointToPointRoute(in: app)
+
+        let purpose = element("route.guidancePermissionPurpose", in: app)
+        XCTAssertTrue(purpose.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            purpose.label.contains("only while the guidance screen is open")
+        )
+
+        let start = app.buttons["route.startGuidance"]
+        XCTAssertTrue(waitUntilHittable(start, in: app, maximumSwipes: 12))
+        XCTAssertTrue(
+            tap(start, until: element("guidance.screen", in: app), timeout: 8)
+        )
+
+        let pause = app.buttons["guidance.pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 8))
+        XCTAssertTrue(element("guidance.mapSummary", in: app).exists)
+        XCTAssertTrue(element("guidance.safety", in: app).exists)
+        captureScreen(named: "route-guidance-normal")
+
+        let resume = app.buttons["guidance.resume"]
+        XCTAssertTrue(
+            tap(pause, until: resume, timeout: 5),
+            "Pausing guidance should expose the resume control."
+        )
+        XCTAssertTrue(
+            tap(resume, until: app.buttons["guidance.pause"], timeout: 5),
+            "Resuming guidance should restore the pause control."
+        )
+
+        app.buttons["guidance.end"].tap()
+        // iOS 26 can expose the SwiftUI destructive alert action through both
+        // its legacy and modern accessibility representations.
+        let confirmation = app.alerts.buttons["End Route"].firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.tap()
+        XCTAssertTrue(element("guidance.ended", in: app).waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testRouteGuidanceShowsAndCapturesOffRouteWarning() {
+        let app = launch(.guidanceOffRoute)
+        openPointToPointRoute(in: app)
+        startRouteGuidance(in: app)
+
+        let warning = element("guidance.offRouteWarning", in: app)
+        XCTAssertTrue(warning.waitForExistence(timeout: 8))
+        XCTAssertTrue(warning.label.contains("may be off route"))
+        XCTAssertTrue(warning.label.contains("Progress is paused"))
+        captureScreen(named: "route-guidance-off-route")
+    }
+
+    @MainActor
+    func testRouteGuidanceShowsExplicitCompletion() {
+        let app = launch(.guidanceComplete)
+        openPointToPointRoute(in: app)
+        startRouteGuidance(in: app)
+
+        let completion = element("guidance.completion", in: app)
+        XCTAssertTrue(completion.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Route complete"].exists)
+        XCTAssertTrue(app.buttons["guidance.done"].exists)
+        captureScreen(named: "route-guidance-completion")
+    }
+
+    @MainActor
+    func testRouteGuidanceDeniedPermissionSurfaceRemainsUsable() {
+        let deniedApp = launch(.guidanceDenied)
+        let blockedTitle = deniedApp.staticTexts["guidance.blocked"].firstMatch
+        XCTAssertTrue(
+            blockedTitle.waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(deniedApp.buttons["guidance.openSettings"].exists)
+    }
+
+    @MainActor
+    func testRouteGuidanceReducedAccuracyExplainsPreciseLocationRecovery() {
+        let app = launch(.guidanceReducedAccuracy)
+
+        let blocked = app.staticTexts["guidance.blocked"].firstMatch
+        XCTAssertTrue(blocked.waitForExistence(timeout: 5))
+        XCTAssertTrue(blocked.label.contains("Precise Location is off"))
+        XCTAssertTrue(app.buttons["guidance.openSettings"].exists)
+        XCTAssertTrue(app.buttons["guidance.done"].exists)
+    }
+
+    @MainActor
+    func testRouteGuidanceRestrictedExplainsRestrictionWithoutFalseRecovery() {
+        let app = launch(.guidanceRestricted)
+
+        let blocked = app.staticTexts["guidance.blocked"].firstMatch
+        XCTAssertTrue(blocked.waitForExistence(timeout: 5))
+        XCTAssertTrue(blocked.label.contains("Location access is restricted"))
+        XCTAssertFalse(app.buttons["guidance.openSettings"].exists)
+        XCTAssertTrue(app.buttons["guidance.done"].exists)
+    }
+
+    @MainActor
+    func testRouteGuidanceAccessibilitySurfacesRemainUsable() {
+        let accessibleApp = launch(
+            .guidanceDirect,
+            extraArguments: accessibilityStressArguments
+        )
+
+        let pause = accessibleApp.buttons["guidance.pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 8))
+        XCTAssertGreaterThanOrEqual(pause.frame.height, 44)
+        XCTAssertTrue(element("guidance.mapSummary", in: accessibleApp).exists)
+        XCTAssertTrue(
+            element("guidance.safety", in: accessibleApp)
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
     private func launch(
         _ scenario: Scenario,
         extraArguments: [String] = []
@@ -709,7 +965,8 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         app.launchArguments = [
             "--trailmind-ui-testing",
             "--trailmind-ui-scenario",
-            scenario.rawValue
+            scenario.rawValue,
+            "-wanderful.interfaceLanguage", "en"
         ] + extraArguments
         app.launch()
         return app
@@ -774,10 +1031,63 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         let example = app.buttons[identifier]
         XCTAssertTrue(example.waitForExistence(timeout: 5))
         XCTAssertTrue(waitUntilHittable(example, in: app, maximumSwipes: 4))
+        centerHomeExampleHorizontallyIfNeeded(example, in: app)
+        let start = app.textFields["home.example.start"]
+        XCTAssertTrue(tap(example, until: start, timeout: 8))
+        let submit = app.buttons["home.example.submit"]
+        XCTAssertFalse(submit.isEnabled, "An example must not submit a preset place")
+        start.tap()
+        start.typeText("Ilsenburg")
+        let end = app.textFields["home.example.destination"]
+        if end.exists {
+            XCTAssertFalse(submit.isEnabled, "Point-to-point examples need a destination")
+            end.tap()
+            end.typeText("Schierke")
+        }
+        XCTAssertFalse(submit.isEnabled, "Entering places must not grant online permission")
+        dismissKeyboardIfPresent(in: app)
+        allowOnlinePlanning(in: app)
         XCTAssertTrue(
-            tap(example, until: destination, timeout: 8),
-            "The selected route example should enter its expected planning state."
+            tap(submit, until: destination, timeout: 8),
+            "The selected places should enter the expected planning state."
         )
+    }
+
+    @MainActor
+    private func allowOnlinePlanning(in app: XCUIApplication) {
+        let permission = app.switches["planning.onlinePermission"]
+        XCTAssertTrue(permission.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(permission, in: app))
+        XCTAssertEqual(permission.value as? String, "0")
+        // Form rows can expose the full label as the switch frame. Tap the
+        // trailing switch control rather than the middle of its text label.
+        permission.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        let enabled = NSPredicate(format: "value == %@", "1")
+        let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: enabled, object: permission)], timeout: 3)
+        if result != .completed {
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        XCTAssertEqual(result, .completed)
+    }
+
+    @MainActor
+    private func centerHomeExampleHorizontallyIfNeeded(
+        _ example: XCUIElement,
+        in app: XCUIApplication
+    ) {
+        guard app.scrollViews.count > 1 else { return }
+        let examplesCarousel = app.scrollViews.element(boundBy: 1)
+        let viewport = app.windows.firstMatch.frame
+
+        for _ in 0..<4 {
+            let midpoint = example.frame.midX
+            guard midpoint < viewport.minX || midpoint > viewport.maxX else {
+                return
+            }
+            examplesCarousel.swipeLeft()
+        }
     }
 
     @MainActor
@@ -810,6 +1120,16 @@ final class TrailMindCriticalPathUITests: XCTestCase {
         XCTAssertTrue(
             tap(routeLink, until: element("route.detail", in: app), timeout: 8),
             "The suggestion card should open its route detail."
+        )
+    }
+
+    @MainActor
+    private func startRouteGuidance(in app: XCUIApplication) {
+        let start = app.buttons["route.startGuidance"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilHittable(start, in: app, maximumSwipes: 12))
+        XCTAssertTrue(
+            tap(start, until: element("guidance.screen", in: app), timeout: 8)
         )
     }
 
@@ -933,7 +1253,8 @@ final class TrailMindCriticalPathUITests: XCTestCase {
     private func dismissKeyboardIfPresent(in app: XCUIApplication) {
         guard app.keyboards.firstMatch.exists else { return }
 
-        let semanticDone = app.buttons["composer.keyboardDone"]
+        let exampleDone = app.buttons["home.example.keyboardDone"]
+        let semanticDone = exampleDone.exists ? exampleDone : app.buttons["composer.keyboardDone"]
         if semanticDone.waitForExistence(timeout: 2) {
             semanticDone.tap()
             XCTAssertTrue(

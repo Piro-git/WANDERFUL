@@ -1,0 +1,50 @@
+# Personal-device service template. This is not a deployment receipt.
+# Select the reviewed Git branch/revision in Render before creating this service.
+# Keep the workspace without a payment method to suspend on free-limit exhaustion.
+previews:
+  generation: off
+services:
+  - type: web
+    name: wanderful-owner
+    runtime: docker
+    plan: free
+    region: frankfurt
+    autoDeployTrigger: off
+    renderSubdomainPolicy: enabled
+    healthCheckPath: /healthz
+    maxShutdownDelaySeconds: 30
+    numInstances: 1
+    dockerfilePath: ./backend/owner-container/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: OWNER_ACCESS_ENABLED
+        value: "false"
+      - key: OWNER_ACCESS_ORIGIN
+        sync: false
+      - key: OWNER_ACCESS_DATABASE_URL
+        sync: false
+      # Required when using Supabase session pooler role.<projectRef> login.
+      - key: OWNER_ACCESS_SUPABASE_PROJECT_REF
+        sync: false
+      - key: OWNER_ACCESS_DATABASE_CA_FILE
+        value: /etc/secrets/owner-database-ca.crt
+      - key: OWNER_ACCESS_ROUTE_DAILY_LIMIT
+        sync: false
+      - key: OWNER_ACCESS_INTENT_DAILY_LIMIT
+        sync: false
+      - key: OWNER_ACCESS_GLOBAL_ROUTE_DAILY_LIMIT
+        sync: false
+      - key: OWNER_ACCESS_GLOBAL_INTENT_DAILY_LIMIT
+        sync: false
+      - key: OWNER_ACCESS_MAX_CONCURRENCY
+        value: "1"
+      - key: AI_PROVIDER
+        value: google
+      - key: GOOGLE_MODEL
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GRAPHHOPPER_API_KEY
+        sync: false

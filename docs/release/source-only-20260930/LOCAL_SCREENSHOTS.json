@@ -1,0 +1,157 @@
+{
+  "source": "1f5d268c39a540a2f22b205cbc55bbb3d81c366a",
+  "destination": null,
+  "visibility": "local_only_not_published",
+  "count": 21,
+  "total_bytes": 10871332,
+  "files": [
+    {
+      "bytes": 1916891,
+      "git_blob": "2de6e5f537d9451e710d791a574a3823b3acd39b",
+      "sha256": "ea934cf5b0bc8bdbff3b796083557fe94066dc8caf5e4f7e714667e03e570bbb",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/access-local-conditions-assets/native-accessibility3.png"
+    },
+    {
+      "bytes": 1033094,
+      "git_blob": "7cdfdfe35c60df4e757d48d7d6266c64ddf2f03a",
+      "sha256": "1ef50273f274d62524d4885275b1a5af50ad4d00c5ece3192ed30584f1ec374e",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/access-local-conditions-assets/native-standard.png"
+    },
+    {
+      "bytes": 229888,
+      "git_blob": "0e10864a6894e53a17ff7ad5f4171e9396261084",
+      "sha256": "734122be1178b1a0cb55ce273a1334c5fd69e2be47205209b045e11a9ab09f2e",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/source-credit/28062793-ED83-4D96-8854-6F3A445EAB96.png"
+    },
+    {
+      "bytes": 367311,
+      "git_blob": "ba606a2e93e90d14dcc13d68f3b5fc62b2a5a5ee",
+      "sha256": "ca01e8b48962c8a015c601d22134e3889e739700369450ac8718b2f098a1b820",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/source-credit/546206BE-CBBE-4253-AECE-8B63CD808363.png"
+    },
+    {
+      "bytes": 349672,
+      "git_blob": "8b18efd6189d7ac45017d2d5244eb0f8967b95a6",
+      "sha256": "b03a803d0c3da872e8fdde3f242406dd357610e79e4daf0c15e28c2d93d0b593",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/source-credit/7509E31B-C3B6-4987-A775-B44F7E201492.png"
+    },
+    {
+      "bytes": 224907,
+      "git_blob": "83468e30ead351b7f3a2ea910efcbde2b00faeb3",
+      "sha256": "355a587e459380d44de22e6c4a31f22a16873e2d205d87f7e3f5644f764fff9b",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/source-credit/E3816677-B719-4EAB-AEA7-7D11EF9D443B.png"
+    },
+    {
+      "bytes": 376337,
+      "git_blob": "b82c89b1f10467ea5df2c9e9de9e34373eeaa9d7",
+      "sha256": "1a5d9acf82037bddd7cb715cf1a94919bc2916120cf61773b7b9500487b137a3",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/ui/148BF942-25CD-4B7E-8BEB-4CF5ED3ED3BD.png"
+    },
+    {
+      "bytes": 213680,
+      "git_blob": "d7d30c7862fa2f7f4e5a9bf012d73f83ebf30580",
+      "sha256": "c16694769f5eb85ed5a7e1a06406965defeb602d8a9766dcd1780183ae7bef7c",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/ui/66191C6F-8FBF-41E0-A20C-4F29ECD16AAB.png"
+    },
+    {
+      "bytes": 769979,
+      "git_blob": "416b47b216e92293af5a1dc54c40e2d19be40dd7",
+      "sha256": "886d9acf27f1ace87be48f86101ba84e96639a8b59484676da072028938bea95",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/ui/6C097C69-D350-4A8C-B523-F4A7780AF83A.png"
+    },
+    {
+      "bytes": 756851,
+      "git_blob": "7857924818de629c79ab47e46060031bd3664597",
+      "sha256": "0f4ee31d9a48d84ca007b6290c21dced7493d43f700825c8834ad910e56ecff8",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/ui/B58540D7-3334-44A4-AD44-D09FED227FB8.png"
+    },
+    {
+      "bytes": 405932,
+      "git_blob": "bd0b841d46a704e03d388e1067077ca28140bc54",
+      "sha256": "c0c4b8e7a0a59274786bec421c6984f051ffb8de2d8d5fcf286998a9c4a717db",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/ui/E2C5C563-DFCE-475C-B9B9-9817BA02F7CE.png"
+    },
+    {
+      "bytes": 226216,
+      "git_blob": "0e73b7536ef9a7c53736954b0be2555118989c75",
+      "sha256": "da4c011427901582576dcd633c72dec2dec7824e7bdc8dae137288f56a427790",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/ui/EC57CF93-5B18-490C-88F6-BF30F936159D.png"
+    },
+    {
+      "bytes": 949066,
+      "git_blob": "c275f069b79dc4b6c958c43d52cba32cefa4f7d4",
+      "sha256": "4e815ee733b2b833fd34157818bdd397bd8ffcb1a2b1b3df93e76ac29d123725",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/ui/FA6158FA-14B1-4590-801E-05E1666A6CB2.png"
+    },
+    {
+      "bytes": 192024,
+      "git_blob": "bc72c913273d42b2261d472d5dbf81d04e2671de",
+      "sha256": "61c26be7cfcdea58653530f72a7f00f9b354ec30d0b85b51ddb562988730494c",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/weather/16513D1C-3E85-462E-9A98-8A112850EDC9.png"
+    },
+    {
+      "bytes": 234808,
+      "git_blob": "877bab6289b3ec79129ff1d8370be6edd91b8d98",
+      "sha256": "77c3a071fb5e2a4070af369626aab5001a22f51dfc4e70cf375ef128b2df6ffa",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/weather/2C4F76CA-E8BF-4B17-AF2C-1C9B2B0FE61A.png"
+    },
+    {
+      "bytes": 307395,
+      "git_blob": "b16d054758c62bb47256d3b68fc9f9b124ad9c00",
+      "sha256": "d84c83de4141b4b910094ae7f93b0d217f843443d2ca7459aa5f90d535fb160d",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/weather/7AC2A003-DB96-4F63-BD69-08B4255F2B71.png"
+    },
+    {
+      "bytes": 232370,
+      "git_blob": "75097b765456e103436eccb9ad6b8da659461202",
+      "sha256": "53a60f9dbc91ef42f42213a9edb26a230bc067fba09f453a4c3de8d0e9b26eeb",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/engineering/integration-20260929/snapshots/weather/E5795188-B824-44BA-A3CA-72AA9031410A.png"
+    },
+    {
+      "bytes": 227388,
+      "git_blob": "55b7f4fbd2042c351bf4b760623f794f5c22c755",
+      "sha256": "6817f700abe29861c08645fcf459cce773f7e057e06046fa3fe84816140776c9",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/verification/route-stays-20260929/empty.png"
+    },
+    {
+      "bytes": 871982,
+      "git_blob": "6fa6ba9b07d7444dc04dd7ee0a2e2824d853bcea",
+      "sha256": "dd9691efbc6404d67fba2d00a9541bccf410bb03ea3326326041fce3895e4a92",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/verification/route-stays-20260929/german-accessibility.png"
+    },
+    {
+      "bytes": 770554,
+      "git_blob": "977c84c0f457eff05c09e2ee8aa436cf9c3ebcd5",
+      "sha256": "23c6de7d3c68462a76ccf9bc809512a84d5496eabd92e7acb7d48ae9e6cf751b",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/verification/route-stays-20260929/source-details.png"
+    },
+    {
+      "bytes": 214987,
+      "git_blob": "a15fa2232d78d6ee6e6652fb9914fdfd029c09da",
+      "sha256": "7eb823b74b0bb5c6c6c985e4bc15a163c3c899543de4af5713a82e8fbf63fd3b",
+      "review": "synthetic offline UI fixture; visually reviewed; no personal account/route observed",
+      "local_handoff_path": "docs/verification/route-stays-20260929/unavailable.png"
+    }
+  ],
+  "publication": "LOCAL_ONLY: all listed files are absent from this public source-only tree"
+}

@@ -1,3 +1,6 @@
+import { assertDynamicResearchBudget } from "./dynamicResearchBudget.js";
+import { DYNAMIC_LIMITS } from "../dynamicResearch/planner.js";
+import { selectedPlanningConfiguration } from "../llmPlanning/adapters/selectedIntentPlanningAdapter.js";
 import { endpointConfiguration } from "../appAttest/appAttestEndpoint.js";
 import { appAttestVerifierConfiguration } from "../appAttest/appAttestVerifier.js";
 import {
@@ -88,8 +91,10 @@ export function evaluateProductionConfiguration(env = process.env) {
   });
   check("feature_dependency_order", () => validateFeatureDependencies(env));
   check("closed_beta_surface", () => validateReleaseSurface(env));
+  check("dynamic_research_configuration", () => validateDynamicResearchConfiguration(env));
 
   const capabilities = Object.freeze([
+    capability("dynamic_research", env.DYNAMIC_RESEARCH_ENABLED),
     capability("route_provider", env.ROUTE_PROVIDER_ENABLED),
     capability("intent_provider", env.INTENT_PROVIDER_ENABLED),
     capability("outdoor_evidence", env.OUTDOOR_EVIDENCE_PROVIDER_ENABLED),
@@ -376,4 +381,33 @@ function deepFreeze(value) {
 
 function invalid() {
   throw new TypeError("invalid_production_configuration");
+}
+
+// First normal-app rollout: one loop-only, Google-backed profile. Existing rate
+// windows and replay records remain durable in the App Attest repository.
+export function validateDynamicResearchConfiguration(env) {
+  for (const flag of ["DYNAMIC_RESEARCH_ENABLED", "DYNAMIC_WEB_RESEARCH_ENABLED", "LLM_FIRST_PLANNING_ENABLED"]) {
+    if (env[flag] !== undefined) exactBooleanFlag(env[flag]);
+  }
+  if (!flagEnabled(env.DYNAMIC_RESEARCH_ENABLED)) {
+    if (flagEnabled(env.DYNAMIC_WEB_RESEARCH_ENABLED)) invalid();
+    return;
+  }
+  requiredExact(env.TRAILMIND_RUNTIME_PROFILE, "dynamic-research-v1");
+  for (const flag of ["DYNAMIC_WEB_RESEARCH_ENABLED", "LLM_FIRST_PLANNING_ENABLED", "INTENT_PROVIDER_ENABLED", "ROUTE_PROVIDER_ENABLED"]) requiredExact(env[flag], "true");
+  requiredExact(env.AI_PROVIDER, "google");
+  selectedPlanningConfiguration(env);
+  const agent = requiredOpaque(env.DYNAMIC_RESEARCH_USER_AGENT, 200);
+  if (!agent.includes("https://") || /[\r\n]/.test(agent)) invalid();
+  if (routeAuthorizationConfiguration(env).leaseTtlMs <= DYNAMIC_LIMITS.deadlineMs) invalid();
+  assertDynamicResearchBudget(env);
+  // No inherited broad defaults: rollout budgets are an explicit operator choice.
+  for (const key of ["ROUTE_GLOBAL_MAX_COST", "APP_ATTEST_INSTALLATION_MAX_COST", "INTENT_GLOBAL_MAX_COST", "APP_ATTEST_INTENT_INSTALLATION_MAX_COST", "ROUTE_GLOBAL_MAX_CONCURRENCY", "INTENT_GLOBAL_MAX_CONCURRENCY"]) {
+    requiredOpaque(env[key], 12);
+    integer(env[key], 0, 1, key.includes("CONCURRENCY") ? 2 : 120);
+  }
+  // One calendar bucket per day, shared across sessions/restarts/instances.
+  for (const key of ["ROUTE_GLOBAL_WINDOW_SECONDS", "APP_ATTEST_INSTALLATION_WINDOW_SECONDS", "INTENT_GLOBAL_WINDOW_SECONDS", "APP_ATTEST_INTENT_INSTALLATION_WINDOW_SECONDS"]) requiredExact(env[key], "86400");
+  // Provider billing controls are external; the named approval and the durable
+  // daily App Attest caps never reset replay records or historic consumption.
 }

@@ -1,0 +1,215 @@
+{
+  "candidate": "d40a206945c781619948ca2cedbc74c4543642b3",
+  "baseline": "1f5d268c39a540a2f22b205cbc55bbb3d81c366a",
+  "publicationBase": "9f6db32dc9b5835e8f9ff5777d40ee821389c464",
+  "updatedTextFiles": [
+    {
+      "path": "TrailMind/Services/DynamicResearchPlanningClient.swift",
+      "blob": "73261bb160bfb1983719af881518eae427ab5186"
+    },
+    {
+      "path": "TrailMind/Services/RouteStopGeometry.swift",
+      "blob": "ec8925da4bec39515b9d01546e06a187d334987b"
+    },
+    {
+      "path": "TrailMind/Testing/DynamicEvidenceUITestView.swift",
+      "blob": "530349fbea3cfadb9d37069ee137653afc75b33b"
+    },
+    {
+      "path": "TrailMind/Testing/RouteCardPhotoUITestView.swift",
+      "blob": "87520ab6e36a4b3d0fae7a97a5dcb59b408d62fb"
+    },
+    {
+      "path": "TrailMind/Views/Planning/PlanningViews.swift",
+      "blob": "8022fe4ce4cf7e146f3fbc2818c41d0134ee61e7"
+    },
+    {
+      "path": "TrailMind/Views/Route/CommonsRoutePhotoGallery.swift",
+      "blob": "e31fde2215a9f8b1ccc9b1c9d530eae2c1cc1a91"
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteCardStopPhoto.swift",
+      "blob": "e960fb4092b0602d608b7756d5ede2916f73edb4"
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteComponents.swift",
+      "blob": "b15d032cc94bcf83bfc1bf648f9fdd65591ef7fa"
+    },
+    {
+      "path": "TrailMind/Views/Saved/SavedRoutesView.swift",
+      "blob": "60a21183f33b57d54227c9386ef6ccbc40f3b620"
+    },
+    {
+      "path": "TrailMindTests/DynamicResearchPlanningClientTests.swift",
+      "blob": "dd702836dc39b45606de3ff743ce572e0dbf7899"
+    },
+    {
+      "path": "TrailMindTests/RouteCardStopPhotoTests.swift",
+      "blob": "a0abd7c74024b73c431d16e39d7445a85a0a4286"
+    },
+    {
+      "path": "TrailMindTests/RouteStopGeometryTests.swift",
+      "blob": "57176fd597ceed63965ffbaa232a4641e4aaf85f"
+    },
+    {
+      "path": "TrailMindUITests/RouteCardPhotoUITests.swift",
+      "blob": "8824fbbb0f7b3f9bf5ee7916a359091d44e82d71"
+    },
+    {
+      "path": "backend/api/index.js",
+      "blob": "2e5ab2b3824d38eabbd6fdc1c8ed4dc2880ef97b"
+    },
+    {
+      "path": "backend/sql/route-weather-fleet-v1-preflight.sql",
+      "blob": "aa75d65420cf71fd76f98499349775f1126abf64"
+    },
+    {
+      "path": "backend/sql/route-weather-fleet-v1.sql",
+      "blob": "d85d764c2bd6e67566ca353140334924537afe9e"
+    },
+    {
+      "path": "backend/src/operations/serviceLifecycle.js",
+      "blob": "db77c3ddccd0401428c1b806b5f8fef3adff6da8"
+    },
+    {
+      "path": "backend/src/weather/durableMetNorway.js",
+      "blob": "bb65e6150db918bfd0f2146695e5cd3da3654044"
+    },
+    {
+      "path": "backend/src/weather/metNorway.js",
+      "blob": "0c1375e54576393200bc7aeaefb3a81b09104b6c"
+    },
+    {
+      "path": "backend/src/weather/postgresWeatherStore.js",
+      "blob": "aeeae885fdf736c286ea2b435e8378ae3dc7a215"
+    },
+    {
+      "path": "backend/src/weather/weatherEndpoint.js",
+      "blob": "39c48d5bc4eb44eb7a34935740e23de6add3a0fa"
+    },
+    {
+      "path": "backend/test/durableRouteWeather.test.js",
+      "blob": "8acbc1cccfb0d437635fdaed1421619f6a43bce3"
+    },
+    {
+      "path": "backend/test/vercelDatabaseAdmission.test.js",
+      "blob": "1cc7bcac5472bb4eef836324b4ca2f1adf7e65a5"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/HANDOFF.md",
+      "blob": "49e45b63d6bf68af6e1faf0a2a2b713fbd882814"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/IOS-STOP-TRUST.md",
+      "blob": "ecaef982247766c9a55e1103b37e2fcbb50ec5a9"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/VERCEL-ADMISSION.md",
+      "blob": "44553f5327938a69a601aaf45442438eb3cde674"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/backend-build.txt",
+      "blob": "ae483102d2525d48d2a3957b26544d3e1a8cb195"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/backend-tests.txt",
+      "blob": "421d3f9b971a4589b0d538eec0645b262a2b40d5"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/interrupted-ui-tests.json",
+      "blob": "e4a68b889718a001b404860026420fc0e92bd7ad"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/ios-stop-trust-tests.json",
+      "blob": "fb727689c845173f35e8e0e6b87c0d6ed3fb239f"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/native-tests.json",
+      "blob": "5a4c853df4023529193b0ad5a35bad702ab75308"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/ordered-commits.txt",
+      "blob": "43762954098d479774cb12a7a20ba7e19fdca918"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/source.json",
+      "blob": "4c43dd2ae1013a9cdb084875d0649d19e440622a"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/ui-tests.json",
+      "blob": "dbfdbb736b40aad7c78c80666b832ad7b94b8383"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/vercel-admission-build.txt",
+      "blob": "73bb2c9ff40bec525f1068492c49dea61cb0d32d"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/vercel-admission-source.json",
+      "blob": "fa2ae16a0b767806feed948232073781c56acb68"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/vercel-admission-tests.txt",
+      "blob": "53445be41da200983bc1c87616ed87de006e643b"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/visual-fix-tests.json",
+      "blob": "b1725e45087efba99fd283d5b36b79d19738a6be"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/weather-frozen-manifest-reproduction.sql",
+      "blob": "9f779433109963a6b6efe76e1bc8939c65cc1e23"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/weather-preflight-and-admission.txt",
+      "blob": "3bd1c652fa2f71b1952764d514b2995b66e55feb"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/evidence/weather-targeted-tests.txt",
+      "blob": "6459a92946c37835b18ab10665bee63f9b99f613"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/snapshots-before-visual-fixes/manifest.json",
+      "blob": "d4848060f93524ac31f79d15f8ccb7f2cdc5b8fc"
+    },
+    {
+      "path": "docs/engineering/integration-20260930/snapshots/manifest.json",
+      "blob": "1417722acf00efdfc2724c931e43f4d01143a0c9"
+    },
+    {
+      "path": "docs/handoffs/route-weather-fleet-20260930.md",
+      "blob": "1687aec9027b82694a26d0cb1b98452fdd830a28"
+    }
+  ],
+  "localOnlyScreenshotFiles": [
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/055056DF-0F61-4057-9329-52F90637F6A3.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/10FA02BC-51E7-486A-80FB-616801C3F315.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/12FD7687-16A0-4FFF-9928-A6AE337F8AD2.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/2070269B-B5E3-4481-84EA-B8B74501AB47.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/31846B72-15D2-4600-8F06-60E0A4890F35.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/3FD79FB7-876B-4163-950F-97A28C9CD8F0.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/53A2EFAD-DCD4-40AA-A338-44CB7DCB6F5F.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/6271DF56-AD6C-4C37-826C-783B415AA33A.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/710AD761-A069-47F0-8041-D3EEA1C0EA43.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/73B45AB4-F2E5-4FA1-85B7-87CF1B0401D3.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/75077290-9B9D-44FA-9CF0-06E759428305.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/78A1AE15-8A46-460A-81FF-B28BE198DE09.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/7A55622B-3BF4-4FEA-A091-66C80D8E785B.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/7CDBE5E0-1208-4A3E-9333-779C8ED4F280.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/7DB20CA3-9BCD-4DAA-A794-D1DCDF58E682.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/83593CB9-721D-4D4A-9671-1D30CA89EC7B.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/C9456733-D8CD-4900-9A31-619686D470E2.png",
+    "docs/engineering/integration-20260930/snapshots-before-visual-fixes/D6D9CB2D-C6DC-4C79-941E-4A5C66D228EF.png",
+    "docs/engineering/integration-20260930/snapshots/4EF0305B-6E71-4D3C-8E5E-577169811CE4.png",
+    "docs/engineering/integration-20260930/snapshots/667BA86F-DEB1-4B05-BD4F-3015ED04F964.png",
+    "docs/engineering/integration-20260930/snapshots/681935D0-C038-4137-A6AD-7E493DEC290E.png",
+    "docs/engineering/integration-20260930/snapshots/6EEB7AFF-5B19-4A71-ADC3-7D38C2020840.png",
+    "docs/engineering/integration-20260930/snapshots/85C7332A-993B-4CC3-88C9-ACC455561F7C.png",
+    "docs/engineering/integration-20260930/snapshots/A4363798-3F59-4945-925A-B0A003961CB9.png",
+    "docs/engineering/integration-20260930/snapshots/ACBE4034-3E3F-4EEE-9591-F413704F25F2.png",
+    "docs/engineering/integration-20260930/snapshots/BE3DB101-93A1-4EE8-B92B-0EA1E631694C.png",
+    "docs/engineering/integration-20260930/snapshots/D69D068B-55FC-4880-8837-4E9C51C37858.png",
+    "docs/engineering/integration-20260930/snapshots/ECFD66D8-636B-4996-8C63-D4A105AFA146.png",
+    "docs/engineering/integration-20260930/snapshots/F489FE01-6F21-4B0B-B873-742505B7A564.png"
+  ],
+  "note": "Screenshots remain in the preserved local candidate source archive. No new binary screenshot data is published."
+}

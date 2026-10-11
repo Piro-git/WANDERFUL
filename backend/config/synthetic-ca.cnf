@@ -1,0 +1,14 @@
+# Only for ephemeral test/preflight certificates, never a production trust anchor.
+# An explicit config avoids duplicate basicConstraints from host OpenSSL defaults.
+[req]
+distinguished_name = synthetic_dn
+prompt = no
+
+[synthetic_dn]
+CN = TrailMind Synthetic CA
+
+[synthetic_ca]
+basicConstraints = critical,CA:TRUE
+keyUsage = critical,keyCertSign,cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always

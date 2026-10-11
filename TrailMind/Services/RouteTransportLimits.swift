@@ -41,17 +41,19 @@ extension CodingUserInfoKey {
 struct BoundedRouteHTTPTransport: Sendable {
     private let session: URLSession
     private let limits: RouteTransportLimits
+    private let rejectsRedirects: Bool
 
-    init(session: URLSession, limits: RouteTransportLimits) {
+    init(session: URLSession, limits: RouteTransportLimits, rejectsRedirects: Bool = false) {
         self.session = session
         self.limits = limits
+        self.rejectsRedirects = rejectsRedirects
     }
 
     /// Reads the response incrementally. Content-Length is an early rejection
     /// hint only; the received byte count is always enforced as the authority.
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         try Task.checkCancellation()
-        let (bytes, response) = try await session.bytes(for: request)
+        let (bytes, response) = try await session.bytes(for: request, delegate: rejectsRedirects ? BackendRedirectBlocker() : nil)
         try Task.checkCancellation()
 
         let maximumBytes: Int
@@ -84,5 +86,14 @@ struct BoundedRouteHTTPTransport: Sendable {
 
         try Task.checkCancellation()
         return (data, response)
+    }
+}
+
+/// Attestation material and session credentials stay at the reviewed origin.
+final class BackendRedirectBlocker: NSObject, URLSessionTaskDelegate, Sendable {
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        completionHandler(nil)
     }
 }

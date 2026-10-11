@@ -15,7 +15,7 @@ Evidence date: 2026-07-17
 | Device family | iPhone (`TARGETED_DEVICE_FAMILY = 1`) | iPhone only; iPad is not declared |
 | Orientation | Portrait only | No iPad or landscape claims/assets |
 | Appearance | Forced light appearance | Closed beta is light-only; dark appearance remains a public-release decision/gate |
-| Language/region | English interface, deterministic English errors, routing instructions requested with locale `en`, and Germany-biased unqualified geocoding | Germany-first English-interface closed beta; German and English route prompts are accepted, but the interface is not German-localized |
+| Language/region | Verify interface language, prompt support, routing instruction locale, and place resolution against the candidate build | Product scope is any supported, resolved place; no Harz/Germany-first requirement or worldwide-coverage claim. Distribution territories and localization require separate confirmation |
 | Category | Navigation | Must be confirmed in App Store Connect against the planning-aid scope |
 | Release intent parser | Local rule-based parser selected by the Release factory | Remote providers and their client endpoint are Debug-only and excluded from Release compilation; metadata must not claim remote AI |
 | Routing path | TrailMind backend → GraphHopper | Provider credential remains backend-only |
@@ -82,7 +82,7 @@ Remote AI provider variables are not required because remote parsing does not co
 - Public support and privacy URLs.
 - Final light-only disposition for public release.
 - Final supported iPhone hardware matrix.
-- Owner approval of the Germany-first English-interface beta territory, primary locale, and reviewer path; a fully German-localized interface is not present.
+- Owner approval of distribution territories, primary locale, and reviewer path based on the candidate build’s verified coverage and localization; no region is a product prerequisite.
 
 ## Preflight invariants
 

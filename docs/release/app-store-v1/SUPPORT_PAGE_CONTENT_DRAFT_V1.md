@@ -1,7 +1,11 @@
+> Superseded release scope (2026-09-10): current support copy is in [public-site/support/index.html](public-site/support/index.html); current claims and unresolved inputs are in [LAUNCH_V4_CURRENT_PACKAGE.md](LAUNCH_V4_CURRENT_PACKAGE.md). The historical disabled-AI statements below must not be published.
+
 # Wanderful Support Page Content Draft V1
 
 Status: **DRAFT — NOT HOSTED**
 Source baseline: `21f8450c976252210edf03389dc1b682d2440450`
+
+This file is retained as the historical drafting baseline. The deployable, fail-closed support template and validator are in `public-site`; do not publish until its owner inputs and launch-boundary statements are approved.
 
 This is source-derived page copy, not a live support service. All bracketed `OWNER REQUIRED` fields must be supplied and verified before publication. No email address, domain, operator, legal address, response time or service-level promise is invented.
 

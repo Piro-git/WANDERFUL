@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "03a430f17cbee03cc4017fee7c5e2022604c6027",
+  "backendCommit": "e03e113",
+  "appCommit": "cfd4a79",
+  "normalResearchIntegrationImplemented": true,
+  "deploymentState": "not_deployed",
+  "publicBackendURL": null,
+  "normalAppReleaseBuild": "passed_unsigned_iphonesimulator_arm64_final; arm64_and_x86_64_before_local_authorizer_followup",
+  "nativeXCTests": {
+    "passed": 114,
+    "failed": 0,
+    "configuration": "Debug",
+    "simulator": "iOS 26.5",
+    "signing": "ad_hoc",
+    "execution": "test-without-building_after_successful_test_build",
+    "releaseOnlyFactoryTestExecuted": false
+  },
+  "backendOfflineTests": {
+    "passed": 112,
+    "failed": 0,
+    "skipped": 0
+  },
+  "normalBundleSecretScan": "passed_structural_and_known_patterns",
+  "physicalIPhoneUpdated": false,
+  "liveProviderCalls": 0,
+  "ownerTestCredentialsRead": false,
+  "localXcconfigRead": false,
+  "databaseReadOnlyEvidence": {
+    "project": "TrailMind Outdoor Staging V1",
+    "status": "ACTIVE_HEALTHY",
+    "appAttestTables": 6,
+    "runtimeRoleExists": true,
+    "runtimeRoleCanLogin": true,
+    "runtimeRoleHasElevatedFlags": false,
+    "expectedTableDMLMatrixMatches": true,
+    "rlsEnabledOnAllAppAttestTables": true,
+    "authenticatedRuntimeConnectionAndFullAdmissionVerified": false
+  },
+  "externalPrerequisites": [
+    "Accessible authorized hosting service and stable HTTPS origin",
+    "Platform-scoped deployment secrets and verified database CA connection",
+    "Current App Attest-enabled signing identity and end-to-end physical-device proof",
+    "Explicit live provider allowance with current quota confirmation"
+  ],
+  "followupCommit": "2b42bfa"
+}

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "bundleIdentifier": "com.trailmind.app",
+  "environment": "production",
+  "decision": "pass",
+  "findingCategories": [],
+  "limitation": "Structural and known-pattern scan; not proof of absence of every possible credential format."
+}

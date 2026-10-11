@@ -81,7 +81,7 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
 
     private func perform(_ routeRequest: BackendRouteRequest, mayRefresh: Bool) async throws -> Data {
         guard let baseURL, let endpoint = URL(string: "api/route", relativeTo: baseURL)?.absoluteURL else {
-            throw AppAttestServiceError.networkUnavailable
+            throw AppAttestServiceError.configurationUnavailable
         }
         let authorization = try await authorizer.authorization(cost: routeRequest.weightedCost)
         var request = URLRequest(url: endpoint)
@@ -151,6 +151,18 @@ struct BackendRouteGateway: BackendRouteGatewayRouting, Sendable {
         message _: String?
     ) -> Error {
         switch code {
+        case "route_distance_limit":
+            return GraphHopperError.planningFailure(.distanceLimit)
+        case "invalid_coordinates":
+            return GraphHopperError.planningFailure(.invalidPlaces)
+        case "unsupported_profile", "unsupported_algorithm":
+            return GraphHopperError.planningFailure(.unsupportedRoute)
+        case "routing_rate_limited":
+            return GraphHopperError.planningFailure(.busy)
+        case "routing_unavailable", "configuration_missing":
+            return GraphHopperError.planningFailure(.unavailable)
+        case "invalid_request", "request_too_large":
+            return GraphHopperError.planningFailure(.invalidRequest)
         case "route_not_found":
             return GraphHopperError.noRouteFound
         case "flexible_mode_unavailable":

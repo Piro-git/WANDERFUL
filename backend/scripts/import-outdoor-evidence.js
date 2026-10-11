@@ -5,6 +5,7 @@ import { stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { libpqEnvironment } from "../src/outdoorEvidence/libpqEnvironment.js";
 import {
   acquireOutdoorCapacityAdmission,
   OutdoorCapacityAdmissionError,
@@ -16,7 +17,13 @@ const { Pool } = pg;
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 try {
 const args = parseArguments(process.argv.slice(2));
-const regionOptions = args.stagingProfile
+const localRegionDirectory = process.env.TRAILMIND_LOCAL_PILOT_REGION_DIRECTORY;
+if (localRegionDirectory && process.env.TRAILMIND_OWNER_LOCAL_PILOT !== "isolated-unix-v1") {
+  fail("Local pilot region directory requires explicit local-only mode.");
+}
+const regionOptions = localRegionDirectory
+  ? { directory: localRegionDirectory }
+  : args.stagingProfile
   ? { directory: stagingProfileRegionDirectory(args.stagingProfile) }
   : {};
 const region = outdoorRegionDefinition(args.region, regionOptions);
@@ -43,6 +50,15 @@ const suppliedSourceTimestamp = requiredDate(args.sourceTimestamp, "source-times
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!connectionString) fail("DATABASE_URL or POSTGRES_URL is required.");
 const postgresURL = validatePostgresURL(connectionString);
+libpqEnvironment(postgresURL); // Validate before any database side effect.
+if (localRegionDirectory && (
+    postgresURL.pathname !== "/wanderful_local_pilot" ||
+    postgresURL.port !== "55439" ||
+    !postgresURL.searchParams.get("host")?.startsWith("/private/tmp/wf-ilsenburg-local-") ||
+    resolve(localRegionDirectory) !== resolve(postgresURL.searchParams.get("host") || "", "../regions") ||
+    args.stagingProfile ||
+    postgresURL.username !== "regional_import_role" || postgresURL.password
+)) fail("Local pilot requires its task-owned Unix socket and scoped import identity.");
 
 const osm2pgsqlVersion = await toolVersion(
   "osm2pgsql", ["--version"], /osm2pgsql version (\d+)\.(\d+)/i, 2, 3
@@ -109,6 +125,7 @@ try {
   process.stdout.write(`Outdoor evidence import ${importId} started for ${region.regionId}.\n`);
   await runTool("osm2pgsql", [
     "--create", "--slim", "--output=flex", "--drop",
+    ...(localRegionDirectory ? ["--number-processes=1"] : []),
     `--style=${join(root, "src", "outdoorEvidence", "osm2pgsql-flex.lua")}`,
     `--schema=${stagingSchema}`,
     `--middle-schema=${stagingSchema}`,
@@ -464,17 +481,6 @@ function runTool(command, arguments_, options = {}) {
       else rejectPromise(new Error(`${command} exited unsuccessfully.`));
     });
   });
-}
-
-function libpqEnvironment(url) {
-  return {
-    PGHOST: url.hostname,
-    PGPORT: url.port || "5432",
-    PGDATABASE: decodeURIComponent(url.pathname.slice(1)),
-    PGUSER: decodeURIComponent(url.username),
-    PGPASSWORD: decodeURIComponent(url.password),
-    PGSSLMODE: url.searchParams.get("sslmode") || "prefer"
-  };
 }
 
 function validatePostgresURL(value) {

@@ -1,3 +1,4 @@
+import { validateDynamicResearchConfiguration } from "../src/operations/productionConfiguration.js";
 import { createHash } from "node:crypto";
 import {
   applicationSchemaConfiguration,
@@ -58,6 +59,14 @@ export class StagingAdmissionError extends Error {
 
 export function evaluateStagingContainerEnvironment(env = process.env, options = {}) {
   const checks = [];
+  const dynamic = env.TRAILMIND_RUNTIME_PROFILE === "dynamic-research-v1";
+  const dynamicFlags = new Set(["ROUTE_PROVIDER_ENABLED", "INTENT_PROVIDER_ENABLED", "LLM_FIRST_PLANNING_ENABLED", "DYNAMIC_RESEARCH_ENABLED", "DYNAMIC_WEB_RESEARCH_ENABLED"]);
+  checkProfile();
+  function checkProfile() {
+    if (env.TRAILMIND_RUNTIME_PROFILE !== undefined && env.TRAILMIND_RUNTIME_PROFILE !== "staging-off-v1" && !dynamic) {
+      checks.push({ id: "runtime_profile", status: "fail" });
+    }
+  }
   const check = (id, operation) => {
     try {
       operation();
@@ -71,11 +80,18 @@ export function evaluateStagingContainerEnvironment(env = process.env, options =
     requiredExact(env.NODE_ENV, "production");
     requiredExact(env.TRAILMIND_RELEASE_STAGE, "staging");
   });
-  check("all_capabilities_disabled", () => {
-    for (const name of EXACT_FALSE_FLAGS) requiredExact(env[name], "false");
+  check(dynamic ? "dynamic_capabilities_authorized" : "all_capabilities_disabled", () => {
+    for (const name of [...EXACT_FALSE_FLAGS, "LLM_FIRST_PLANNING_ENABLED", "DYNAMIC_RESEARCH_ENABLED", "DYNAMIC_WEB_RESEARCH_ENABLED"]) {
+      if (!dynamic && ["LLM_FIRST_PLANNING_ENABLED", "DYNAMIC_RESEARCH_ENABLED", "DYNAMIC_WEB_RESEARCH_ENABLED"].includes(name) && env[name] === undefined) continue;
+      requiredExact(env[name], dynamic && dynamicFlags.has(name) ? "true" : "false");
+    }
+    if (dynamic) validateDynamicResearchConfiguration(env);
   });
   check("web_process_secret_minimization", () => {
-    for (const name of FORBIDDEN_WEB_PROCESS_VALUES) requiredAbsent(env[name]);
+    for (const name of FORBIDDEN_WEB_PROCESS_VALUES) {
+      if (dynamic && ["GOOGLE_API_KEY", "GRAPHHOPPER_API_KEY"].includes(name)) continue;
+      requiredAbsent(env[name]);
+    }
   });
   check("node_process_hardening", () => {
     const execArgv = options.execArgv ?? process.execArgv;
@@ -111,7 +127,7 @@ export function evaluateStagingContainerEnvironment(env = process.env, options =
     checks,
     capabilities: EXACT_FALSE_FLAGS.slice(0, 5).map((name) => ({
       id: name.toLowerCase(),
-      state: "disabled"
+      state: dynamic && dynamicFlags.has(name) ? "enabled" : "disabled"
     }))
   });
 }

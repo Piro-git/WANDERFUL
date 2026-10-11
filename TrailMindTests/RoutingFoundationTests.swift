@@ -115,6 +115,44 @@ private final class StubGraphHopperRouteClient: GraphHopperRouteCalculating {
 
 @MainActor
 final class RoutingFoundationTests: XCTestCase {
+    func testUnrequestedEndpointDistanceDoesNotRejectMappedRoute() async throws {
+        let route = Self.route(distanceKm: 2, path: Self.pointToPointPath(), routeType: .pointToPoint)
+        let provider = StubRoutingProvider(result: .success([RouteSuggestion(route: route, explanation: "Test")]))
+        let coordinator = RoutingCoordinator(primaryProvider: provider, loopFallbackProvider: provider)
+        var request = RoutePlanningRequest(routeType: .pointToPoint, startQuery: "Brandenburger Tor, Berlin", endQuery: "Siegessäule, Berlin", activityType: .hiking, graphHopperProfile: "foot", targetDistanceKm: 12, targetDurationMinutes: 180, difficulty: nil, desiredFeatures: [])
+        request.retainExplicitEndpointTargets(comfortWasSpecified: false)
+        XCTAssertNil(request.targetDistanceKm)
+        XCTAssertNil(request.targetDurationMinutes)
+        let result = try await coordinator.routeSuggestions(for: RouteIntent(request: request, start: Self.start, end: Self.pointToPointPath().last))
+        XCTAssertEqual(result.suggestions.count, 1)
+        XCTAssertEqual(result.suggestions.first?.route.distanceKilometers, 2)
+    }
+
+    func testExplicitEndpointTargetsAndLoopDefaultsArePreserved() {
+        var explicit = RoutePlanningRequest(routeType: .pointToPoint, startQuery: "A", endQuery: "B", activityType: .hiking, graphHopperProfile: "foot", targetDistanceKm: 12, targetDurationMinutes: 180, difficulty: nil, desiredFeatures: [])
+        explicit.retainExplicitEndpointTargets(comfortWasSpecified: true)
+        XCTAssertEqual(explicit.targetDistanceKm, 12)
+        XCTAssertEqual(explicit.targetDurationMinutes, 180)
+        var loop = Self.request(routeType: .loop, endQuery: nil, targetDistanceKm: 12)
+        loop.retainExplicitEndpointTargets(comfortWasSpecified: false)
+        XCTAssertEqual(loop.targetDistanceKm, 12)
+    }
+
+    func testPointToPointDistanceRejectionPreservesReason() async throws {
+        let route = Self.route(distanceKm: 2, path: Self.pointToPointPath(), routeType: .pointToPoint)
+        let provider = StubRoutingProvider(result: .success([RouteSuggestion(route: route, explanation: "Test")]))
+        let coordinator = RoutingCoordinator(primaryProvider: provider, loopFallbackProvider: provider)
+        do {
+            _ = try await coordinator.routeSuggestions(for: RouteIntent(
+                request: RoutePlanningRequest(routeType: .pointToPoint, startQuery: "Ilsenburg", endQuery: "Schierke", activityType: .hiking, graphHopperProfile: "foot", targetDistanceKm: 12, targetDurationMinutes: nil, difficulty: nil, desiredFeatures: []),
+                start: Self.start, end: Self.pointToPointPath().last
+            ))
+            XCTFail("Expected a distance mismatch")
+        } catch let error as RoutingError {
+            XCTAssertEqual(error, .qualityRejected(.distanceOutsideEnvelope))
+        }
+    }
+
     func testFlexibleModeErrorDetectionMatchesFreePlanMessage() {
         let error = GraphHopperError.api(
             statusCode: 400,
@@ -306,7 +344,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertEqual(
             result.notice,
-            "Wanderful found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct routed loop options from the same start for comparison."
         )
     }
 
@@ -335,7 +373,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertEqual(fallback.requestedIntents.count, 1)
         XCTAssertEqual(
             result.notice,
-            "Wanderful found distinct real loop options from the same start for comparison."
+            "Wanderful found distinct routed loop options from the same start for comparison."
         )
     }
 
@@ -1193,7 +1231,7 @@ final class RoutingFoundationTests: XCTestCase {
         XCTAssertFalse(explanationText.localizedCaseInsensitiveContains("view"))
         XCTAssertFalse(explanationText.localizedCaseInsensitiveContains("forest"))
         XCTAssertFalse(explanationText.localizedCaseInsensitiveContains("quiet"))
-        XCTAssertEqual(metadata.requestedFeatureSummary, "Requested: Views, Forest, Quiet route")
+        XCTAssertEqual(metadata.requestedFeatureSummary, "Preferences: Views, Forest, Quiet route")
     }
 
     func testPairwiseSimilarityRejectsReversedResampledAndSmallOffsetCopies() {

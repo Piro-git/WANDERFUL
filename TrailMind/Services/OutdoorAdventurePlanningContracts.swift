@@ -540,21 +540,94 @@ struct AdventureResearchIntentV1: Encodable, Equatable, Sendable {
     }
 }
 
+struct ResearchLedPlanningContext: Encodable, Equatable, Sendable {
+    let maximumDistanceKm: Double?
+    let maximumDurationMinutes: Double?
+    let maximumElevationGainMeters: Double?
+    let distanceOrigin: String
+    let preferenceOrigin: String
+    let hardAvoidances: [String]
+    let requiresConstraintClarification: Bool
+
+    static let unspecified = Self(maximumDistanceKm: nil, maximumDurationMinutes: nil,
+        distanceOrigin: "planner_suggestion", preferenceOrigin: "planner_suggestion")
+
+    init(maximumDistanceKm: Double?, maximumDurationMinutes: Double?,
+         distanceOrigin: String, preferenceOrigin: String, hardAvoidances: [String] = [], maximumElevationGainMeters: Double? = nil) {
+        self.maximumElevationGainMeters = maximumElevationGainMeters
+        self.maximumDistanceKm = maximumDistanceKm
+        self.maximumDurationMinutes = maximumDurationMinutes
+        self.distanceOrigin = distanceOrigin
+        self.preferenceOrigin = preferenceOrigin
+        self.hardAvoidances = hardAvoidances
+        self.requiresConstraintClarification = false
+    }
+
+    init(intent: ValidatedAdventureIntent, distanceFromProfile: Bool, preferencesFromProfile: Bool) {
+        let constraints = ResearchPromptConstraints(prompt: intent.rawPrompt)
+        hardAvoidances = constraints.hardAvoidances
+        maximumElevationGainMeters = constraints.maximumElevationGainMeters
+        maximumDistanceKm = constraints.maximumDistanceKm
+        maximumDurationMinutes = constraints.maximumDurationMinutes
+        requiresConstraintClarification = constraints.requiresClarification
+        distanceOrigin = intent.preferenceExplicitness.comfortableOuting == .specified
+            ? "prompt" : distanceFromProfile ? "saved_profile" : "planner_suggestion"
+        preferenceOrigin = intent.preferenceExplicitness.requestedExperiences == .specified
+            ? "prompt" : preferencesFromProfile ? "saved_profile" : "planner_suggestion"
+    }
+
+    func accepts(distanceKilometers: Double, durationHours: Double) -> Bool {
+        (maximumDistanceKm.map { distanceKilometers <= $0 } ?? true) &&
+        (maximumDurationMinutes.map { durationHours * 60 <= $0 } ?? true)
+    }
+
+    func explanation(targetDistanceKm: Double?, actualDistanceKm: Double?) -> String {
+        var parts = [preferenceOrigin == "saved_profile"
+            ? "Preferences include your saved hiking profile."
+            : preferenceOrigin == "prompt" ? "Stops were matched to preferences in this request."
+            : "Stops were suggested by the planner using available evidence."]
+        if let maximumDistanceKm {
+            parts.append(String(format: "Maximum distance: %.1f km.", maximumDistanceKm))
+        } else if let targetDistanceKm, let actualDistanceKm,
+                  abs(actualDistanceKm - targetDistanceKm) > 0.1 {
+            parts.append(String(format: "The mapped itinerary is %.1f km for an approximate %.1f km target, connecting the selected stops.", actualDistanceKm, targetDistanceKm))
+        }
+        parts.append("Mapped approaches do not verify current access or visibility.")
+        return parts.joined(separator: " ")
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case maximumDistanceKm, maximumDurationMinutes, distanceOrigin, preferenceOrigin, hardAvoidances
+    }
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(maximumDistanceKm, forKey: .maximumDistanceKm)
+        try container.encode(maximumDurationMinutes, forKey: .maximumDurationMinutes)
+        try container.encode(distanceOrigin, forKey: .distanceOrigin)
+        try container.encode(preferenceOrigin, forKey: .preferenceOrigin)
+        try container.encode(hardAvoidances, forKey: .hardAvoidances)
+    }
+}
+
 struct OutdoorAdventurePlanningRequestV1: Encodable, Equatable, Sendable {
     let schemaVersion = 1
     let intent: AdventureResearchIntentV1
+    let planningContext: ResearchLedPlanningContext?
 
-    init(intent: AdventureResearchIntentV1) {
+    init(intent: AdventureResearchIntentV1, planningContext: ResearchLedPlanningContext? = nil) {
         self.intent = intent
+        self.planningContext = planningContext
     }
 }
 
 struct OutdoorAdventurePlanningRequestV2: Encodable, Equatable, Sendable {
     let schemaVersion = 2
     let intent: AdventureResearchIntentV1
+    let planningContext: ResearchLedPlanningContext?
 
-    init(intent: AdventureResearchIntentV1) {
+    init(intent: AdventureResearchIntentV1, planningContext: ResearchLedPlanningContext? = nil) {
         self.intent = intent
+        self.planningContext = planningContext
     }
 }
 
@@ -659,6 +732,7 @@ enum OutdoorAdventurePlanningClientFailure: LocalizedError, Equatable, Sendable 
     case rateLimited
     case timedOut
     case rejected
+    case noAcceptableRoute
     case invalidResponse
     case responseTooLarge
 
@@ -666,6 +740,8 @@ enum OutdoorAdventurePlanningClientFailure: LocalizedError, Equatable, Sendable 
         switch self {
         case .invalidRequest, .requestTooLarge, .rejected:
             "Wanderful couldn’t use this planning request."
+        case .noAcceptableRoute:
+            "The checked routes did not provide a fitting plan in this attempt. Try adjusting your wishes; your hard limits were kept."
         case .authorizationFailed:
             "Wanderful couldn’t authorize outdoor planning."
         case .rateLimited:

@@ -1,5 +1,7 @@
 # App Attest Physical-Device Proof V1
 
+> V1 status (2026-08-30): recommended post-signing operational QA, not a standalone blocker for the current App Store V1 audit. No physical iPhone was available through the configured workflow.
+
 Status: **NOT RUN — real iPhone and distributed build required**
 Blocker: `ASV1-010`
 

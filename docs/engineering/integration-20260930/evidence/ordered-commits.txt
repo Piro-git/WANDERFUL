@@ -1,0 +1,6 @@
+e6a1ad120ae297d2483c68223687468664f61260 Show verified stop photos in route comparison cards
+51d5296e0a4a7e6aa20cc90bc8657a8838e93455 Measure card photo stop distance to route segments
+b41cba4f41f66622fad3dd605250a7d589fdcfe4 Coordinate MET weather cache and rate across backend instances
+f886027ededc8da7bfae484a8f7553fdc456d51e Document weather cache pilot capacity gate
+b5dfdad6a7931330669d2fa58240014802727dba Correct weather preflight search path and block incompatible migration
+3e724597828f0ece6136e321e052da4b06b3539f Bound card photo loading and verify accessible route previews

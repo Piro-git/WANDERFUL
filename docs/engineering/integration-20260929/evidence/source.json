@@ -1,0 +1,8 @@
+{
+  "branch": "codex/integrated-candidate-20260929",
+  "tested_source_commit": "3e21da6abc5d3638f72b104969a9f3d805ad5914",
+  "backend_tree": "d246e0d211c105da828658994c2cbb364af46ede",
+  "weather_enabled": false,
+  "deployed": false,
+  "physical_device_installed": false
+}

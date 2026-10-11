@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 3,
+  "state": "routed",
+  "route": {
+    "accepted": true,
+    "geometryProvider": "graphhopper",
+    "path": {
+      "distance": 6556.776102417882,
+      "time": 5463980,
+      "points": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -4.7,
+            57.2
+          ],
+          [
+            -4.68,
+            57.21
+          ],
+          [
+            -4.7,
+            57.22
+          ],
+          [
+            -4.72,
+            57.21
+          ],
+          [
+            -4.7,
+            57.2
+          ]
+        ]
+      },
+      "instructions": [
+        {
+          "text": "Continue",
+          "distance": 6556.776102417882,
+          "time": 5463980,
+          "interval": [
+            0,
+            4
+          ],
+          "sign": 0
+        }
+      ],
+      "ascend": 100,
+      "descend": 100,
+      "details": {
+        "surface": [],
+        "road_class": [
+          [
+            0,
+            4,
+            "path"
+          ]
+        ],
+        "hike_rating": []
+      }
+    },
+    "statistics": {
+      "distanceMeters": 6556.776102417882,
+      "durationSeconds": 5463.98,
+      "elevationGainMeters": 100
+    },
+    "waypointChecks": [
+      {
+        "waypointIndex": 0,
+        "snapDistanceMeters": 0,
+        "routeApproachMeters": 0,
+        "routePointIndex": 0
+      },
+      {
+        "waypointIndex": 1,
+        "snapDistanceMeters": 0,
+        "routeApproachMeters": 0,
+        "routePointIndex": 1
+      },
+      {
+        "waypointIndex": 2,
+        "snapDistanceMeters": 0,
+        "routeApproachMeters": 0,
+        "routePointIndex": 2
+      },
+      {
+        "waypointIndex": 3,
+        "snapDistanceMeters": 0,
+        "routeApproachMeters": 0,
+        "routePointIndex": 3
+      },
+      {
+        "waypointIndex": 4,
+        "snapDistanceMeters": 0,
+        "routeApproachMeters": 0,
+        "routePointIndex": 4
+      }
+    ],
+    "metrics": {
+      "targetDeviationRatio": null,
+      "detourRatio": 1,
+      "backtrackingRatio": 0
+    },
+    "limitations": [
+      "Routes are planning aids. Check weather, local rules, trail conditions and water availability.",
+      "Mapped place categories do not verify current views, access or safety."
+    ],
+    "explanation": "Gemini selected and ordered sourced places. GraphHopper measured 6.6 km against your requested 6 km.",
+    "places": [
+      {
+        "id": "osm:node:1",
+        "name": "Offline source fixture 1",
+        "category": "viewpoint",
+        "coordinate": {
+          "latitude": 57.21,
+          "longitude": -4.68
+        },
+        "wikidataId": null,
+        "photo": null,
+        "source": {
+          "provider": "openstreetmap",
+          "url": "https://www.openstreetmap.org/node/1",
+          "license": "ODbL-1.0",
+          "attribution": "© OpenStreetMap contributors",
+          "version": 1,
+          "updatedAt": "2020-01-01T00:00:00.000Z",
+          "retrievedAt": "2026-09-07T00:00:00.000Z",
+          "snapshotAt": "2026-09-07T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "osm:node:2",
+        "name": "Offline source fixture 2",
+        "category": "viewpoint",
+        "coordinate": {
+          "latitude": 57.22,
+          "longitude": -4.7
+        },
+        "wikidataId": null,
+        "photo": null,
+        "source": {
+          "provider": "openstreetmap",
+          "url": "https://www.openstreetmap.org/node/2",
+          "license": "ODbL-1.0",
+          "attribution": "© OpenStreetMap contributors",
+          "version": 1,
+          "updatedAt": "2020-01-01T00:00:00.000Z",
+          "retrievedAt": "2026-09-07T00:00:00.000Z",
+          "snapshotAt": "2026-09-07T00:00:00.000Z"
+        }
+      },
+      {
+        "id": "osm:node:3",
+        "name": "Offline source fixture 3",
+        "category": "viewpoint",
+        "coordinate": {
+          "latitude": 57.21,
+          "longitude": -4.72
+        },
+        "wikidataId": null,
+        "photo": null,
+        "source": {
+          "provider": "openstreetmap",
+          "url": "https://www.openstreetmap.org/node/3",
+          "license": "ODbL-1.0",
+          "attribution": "© OpenStreetMap contributors",
+          "version": 1,
+          "updatedAt": "2020-01-01T00:00:00.000Z",
+          "retrievedAt": "2026-09-07T00:00:00.000Z",
+          "snapshotAt": "2026-09-07T00:00:00.000Z"
+        }
+      }
+    ],
+    "plannerSource": "gemini_tools",
+    "routeId": "measured-2",
+    "webResearch": {
+      "provider": "google_grounding",
+      "retrievedAt": "2026-09-07T00:00:00Z",
+      "observedSearchQueries": 1,
+      "blocks": [
+        {
+          "text": "🥾 Selected map record. Earlier ridge is an alternative. é 山",
+          "citations": [
+            {
+              "url": "https://www.openstreetmap.org/node/1",
+              "title": "Selected record (synthetic)",
+              "startIndex": 3,
+              "endIndex": 23
+            },
+            {
+              "url": "https://www.openstreetmap.org/node/4",
+              "title": "Earlier record (synthetic)",
+              "startIndex": 24,
+              "endIndex": 56
+            },
+            {
+              "url": "https://park.example.org/context",
+              "title": "Unassigned context (synthetic)",
+              "startIndex": 0,
+              "endIndex": 61
+            }
+          ]
+        }
+      ],
+      "searchSuggestions": [
+        "<div>Offline Google suggestions fixture</div>"
+      ],
+      "retrievedSourceURLs": [
+        "https://www.openstreetmap.org/node/1",
+        "https://www.openstreetmap.org/node/4",
+        "https://park.example.org/context"
+      ],
+      "routeEvidence": {
+        "schemaVersion": 1,
+        "routeId": "measured-2",
+        "places": [
+          {
+            "placeId": "osm:node:1",
+            "name": "Offline source fixture 1",
+            "sourceURL": "https://www.openstreetmap.org/node/1",
+            "selection": "selected"
+          },
+          {
+            "placeId": "osm:node:2",
+            "name": "Offline source fixture 2",
+            "sourceURL": "https://www.openstreetmap.org/node/2",
+            "selection": "selected"
+          },
+          {
+            "placeId": "osm:node:3",
+            "name": "Offline source fixture 3",
+            "sourceURL": "https://www.openstreetmap.org/node/3",
+            "selection": "selected"
+          },
+          {
+            "placeId": "osm:node:4",
+            "name": "Earlier ridge (offline fixture)",
+            "sourceURL": "https://www.openstreetmap.org/node/4",
+            "selection": "excluded"
+          }
+        ],
+        "claims": [
+          {
+            "id": "b0-c0",
+            "blockIndex": 0,
+            "citationIndex": 0,
+            "placeId": "osm:node:1",
+            "relationship": "source_identity"
+          },
+          {
+            "id": "b0-c1",
+            "blockIndex": 0,
+            "citationIndex": 1,
+            "placeId": "osm:node:4",
+            "relationship": "source_identity"
+          },
+          {
+            "id": "b0-c2",
+            "blockIndex": 0,
+            "citationIndex": 2,
+            "placeId": null,
+            "relationship": "unconfirmed"
+          }
+        ]
+      }
+    },
+    "qualityReview": {
+      "schemaVersion": 1,
+      "decision": "complete",
+      "summary": "The measured route connects the final selected stops; the earlier ridge is excluded.",
+      "remainingWishes": [
+        "Current access and requested scenery remain unverified."
+      ],
+      "evidenceIds": [
+        "osm:node:1",
+        "osm:node:2",
+        "osm:node:3"
+      ]
+    }
+  }
+}

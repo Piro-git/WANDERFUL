@@ -87,6 +87,42 @@ export function validateResearchGuidedRouteCandidatePlanV2(input) {
   }
 }
 
+// Select only evidence/access-validated members of one supported candidate set.
+// The LLM controls inclusion and order; it cannot supply coordinates or claims.
+export function materializeResearchItineraryV2(planInput, selection) {
+  const plan = validateResearchGuidedRouteCandidatePlanV2(planInput);
+  if (!selection || !["orderedStopIds,proposalId", "orderedStopIds,proposalId,stopReasons"].includes(Object.keys(selection).sort().join(",")) ||
+      !Array.isArray(selection.orderedStopIds) || selection.orderedStopIds.length < 1 ||
+      selection.orderedStopIds.length > 3 ||
+      new Set(selection.orderedStopIds).size !== selection.orderedStopIds.length) invalid();
+  const original = plan.proposals.find(p => p.proposalId === selection.proposalId);
+  if (!original) invalid();
+  if (selection.stopReasons !== undefined && (!Array.isArray(selection.stopReasons) ||
+      selection.stopReasons.length !== selection.orderedStopIds.length ||
+      new Set(selection.stopReasons.map(r => r?.stopId)).size !== selection.stopReasons.length)) invalid();
+  const selected = selection.orderedStopIds.map(id => {
+    const item = original.selectedHighlights.find(h => h.entityId === id);
+    if (!item) invalid();
+    if (selection.stopReasons === undefined) return item;
+    const reason = selection.stopReasons.find(r => r.stopId === id);
+    if (!reason || Object.keys(reason).sort().join(",") !== "evidenceClaimIds,reasonCode,stopId" ||
+        !item.selectionReasons.includes(reason.reasonCode) || !Array.isArray(reason.evidenceClaimIds) ||
+        reason.evidenceClaimIds.length === 0 || reason.evidenceClaimIds.length > 32 ||
+        new Set(reason.evidenceClaimIds).size !== reason.evidenceClaimIds.length ||
+        reason.evidenceClaimIds.some(claimId => !item.evidenceClaimIds.includes(claimId))) invalid();
+    return { ...item, selectionReasons: [reason.reasonCode] };
+  });
+  if (original.selectedHighlights.some(h => isHardRole(h.role) &&
+      !selection.orderedStopIds.includes(h.entityId))) invalid();
+  return materializedProposal({
+    sourcePlan: plan.sourcePlan,
+    sourceProposal: plan.sourcePlan.proposals.find(p => p.proposalId === original.sourceProposalId),
+    selected,
+    riskState: original.backtrackingRisk.state,
+    riskyEntityIds: original.backtrackingRisk.riskyEntityIds
+  });
+}
+
 export function serializeResearchGuidedRouteCandidatePlanV2(input) {
   return canonical(validateResearchGuidedRouteCandidatePlanV2(input));
 }

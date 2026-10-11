@@ -34,4 +34,30 @@ describe("intent server", () => {
     assert.equal("path" in result.payload, false);
     assert.equal("coordinates" in result.payload, false);
   });
+
+  it("dispatches POST /api/llm-plan-route through the injected boundary", async () => {
+    const calls = [];
+    const result = await handleIntentHttpRequest(
+      {
+        method: "POST",
+        url: "/api/llm-plan-route",
+        body: { schemaVersion: 1 },
+        headers: { authorization: "TrailMindRouteSession opaque" },
+        requestId: "11111111-1111-4111-8111-111111111111"
+      },
+      {
+        llmFirstPlanningEndpoint: async (body, context) => {
+          calls.push({ body, context });
+          return { statusCode: 200, payload: { state: "recovery" } };
+        }
+      }
+    );
+
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.payload.state, "recovery");
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].body, { schemaVersion: 1 });
+    assert.equal(calls[0].context.requestId, "11111111-1111-4111-8111-111111111111");
+    assert.equal("prompt" in calls[0].context, false);
+  });
 });

@@ -1,0 +1,87 @@
+Initial checkpoint and follow-up history; final executed XCTest evidence appears below.
+
+2026-09-26, base c2ed264988a3a2ebc3f9bbe5d6a2f61324c449ff
+No credentials, personal data, production transactions or live accounts used.
+
+node --test backend/test/appleSignIn.test.js
+PASS: tests 6; fail 0; skipped 0. Isolated fixtures, NOT Apple runtime.
+
+XcodeBuildMCP build_sim Debug CODE_SIGNING_ALLOWED=NO
+PASS (94.7 seconds). Existing UIWindow init deprecation warning.
+
+xcodebuild -project TrailMind.xcodeproj -scheme TrailMind -configuration Debug \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build-for-testing
+PASS: TEST BUILD SUCCEEDED. Compiles tests; does NOT execute tests.
+Log: /private/tmp/wanderful-account-build-for-testing.log
+Warnings include existing UIWindow init, SDK StoreKitTest deprecated symbol,
+existing OwnerAccessClientTests redundant await and no AppIntents metadata.
+
+zsh scripts/test-release-artifact-verifier.sh
+PASS: 51 isolated command cases plus stale-report recovery.
+Synthetic verifier fixtures, NOT distribution signing proof.
+Log: /private/tmp/wanderful-account-verifier-tests.log
+
+XCTest execution / StoreKit local runtime: NOT RUN at this checkpoint.
+Available iPhone 17 Pro iOS 26.5 simulator is Shutdown; start request pending.
+Apple sandbox: NOT RUN. ASC access reached login only.
+Release simulator build: PASS (154.1 seconds), arm64, CODE_SIGNING_ALLOWED=NO.
+Actual simulator artifact verifier: FAIL; 37 checks passed, 8 failed.
+Failure IDs: permission_contract, forbidden_info_keys,
+release_composition_markers, required_attribution_markers,
+code_signature_integrity, signing_identity_contract, entitlement_contract,
+final_signature_recheck.
+The unsigned diagnostic build explains the signing failures. The remaining
+contract mismatches are unresolved: current Info.plist uses agreed background
+location wording/UIBackgroundModes while the legacy release contract does not.
+Do not conflate verifier self-tests with a passing release artifact.
+Built Info.plist independently confirms both account flags and monetization false.
+Report: release-artifact.json.
+
+Deployment-owner live receipt: POST /api/account/apple/sign-in with {} returned
+503 service_unavailable on https://backend-zeta-amber-69.vercel.app at production
+admission gate; no account runtime enabled or positive login proof.
+This receipt is reported by the backend task, not executed by this task.
+
+Follow-up review, 2026-09-26:
+StoreKit adapter now throws productUnavailable when no matching subscription
+catalog is loaded. Added direct-adapter regression test (no mocked storefront).
+Debug arm64 build-for-testing: PASS, TEST BUILD SUCCEEDED.
+Log: /private/tmp/wanderful-account-restore-build-for-testing.log
+Test execution remains NOT RUN; simulator still Shutdown.
+ASC access rechecked: blank Email or Phone Number field on login page;
+no authenticated app or product configuration reached.
+Follow-up Release arm64 simulator build: PASS (119.0 seconds).
+Fresh artifact verifier: same 37 pass / 8 fail IDs, report updated to new binary.
+Built XCTest bundle contains Wanderful.storekit; resource presence alone does
+not prove StoreKit catalog load or transaction control at runtime.
+
+Final local credential-revocation change:
+- Persists Apple user identity only in local Keychain session.
+- Checks Account view entry/foreground/revoked notification; fails closed on lookup error.
+- Clears only confirmed invalid captured session; late check preserves replacement login.
+- Legacy sessions decode but cannot confirm Apple access until fresh sign-in.
+- Debug arm64 test build and final Release build PASS.
+  Logs: /private/tmp/wanderful-account-revocation-final-test-build.log
+        /private/tmp/wanderful-account-revocation-final-release.log
+- Initial explicit initializer actor-isolation compile error was corrected with
+  nonisolated Sendable credential model, then rebuilt successfully.
+
+EXECUTED TESTS (supersedes NOT RUN checkpoint):
+Simulator booted under the existing local-test authorization; no physical iPhone touched.
+Result: /private/tmp/wanderful-account-targeted-20260926.xcresult
+Machine summary: evidence/targeted-xctest.json
+43 executed, 40 passed, 3 failed, 0 skipped.
+AccountAuthenticationTests: 18/18 PASS (injected Apple/backend test dependencies).
+PremiumAccessTests: 21/21 PASS (includes direct adapter test with missing catalog).
+StoreKitCatalogTests: fixture passes; actual product catalog fails empty.
+StoreKitTransactionLifecycleTests: both actual SKTestSession purchase tests fail notEntitled.
+
+Second diagnostic run: normal full Xcode scheme, CODE_SIGNING_ALLOWED=YES,
+CODE_SIGN_IDENTITY=- (local simulator ad-hoc only), only catalog/lifecycle suites.
+4 executed, 1 passed, same 3 failed; no skips. Apple Sandbox NOT tested.
+Result: /private/tmp/wanderful-storekit-signed-20260926.xcresult
+Log: /private/tmp/wanderful-storekit-signed-20260926.log
+Xcode 26.5 (17F42); Simulator 26.5 (23F77).
+The failures match a publicly discussed Apple StoreKitTest runtime issue;
+not proof that all app-side StoreKit configuration is correct.

@@ -3,95 +3,111 @@ import SwiftUI
 
 struct RouteComparisonAccessibilitySummary: Equatable {
     let label: String
-    let hint = "Opens this route’s details."
+    let hint: String
 
-    init(
-        route: TrailRoute,
-        comparisonLabel: String?,
-        researchPresentation: ResearchRoutePresentation? = nil
-    ) {
-        var parts = [route.title]
-        if let comparison = RouteAlternativeQuality.displayLabel(
-            candidate: comparisonLabel,
-            for: route
-        ) {
-            parts.append("Comparison: \(comparison)")
+    init(route: TrailRoute, comparisonLabel: String?,
+         researchPresentation: ResearchRoutePresentation? = nil, language: AppLanguage = .english) {
+        let copy = RouteLocalizedCopy(route: route, language: language)
+        hint = copy.text("Opens this route’s details.", "Öffnet die Routendetails.")
+        var parts = [copy.title]
+        if let comparison = RouteAlternativeQuality.displayLabel(candidate: comparisonLabel, for: route) {
+            parts.append(copy.text("Comparison: ", "Vergleich: ") + copy.comparison(comparison))
         }
-        parts.append(
-            "\(route.activity.rawValue), \(route.difficulty.rawValue) physical effort estimate"
-        )
-        parts.append(
-            "\(route.distanceLabel) distance, \(route.elevationLabel) climb, \(route.durationLabel) time"
-        )
-        parts.append(
-            Self.importantEvidence(
-                for: route,
-                researchPresentation: researchPresentation
-            )
-        )
-        label = parts.joined(separator: ". ")
-    }
-
-    private static func importantEvidence(
-        for route: TrailRoute,
-        researchPresentation: ResearchRoutePresentation?
-    ) -> String {
+        parts.append(copy.text("\(copy.activity), \(copy.difficulty) physical effort estimate",
+                               "\(copy.activity), geschätzte Anstrengung: \(copy.difficulty)"))
+        parts.append(copy.text("\(copy.distance) distance, \(copy.climb) climb, \(copy.duration) time",
+                               "\(copy.distance) Strecke, \(copy.climb) Aufstieg, \(copy.duration) Zeit"))
+        if let outcome = route.dynamicRouteOutcome {
+            if outcome.isPartial {
+                parts.append(copy.text("Partial match; some preferences remain unresolved",
+                                       "Teilweise passend; einige Wünsche bleiben offen"))
+            } else if outcome.hasUnresolvedWishes {
+                parts.append(copy.text("Some preferences remain unconfirmed", "Einige Wünsche sind noch nicht bestätigt"))
+            }
+        }
         if let limitation = researchPresentation?.limitations.first {
-            return "Important limitation: \(limitation.title)"
+            // Research source wording retains its independent locale contract.
+            parts.append(copy.text("Important limitation: ", "Wichtige Einschränkung: ") + limitation.title)
+        } else {
+            let quality = HikingRouteQualityEngine().presentation(for: route)
+            if let limitation = quality.limitations.first {
+                parts.append(copy.text("Important limitation: ", "Wichtige Einschränkung: ") + copy.evidence(limitation).title)
+            } else if let fact = researchPresentation?.cardFacts.first {
+                parts.append(copy.text("Verified evidence: ", "Bestätigtes Merkmal: ") + fact.title)
+            } else if let fact = quality.verifiedCharacteristics.first {
+                parts.append(copy.text("Verified evidence: ", "Bestätigtes Merkmal: ") + copy.evidence(fact).title)
+            } else if let fit = quality.primaryFit {
+                parts.append(copy.text("Measured fit: ", "Gemessene Passung: ") + copy.evidence(fit).title)
+            } else {
+                parts.append(copy.text("Important limitation: No additional mapped path evidence is available",
+                                       "Wichtige Einschränkung: Keine zusätzlichen kartierten Wegmerkmale verfügbar"))
+            }
         }
-        if let fact = researchPresentation?.cardFacts.first {
-            return "Verified evidence: \(fact.title)"
-        }
-
-        let quality = HikingRouteQualityEngine().presentation(for: route)
-        if let limitation = quality.limitations.first {
-            return "Important limitation: \(limitation.title)"
-        }
-        if let evidence = quality.verifiedCharacteristics.first {
-            return "Verified evidence: \(evidence.title)"
-        }
-        if let fit = quality.primaryFit {
-            return "Measured fit: \(fit.title)"
-        }
-        return "Important limitation: No additional mapped path evidence is available"
+        label = parts.joined(separator: ". ")
     }
 }
 
 struct RouteCard: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(AppLanguageController.self) private var languageController
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let route: TrailRoute
     let comparisonLabel: String?
     let qualityExplanations: [RouteQualityExplanation]
     let researchPresentation: ResearchRoutePresentation?
+    let stopPhoto: RouteCardStopPhoto?
     private let qualityPresentation: RouteQualityExplanationSet
 
     init(
         route: TrailRoute,
         comparisonLabel: String? = nil,
         qualityExplanations: [RouteQualityExplanation] = [],
-        researchPresentation: ResearchRoutePresentation? = nil
+        researchPresentation: ResearchRoutePresentation? = nil,
+        stopPhoto: RouteCardStopPhoto? = nil
     ) {
         self.route = route
         self.comparisonLabel = comparisonLabel
         self.qualityExplanations = qualityExplanations
         self.researchPresentation = researchPresentation
+        self.stopPhoto = stopPhoto
         qualityPresentation = HikingRouteQualityEngine().presentation(for: route)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             ZStack(alignment: .topLeading) {
-                RouteThumbnailView(route: route)
-                    .frame(height: 154)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .accessibilityHidden(true)
+                Group {
+                    if let stopPhoto {
+                        GeometryReader { proxy in
+                            HStack(spacing: 6) {
+                                routeThumbnail
+                                    .frame(width: proxy.size.width * 0.55)
+                                Image(uiImage: stopPhoto.image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: proxy.size.width * 0.45 - 6, height: 154)
+                                    .clipped()
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                    } else {
+                        routeThumbnail
+                    }
+                }
+                .frame(height: 154)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                 if !usesExpandedLayout, badgeLabel != nil {
                     comparisonBadge
                         .padding(12)
                 }
+            }
+
+            if let stopPhoto {
+                Text(stopPhotoCaption(stopPhoto.stopName))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if usesExpandedLayout, badgeLabel != nil {
@@ -101,12 +117,12 @@ struct RouteCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 locationAndEffort
 
-                Text(route.title)
+                Text(copy.title)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(theme.graphite)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(route.summary)
+                Text(copy.summary)
                     .font(.subheadline)
                     .foregroundStyle(theme.secondaryText)
                     .lineLimit(usesExpandedLayout ? nil : 2)
@@ -128,10 +144,24 @@ struct RouteCard: View {
             routeStats
 
             if !cardEvidenceItems.isEmpty {
-                RouteCardEvidenceRow(items: cardEvidenceItems)
+                RouteCardEvidenceRow(route: route, items: cardEvidenceItems)
             }
         }
-        .trailCard()
+    }
+
+    private var copy: RouteLocalizedCopy { RouteLocalizedCopy(route: route, language: languageController.language) }
+
+    private var routeThumbnail: some View {
+        RouteThumbnailView(route: route)
+            .frame(maxWidth: .infinity)
+            .frame(height: 154)
+            .accessibilityHidden(true)
+    }
+
+    private func stopPhotoCaption(_ name: String) -> String {
+        languageController.language == .german
+            ? "Foto eines Routenstopps: \(name)"
+            : "Photo of a route stop: \(name)"
     }
 
     @ViewBuilder
@@ -148,7 +178,7 @@ struct RouteCard: View {
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                 )
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Route comparison: \(badgeLabel)")
+                .accessibilityLabel(copy.text("Route comparison: ", "Routenvergleich: ") + badgeLabel)
         }
     }
 
@@ -188,32 +218,33 @@ struct RouteCard: View {
             DifficultyBadge(difficulty: route.difficulty)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Physical effort estimate: \(route.difficulty.rawValue)")
+        .accessibilityLabel(copy.text("Physical effort estimate: ", "Geschätzte Anstrengung: ") + copy.difficulty)
     }
 
     @ViewBuilder
     private var routeStats: some View {
         if usesExpandedLayout {
             VStack(alignment: .leading, spacing: 12) {
-                cardStat(route.distanceLabel, label: "Distance", expanded: true)
+                cardStat(copy.distance, label: "Distance", expanded: true)
                 Divider()
-                cardStat(route.elevationLabel, label: "Climb", expanded: true)
+                cardStat(copy.climb, label: "Climb", expanded: true)
                 Divider()
-                cardStat(route.durationLabel, label: "Time", expanded: true)
+                cardStat(copy.duration, label: "Time", expanded: true)
             }
         } else {
             HStack(spacing: 0) {
-                cardStat(route.distanceLabel, label: "Distance", expanded: false)
+                cardStat(copy.distance, label: "Distance", expanded: false)
                 Divider().frame(height: 32)
-                cardStat(route.elevationLabel, label: "Climb", expanded: false)
+                cardStat(copy.climb, label: "Climb", expanded: false)
                 Divider().frame(height: 32)
-                cardStat(route.durationLabel, label: "Time", expanded: false)
+                cardStat(copy.duration, label: "Time", expanded: false)
             }
         }
     }
 
     private func cardStat(_ value: String, label: String, expanded: Bool) -> some View {
-        Group {
+        let label = copy.text(label, ["Distance": "Strecke", "Climb": "Aufstieg", "Time": "Zeit"][label] ?? label)
+        return Group {
             if expanded {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text(label)
@@ -247,7 +278,7 @@ struct RouteCard: View {
     }
 
     private var badgeLabel: String? {
-        RouteAlternativeQuality.displayLabel(candidate: comparisonLabel, for: route)
+        RouteAlternativeQuality.displayLabel(candidate: comparisonLabel, for: route).map(copy.comparison)
     }
 
     private var cardEvidenceItems: [RouteQualityPresentationItem] {
@@ -278,6 +309,8 @@ enum RouteCardLayoutPolicy {
 
 private struct RouteCardEvidenceRow: View {
     @Environment(TrailTheme.self) private var theme
+    @Environment(AppLanguageController.self) private var languageController
+    let route: TrailRoute
     let items: [RouteQualityPresentationItem]
 
     var body: some View {
@@ -298,14 +331,15 @@ private struct RouteCardEvidenceRow: View {
     }
 
     private func evidenceItem(_ item: RouteQualityPresentationItem) -> some View {
-        HStack(alignment: .top, spacing: 9) {
+        let copy = RouteLocalizedCopy(route: route, language: languageController.language).evidence(item)
+        return HStack(alignment: .top, spacing: 9) {
             Image(systemName: item.symbol)
                 .font(.footnote.weight(.bold))
                 .foregroundStyle(itemColor(item.role))
                 .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
 
-            Text(item.title)
+            Text(copy.title)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(theme.graphite)
                 .fixedSize(horizontal: false, vertical: true)
@@ -318,7 +352,7 @@ private struct RouteCardEvidenceRow: View {
             in: RoundedRectangle(cornerRadius: 12, style: .continuous)
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.accessibilityLabel)
+        .accessibilityLabel(copy.accessibilityLabel)
         .accessibilityIdentifier("route.cardEvidence.\(item.code.rawValue)")
     }
 
@@ -388,8 +422,8 @@ struct RouteThumbnailView: View {
 
                         markers(points: geometry.normalizedPoints, isLoop: geometry.isLoop, in: proxy.size)
                     }
-                    .padding(18)
                 }
+                .padding(18)
             } else {
                 RouteThumbnailPlaceholder()
             }

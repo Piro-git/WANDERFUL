@@ -132,6 +132,28 @@ extension GraphHopperRouteCalculating {
 }
 
 enum GraphHopperError: LocalizedError, Sendable {
+    enum PlanningFailure: Sendable {
+        case distanceLimit, invalidPlaces, unsupportedRoute, busy, unavailable, invalidRequest
+
+        var message: String {
+            switch self {
+            case .distanceLimit:
+                "The requested distance exceeds the planning limit. Check the selected places, choose a closer destination, or shorten the route."
+            case .invalidPlaces:
+                "The selected places couldn’t be used for routing. Check the start and destination or choose a nearby trailhead."
+            case .unsupportedRoute:
+                "This activity or route type isn’t available right now. Try another activity or a route between two places."
+            case .busy:
+                "Route planning is busy right now. Wait a moment, then try again."
+            case .unavailable:
+                "Route planning is temporarily unavailable. Please try again later."
+            case .invalidRequest:
+                "The route request couldn’t be processed. Check the places, activity and distance, then edit the request."
+            }
+        }
+    }
+
+    case planningFailure(PlanningFailure)
     case missingAPIKey
     case invalidEndpoint
     case invalidResponse
@@ -142,8 +164,10 @@ enum GraphHopperError: LocalizedError, Sendable {
 
     var errorDescription: String? {
         switch self {
+        case let .planningFailure(reason):
+            reason.message
         case .missingAPIKey:
-            "GraphHopper isn’t configured yet. Add your key to Configuration/Local.xcconfig."
+            "Route planning is unavailable because the routing service is not configured."
         case .invalidEndpoint:
             "The GraphHopper endpoint could not be created."
         case .invalidResponse:
@@ -152,7 +176,7 @@ enum GraphHopperError: LocalizedError, Sendable {
             "GraphHopper couldn’t find a walkable route between these points."
         case let .api(statusCode, message, hints):
             Self.isFlexibleModeMessage(statusCode: statusCode, message: message, hints: hints)
-                ? "Live loop routing needs GraphHopper flexible mode, which is not available on this API plan."
+                ? "Loop route planning needs GraphHopper flexible mode, which is not available on this API plan."
                 : "GraphHopper rejected the route request (status \(statusCode))."
         case let .network(message):
             message.localizedCaseInsensitiveContains("timed out")
@@ -1430,6 +1454,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             durationHours: durationHours,
             difficulty: routeDifficulty,
             path: coordinates,
+            routeInstructions: routeInstructions,
             verifiedCharacteristics: verifiedCharacteristics
         )
 
@@ -1483,7 +1508,7 @@ struct GraphHopperClient: RoutingService, GraphHopperRouteCalculating, GraphHopp
             safetyNotes: [
                 SafetyNote(
                     title: "Review before use",
-                    message: "This live route still requires a check of current weather, closures, local rules and trail conditions.",
+                    message: "This routed result still requires a check of current weather, closures, local rules and trail conditions.",
                     severity: .caution
                 ),
                 SafetyNote(

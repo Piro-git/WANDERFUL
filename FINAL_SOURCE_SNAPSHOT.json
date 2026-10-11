@@ -1,0 +1,4178 @@
+{
+  "schemaVersion": 1,
+  "sourceRepo": "/Users/REDACTED/Documents/Codex/2026-09-08/wanderful-google-quota-repair/work/global-quality-fixes-v2/integration/repo",
+  "destination": "/private/tmp/wanderful-global-v2-final-candidate",
+  "createdAt": "2026-09-09T21:42:47.863755+00:00",
+  "reportedHistoricalCandidate": "ca7558b872811f5f984e89879e1b5e35be23eed1",
+  "originalSnapshotBase": "54f78cd3adcfa50daa204f02bc1ca71f8c7918e1",
+  "lastConfirmedIntegrationCommit": "615e6b7df4bdcccac1c067514b8e73b3cbddeb31",
+  "uncommittedFinalPatchSourceCommit": "fc6529243a7257514076306154a29bac0f563852",
+  "provenance": "New exact file snapshot because Git metadata in Documents stalled. No old Git ancestry is asserted; final two research files were imported and peer-hash-verified, not committed in source repo.",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 396,
+      "sha256": "69cc2ad12f22a86c6d7ffacb68c17c7ef110f38665fd57eed638b53d7844f5d3"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 21742,
+      "sha256": "cd54ecf3e8d239cdf69a48e46ad1f381ccea6823c7e44e4e4c303164b7a2f1cd"
+    },
+    {
+      "path": "Configuration/Development.xcconfig",
+      "bytes": 1380,
+      "sha256": "731c61fa911029c69ff2509b34723d646c3dc7c06aa679c44c7f2beeb4ecb2ca"
+    },
+    {
+      "path": "Configuration/Local.xcconfig.example",
+      "bytes": 1536,
+      "sha256": "3464ae8a0144652ec1273ceee45405b29ad79691981c291f781ced130869c738"
+    },
+    {
+      "path": "Configuration/Production.xcconfig",
+      "bytes": 938,
+      "sha256": "6ee987db549cddb6955ec0d09518e5fbab272571752c9eb8504a34053d249b71"
+    },
+    {
+      "path": "Configuration/ResearchDeployment.json",
+      "bytes": 44,
+      "sha256": "2a16fe99ea9ce3354493304693d69e7f67fc8dda9f2e28bd68a5ba4571dfe78c"
+    },
+    {
+      "path": "Configuration/ResearchDeployment.xcconfig",
+      "bytes": 193,
+      "sha256": "2ba1214276b0167f78ca445a3e15c0bff8e56d6fc0fcb3b374000d90381c8a77"
+    },
+    {
+      "path": "Configuration/Shared.xcconfig",
+      "bytes": 1901,
+      "sha256": "329cbea8b160e4671c788e04bba9c836102bc23484bca643f8181fe675044496"
+    },
+    {
+      "path": "Configuration/Staging.xcconfig",
+      "bytes": 918,
+      "sha256": "5d1d2122b78008a06e93ed9002abde4c54b1f5c454433882e33854b88be1930e"
+    },
+    {
+      "path": "Configuration/TrailMind-Info.plist",
+      "bytes": 3488,
+      "sha256": "741feabc4dda46ee4f2b5dbd376ac8a732bea761923405844ab84828b18c10e4"
+    },
+    {
+      "path": "PROJECT_CONTEXT.md",
+      "bytes": 25309,
+      "sha256": "ee4b5ed7a3b2bca1cd88d7f9cef89236a9b72e27bbbfea01e7c79c15e7ef9ea7"
+    },
+    {
+      "path": "TrailMind.xcodeproj/project.pbxproj",
+      "bytes": 27681,
+      "sha256": "0e84d8d8c8b8a792ffa965d2ac42e84454463edc521f405d15a605f0a2b2cb4b"
+    },
+    {
+      "path": "TrailMind.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "bytes": 2626,
+      "sha256": "33124daa7399f3780d141508e46f5123c522219e28890deaebccb65319df6062"
+    },
+    {
+      "path": "TrailMind.xcodeproj/xcshareddata/xcschemes/TrailMind Staging.xcscheme",
+      "bytes": 5006,
+      "sha256": "ecae3cc58026747633f8eb271ee01dd1e3d93e8dc0e0e8c2d7ef951d09f221d8"
+    },
+    {
+      "path": "TrailMind.xcodeproj/xcshareddata/xcschemes/TrailMind.xcscheme",
+      "bytes": 5683,
+      "sha256": "90384ae006025c161d52bf5221450c56f1c881bce94fce7d6fdb0d9ee0816af4"
+    },
+    {
+      "path": "TrailMind/App/TrailMindApp.swift",
+      "bytes": 7681,
+      "sha256": "c104f1b85659dc97a3c5b82265ad515bd8e3aef672d6d3704b345649b80e16bb"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "bytes": 220,
+      "sha256": "cb3b12c7009c68c6b4c303cf0b548edf19fd8c7ff01cb69ca9e31c2e44848ea4"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/AppIcon.appiconset/TrailMindAppIcon.png",
+      "bytes": 759511,
+      "sha256": "fe547e9fb23950bc95525e356c4a2d4447fd385020beddf3965f2c7a07decd13"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/Contents.json",
+      "bytes": 63,
+      "sha256": "0fd49ba3c3585c709678e0046a821c3c60685ec7063720d30d3a3448be3a208b"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingActivityJourney.imageset/Contents.json",
+      "bytes": 325,
+      "sha256": "1d12eb2301f466fc8c9408d9bb3b36d19b93c713ac0fc3564000d689a281e400"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingActivityJourney.imageset/onboarding-activity-journey.png",
+      "bytes": 775883,
+      "sha256": "2e5ed2f92ede2f78efae393800e62137da861b00f51e1a5ff24b7fe5da5c3075"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingAvoidancesJourney.imageset/Contents.json",
+      "bytes": 327,
+      "sha256": "2f95ef69219207c8e3de2685c4c702d1418859deb42d2f0b347b82fc0111d4b8"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingAvoidancesJourney.imageset/onboarding-avoidances-journey.png",
+      "bytes": 818075,
+      "sha256": "0f68a13ef818e042456d59e321e6a29e6528685c9221ea759a09b09902a6f9c4"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingComfortJourney.imageset/Contents.json",
+      "bytes": 324,
+      "sha256": "172157d5a4fb5cd56e6da4131e06337aaf1dbf12fcebf082eac35ae39086c131"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingComfortJourney.imageset/onboarding-comfort-journey.png",
+      "bytes": 743642,
+      "sha256": "a4cc2a984063862c1c2ed161b80393c9205a33a3679a6fd69f8774f8716f4f97"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingDreamOutcome.imageset/Contents.json",
+      "bytes": 322,
+      "sha256": "ef17c88a7bfe4f780787865716ece275468cc13f102a3e0af7a2ab3fa912b654"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingDreamOutcome.imageset/onboarding-dream-outcome.png",
+      "bytes": 730181,
+      "sha256": "44a9e0aee2f39e8e3d4dba552ade269e6ad825cda32b48509b7af2bbf336580c"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingExperiencesJourney.imageset/Contents.json",
+      "bytes": 328,
+      "sha256": "570b2fec614954bf05d54797bc0e118c9374f4d879668d65416155eff4053739"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingExperiencesJourney.imageset/onboarding-experiences-journey.png",
+      "bytes": 770837,
+      "sha256": "480a06e9dc3da1bcdcb12ece7e803c38624d16b5a8f66414d1c52aa22341a299"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingProfileJourney.imageset/Contents.json",
+      "bytes": 324,
+      "sha256": "3bf1b98c96fb3cdfaa53910d2cdbc5d2ac5ac02610b8ac58043e1de6e5659b57"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingProfileJourney.imageset/onboarding-profile-journey.png",
+      "bytes": 795141,
+      "sha256": "5b29a95a4ecc676a66d23bcd25ff1ddc586714c388f9f8b7447b063c95bc0ef0"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingRouteShapeJourney.imageset/Contents.json",
+      "bytes": 328,
+      "sha256": "3e6b354874dda77c8a89196f6386fbe74c82acd8e4bae275b40d1ca88935e318"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingRouteShapeJourney.imageset/onboarding-route-shape-journey.png",
+      "bytes": 856472,
+      "sha256": "6e665ec1945525c4d6453d1b2378a9ef91425653e6754f56abb6c8d634687a0e"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingTrustJourney.imageset/Contents.json",
+      "bytes": 322,
+      "sha256": "6d8f1e1f23514f0bb1a8f652f457646d8d160fd58381bdb7230cb911bb6218d2"
+    },
+    {
+      "path": "TrailMind/Assets.xcassets/OnboardingTrustJourney.imageset/onboarding-trust-journey.png",
+      "bytes": 783836,
+      "sha256": "e76442c948bf0aab3ea248f6af893592b9a81b19fa2a0d4764341813f47cd65b"
+    },
+    {
+      "path": "TrailMind/Data/MockRoutes.swift",
+      "bytes": 9225,
+      "sha256": "bda0a91929433cf8276be73ad41764dae26e3941a01e61ee695f1f9e42e7d95a"
+    },
+    {
+      "path": "TrailMind/Models/AdventureModels.swift",
+      "bytes": 73442,
+      "sha256": "5c84226664c1900eae58677669a2d20b52490e90286129e751aae4078b3e352b"
+    },
+    {
+      "path": "TrailMind/Models/HikePreparation.swift",
+      "bytes": 7599,
+      "sha256": "68eb414cc2c319bf84834bedaefcd98630495dd6c3d84445ff907b78d7d85b37"
+    },
+    {
+      "path": "TrailMind/Models/HikingPreferenceProfile.swift",
+      "bytes": 18025,
+      "sha256": "0a94be59e24e10f819bac62af58d651fbc08e6d5286bdb7835c2c9edf5fa502a"
+    },
+    {
+      "path": "TrailMind/PrivacyInfo.xcprivacy",
+      "bytes": 1154,
+      "sha256": "bbcd71eafdcf15382ce7d9a024231739269843c21072e89a5d803b20dfe350f9"
+    },
+    {
+      "path": "TrailMind/Services/AdventureResearchIntentAdapter.swift",
+      "bytes": 21880,
+      "sha256": "26b164bdbf1f221c10520c10dd5610b34dfd12a3e11cfcb2054e150e15c4adfd"
+    },
+    {
+      "path": "TrailMind/Services/AppAttestService.swift",
+      "bytes": 17535,
+      "sha256": "0ae53d71f32b4be23a4ca55f7535f4c25770c0a318286e8b27454607679e4d76"
+    },
+    {
+      "path": "TrailMind/Services/AppEnvironment.swift",
+      "bytes": 27797,
+      "sha256": "97af87c9a14fe3969d49dbc3af652e21a3908bd3a696d94825ac78eef3a98e43"
+    },
+    {
+      "path": "TrailMind/Services/BackendOutdoorRouteEvidenceProvider.swift",
+      "bytes": 44957,
+      "sha256": "df98fe2afd444e72811cf8ee0c84248d4d3303fe7f9e14366acf2ea695a0971c"
+    },
+    {
+      "path": "TrailMind/Services/BackendRouteGateway.swift",
+      "bytes": 7084,
+      "sha256": "b8b22bb69d329e9edf3afacba4dfe0672478197943b2ac486bede0dd4bfdf4da"
+    },
+    {
+      "path": "TrailMind/Services/DynamicResearchPlanningClient.swift",
+      "bytes": 24778,
+      "sha256": "5d5d69b4186c52b2e7b43d7972af56f780a2ac82dd692af9453ad399aabb8535"
+    },
+    {
+      "path": "TrailMind/Services/DynamicWebResearch.swift",
+      "bytes": 8525,
+      "sha256": "bda0b24b42097c4d6b865a7c1cfb67f8a6cc07dd942e7f10d1609909d356c3a2"
+    },
+    {
+      "path": "TrailMind/Services/GPXExporter.swift",
+      "bytes": 27872,
+      "sha256": "43469ba3f274ccbb7f117b32a5eaa52f5165a01d7b040500c88d08412b8e3a32"
+    },
+    {
+      "path": "TrailMind/Services/GeocodingService.swift",
+      "bytes": 11855,
+      "sha256": "cfc207430a857a18c191701b52fd222075295556c35558531dfbb5693054b363"
+    },
+    {
+      "path": "TrailMind/Services/GraphHopperClient.swift",
+      "bytes": 86360,
+      "sha256": "25ecf31e8aa91beb9edd71d5f4075cb4523c28de63b39a0cf9b54d5924efa1cb"
+    },
+    {
+      "path": "TrailMind/Services/GraphHopperConfiguration.swift",
+      "bytes": 1710,
+      "sha256": "edc1d19fb877569970328f4678d9b742644e1e6d9629ad024b0bcdabbd6d124e"
+    },
+    {
+      "path": "TrailMind/Services/HikingPreferenceProfileResolver.swift",
+      "bytes": 18970,
+      "sha256": "02fff66653f19ad62695be37cfac8f3443a6534cf92e0f6276c812d88e794ecc"
+    },
+    {
+      "path": "TrailMind/Services/HikingPreferenceProfileStore.swift",
+      "bytes": 15245,
+      "sha256": "ba5c67b15d1684a138def193458228b98ce4c4bb110a761ea96b03cc4620cfc0"
+    },
+    {
+      "path": "TrailMind/Services/HikingPreferenceProfileSync.swift",
+      "bytes": 17985,
+      "sha256": "87aed4d6178b1ea292d2cc8e37f45497a3fda42bdbbf4efb2865712975e46a25"
+    },
+    {
+      "path": "TrailMind/Services/HikingRouteQualityEngine.swift",
+      "bytes": 46983,
+      "sha256": "d9bb31317b7ae37ad5a5ccfca7ff45edf3b53bb664c75b68de35e47d147bf52a"
+    },
+    {
+      "path": "TrailMind/Services/HikingRouteQualityPolicy.swift",
+      "bytes": 12462,
+      "sha256": "72fc0ba6fbb38acb402fe4b4b24df7c988dfb9c993664f1a8a4fa48162c40483"
+    },
+    {
+      "path": "TrailMind/Services/IntentParsingFoundation.swift",
+      "bytes": 40469,
+      "sha256": "778b442e3ade73e28dfdd5be80de191ef89445e74de675a84b32d833ca5750db"
+    },
+    {
+      "path": "TrailMind/Services/LocationResolution.swift",
+      "bytes": 23200,
+      "sha256": "52e8e4028ccf3c3e111bdf5bd707ce5cc39844a0c3d940123c50cbf0d4ea6e79"
+    },
+    {
+      "path": "TrailMind/Services/OutdoorAdventurePlanningClient.swift",
+      "bytes": 13929,
+      "sha256": "b710168ecf06d967af96323c9dc7361a6ad81e2e566b5e1489f3acce00381f39"
+    },
+    {
+      "path": "TrailMind/Services/OutdoorAdventurePlanningContracts.swift",
+      "bytes": 70268,
+      "sha256": "9ccc6ebd1b075fc1b11516f5e37522ce2c42d239ef649f5d6f7469f54e621833"
+    },
+    {
+      "path": "TrailMind/Services/OutdoorAdventurePlanningCoordinator.swift",
+      "bytes": 7933,
+      "sha256": "d4b5cf43a24b532d3959d2b9c1c133e243fb346158870ad204452f5a4a0d0cba"
+    },
+    {
+      "path": "TrailMind/Services/OwnerPhoneTestConfiguration.swift",
+      "bytes": 3491,
+      "sha256": "285885d3ae63e81f6332781e103b143ce0bcbf21252540e6a3f70fe69de36bc5"
+    },
+    {
+      "path": "TrailMind/Services/PremiumAccess.swift",
+      "bytes": 32327,
+      "sha256": "a9f883e547213b1caf7752f1a3da03a7cff70876788628e9c63f7476199f7c91"
+    },
+    {
+      "path": "TrailMind/Services/PublicAppLinks.swift",
+      "bytes": 4271,
+      "sha256": "a8ad31c59af19b499b80ff7bf633d74ce479b07134d6030588bb606618b69e6e"
+    },
+    {
+      "path": "TrailMind/Services/ResearchDeploymentIdentity.swift",
+      "bytes": 312,
+      "sha256": "b9601e8e3fab3e4db995b5a509aee711cd41366bfa251015672693038ceb2c59"
+    },
+    {
+      "path": "TrailMind/Services/ResearchGuidedRoutingAdapter.swift",
+      "bytes": 72346,
+      "sha256": "1f965a805554f20a09bb6212d50ad69a0cca50ce16b6b8d872b0cbf240b2d078"
+    },
+    {
+      "path": "TrailMind/Services/ResearchGuidedRoutingAdapterV2.swift",
+      "bytes": 55917,
+      "sha256": "7b363afe9986f25053b465835e92df9353fc936e53f29673ac7b5c08915bc7f8"
+    },
+    {
+      "path": "TrailMind/Services/ResearchPromptConstraints.swift",
+      "bytes": 10497,
+      "sha256": "4767c72dfa31d5951a08e00443e0c6b8db3bef76648e31dcce587abdb10e33f9"
+    },
+    {
+      "path": "TrailMind/Services/RouteAlternativeQuality.swift",
+      "bytes": 29472,
+      "sha256": "e986757e2e65ab786753fd5781580cdf3ab4dd8db3e93b9c634dbc2e656646dd"
+    },
+    {
+      "path": "TrailMind/Services/RouteEvidence.swift",
+      "bytes": 26080,
+      "sha256": "1f7264adecfefe86618c6bd56575cc2aeb30336dc0936784f086e6917fb42d2b"
+    },
+    {
+      "path": "TrailMind/Services/RouteGuidanceGeometry.swift",
+      "bytes": 21315,
+      "sha256": "01ce3591a3b57fe2f6fc574de9c408684a203bf4222f3f7924c3a77e9de16ce6"
+    },
+    {
+      "path": "TrailMind/Services/RouteLocationService.swift",
+      "bytes": 8703,
+      "sha256": "154f1bafce167a177958235b5f52e9eaed5cdad0dcc89e31015836ebd707a76b"
+    },
+    {
+      "path": "TrailMind/Services/RoutePlanningEvidence.swift",
+      "bytes": 11592,
+      "sha256": "20778591527e76fb8053a450edf6d7b955b71502a1c043e87ca9819b8cb1b195"
+    },
+    {
+      "path": "TrailMind/Services/RoutePromptParser.swift",
+      "bytes": 19591,
+      "sha256": "ea98434542cc2fb8aa7c26da7a2442bc9c760249ea3c6bde12281952d4298164"
+    },
+    {
+      "path": "TrailMind/Services/RouteSessionService.swift",
+      "bytes": 5944,
+      "sha256": "6d1fb08e3d35dbcf67d1af97ffd023c6697660608582f215940b2ec8ecd04872"
+    },
+    {
+      "path": "TrailMind/Services/RouteThumbnailService.swift",
+      "bytes": 10802,
+      "sha256": "7a3332249a1be94a45471e52075899903dad7b47aa97d6a6549a78c9c74fff44"
+    },
+    {
+      "path": "TrailMind/Services/RouteTransportLimits.swift",
+      "bytes": 3567,
+      "sha256": "67cb929091291e3b02d16a786d576f135edf93ca57dbd885025e16f65f0cf227"
+    },
+    {
+      "path": "TrailMind/Services/RoutingFoundation.swift",
+      "bytes": 58814,
+      "sha256": "03d9479a494fda5b7430bf65e7f0a1adebee0874a0862d2a4bf013c987c7e856"
+    },
+    {
+      "path": "TrailMind/Services/SavedRouteStore.swift",
+      "bytes": 41794,
+      "sha256": "251de1a3b350ccbdf4dad28a6576ef043c17233a98edd7f61dfa1be11e365d39"
+    },
+    {
+      "path": "TrailMind/Services/SecureInstallationStore.swift",
+      "bytes": 2885,
+      "sha256": "41d74c771ab89d277f33484a3a8362522590e9c5daa1ab9608093af3aee84cbc"
+    },
+    {
+      "path": "TrailMind/Services/SuperwallOnboardingClient.swift",
+      "bytes": 10117,
+      "sha256": "fda11b0de8376717cfc77487196ecdaeb2c317ff2e52a739af02c86cdf79ddac"
+    },
+    {
+      "path": "TrailMind/Services/TrailServices.swift",
+      "bytes": 7283,
+      "sha256": "e4fc4a9d775c87fc131af2dfd4660276c1513dfe8b7a95b19ac73d2fc9649fa4"
+    },
+    {
+      "path": "TrailMind/Services/VoicePlanningService.swift",
+      "bytes": 22515,
+      "sha256": "e60785861e70f6ef14ca1408b63d4847ba09d980b623c2353b158accbfb37ec1"
+    },
+    {
+      "path": "TrailMind/Testing/DynamicEvidenceUITestView.swift",
+      "bytes": 2112,
+      "sha256": "a2df13219c69988f0451123cb7ebaf4f87e8c3e17529b4044a74c1034a22edc1"
+    },
+    {
+      "path": "TrailMind/Testing/StagingProofLaunchSupport.swift",
+      "bytes": 128070,
+      "sha256": "57b10fb3b41240b1a820cd099c9ecf02fad23c755823ebc5230ae3da4d66a746"
+    },
+    {
+      "path": "TrailMind/Testing/UITestLaunchSupport.swift",
+      "bytes": 36695,
+      "sha256": "3896dad2836269a9238b2d467a228f6fe8bf5eed9f47e9136800b34645f79a5d"
+    },
+    {
+      "path": "TrailMind/Theme/TrailTheme.swift",
+      "bytes": 10188,
+      "sha256": "d1427f0dc1f09312eccaeb7fc83aba126c62f4730330a8b2ab8f7146894becb8"
+    },
+    {
+      "path": "TrailMind/TrailMindDebug.entitlements",
+      "bytes": 284,
+      "sha256": "982966c654b14e92b7d145d93c119c6debc84ba7449f36cdcb8ffb8d8cade0ed"
+    },
+    {
+      "path": "TrailMind/TrailMindRelease.entitlements",
+      "bytes": 283,
+      "sha256": "ed464295880ba5a788d12e2248ba1cbd3d9592dd817de1fdeef5d2746e3711a9"
+    },
+    {
+      "path": "TrailMind/ViewModels/AppModels.swift",
+      "bytes": 8672,
+      "sha256": "07227cd52a6dccdb69ddfc844bc42fea21f95316beec497e3a1cb38ad8137531"
+    },
+    {
+      "path": "TrailMind/ViewModels/PlannerViewModel.swift",
+      "bytes": 96595,
+      "sha256": "9c1a60ac35672c7af2093df2fb8162a00827397d48ae16c643b054eac528b427"
+    },
+    {
+      "path": "TrailMind/ViewModels/RouteGuidanceModel.swift",
+      "bytes": 11286,
+      "sha256": "3d3128042411a0a10e936facac7d8ddc2cd0cccce8b0af70d54226e6e10001e4"
+    },
+    {
+      "path": "TrailMind/ViewModels/SavedRoutesModel.swift",
+      "bytes": 11299,
+      "sha256": "5d11220b148f7bc0aa3f14ee726588709dc50051157db74affcd7e385f620c05"
+    },
+    {
+      "path": "TrailMind/ViewModels/VoicePlanningModel.swift",
+      "bytes": 4979,
+      "sha256": "ebf58de1d24fbc4dac11200d59b1bcf4c1ce308969e2b12c98bb2ac1a54a7e39"
+    },
+    {
+      "path": "TrailMind/Views/AIEdit/RouteEditAIView.swift",
+      "bytes": 6600,
+      "sha256": "7542c533e1a24e4c186639449f6394c616b0adcb561437f8790d38f2e5fc1abb"
+    },
+    {
+      "path": "TrailMind/Views/Home/HomeView.swift",
+      "bytes": 27517,
+      "sha256": "b30fe0df7aa8aae1ec69bea7e3e1bfb77e9a66799d6904458e434ab274d2f7cf"
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/OnboardingComponents.swift",
+      "bytes": 23635,
+      "sha256": "9a808d89f6ece5e45c78e2531973fbc0301c14e5c89b45030d280e33b4c82b8f"
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/OnboardingProfileBridge.swift",
+      "bytes": 5723,
+      "sha256": "c6c2943af82937f83825706250e2718e83196df3b6fbeabce76516a80232413c"
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/OnboardingView.swift",
+      "bytes": 35535,
+      "sha256": "d663504b53aaacca7c6739fc9aeddc29a9b7c77b569e71ae50a127cbead30e3e"
+    },
+    {
+      "path": "TrailMind/Views/Onboarding/SuperwallOnboardingHost.swift",
+      "bytes": 8169,
+      "sha256": "44af67bdb2cac1b8840894cb3cd051ee6b114b76acd4557befb96fcfe40ecef2"
+    },
+    {
+      "path": "TrailMind/Views/Planning/PlanningViews.swift",
+      "bytes": 28555,
+      "sha256": "1b110b43c18b9503fdad1abfdfd73c431e206a4ce9136b1c8e37fa18be5a762b"
+    },
+    {
+      "path": "TrailMind/Views/Premium/PremiumPaywallView.swift",
+      "bytes": 17212,
+      "sha256": "947d3914983b63d69089dd497160cbfe79c3211aa9538972f95570aba410b689"
+    },
+    {
+      "path": "TrailMind/Views/Preparation/HikePreparationView.swift",
+      "bytes": 13005,
+      "sha256": "f411fb942a2201b2dacd656c5b0574f88d8b7491ad288ae6146c405f62d99112"
+    },
+    {
+      "path": "TrailMind/Views/Profile/HikingProfileViews.swift",
+      "bytes": 14207,
+      "sha256": "51a89514a243f6feb6e1c94d4f3b53beb9b5ac52c24698abfb0e72585811e2b8"
+    },
+    {
+      "path": "TrailMind/Views/Profile/ProfilePreferencesView.swift",
+      "bytes": 20255,
+      "sha256": "906a303c4b6b4ef7e9ea302c0a6f0ca6dbfc5b35ce51c7f7a13988c8248a01cb"
+    },
+    {
+      "path": "TrailMind/Views/Profile/TrailMindAboutContent.swift",
+      "bytes": 9894,
+      "sha256": "aaa0199d79e4754f85a60f5dfaf545e801a9570322f1e1adf9c1501dba72fe5c"
+    },
+    {
+      "path": "TrailMind/Views/Research/ResearchPresentationViews.swift",
+      "bytes": 22252,
+      "sha256": "0cd5e629d6fbccaa495bb493def798b691c389e313cf9e9f53efcdc185edcb89"
+    },
+    {
+      "path": "TrailMind/Views/Research/ResearchRoutePresentation.swift",
+      "bytes": 40289,
+      "sha256": "ae939cbae3ad4dc1f8f44f01aeb0db6c5f9b4e91bf33bec856ef6b0f1efc72b3"
+    },
+    {
+      "path": "TrailMind/Views/Route/DynamicResearchStopsView.swift",
+      "bytes": 7265,
+      "sha256": "32f3d1bda8463f1b70845d70b087ed79ff5fde31bfb35f65fa439ae714228df0"
+    },
+    {
+      "path": "TrailMind/Views/Route/DynamicWebResearchView.swift",
+      "bytes": 5572,
+      "sha256": "058fc77cd4ffee78bcd0f4bc8612ead676a1f6ef9c9de70882b91488e9e819c4"
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteComponents.swift",
+      "bytes": 27063,
+      "sha256": "0affdeace145f31cc107083749eab32a831369025f197d06a07af3b72e2f19b5"
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteDetailView.swift",
+      "bytes": 57723,
+      "sha256": "4d59ea8435696bc82ec6bfd1b3b6816782f25f08b48faee128a634b019b49592"
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteGuidanceView.swift",
+      "bytes": 26938,
+      "sha256": "97205a3d9aa40f53fc34b4d5cc679d60c99bd8d1377438fd6263170d31e9e855"
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteLocalConditionsView.swift",
+      "bytes": 7232,
+      "sha256": "bd3b69454566a45a1612137c24d4c71a9930fbaa00d9f4bf28e2e70f83ca45cf"
+    },
+    {
+      "path": "TrailMind/Views/Saved/SavedRoutesView.swift",
+      "bytes": 13760,
+      "sha256": "998c6d130dd9693570a809bc0d1b4ce8e67fbc0fae603786ce6bb5301a8749e7"
+    },
+    {
+      "path": "TrailMind/Views/Shared/SharedComponents.swift",
+      "bytes": 3927,
+      "sha256": "4f66d5e6f1fa514599e7eded60bdb0c0d5c7a554ca5b5fd147aa16e1c048c193"
+    },
+    {
+      "path": "TrailMindTests/AdventureResearchIntentAdapterTests.swift",
+      "bytes": 37004,
+      "sha256": "d35747fa394de4dc4eb9cf42466d98fc231d3df16dd54da773f8285281fcc81d"
+    },
+    {
+      "path": "TrailMindTests/AppAttestServiceTests.swift",
+      "bytes": 18411,
+      "sha256": "7ac1f1b4990233e62b6dae5e7c7c53d52a9121c9dd39ef1e464227b42535cf50"
+    },
+    {
+      "path": "TrailMindTests/AppEnvironmentTests.swift",
+      "bytes": 31343,
+      "sha256": "8add93b7acd632b132e3b6d55bfc2237ba24b82e8ca4a47b6b5da72891122e38"
+    },
+    {
+      "path": "TrailMindTests/BackendRouteClientTests.swift",
+      "bytes": 25144,
+      "sha256": "801d531a2cf0d9cfbfa7844019ce634eab2bae2f81ae1b10a6e6d56902a63c44"
+    },
+    {
+      "path": "TrailMindTests/DurableResearchTransportTests.swift",
+      "bytes": 13367,
+      "sha256": "2757e69f052bbde42c64a3a38c905bc668e4a87584db19bb0aa498188eda58f1"
+    },
+    {
+      "path": "TrailMindTests/DynamicResearchPlanningClientTests.swift",
+      "bytes": 20355,
+      "sha256": "30ee63a935a5e4411a4f612f3a484d8eb9fa4f2e26cf7c36282990b028c13da2"
+    },
+    {
+      "path": "TrailMindTests/DynamicWebResearchTests.swift",
+      "bytes": 3374,
+      "sha256": "d8160b63c7bd33f860e04305ac0801119c673ec2d59d4f682bb5a19da2f770c5"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/conditions-ilsenburg-recorded.json",
+      "bytes": 16426,
+      "sha256": "5770a7829cdff443f37c98b9943aa81cadb2b3f900708c5261f22826eac8bbac"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/conditions-innsbruck-recorded.json",
+      "bytes": 6681,
+      "sha256": "5df682ee5ecd9385640da7e040045685755b881a7993729d7c4ee27cc5416631"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-evidence-revised-offline.json",
+      "bytes": 7626,
+      "sha256": "fed3f80962fabb35e15c05223f20c687653189a4bdda190a161dfadd1836f8f8"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-research-offline.json",
+      "bytes": 4428,
+      "sha256": "f49e9a0604c1f8e4646556f190b8f26747c59524e63e88ec90f962e963e9d3e8"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-source-passage-offline.json",
+      "bytes": 6531,
+      "sha256": "9160df6db1083e1fc4a364377188d56acd861febfdb80850480a33ddf5042533"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/dynamic-web-unicode.json",
+      "bytes": 2827,
+      "sha256": "ebf510bfc5e1e0b36decc854eeeb8471f5b067e60ca2aab3857e0609839023f6"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/hiking_route_quality_v1_eval.json",
+      "bytes": 52132,
+      "sha256": "82b877528f9b40f79b1cadaf6c1143e62c87aeb84e27140ff365c5057dcad43a"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/location_resolution_eval.json",
+      "bytes": 11915,
+      "sha256": "af1739651f1b3e1155d3e3fda8c60b079a31dfb947a12e6df5b85e40c128c2ad"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/outdoor_adventure_planning_v1_contract_corpus.json",
+      "bytes": 394579,
+      "sha256": "d41bc24447259ff0bd1c6290c2cc6abe83f3db7c9d3aafb3a771fb9f23487613"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/outdoor_adventure_planning_v2_contract_corpus.json",
+      "bytes": 22722,
+      "sha256": "07c96d672ff28065892906b300343cd1d2f8ee03e9efae9914e8f7742df0987a"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/prompt_intent_eval.json",
+      "bytes": 17832,
+      "sha256": "327c0a3260f4a0bba0ad71448c84521ebbdfc7d59a2dc15ada0c536c890e5bd1"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/research-led-itinerary.json",
+      "bytes": 15281,
+      "sha256": "7436a689c2d15553c95c0676e0c4b5bfeb54fee14bccddb5f84db16e093f91ea"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/research_guided_routed_alternatives_v1.json",
+      "bytes": 24119,
+      "sha256": "fa8d61b46e47bd74ee2cb78026ed7f0c46e64f9d770243dc4e00abbc1893f095"
+    },
+    {
+      "path": "TrailMindTests/Fixtures/route_quality_eval.json",
+      "bytes": 9094,
+      "sha256": "bbf6ec8e3988e247674b991b55a1c5646389f34addee538be6cc6106799f2ab5"
+    },
+    {
+      "path": "TrailMindTests/GPXExporterTests.swift",
+      "bytes": 67566,
+      "sha256": "cd922b951f2068bd3dadce2102e25e01eb2133b40d6b5fbb6e6573caa1825c45"
+    },
+    {
+      "path": "TrailMindTests/GeocodingServiceTests.swift",
+      "bytes": 4382,
+      "sha256": "89bf9583027114bc3e737a1719058b7573a16e1ce081a131f4504445a0f92afa"
+    },
+    {
+      "path": "TrailMindTests/GlobalFixesAcceptanceTests.swift",
+      "bytes": 6616,
+      "sha256": "9f5385da7cb6c151c08515a7eabf87d87470ff10c3e0df6a4a91783e39b1594e"
+    },
+    {
+      "path": "TrailMindTests/GraphHopperClientTests.swift",
+      "bytes": 72543,
+      "sha256": "62da6b33de333c6ff9e87b70787d67dbf87d6ffdbef7882ebf1d766a4dec30a0"
+    },
+    {
+      "path": "TrailMindTests/HikePreparationTests.swift",
+      "bytes": 5021,
+      "sha256": "de6172d520ca5e9202a0db6b28e4d59b7536ae1eca08900cc8918b5cca8cd04b"
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileResolverTests.swift",
+      "bytes": 13282,
+      "sha256": "dd2f68eec47e885b2b24c596e6556698a06a9c4d67490d6e0d422f90073b8121"
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileStoreTests.swift",
+      "bytes": 13836,
+      "sha256": "a183e398dde8774e9b7c78c67cfd9328e4fa5ad5aa7fba85b2ecf224f246eae7"
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileSyncTests.swift",
+      "bytes": 19025,
+      "sha256": "0f19208b052743f614b792c4320af4a68f05d2068291069d2d4fd4804ad63504"
+    },
+    {
+      "path": "TrailMindTests/HikingPreferenceProfileTests.swift",
+      "bytes": 9403,
+      "sha256": "abf72d7e92dc24605be498449190bc6621e640d080bc675b85f4ef13fd4effd1"
+    },
+    {
+      "path": "TrailMindTests/HikingRouteQualityEngineTests.swift",
+      "bytes": 43274,
+      "sha256": "f875ebc44792cf5026b1e2067bb1a9d7c82faa4bdaa3f5f291613a28500e0fb4"
+    },
+    {
+      "path": "TrailMindTests/IntentEvaluationSupport.swift",
+      "bytes": 10930,
+      "sha256": "55acfff8ba2b33e3dd8237261195119d7c99740778cb3fa2f7e39905241a36a1"
+    },
+    {
+      "path": "TrailMindTests/IntentEvaluationTests.swift",
+      "bytes": 6646,
+      "sha256": "c02e77a02e42b7a7cf8f8ddafb4253c72ff41c79b807a17efd3e59afb6a3a8cf"
+    },
+    {
+      "path": "TrailMindTests/IntentParsingFoundationTests.swift",
+      "bytes": 38171,
+      "sha256": "67af73c2e14b46bd04325d583615cc395e16f74dac82f159abebff82e059fcce"
+    },
+    {
+      "path": "TrailMindTests/LocationResolutionTests.swift",
+      "bytes": 11423,
+      "sha256": "c8a381e8fab0a14da08efd9277655c8c24a3abe100241d7d371e360f6078ca81"
+    },
+    {
+      "path": "TrailMindTests/OnboardingProfileBridgeTests.swift",
+      "bytes": 5774,
+      "sha256": "baf7add9cbdd7970b73508bd7563e577f42a8f7010d53d688a5e5e3af5d42f63"
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningClientTests.swift",
+      "bytes": 55223,
+      "sha256": "116bd0b5f5fc96f4c4d71cbc381c4eecd10325cd42a425656644975fb3414af8"
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningContractCorpusTests.swift",
+      "bytes": 19044,
+      "sha256": "079d0d090bc46b0de01727f8da11923f2fbcd37295f3af8f7568f4493e675bee"
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningContractCorpusV2Tests.swift",
+      "bytes": 11436,
+      "sha256": "1ebaa7f3c84996c842be34d404e38b32a4f4b33a0d3ed9d261120d552c7590e8"
+    },
+    {
+      "path": "TrailMindTests/OutdoorAdventurePlanningCoordinatorTests.swift",
+      "bytes": 35423,
+      "sha256": "5dda14b75d86dd3051bbb0b2be68eea4390b921dd63b2bd390f129780ec0a239"
+    },
+    {
+      "path": "TrailMindTests/OutdoorRouteEvidenceTests.swift",
+      "bytes": 31256,
+      "sha256": "85106b66c8e3a30cc3ea5a6df1382bb41659d877f6d2d5a0f87c74a2acfc4f1f"
+    },
+    {
+      "path": "TrailMindTests/OwnerPhoneTestConfigurationTests.swift",
+      "bytes": 4080,
+      "sha256": "9e8096234695551bea0d80cf77f2c0202d4bff69f6903b3b89ec2a344010e260"
+    },
+    {
+      "path": "TrailMindTests/PlannerViewModelResearchGuidedPlanningTests.swift",
+      "bytes": 122201,
+      "sha256": "d0227628b11622d62e3cfe16f3f522d2c1826b8d867264458763f3f6aecf3388"
+    },
+    {
+      "path": "TrailMindTests/PlannerViewModelTests.swift",
+      "bytes": 64933,
+      "sha256": "47209c8546882e7bea795274dad9d793909e97458e4ed297571fa807925bdcf9"
+    },
+    {
+      "path": "TrailMindTests/PlanningAccessibilityIdentifierTests.swift",
+      "bytes": 1590,
+      "sha256": "d334b4afb57c7929e9d087ad3ff6e78880b05823f8d857b35e97032dfb8ec143"
+    },
+    {
+      "path": "TrailMindTests/PremiumAccessTests.swift",
+      "bytes": 22280,
+      "sha256": "b3c879b4575123143d1c57b29a22212ec1a7273a952d3a3ae1823f9d945811c3"
+    },
+    {
+      "path": "TrailMindTests/PrivacyReleaseContentTests.swift",
+      "bytes": 23586,
+      "sha256": "c0bee49ec837c747cb09cb62624adaa7a098a19b5a8662ea6242db8a18249ac9"
+    },
+    {
+      "path": "TrailMindTests/PublicAppLinksTests.swift",
+      "bytes": 2558,
+      "sha256": "c94c17649f24d227024093e8dfa278c3f478b0103d038b0d05bc140f7beb85b6"
+    },
+    {
+      "path": "TrailMindTests/ReleaseSurfaceTruthTests.swift",
+      "bytes": 17266,
+      "sha256": "c6a0f89ac2a809feb8401e8102f86eb41c229badf332704778b8f9d61fbb646e"
+    },
+    {
+      "path": "TrailMindTests/ResearchGuidedRoutingAdapterTests.swift",
+      "bytes": 24329,
+      "sha256": "a5a84cd11ea55bc232140e4cc5bcee0901a7963a625597be867d19c378aa0fb8"
+    },
+    {
+      "path": "TrailMindTests/ResearchPromptConstraintsTests.swift",
+      "bytes": 6801,
+      "sha256": "e9bf194fbd71f4eef97954106a5735bb85be6fed18254002b35280ba9065bea9"
+    },
+    {
+      "path": "TrailMindTests/ResearchRoutePresentationTests.swift",
+      "bytes": 30180,
+      "sha256": "1e7730f7da5146c27ba6649aea078e136e2887ee7c041f4d9c8dd436dc2fe1f5"
+    },
+    {
+      "path": "TrailMindTests/RouteComparisonAccessibilityTests.swift",
+      "bytes": 1864,
+      "sha256": "f9ab210bce5e72e59985c45ebc1e4ad9f758defec56550ae79ccc3cfabc8241f"
+    },
+    {
+      "path": "TrailMindTests/RouteGuidanceTests.swift",
+      "bytes": 30376,
+      "sha256": "0c4f35044b8d206d1caf06729cdb37e16c19f2ddccd680c08fc138a126aa6e78"
+    },
+    {
+      "path": "TrailMindTests/RoutePlanningEvidenceTests.swift",
+      "bytes": 7283,
+      "sha256": "219ce4056cc149e974be4bfc359e2775e1f3c5e63633916e27625befe5670d54"
+    },
+    {
+      "path": "TrailMindTests/RoutePromptParserTests.swift",
+      "bytes": 12853,
+      "sha256": "d94d6c65470546b558399c3c949444a6919dfe8d77932bd8d589648512d7e856"
+    },
+    {
+      "path": "TrailMindTests/RouteQualityEvaluationSupport.swift",
+      "bytes": 19958,
+      "sha256": "645c8c4b5ae79e3ad353341cf9671eb3ce14a0287c3469e1910d2ea42b608491"
+    },
+    {
+      "path": "TrailMindTests/RouteQualityEvaluationTests.swift",
+      "bytes": 16215,
+      "sha256": "60af652809dd8134d095774a235c6a48bffb1493752f24d7d3d258b228bf41a5"
+    },
+    {
+      "path": "TrailMindTests/RouteThumbnailServiceTests.swift",
+      "bytes": 8325,
+      "sha256": "a6b7218f405891d428f5319b4916d0babebb0bf90ba250d9484c2f751e9ea761"
+    },
+    {
+      "path": "TrailMindTests/RoutingFoundationTests.swift",
+      "bytes": 68733,
+      "sha256": "26ff66ee34a935ad3b05acd68962c6101a8083c54d46e871b41d38687bc56396"
+    },
+    {
+      "path": "TrailMindTests/SavedRouteStoreTests.swift",
+      "bytes": 55824,
+      "sha256": "81f6a1ba8ee7466dd88e7f37329b522c027a3945637f59197188b698feef4ee3"
+    },
+    {
+      "path": "TrailMindTests/StagingProofLaunchSupportTests.swift",
+      "bytes": 28154,
+      "sha256": "8e5b8b5805f0685f5eec41227380945a1f3c6662e0e5549f6138c5c4ac7091d8"
+    },
+    {
+      "path": "TrailMindTests/StoreKit/Wanderful.storekit",
+      "bytes": 2900,
+      "sha256": "e06b481b1f5354b192f38cd2f0dceb41f629bf5a4b7c9f054faad24e0788b382"
+    },
+    {
+      "path": "TrailMindTests/StoreKitCatalogTests.swift",
+      "bytes": 1674,
+      "sha256": "251d60a916413f870c6befa85dc83458e853f2ef134d992ac7a30f97d9bb138c"
+    },
+    {
+      "path": "TrailMindTests/StoreKitTransactionLifecycleTests.swift",
+      "bytes": 3913,
+      "sha256": "be60aaff56b7e1dc6886e2b6e18e71220ee71f5a64b41057912ec3b0e9faffee"
+    },
+    {
+      "path": "TrailMindTests/SuperwallOnboardingClientTests.swift",
+      "bytes": 4969,
+      "sha256": "8550db5827817692369bd1fd7642f515ea7f29a5e2a47cb69c0985783db1a096"
+    },
+    {
+      "path": "TrailMindTests/TestRouteFixtures.swift",
+      "bytes": 2616,
+      "sha256": "40737892f77f580fa5cc851fece7ee531d375f5bba2a9e949c7c45223b3c78b5"
+    },
+    {
+      "path": "TrailMindTests/TrailThemeAccessibilityTests.swift",
+      "bytes": 9586,
+      "sha256": "577749ed164cd2750c5f7413f271d32cd50172cce73745e1e4ae714925eef495"
+    },
+    {
+      "path": "TrailMindTests/UserPreferencesStoreTests.swift",
+      "bytes": 1423,
+      "sha256": "a98e02d36a8281f6da4e3429d80a872be3d4e8715d5b0228ca8cc0a640893b3f"
+    },
+    {
+      "path": "TrailMindTests/VoicePlanningModelTests.swift",
+      "bytes": 21884,
+      "sha256": "453e0085c2246381f8190e4571c372c1ae107adae940237545ea08474c571301"
+    },
+    {
+      "path": "TrailMindUITests/DynamicEvidenceUITests.swift",
+      "bytes": 2398,
+      "sha256": "ebbbf2736561416639ed04d9aada7acad9f8b4c8893746ba8278e986ec87a034"
+    },
+    {
+      "path": "TrailMindUITests/TrailMindCriticalPathUITests.swift",
+      "bytes": 43296,
+      "sha256": "232dc298431a19d4284445d9c066525155cb84c02d2429ee93337fdd4a7f76b1"
+    },
+    {
+      "path": "TrailMindUITests/TrailMindStagingProofUITests.swift",
+      "bytes": 49488,
+      "sha256": "ef2985eda3235e00fb3716c22b01e75d37e078ee1cfee0d60d730786fc298d0d"
+    },
+    {
+      "path": "acceptance-tests/composition-runtime.mjs",
+      "bytes": 3093,
+      "sha256": "0ce97c548b2843f7e7b333980e92eea75be1834289bb56ad1a052cf63e46c335"
+    },
+    {
+      "path": "acceptance-tests/generic-conditions.mjs",
+      "bytes": 6797,
+      "sha256": "8e0a1fb368ef7ee48b33864659720979a5d47d5f3327af51e7adb15d11e0dee8"
+    },
+    {
+      "path": "acceptance-tests/native-wire-routing.mjs",
+      "bytes": 2430,
+      "sha256": "1868b8d9e1fdb5765b22279640c6fc55786dccfe6e15b4c6ba1e44a2670bf236"
+    },
+    {
+      "path": "acceptance-tests/original-regressions.mjs",
+      "bytes": 3766,
+      "sha256": "57faacb426486a8993f57fa14e3ac10b4233d078ebc0449a061040ec7b3f6621"
+    },
+    {
+      "path": "acceptance-tests/public-format-check.mjs",
+      "bytes": 1263,
+      "sha256": "508ddbf4e6f773511515845b0324958abd57ca186f5c5a248012193d840ddcf0"
+    },
+    {
+      "path": "backend/.dockerignore",
+      "bytes": 591,
+      "sha256": "8a55e201cf97f1bf9c885898f0a2abc8aac74487a2cfb04b692e570da08b66ae"
+    },
+    {
+      "path": "backend/.gitignore",
+      "bytes": 8,
+      "sha256": "56537ebe03160a28fdb6e59ae18f408d6f8aba609df73c45917c9358fd3bad52"
+    },
+    {
+      "path": "backend/Dockerfile",
+      "bytes": 1779,
+      "sha256": "601cfe45b81dc88c91826d09120ab09c944eecc3ba2ac834a648625a32e2c31d"
+    },
+    {
+      "path": "backend/README.md",
+      "bytes": 12041,
+      "sha256": "32c53719fb1d8f965f6b4bef5494a904b10cac54119a1e0ac7194d83ac7ce1ae"
+    },
+    {
+      "path": "backend/api/index.js",
+      "bytes": 44,
+      "sha256": "a9f8bcdcd90e8561fae4d12abb307ad8bb326b767e1f5ed66b23b055125b4edd"
+    },
+    {
+      "path": "backend/config.example.env",
+      "bytes": 3953,
+      "sha256": "9e2cdebc80017c6498f4d293405fa303ab5182fc48fcf34f53dae25a03ca3306"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/capacity-contract-v1.json",
+      "bytes": 4821,
+      "sha256": "98deebe62e49b3a23c4cb30da5d1594b55852e0889342d63c9fe8fbf6af8c3c5"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/capacity-generation-lifecycle.sql",
+      "bytes": 36187,
+      "sha256": "5d0b62d8ed18e1bf92ac358d18ebf6c3c7b4f97e8239f185780352260342c444"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/profile.json",
+      "bytes": 2272,
+      "sha256": "ea3f612b46e8d70bf3b5a76da96c8ec2ee7aac3b5a581e2e2790ceadc37c241e"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/projection-temporary-workspace.sql",
+      "bytes": 1500,
+      "sha256": "e83dc88b029024eb5a00d2377b9a90c79cbf87a9de81ba741750486c49ea8841"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/harz-v1.geojson",
+      "bytes": 730,
+      "sha256": "c46667a05623c1a17b7d8e357f299341109de20b3dbb83c612eb7ecf53319e64"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/harz-v1.json",
+      "bytes": 1117,
+      "sha256": "769dc6a3129a4c383906057cd847a9eab7995851008d57c9fc76d959b7ca4e2d"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/innsbruck-alps-v1.geojson",
+      "bytes": 731,
+      "sha256": "54ac412f3cae5ad27a0376996eeb8742cda8d12fa92edf473df13d41a2f6ebe0"
+    },
+    {
+      "path": "backend/config/outdoor-capacity-profiles/supabase-free-bounded-two-core-v1/regions/innsbruck-alps-v1.json",
+      "bytes": 1085,
+      "sha256": "46d7d909f3a953a63fee8e3105d5c7828908d9fef306f631af3aebb54fca604e"
+    },
+    {
+      "path": "backend/config/outdoor-regions/harz-v1.geojson",
+      "bytes": 323,
+      "sha256": "51bd07520caccc2c094f97c0d1375bd335b2e62a50dc2b2d4948b7f4ae9b03ad"
+    },
+    {
+      "path": "backend/config/outdoor-regions/harz-v1.json",
+      "bytes": 1189,
+      "sha256": "75fd72ebb69594777f8f019675d8e699785464ee4bdbfe9b0542c6bea8dce0cf"
+    },
+    {
+      "path": "backend/config/outdoor-regions/innsbruck-alps-v1.geojson",
+      "bytes": 455,
+      "sha256": "b83774abd8eec14e0ef3e69a237fc9586b380464acd9a061dd3e4cf83d0722b0"
+    },
+    {
+      "path": "backend/config/outdoor-regions/innsbruck-alps-v1.json",
+      "bytes": 1242,
+      "sha256": "106320c8b851a05f6a41bd4822da96679da23878f4d8bee11df7e7bcb2953c74"
+    },
+    {
+      "path": "backend/container/dynamic-research-rollout-v1.json",
+      "bytes": 2695,
+      "sha256": "d4eb0b33fb37d1a530bebd4847de49d2d3382fe5996d127c12eff5afa37fe690"
+    },
+    {
+      "path": "backend/container/healthcheck.js",
+      "bytes": 1883,
+      "sha256": "7067651c15977e1fca129eabb934ad9b063285b6e463d82b7d470e9d3a85f15a"
+    },
+    {
+      "path": "backend/container/staging-host-contract-v1.json",
+      "bytes": 1111,
+      "sha256": "9921e13cfad0f7a18e4687d43314fd185ed1a1bbaf6c480467ce51e9fa0f0657"
+    },
+    {
+      "path": "backend/container/staging-runtime-contract-v1.json",
+      "bytes": 6372,
+      "sha256": "0ebf21a501c695f0d7e0be3ded9a7f1890bd320d8da4c5fddd8285907ce09a55"
+    },
+    {
+      "path": "backend/container/stagingAdmission.js",
+      "bytes": 7805,
+      "sha256": "a349aae249cc955e5d9897c35179224cf26840e82f6036b6894fd834b7073bd0"
+    },
+    {
+      "path": "backend/container/start.js",
+      "bytes": 1084,
+      "sha256": "c0e42934f46db6898999c9c9de3ca4d3abcd3bb73ce00176de07eee00c9012b4"
+    },
+    {
+      "path": "backend/docs/app-attest-device-verification.md",
+      "bytes": 1591,
+      "sha256": "5f545e7ba754ca7ef26c6c29ee859715e5d84a5a942fc57cb0dacd9f9364fb9a"
+    },
+    {
+      "path": "backend/docs/app-attest-durable-storage.md",
+      "bytes": 4601,
+      "sha256": "46df993c71999e48c46587e196b3178fce2fbc8ee9dadd8f1f8e1014e859d5d4"
+    },
+    {
+      "path": "backend/docs/llm-route-planning.md",
+      "bytes": 3217,
+      "sha256": "9b9c34e19ec7294d80198a25bb5f707806b801dcf5b12b8d07571d4e59a84b0d"
+    },
+    {
+      "path": "backend/docs/outdoor-evidence.md",
+      "bytes": 25104,
+      "sha256": "edbbc626b5edf8c77387daf10410a55e4169caf8d06093ea01f03ff79c0ac590"
+    },
+    {
+      "path": "backend/docs/outdoor-research-runtime-read-boundary.md",
+      "bytes": 12005,
+      "sha256": "93b6f306b67ddc35ade4a1ec2c01f568fdb6539a4b995f4cb8b77a951a994d84"
+    },
+    {
+      "path": "backend/docs/route-api.md",
+      "bytes": 9954,
+      "sha256": "27e071a69dc45ee3c9b72266786550347254dd639138667804df8648348c6595"
+    },
+    {
+      "path": "backend/evaluation/dynamicResearchEfficiency/fixture.js",
+      "bytes": 5238,
+      "sha256": "379b77e20f21bcc3c7508cb014180f9a8b76a6c1d5ccc2488aeba1bfff83bd52"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureQuality/evaluator.js",
+      "bytes": 33262,
+      "sha256": "20143067db66272c2c0e751c1c2bbfa1f52133f75da27ae7ca640deee9db2c4b"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureQuality/harness.js",
+      "bytes": 19850,
+      "sha256": "0d1692319caea084d4abf331d7942d13d11214b6959353ed798761e3c182a88e"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureQuality/syntheticFixtures.js",
+      "bytes": 13555,
+      "sha256": "37b397bc62d886d9f891170d8c783df44b7c77ad73d1383c8e1089acb4a92d6c"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureServerLiveProof/harness.js",
+      "bytes": 44833,
+      "sha256": "32a00b6f1b7e11d68b450f6be29b04ecddef7e48d5ff1de594b224e18caf6cdc"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureServerLiveProof/manifest.js",
+      "bytes": 12985,
+      "sha256": "f1a09b10f64d463c1f33f5eea91d8f856c926d16b8f620cca84b34170be2def2"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureServerLiveProof/quality.js",
+      "bytes": 21863,
+      "sha256": "d89857fa7be04194614af13bdac6ead6801e1d18397f88bb899ec79d89c836a1"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureServerLiveProof/reconciliation.js",
+      "bytes": 10266,
+      "sha256": "051b03d1dec90fe3ee7092c8cf54982a457ca378fe88889d90717a50b8a177e1"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/evaluator.js",
+      "bytes": 53117,
+      "sha256": "8da84996aa95acf60853e029ec659b2a91bed9ca5565f93299cc461b24228fbd"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/fixtures/mandatoryCasesV1.json",
+      "bytes": 26082,
+      "sha256": "8d14f401e458b6bcad4de22c4c80ef8426098e084690e12997808129bc0881e5"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/harness.js",
+      "bytes": 26139,
+      "sha256": "0b5bd3cc30417780f71ffa9a0de35cad4a6aaf04ac00e7dd633f270cd3443ddb"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/iosRuntimeReceipt.js",
+      "bytes": 49164,
+      "sha256": "6534d2b6fa2471f41cdcb746e148df241c3b760af0d4c138114b14983f1a2d74"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/manifest.js",
+      "bytes": 17838,
+      "sha256": "5072f506a062da6b75c8671ae5367d11e074365805377499ae4bccbe76159db3"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/operationalBackendCapture.js",
+      "bytes": 19196,
+      "sha256": "25ef1f0c43ab7522b16358ba1e9e9a730723516feab34667ba51bef1beb9fa00"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/operationalCaseDriver.js",
+      "bytes": 24048,
+      "sha256": "8a06df1638b6d2c598c6d276da82549dc9b0c1edaf7463389a30686635d6b69a"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureStagingProof/postgresCancellationGate.js",
+      "bytes": 17003,
+      "sha256": "02b4a654e1207db5e137631bee8d87e5e5967b4c518911d8268ed331b9a7b99c"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/attempt3Contract.js",
+      "bytes": 12443,
+      "sha256": "f52f2897fb70f6eb4a143f8b9d6b6df43637522e6f019f1ab2af5e8364abd68b"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/attempt4Contract.js",
+      "bytes": 17178,
+      "sha256": "37ab87648c2df81d4479d2f63651548a28b19c5d63f51b41e53a3e2434a96c78"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/contract.js",
+      "bytes": 26025,
+      "sha256": "afc9849e5776653843d7089cdd849133d756ada9f040c42bca119ae25ea24c12"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/databaseGate.js",
+      "bytes": 7332,
+      "sha256": "93aa4cde182131c145b60648c6992bd9b62e780dd38e8f4943405d03f00d0b80"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/durableProofRunIdentity.js",
+      "bytes": 11322,
+      "sha256": "cdb867d3a65dbf878553dee3bd77e2a0b07c568f5523c2f7d08cf2780a5dc6e2"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/gitCandidateAttestation.js",
+      "bytes": 5742,
+      "sha256": "3e16f2fa0e8bfc8a06bf3cbff8b21347e5e6c137bc88f0d70ddfdb91605b4434"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/historicalReceipt.js",
+      "bytes": 11973,
+      "sha256": "df338d1649e05fa5a81f26544ab449db533213ab7559f4ab3b4a7f31b3b9a8b0"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/preflight.js",
+      "bytes": 6571,
+      "sha256": "7ae6ee5ad1b6cc0365f738c8f9f8f4126d9d5f7a12e908d24484355a7756ecac"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/proofRunContext.js",
+      "bytes": 12649,
+      "sha256": "b56e28f9ea03d8d634ad868597cc151c28f86f43f3fe9c830edd31bd3140bc1e"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/proofRunIdentity.js",
+      "bytes": 19370,
+      "sha256": "64b307a6e8be5f7247afe4e568dd3954b58071865fe33c2e502f52646e5dcce0"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/providerControl.js",
+      "bytes": 23009,
+      "sha256": "41829c266d80af862b1dae1a0a403d191ecea68d1596ca2742fc9542d4ced87d"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/publicationCleanup.js",
+      "bytes": 7548,
+      "sha256": "714c12742ecc3ab098c50ffd5366ba8d4854ed99f63bbcf9d8b86ce83608c2ac"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/quality.js",
+      "bytes": 21642,
+      "sha256": "22a7f52e911cba9fb6d400a76794f841f0025449b3e56e1d8ac2e66c2f4bd71f"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/receipt.js",
+      "bytes": 12886,
+      "sha256": "65f3e5fe9a79b3f15cf76f1a9b2502cb346e161a86ff352ffa9d616540c306f3"
+    },
+    {
+      "path": "backend/evaluation/outdoorAdventureTargetedLiveRouteQualityProofV4/resumeContract.js",
+      "bytes": 7460,
+      "sha256": "ab2a8994fdad9ac9f1a67115bfb5f19b68ad4b62e9e5649b9fa629752927331b"
+    },
+    {
+      "path": "backend/evaluation/phoneEngineReliabilityGateV1/evaluator.js",
+      "bytes": 8913,
+      "sha256": "accfbb002ffd1a0b2e04eb31447ff467ee3d4f2dcb00683fbc3f20e31ec2f2b1"
+    },
+    {
+      "path": "backend/evaluation/phoneEngineReliabilityGateV1/fixtures/casesV1.json",
+      "bytes": 11954,
+      "sha256": "06272ba2acbc3405a7fa1e91b1461411f9d374f08be31e8f9636780f9935f2ef"
+    },
+    {
+      "path": "backend/evaluation/phoneEngineReliabilityGateV1/manifest.js",
+      "bytes": 7123,
+      "sha256": "2e582815a722e505d560c62845530f495be406ea27a8a6997649e7ef934eac5a"
+    },
+    {
+      "path": "backend/evaluation/phoneEngineReliabilityGateV1/receiptAdapter.js",
+      "bytes": 3369,
+      "sha256": "c542aa33c1ea20e581e06e12da9b0a40e5520e0f3899befdcbc0fd41c0c213da"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/constants.js",
+      "bytes": 11057,
+      "sha256": "e66babbe5164282b035dd4429492a36411bd6cbbb24ad3cff5505a56e4f97b0d"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/contract.js",
+      "bytes": 21117,
+      "sha256": "76c1e2b243c357dd98bd5ec9fd0b6a760ba0ff1662de40b84c1cf00e053017e7"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/gitEvidence.js",
+      "bytes": 6129,
+      "sha256": "a8d7a3dfe06194bcc5c94dfb7dc2b6c36c6843b31b4cb52f2df992e049845526"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/index.js",
+      "bytes": 325,
+      "sha256": "8622d96dc41cd7a329f0429c8de5d2a1813b9f6878c16be09fb9f3c53029ac96"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/io.js",
+      "bytes": 3129,
+      "sha256": "6dd18667a0bce9b04d53e664906a8799fe5968062b5b877ee03778acedc33470"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/observations.js",
+      "bytes": 43876,
+      "sha256": "7eecb6f908a23ef9a88eed79491b08e6f4d6ca70b01791c2ad258bcb5a4f094e"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/offlineHarness.js",
+      "bytes": 8319,
+      "sha256": "0dc50b33058fe341e985af110d0119377aec240250af8a3cca02b51b88fc510c"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/policy.js",
+      "bytes": 4959,
+      "sha256": "82dadc3a6e6b66be555bd9e681673d776b0abbf576e257cfa240459a265a176c"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/roleReport.js",
+      "bytes": 5125,
+      "sha256": "30691b0fa66251e2c8845fe0248558f089a2e10888365c361e53b4cf1219457b"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/serialization.js",
+      "bytes": 978,
+      "sha256": "16335627f5482bac06fd7a2d315248645b58d7ea0a0b6e041470c2d93754f283"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/syntheticFixtures.js",
+      "bytes": 20217,
+      "sha256": "7fbf20ce2236658e86dd24b35bd3f35267daec63c5962e6e607464e83fe647a5"
+    },
+    {
+      "path": "backend/evaluation/stagingReadinessV1/validation.js",
+      "bytes": 5059,
+      "sha256": "28463fccba850b6dc2341bca7ee9ef0477fa0a05183216d48a4b82c024e24991"
+    },
+    {
+      "path": "backend/migrations/001_app_attest.sql",
+      "bytes": 3212,
+      "sha256": "f25c5c712563d53abc926c34196e603b54d6ce7d414b5f22fdf95ec49ae95c16"
+    },
+    {
+      "path": "backend/migrations/002_outdoor_evidence.sql",
+      "bytes": 14293,
+      "sha256": "750d715dc4662ca725a3c04de91c559e6dfc9455332be23eb95fa509dceafd7d"
+    },
+    {
+      "path": "backend/migrations/003_outdoor_research_graph.sql",
+      "bytes": 34173,
+      "sha256": "79eaf76eea21c6a3476fb801cfae432bccdbc3260421dcfb9e123513b6bb3928"
+    },
+    {
+      "path": "backend/migrations/004_osm_outdoor_research_projection.sql",
+      "bytes": 32478,
+      "sha256": "7a876c955740021ca173300409c97a869e1c6aebbdb8dffdf773295d39d7bbb3"
+    },
+    {
+      "path": "backend/migrations/005_outdoor_research_projection_geometry.sql",
+      "bytes": 858,
+      "sha256": "945688fdff722cfdab62f72fc7b9bd5c27335e10161054f3909e774094ae6bc8"
+    },
+    {
+      "path": "backend/migrations/006_outdoor_route_membership_point_index.sql",
+      "bytes": 410,
+      "sha256": "13ad98c4fc0fa19b27ad7a398bbaca8a6dfdfb1a29616e2de25c4a877843e8c4"
+    },
+    {
+      "path": "backend/migrations/007_routable_highlight_access_geography_index.sql",
+      "bytes": 413,
+      "sha256": "d3eb65d307f28e65bdaa234be7a6fc1cd7ceec47499ebd40e05b61fdb40657f7"
+    },
+    {
+      "path": "backend/migrations/008_outdoor_research_runtime_read_contract.sql",
+      "bytes": 42940,
+      "sha256": "e568e6ea65bd0d6f96fd20f636efcbb42700c55856ea3f19d1955b6a9e415b32"
+    },
+    {
+      "path": "backend/migrations/009_supabase_postgis_isolated_runtime_read_contract.sql",
+      "bytes": 51622,
+      "sha256": "92f51e93280027b77081b2cc96beaf10c2c25ba225ebbf527e78239a50040294"
+    },
+    {
+      "path": "backend/migrations/010_bounded_outdoor_import_schema_provisioning.sql",
+      "bytes": 8994,
+      "sha256": "62f23c605654fc3e58661646d376bf68cca8e95c0e9354dc9da6d77c765ef467"
+    },
+    {
+      "path": "backend/migrations/011_pin_security_invoker_function_search_paths.sql",
+      "bytes": 1388,
+      "sha256": "877141692d64bafd47e62899238d01ba349149d6d72c4c3d25014e11ffa495d7"
+    },
+    {
+      "path": "backend/package-lock.json",
+      "bytes": 13572,
+      "sha256": "f68d2c233fa98ed7dd57ba1bee8ab560069205b61cf371ca205f26f03f5c2533"
+    },
+    {
+      "path": "backend/package.json",
+      "bytes": 2418,
+      "sha256": "9d600bbc3f4e0e08e019d3e8315660e2bbd8c1250ca31302ba2e70c41cd572a9"
+    },
+    {
+      "path": "backend/scripts/check-javascript.js",
+      "bytes": 1602,
+      "sha256": "a158ef2ac46afe255e764c771352d161aed4c6820d028d8825d250e66045e81c"
+    },
+    {
+      "path": "backend/scripts/check-owner-phone-https.js",
+      "bytes": 3002,
+      "sha256": "ef630dce3e45ae2a23adcd9e0c4903435add11bf1a977d9fb09641eb2f561647"
+    },
+    {
+      "path": "backend/scripts/compare-dynamic-research-efficiency.js",
+      "bytes": 2314,
+      "sha256": "d5c828a7228e73d151cfc363a1b249e9049925e610f045dba1fb6cca54b66158"
+    },
+    {
+      "path": "backend/scripts/configure-osm-outdoor-research-policy.js",
+      "bytes": 2786,
+      "sha256": "2d16ba2be5f025e04eaf2f6c39a9a0b32cab903b7636e59943dade0982fe2fc8"
+    },
+    {
+      "path": "backend/scripts/configure-research-app.js",
+      "bytes": 3048,
+      "sha256": "906d03181f8a1ad9759610f228f9a525b5c558c3cc6050a3551c5290582e4bf6"
+    },
+    {
+      "path": "backend/scripts/disposable/render-managed-supabase-bootstrap-v1.js",
+      "bytes": 3279,
+      "sha256": "764605d456fca3e769e57e5b69a449638c3d72b7158687d456d679d32a84067c"
+    },
+    {
+      "path": "backend/scripts/disposable/run-authorized-supabase-postgis-v2-migrations.js",
+      "bytes": 3101,
+      "sha256": "b9da72a420f2beeffe2d730f42a116dbacf238346d1393d2b416d329e7fc2b83"
+    },
+    {
+      "path": "backend/scripts/disposable/run-dormant-supabase-hardening-v1.js",
+      "bytes": 10974,
+      "sha256": "e47490c850a006c056b880a0e57245d7c081aacc3e830a7a2590b58e91d84453"
+    },
+    {
+      "path": "backend/scripts/disposable/run-staging-phase1-v2-single-session-adapter.js",
+      "bytes": 11922,
+      "sha256": "29a0f43d1fcd9924081f21451608b80761ab67dcffab64e103ad5ad278c71532"
+    },
+    {
+      "path": "backend/scripts/disposable/run-supabase-postgis-isolation-v2.js",
+      "bytes": 36101,
+      "sha256": "4cb8893d4f3e2f2621a1c9d08e6a0af44d55c325fa1eb25ff22ed22f634a8fdb"
+    },
+    {
+      "path": "backend/scripts/import-outdoor-evidence.js",
+      "bytes": 26861,
+      "sha256": "3f989c4a970cecae8658b7fd951458d44cba537998160d746fbb02ca7e68d925"
+    },
+    {
+      "path": "backend/scripts/local/run-ilsenburg-pilot.py",
+      "bytes": 11954,
+      "sha256": "da510996792bbb05957422bf0eed2de8103aa5717e3b3861adfa94b2189529c0"
+    },
+    {
+      "path": "backend/scripts/local/verify-ilsenburg-pilot.js",
+      "bytes": 3000,
+      "sha256": "59a9fe28245afe3e17c6a384725f39c6a6541dfa9d8ada2578f8bc75b1659871"
+    },
+    {
+      "path": "backend/scripts/migrate.js",
+      "bytes": 1584,
+      "sha256": "5a19fe2943a180a8d1fff6d73b57792b62b6c0c940253b4b9a210d4db89f2409"
+    },
+    {
+      "path": "backend/scripts/owner-google-error-classification.js",
+      "bytes": 5404,
+      "sha256": "8ae03ec35ad5210f57cc2b63b9a34edffcda5832d8a0e3602934412e624e14c3"
+    },
+    {
+      "path": "backend/scripts/owner-phone-diagnostics.js",
+      "bytes": 3958,
+      "sha256": "31879c6a25ef46937c81d03ceac277a5e27613b21ef21313f370f73632a29bde"
+    },
+    {
+      "path": "backend/scripts/owner-phone-diagnostics.md",
+      "bytes": 1867,
+      "sha256": "47fce2f8edb32c471994dced96aed03744f31e011205184b502c33a419c27a13"
+    },
+    {
+      "path": "backend/scripts/owner-phone-provider-budget.js",
+      "bytes": 7237,
+      "sha256": "6a7aa0cb38eca446f81b783a868b74343f359234231c10beae52dd6f17b41e01"
+    },
+    {
+      "path": "backend/scripts/owner-phone-research-runtime.js",
+      "bytes": 9294,
+      "sha256": "b6edd7a614f073660b3ee1959fdce046a69dbfbfeb3e2157009ae1043e0f7abb"
+    },
+    {
+      "path": "backend/scripts/owner-phone-test-server.js",
+      "bytes": 3826,
+      "sha256": "eda66540dc23a0127f3066251943bdf5225725d7281177025087dc1cdfd16d1e"
+    },
+    {
+      "path": "backend/scripts/owner-phone-test-session.js",
+      "bytes": 2473,
+      "sha256": "57a5a598d88185875bc23f9a6b22bc9529e578d7f30b8e7abd24d1d407a11a63"
+    },
+    {
+      "path": "backend/scripts/project-osm-outdoor-research.js",
+      "bytes": 3563,
+      "sha256": "715189c5872bf0b41823a08ae872c7b6389e643a4994a8e97e467e18612f4363"
+    },
+    {
+      "path": "backend/scripts/publish-outdoor-adventure-targeted-live-route-quality-proof-v4.js",
+      "bytes": 11918,
+      "sha256": "87ee031d8d8ef6a8bba87b77065735d1fc16001dddeb3363c96f442f481aaa07"
+    },
+    {
+      "path": "backend/scripts/reconcile-outdoor-adventure-server-live-proof.js",
+      "bytes": 3729,
+      "sha256": "d94e24a58ba44c4d17f32e023ef4f3f7dd5bdbcb99e90d2e634455db6cae4f58"
+    },
+    {
+      "path": "backend/scripts/retire-outdoor-evidence-generation.js",
+      "bytes": 4689,
+      "sha256": "b5d923e4652d3f781b978b7b899ff78f107d31b0fff3d6e7bc91f71b9e6e8287"
+    },
+    {
+      "path": "backend/scripts/run-outdoor-adventure-quality-eval.js",
+      "bytes": 2139,
+      "sha256": "b53a44bca0c9bb18948552b132012f25837ad03b0c1d82211f91f788311036eb"
+    },
+    {
+      "path": "backend/scripts/run-outdoor-adventure-server-live-proof.js",
+      "bytes": 7533,
+      "sha256": "534cf0dd04a546bf5f301ecb092d8716963b981f03df1584f89d05f6cdb0156b"
+    },
+    {
+      "path": "backend/scripts/run-outdoor-adventure-staging-proof.js",
+      "bytes": 13125,
+      "sha256": "ba65fef25eca80082b022dede966ae03412328668ce4fc97600021923f7b1cfe"
+    },
+    {
+      "path": "backend/scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v3.js",
+      "bytes": 18642,
+      "sha256": "a9603b7ff27142300a18906e0e066d82f0e0f264f3a11cb9f56a31ab2e7553a7"
+    },
+    {
+      "path": "backend/scripts/run-outdoor-adventure-targeted-live-route-quality-proof-v4.js",
+      "bytes": 33893,
+      "sha256": "d3ec8b2bba408ebdf950fd3c6d890fbdab1a299da71973f94b660cf2a701216f"
+    },
+    {
+      "path": "backend/scripts/run-phone-engine-reliability-gate-v1.js",
+      "bytes": 1577,
+      "sha256": "26a3781026125ff7383f2bcb27a52fcec20e22454ca6550f5f685240f3fdc5d7"
+    },
+    {
+      "path": "backend/scripts/run-staging-readiness-v1.js",
+      "bytes": 5271,
+      "sha256": "827f8f9989a1aaf96f6bfc456ffe5fe84d3f6f9b290694e3b7efa08c204e2eb4"
+    },
+    {
+      "path": "backend/scripts/run-tests.js",
+      "bytes": 1624,
+      "sha256": "2d26a1dafb45ee90cc6309157a33942d35eb54746024fc107bf3bdd1d7c0ace9"
+    },
+    {
+      "path": "backend/scripts/seal-outdoor-adventure-server-live-proof-cleanup.js",
+      "bytes": 2708,
+      "sha256": "39899cc8c2f312f46a00abbeac58d89bf663a7b9e492585364e8ff4ea991bd6d"
+    },
+    {
+      "path": "backend/scripts/staging/phase1-v2-operator.js",
+      "bytes": 837,
+      "sha256": "1eefb579f2c0be7ae052d5a478b34002b7272ac9d8808caed7ab0090d9257af7"
+    },
+    {
+      "path": "backend/scripts/staging/runtime/inspect-image.js",
+      "bytes": 7937,
+      "sha256": "c43da008e91f93808d41f6b66eb4c2591bdd944ac15b096b7f639b36e650b1eb"
+    },
+    {
+      "path": "backend/scripts/staging/runtime/run-pruner.js",
+      "bytes": 7164,
+      "sha256": "900242699e3e6ad5b07369eb345afb42cddf5adb8327fa8464759de2a7f5eaca"
+    },
+    {
+      "path": "backend/scripts/staging/runtime/verify-build-context.js",
+      "bytes": 3773,
+      "sha256": "77dba3c47938a8bfa3b491a0e6810bd922d89814656292e834fbe6c39b1f2539"
+    },
+    {
+      "path": "backend/scripts/start-local.js",
+      "bytes": 910,
+      "sha256": "e0ea77da30127b7b79ddc50a94a323879c1bf02efe14f7f12d51f744d5c27ac5"
+    },
+    {
+      "path": "backend/scripts/start-owner-phone-test.js",
+      "bytes": 6682,
+      "sha256": "4a27d7c0bded3d9c5edbf27384d27de65a97230fff3d46f743f6f44815883192"
+    },
+    {
+      "path": "backend/src/appAttest/appAttestEndpoint.js",
+      "bytes": 9632,
+      "sha256": "b8010d0ee65ad2e1ce56afb85a8042cfb914d41bc4364ff2b10d86ef3da674b7"
+    },
+    {
+      "path": "backend/src/appAttest/appAttestErrors.js",
+      "bytes": 2195,
+      "sha256": "c37607c0ed17ceff1a9d51c199aeb9a6635759add8f1f4e30513ad4c8c238131"
+    },
+    {
+      "path": "backend/src/appAttest/appAttestRepository.js",
+      "bytes": 9522,
+      "sha256": "0ccedb0a5dcd1a16e983cea6a44bf937443caa8805b564d3baf6d51ad7cbbd74"
+    },
+    {
+      "path": "backend/src/appAttest/appAttestRuntime.js",
+      "bytes": 1744,
+      "sha256": "b84a4d0ab0e2094ae3c8c7dcf00e955e38f0a13e1c5d45847d2cd021f7e07abb"
+    },
+    {
+      "path": "backend/src/appAttest/appAttestVerifier.js",
+      "bytes": 15040,
+      "sha256": "39d9f28b8543c714dc145894893e97763a075bd1a7b33c15d34195c07b5afc0f"
+    },
+    {
+      "path": "backend/src/appAttest/appleAppAttestationRoot.js",
+      "bytes": 973,
+      "sha256": "a2a293567ea93001b9dabe06f4165e0ee4b762853cda60b7923938360f8d2a79"
+    },
+    {
+      "path": "backend/src/appAttest/clientData.js",
+      "bytes": 3729,
+      "sha256": "25fd02832ed8b21128ee9f4f2fdccd4b305a32e1faef2c80268ae2f7abbc08dc"
+    },
+    {
+      "path": "backend/src/appAttest/intentSessionEndpoint.js",
+      "bytes": 2355,
+      "sha256": "be26f904973fe23c6ef994a9cf046edbe840815ca9fc1c7808a1a1b3c6a790a8"
+    },
+    {
+      "path": "backend/src/appAttest/postgresAppAttestRepository.js",
+      "bytes": 16664,
+      "sha256": "8a7849262e6dc0d40231a143665271d29a516808f498cfb643df84597736112a"
+    },
+    {
+      "path": "backend/src/appAttest/pruneExpired.js",
+      "bytes": 2311,
+      "sha256": "ad223c32a5ff7ab08a3bec710c8cc7f9d57a5ac63b1918bc6c8516b6b532aa6c"
+    },
+    {
+      "path": "backend/src/appAttest/routeSessionAuthorizer.js",
+      "bytes": 5577,
+      "sha256": "d80cb94d722c4cb3c2aaef4b6f07c030215e2616e8450237d39ab2143bf065bd"
+    },
+    {
+      "path": "backend/src/dynamicResearch/access.js",
+      "bytes": 7273,
+      "sha256": "27eac312b3681ace35e431453ec6dc62cb6cf69913bb21a25f75fc070ff0b736"
+    },
+    {
+      "path": "backend/src/dynamicResearch/composition.js",
+      "bytes": 2570,
+      "sha256": "b7aca996c1fd943f477d128d03cdbc41ddc316160fc6aeac3342c3b6a95bb8f2"
+    },
+    {
+      "path": "backend/src/dynamicResearch/conditionSources.js",
+      "bytes": 8316,
+      "sha256": "d233530940296b94486bb99752a86cfd133f10f097582b28226f11471caeba42"
+    },
+    {
+      "path": "backend/src/dynamicResearch/contract.js",
+      "bytes": 3437,
+      "sha256": "a7d800ecaaacd4d1581abd9de6fec64b8fcb51d534d1e9a6a688a894c0de83ce"
+    },
+    {
+      "path": "backend/src/dynamicResearch/evidence.js",
+      "bytes": 3789,
+      "sha256": "964859dc5a24b940d280f4e89caaa9faef570d143ea52c0d58839a06aebf3336"
+    },
+    {
+      "path": "backend/src/dynamicResearch/gemini.js",
+      "bytes": 2682,
+      "sha256": "349ce38db8f237712bb76de520299cbb37ae042f72975955171e741a3d87557b"
+    },
+    {
+      "path": "backend/src/dynamicResearch/genericConditions.js",
+      "bytes": 14955,
+      "sha256": "756286895c44c98d6cbeee5a29ddb6be01d95d5be7747fc86785f5c8bc076a80"
+    },
+    {
+      "path": "backend/src/dynamicResearch/localConditions.js",
+      "bytes": 9790,
+      "sha256": "adcc277b06ceba48121067b6f9f014f2722294a38aa003c69405fc7da0ab4237"
+    },
+    {
+      "path": "backend/src/dynamicResearch/placeMedia.js",
+      "bytes": 4958,
+      "sha256": "e1b97a43cf086859683cc90923f8b6a6f3641478b9d16c25cae15d1fce8f1a68"
+    },
+    {
+      "path": "backend/src/dynamicResearch/places.js",
+      "bytes": 7493,
+      "sha256": "d83ec253bb81cfdb4657bbce3f89af9fc53a48cc9e5898ff4ba513941277d290"
+    },
+    {
+      "path": "backend/src/dynamicResearch/planner.js",
+      "bytes": 28686,
+      "sha256": "dc0f5810dd1268e8f54ee179de8e7050b0a904ce208567d904d75ac0de943e0c"
+    },
+    {
+      "path": "backend/src/dynamicResearch/publicSources.js",
+      "bytes": 2437,
+      "sha256": "4d0cd6b21712cfe2046d4c8ce5a7337c61739731aca3c9b1c25ddc775392bdac"
+    },
+    {
+      "path": "backend/src/dynamicResearch/quality.js",
+      "bytes": 4858,
+      "sha256": "1aa34a931fa3459bce3c07c32cb36f1ffd5ba42d569338b6c145c1ffb12ebb16"
+    },
+    {
+      "path": "backend/src/dynamicResearch/recheck.js",
+      "bytes": 4525,
+      "sha256": "0e16ed9a6991c8868a5bad960513973c9e9054168539e01b42d8d2eff3284185"
+    },
+    {
+      "path": "backend/src/dynamicResearch/regionalConditions.js",
+      "bytes": 11419,
+      "sha256": "bb1d274a7500049a84e6378f0c082c3d6cc70171e466f0e81155a8c91c3883a1"
+    },
+    {
+      "path": "backend/src/dynamicResearch/routing.js",
+      "bytes": 6096,
+      "sha256": "ee8646496e5322453fbcc55cf0fcad3235fb6285cc72f7c89eed2709cc9c59b0"
+    },
+    {
+      "path": "backend/src/dynamicResearch/sourceDocuments.js",
+      "bytes": 10359,
+      "sha256": "b121e52e4fd8cd91582f90ab2068db64d2c5db24be012d7100f05df10173b626"
+    },
+    {
+      "path": "backend/src/dynamicResearch/webResearch.js",
+      "bytes": 12747,
+      "sha256": "c067756b721f7a13c7f7a97e338f6cf7a2081d98b310701571861ead2267197a"
+    },
+    {
+      "path": "backend/src/intentSchema.js",
+      "bytes": 2661,
+      "sha256": "588b64dbd46d87bb4f7f5e1f3394a04d399da1508afb237e9ce45f1c6f8077b9"
+    },
+    {
+      "path": "backend/src/llmPlanning/adapters/adapterErrors.js",
+      "bytes": 725,
+      "sha256": "e03e8e2f82694d718e2550ae8d971a8d4ebecb84d635ad660d8f92a12569a1e3"
+    },
+    {
+      "path": "backend/src/llmPlanning/adapters/graphHopperGeocodingAdapter.js",
+      "bytes": 9298,
+      "sha256": "c8ffb2a7cc77aff05508a318c6f6bb21929fa04ca653f3ee09f93d39934cd1a2"
+    },
+    {
+      "path": "backend/src/llmPlanning/adapters/productionAdapterComposition.js",
+      "bytes": 2412,
+      "sha256": "eb0ac52be7bd6ca737ea8297c4a6304466a408361ad5557f8dfd5d4a989df2e0"
+    },
+    {
+      "path": "backend/src/llmPlanning/adapters/providerHttp.js",
+      "bytes": 6767,
+      "sha256": "4e7d9d8828c5fbdb4249ca0d75b1ccf4a21724df02f606dde3b81cd360f227ab"
+    },
+    {
+      "path": "backend/src/llmPlanning/adapters/selectedIntentPlanningAdapter.js",
+      "bytes": 10545,
+      "sha256": "e81cca1de586d1b5c264fa434fcc797a0143a687e77148377667c07d40c12713"
+    },
+    {
+      "path": "backend/src/llmPlanning/index.js",
+      "bytes": 241,
+      "sha256": "1c3f36f0f10217825115faaaaef35ca153c379102cb3e619d314f54ce5be1e41"
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningContract.js",
+      "bytes": 7782,
+      "sha256": "092c7868e9e9f257628df3d9d6dd630873faee89c3bd9606e5f0bb8146bec9db"
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningEndpoint.js",
+      "bytes": 14721,
+      "sha256": "2aacf93ba7ea1cc2409a35cc41b567bd43d26dfb0836505bdae388e17cff08c2"
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningOrchestrator.js",
+      "bytes": 32968,
+      "sha256": "c26292dad038a547ebcce51d1f3a07f2ce33865df74e0314aee578ecbe56e452"
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningPolicy.js",
+      "bytes": 1610,
+      "sha256": "34449f13aa3d663aa6b4364cc5577b1c5d2c4e9a5b61e2c1604af20e49d4165d"
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstSafetyGatedPlanner.js",
+      "bytes": 27641,
+      "sha256": "f7129ed144b61bb27d3c5cac68802006067b6126e347eebed8058744d247cd57"
+    },
+    {
+      "path": "backend/src/llmPlanning/researchLedItinerary.js",
+      "bytes": 11833,
+      "sha256": "4dfea0fb0c440af03081853577985793a3398e8cb3fafbf2b09470384d65e410"
+    },
+    {
+      "path": "backend/src/operations/dynamicResearchAllowance.js",
+      "bytes": 1164,
+      "sha256": "46b109b10dc79558e002c48512d67d5433bfd197fb9eb3051f24c1e4968a8880"
+    },
+    {
+      "path": "backend/src/operations/migrationRunner.js",
+      "bytes": 24038,
+      "sha256": "58d861b1a6b51efb629f1edc49ef8e92a20fb86f55618c79cad00f95ef313c84"
+    },
+    {
+      "path": "backend/src/operations/operationalEvents.js",
+      "bytes": 5386,
+      "sha256": "1d43fe669cc90b8fd54032ea53ca234484f29a5c619fa3941d7b45383b81b612"
+    },
+    {
+      "path": "backend/src/operations/preflight.js",
+      "bytes": 656,
+      "sha256": "a65163c4648f998461a628102c6e7e2133f321f50afad6ce4a88eefbf5e06dde"
+    },
+    {
+      "path": "backend/src/operations/productionConfiguration.js",
+      "bytes": 15413,
+      "sha256": "2fdee2ff1e9166520b96bb6214460bca2e69f157accf7391b0fdaf8d79241eb5"
+    },
+    {
+      "path": "backend/src/operations/releasePackage.js",
+      "bytes": 40002,
+      "sha256": "07f56f1109df63a40eea6049287a60958bb04ea942875b348c4a85d0d5dc0fc2"
+    },
+    {
+      "path": "backend/src/operations/serviceLifecycle.js",
+      "bytes": 15949,
+      "sha256": "a899819975b4b8f35bbeb634d2548f8fd0710043e901d62af26c0ccfa40a32d4"
+    },
+    {
+      "path": "backend/src/operations/stagingDatabaseAdmission.js",
+      "bytes": 21571,
+      "sha256": "f4dbd87f9d9e491a4f8a8009b3d7f4f6b5e1cdf18d3be81b79a17cba568a205f"
+    },
+    {
+      "path": "backend/src/operations/stagingManagedSupabaseBootstrap.js",
+      "bytes": 9216,
+      "sha256": "5984ce775a2f041bbca30a6bbdab77ad7a2f3240fd949c5448d3cf581bf9ef7e"
+    },
+    {
+      "path": "backend/src/operations/stagingMigrationCapability.js",
+      "bytes": 1632,
+      "sha256": "ce74ae2343a4ba7a8a878fe43029fe6e68d178d831d064bb27a6f740216858c4"
+    },
+    {
+      "path": "backend/src/operations/stagingMigrationPolicy.js",
+      "bytes": 1511,
+      "sha256": "161e45819dcae9a716236d418fc59baeba597f91d5f99574fafd4f5a8e6b8501"
+    },
+    {
+      "path": "backend/src/operations/stagingPhase1V2Admission.js",
+      "bytes": 40051,
+      "sha256": "451d00562ef2de84946a75e74f452d5553c02a2e8a5889a969067d9f02aa58e6"
+    },
+    {
+      "path": "backend/src/operations/stagingPhase1V2LiveLauncher.js",
+      "bytes": 50691,
+      "sha256": "a01cc31e4ce3852f366fcbb56faba636932a24845c2d671aa83f74c10bef4a85"
+    },
+    {
+      "path": "backend/src/operations/stagingPhase1V2MachineObserver.js",
+      "bytes": 23780,
+      "sha256": "4c3147edf4f7ecd30b3e9d18da8c829b13a66bb0bc05c7fbab2e54ee39f18cc9"
+    },
+    {
+      "path": "backend/src/operations/stagingPhase1V2Operator.js",
+      "bytes": 35815,
+      "sha256": "869b887c888a03648663d9bef05b1301e67122c51a002e8e6b7195462d28be99"
+    },
+    {
+      "path": "backend/src/operations/stagingPhase1V2SingleSessionAdapter.js",
+      "bytes": 80480,
+      "sha256": "d3e21c4eefd7f5e8c46a726f99c4bb461e566f1d596211ca9a816ec939632ff0"
+    },
+    {
+      "path": "backend/src/operations/start.js",
+      "bytes": 354,
+      "sha256": "adddd30043977ab691099dfd8c7ede01df2ed75daea6bdb64c8abcecd0e912b9"
+    },
+    {
+      "path": "backend/src/operations/validateReleasePackage.js",
+      "bytes": 905,
+      "sha256": "b77a2c58a1d7c9b1392dbfe2a3ca1984f9a43614a0240424b5b1bd8c31a5b382"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/index.js",
+      "bytes": 1182,
+      "sha256": "397faea1e7268915877502569fb9211c1c70b4df56f674a556978b009187e4ca"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/orchestrationContract.js",
+      "bytes": 9334,
+      "sha256": "a4f58478946f9a35247116197865fb82bcb603e493025b61c5a055e2be532ae0"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/orchestrationContractV2.js",
+      "bytes": 5727,
+      "sha256": "74496be0db3981a3195b1141143859a4241fca3522b76602576b718c166fb247"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/orchestrationErrors.js",
+      "bytes": 2334,
+      "sha256": "3d81d1b8440468209e812df5a3518d234b2bccee004ea3dfd66a623e9584f711"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/orchestrationPolicy.js",
+      "bytes": 6146,
+      "sha256": "a94bc8e23918bc8226464a475859724149cef8f3508851ad4854cfbca3acc41b"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/orchestrationPolicyV2.js",
+      "bytes": 869,
+      "sha256": "e0eefd03ebea034d06cdc2d5144e89adb1143a1ce73c6bdedd2a2057298c1668"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/outdoorAdventureEndpoint.js",
+      "bytes": 9086,
+      "sha256": "0682d59c48f8910de53408801b1bff9bef8de9d3a00e44d85e847e3a03dd41e8"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/outdoorAdventureOrchestrator.js",
+      "bytes": 15905,
+      "sha256": "8ece57645c29fba29f579c42bfb7f437ecdb39d3656cd30353669eb841420a38"
+    },
+    {
+      "path": "backend/src/outdoorAdventure/outdoorAdventureOrchestratorV2.js",
+      "bytes": 9625,
+      "sha256": "c69af76121c3c99172efd480c7d0f93e7969accffd8480ddbc193ef9c37e1663"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/classification.js",
+      "bytes": 5300,
+      "sha256": "934bcaf75b972f525685c61b44cf1097b79d3a853addb18d9a2012c2ce69c253"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/libpqEnvironment.js",
+      "bytes": 709,
+      "sha256": "00282cbb33cc2cf4584dfc7a2db7822957149f544d31493a089d4912b758befa"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/osm2pgsql-flex.lua",
+      "bytes": 7077,
+      "sha256": "d979d9c589989e046a62ef34470da36cb5cbde9b9de131a0ef6e0270679cd987"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/outdoorCapacityAdmission.js",
+      "bytes": 16647,
+      "sha256": "2af8aa77b27371ed5423f0d3ec6e0aa7b533079259cbdae0cccde8ffe00bd899"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/outdoorEvidenceEndpoint.js",
+      "bytes": 4622,
+      "sha256": "7d1676cffc94d0b9ffbda69bd4aabec2455a2f0c26efa603802448a31bd2df43"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/outdoorEvidenceErrors.js",
+      "bytes": 1624,
+      "sha256": "9070d408538679c2652c810e1dc630f9daae46efab49756974af63f463412c30"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/outdoorEvidenceService.js",
+      "bytes": 17595,
+      "sha256": "9d1c65f59ec3095be6a94410e0dcbcc334b781890294206b0095d6914bad960c"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/outdoorEvidenceValidation.js",
+      "bytes": 4475,
+      "sha256": "28106b4b43fa0f127fbf7a70361636d7b589a0fd343e54255131080d99d9ac40"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/postgresOutdoorEvidenceRepository.js",
+      "bytes": 14411,
+      "sha256": "ee55997995e88488f00780a02128b26c0a858d582c2b97a9844487a748b4a040"
+    },
+    {
+      "path": "backend/src/outdoorEvidence/regions.js",
+      "bytes": 5640,
+      "sha256": "3a7b7340e33240bd9946389ea929710098618f492ccc2f0bb4a340e812ebc1d9"
+    },
+    {
+      "path": "backend/src/outdoorResearch/contracts.js",
+      "bytes": 4535,
+      "sha256": "a9a8a69a0b9f896ea24bcc813a3417ad50526a7a70fa0e18f396ec46d71c0e67"
+    },
+    {
+      "path": "backend/src/outdoorResearch/dossierAssembler.js",
+      "bytes": 23961,
+      "sha256": "56ac7bd2003a6e9930e711ac3440d35aecc53c41de0c16bfebec14dc379e98ec"
+    },
+    {
+      "path": "backend/src/outdoorResearch/evidenceClaimTransformation.js",
+      "bytes": 9309,
+      "sha256": "2cfb61aabab73e55a05308ba0c9157ed30728567a5ee8c8174dba8f5723a3221"
+    },
+    {
+      "path": "backend/src/outdoorResearch/evidenceResolution.js",
+      "bytes": 979,
+      "sha256": "7c2c965e633ae603af2682f2334695b40f21e4cf0e5430d4a69eb5e210b0682e"
+    },
+    {
+      "path": "backend/src/outdoorResearch/evidenceResolutionCore.js",
+      "bytes": 5510,
+      "sha256": "8dd50c3284c2d56f24c4a893fbc9c7f084dead010476be6f331b43fab078d40a"
+    },
+    {
+      "path": "backend/src/outdoorResearch/executorPolicy.js",
+      "bytes": 4604,
+      "sha256": "45f06342101b84508a7422873d6aaf8e9aba71551bdae22e0d3b25aa5407c124"
+    },
+    {
+      "path": "backend/src/outdoorResearch/osmProjectionPolicy.js",
+      "bytes": 15097,
+      "sha256": "d97b59a6519ae1f3c68dcd0849b527e36b269730425c8190595d23c16348c12e"
+    },
+    {
+      "path": "backend/src/outdoorResearch/outdoorResearchExecutor.js",
+      "bytes": 17704,
+      "sha256": "017a9d67b28cf52716e81a3b3c54fa4514d073a566dd1a7d7466c75fe99a5580"
+    },
+    {
+      "path": "backend/src/outdoorResearch/postgresOsmEvidenceGraphProjector.js",
+      "bytes": 73910,
+      "sha256": "d7d3cc0a228f64c9c3f50f389dcbe483f47bd61052a4877723739de827d0de24"
+    },
+    {
+      "path": "backend/src/outdoorResearch/postgresOsmProjectionPolicyRepository.js",
+      "bytes": 17136,
+      "sha256": "7bceb16203622e89f89ea7102be678ef095889c167a597385de3a25ad0b4ff92"
+    },
+    {
+      "path": "backend/src/outdoorResearch/postgresOutdoorResearchRepository.js",
+      "bytes": 49527,
+      "sha256": "1503f21b7b82cf5bf9dcf7625d32227dfc24a17a09155297a6b542fc9a445f7c"
+    },
+    {
+      "path": "backend/src/outdoorResearch/regionBindings.js",
+      "bytes": 8599,
+      "sha256": "39964eb6e37e4757f578b340140e364df7bcdab0c09c77f34dcbd1e14d9c0c23"
+    },
+    {
+      "path": "backend/src/outdoorResearch/researchPlanner.js",
+      "bytes": 32093,
+      "sha256": "8e6134d3f68059336351a2d7d013ac8b476dce57c48a3a6b8659118e559fbd2f"
+    },
+    {
+      "path": "backend/src/outdoorResearch/researchPlannerPolicy.js",
+      "bytes": 5614,
+      "sha256": "db3d91cc04018be1c6dcdbcf9f05dbc73c065db218b242924a61e67db4a356c8"
+    },
+    {
+      "path": "backend/src/outdoorResearch/validation.js",
+      "bytes": 48139,
+      "sha256": "063e96322b25bf8f8bc6e3cb73971230e2882ab6b47c114acd6fdea8aa2b238a"
+    },
+    {
+      "path": "backend/src/parseIntent.js",
+      "bytes": 27345,
+      "sha256": "77375f3c3699e5b1398dc332f53c18e735f74c37d450c32728665f7088c5b841"
+    },
+    {
+      "path": "backend/src/routeResearch/contractSemantics.js",
+      "bytes": 7889,
+      "sha256": "146fb998cd69029e6a6bb0d791fd58387d676d3776e2ccccb44b5d11d0f0722b"
+    },
+    {
+      "path": "backend/src/routeResearch/errors.js",
+      "bytes": 728,
+      "sha256": "7c3a3e6ec184f0d854caacecef513757e32cd4147b288d56af352b9a47cc4a25"
+    },
+    {
+      "path": "backend/src/routeResearch/index.js",
+      "bytes": 2344,
+      "sha256": "4d3cbe06008a75a963c88ed95699c244443e6a20f9e4e2aa08bfceb3b95938f6"
+    },
+    {
+      "path": "backend/src/routeResearch/policy.js",
+      "bytes": 6099,
+      "sha256": "a1dc4f6286a5379ea5aeb4bc72ba239ee5780ef51f477b0a06ca8d12499e4e16"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRouteCandidatePlanner.js",
+      "bytes": 53039,
+      "sha256": "54dc9e4e8e5e262c2b571fa482a2e4fc93d6527c2f4289db44cfd11efeca5f56"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRouteCandidatePlannerV2.js",
+      "bytes": 29435,
+      "sha256": "2a15e2dfd2bee335697de3fa80b8f15f4288c1a8528d8fed5e81fbaf5683f00e"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRouteCandidatePolicyV2.js",
+      "bytes": 2257,
+      "sha256": "a87a2b4befdee7bac4174d68460a72d9ccdd44bf083070ba31ae811144af7746"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRouteProductShapingPolicyV3.js",
+      "bytes": 1108,
+      "sha256": "6617dadd2ce8154a48002876409a76fb96b8fbcdc5d4e2811f41418bc4d143aa"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRouteProductShapingPolicyV3_1.js",
+      "bytes": 1244,
+      "sha256": "f0823a71c500a12c61114145faf8bbfd04a4d81f46f99bb4b56d293afd2c7364"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRouteProductShapingV3.js",
+      "bytes": 29446,
+      "sha256": "68c031522065bd326f635b97a6d49bf80c62ecf743aaf2f9e09b665e1327df53"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRoutingAdapter.js",
+      "bytes": 20804,
+      "sha256": "3b6ffd9a19150a26ef5223aec1b4485448b5190613ee103cf558663c83929075"
+    },
+    {
+      "path": "backend/src/routeResearch/researchGuidedRoutingAdapterV2.js",
+      "bytes": 19977,
+      "sha256": "8cd8fdf3096cc9c2496a834ac5a5c95960fb1c24788119c310f9ea06ea6f36f8"
+    },
+    {
+      "path": "backend/src/routeResearch/routedAlternativesContract.js",
+      "bytes": 27762,
+      "sha256": "0085def8d6892eb894b47d7f6f4dcc908842ba18b6c997cc56e381ee7d5bbf86"
+    },
+    {
+      "path": "backend/src/routeResearch/routedAlternativesContractV2.js",
+      "bytes": 25022,
+      "sha256": "694e82a2ce8df98f5008c23ba080fdda84d789df22697736f364e29a1f941987"
+    },
+    {
+      "path": "backend/src/routeResearch/routedAlternativesErrors.js",
+      "bytes": 932,
+      "sha256": "fae94e87c4d100c10f54631b9e28f23677da3a94c44ea6c35a8506acd854b32e"
+    },
+    {
+      "path": "backend/src/routeResearch/routedAlternativesPolicy.js",
+      "bytes": 1860,
+      "sha256": "350777568717f5653d30bc8d0ff1bbbb51661a30ba80d621fbccb653bddbd6ad"
+    },
+    {
+      "path": "backend/src/routeResearch/routedAlternativesPolicyV2.js",
+      "bytes": 2069,
+      "sha256": "339727200b0eea97211febfb843b278c13cfaa1213b0dc7926943d31aefd043d"
+    },
+    {
+      "path": "backend/src/routeResearch/trailAccessCandidateContract.js",
+      "bytes": 17310,
+      "sha256": "5020ac055dce20e016b41fdf8085d130bf1598895a788fc8c44f581a104ef4a3"
+    },
+    {
+      "path": "backend/src/routeResearch/trailAccessCandidatePolicy.js",
+      "bytes": 1713,
+      "sha256": "8dc1879ca109c880c83e325a077ce808c64cf241e87f0188de8a77a40ec09428"
+    },
+    {
+      "path": "backend/src/routeResearch/trailAccessCandidateResolver.js",
+      "bytes": 7720,
+      "sha256": "3a1c3ea1cc7717d835da8710590a52a57adfec7e6120f71f7511faaf2029c50f"
+    },
+    {
+      "path": "backend/src/routeResearch/validation.js",
+      "bytes": 20471,
+      "sha256": "71a9c033a5549dc1506cbab1972b1202af2d14a203f55bb625675d83c709e777"
+    },
+    {
+      "path": "backend/src/routing/graphHopperProvider.js",
+      "bytes": 20569,
+      "sha256": "1033d66f3b79067f8123f21f2f3f9cf7005479b04a44a7a1a2b2a3079a4d30bc"
+    },
+    {
+      "path": "backend/src/routing/routeAuthorization.js",
+      "bytes": 1537,
+      "sha256": "1871bd786b182ae8cb239186caa84afb228239a3c8614f44b5a80967519d2f7f"
+    },
+    {
+      "path": "backend/src/routing/routeEndpoint.js",
+      "bytes": 4810,
+      "sha256": "d3beaa410ff46983766cd059bc53fb02e77aa0605311d4cc683dee4fd1f170d3"
+    },
+    {
+      "path": "backend/src/routing/routeErrors.js",
+      "bytes": 1836,
+      "sha256": "0d47e4e8f3656a5f0e92d092f375ff599470ec3dbbb1aa68386204056df835ea"
+    },
+    {
+      "path": "backend/src/routing/routeRateLimiter.js",
+      "bytes": 1571,
+      "sha256": "2edc3b86336630931ed1d6135db47f3591dcf037b343b7db82ec013ed86fdcd7"
+    },
+    {
+      "path": "backend/src/routing/routeValidation.js",
+      "bytes": 11364,
+      "sha256": "75b472c1c961971441ead4cca81a43c9883470d18d6fc3df0e305a0699235480"
+    },
+    {
+      "path": "backend/src/server.js",
+      "bytes": 19709,
+      "sha256": "c19fa2cc529a9b6f9090c6a46ced76ecd96ac4625771d575f7b92540083a7a7a"
+    },
+    {
+      "path": "backend/test/appAttestEndpoint.test.js",
+      "bytes": 6005,
+      "sha256": "a989a579cbe0af44f68676d5193c3fa7d1145c4e716689b29527dbe6c278d292"
+    },
+    {
+      "path": "backend/test/appAttestPrune.test.js",
+      "bytes": 3627,
+      "sha256": "594a7106075b1f718fc3ee0114549ff8124407f05bf8e060c0457bd3d14eccad"
+    },
+    {
+      "path": "backend/test/appAttestRepository.test.js",
+      "bytes": 5705,
+      "sha256": "842debe53f7f5e59195efaff915603b0ea4ac74e134fe043bb5d5cb8b25d37c7"
+    },
+    {
+      "path": "backend/test/appAttestVerifier.test.js",
+      "bytes": 9007,
+      "sha256": "bc7bafd356bf30704ea1516f6b91af4feaa7df94de5adf04d3279ba4516a370f"
+    },
+    {
+      "path": "backend/test/dormantSupabaseHardeningMigration.test.js",
+      "bytes": 4111,
+      "sha256": "12676338a7677c23e3c983b4c0d869dc8a8cf82b93bb766b47b6cd055bba73ba"
+    },
+    {
+      "path": "backend/test/dormantSupabasePlanningIsolation.test.js",
+      "bytes": 1756,
+      "sha256": "5a72ab08456884cc606e63d5f86835b4fbe67014802f1a33af0073bd848a60b5"
+    },
+    {
+      "path": "backend/test/durableResearchIntegration.test.js",
+      "bytes": 8397,
+      "sha256": "725229a36ba1c5fbeff5ca36352ab51948158d0900047d6b37afd5e6676c8f25"
+    },
+    {
+      "path": "backend/test/dynamicResearchAccess.test.js",
+      "bytes": 5102,
+      "sha256": "68aa70d94e5b11da741f999251e588c7826d7e0254e55d9f662bffeff96b47d2"
+    },
+    {
+      "path": "backend/test/dynamicResearchAllowance.test.js",
+      "bytes": 2800,
+      "sha256": "cdb3eddc40770ff054aa38ab6d59e7ac962c37b4796e16da73cb3b9152c5e1b1"
+    },
+    {
+      "path": "backend/test/dynamicResearchConditions.test.js",
+      "bytes": 7155,
+      "sha256": "96386a1b73af1d711a2b0d4a6ec6072784ce59bbd5d01df9ab64a3d1c0c19d1f"
+    },
+    {
+      "path": "backend/test/dynamicResearchEfficiency.test.js",
+      "bytes": 12928,
+      "sha256": "cd33645e4adaf441493f546a8e6d022bb1ed75d64ab045a22073014622704cbb"
+    },
+    {
+      "path": "backend/test/dynamicResearchEndpoint.test.js",
+      "bytes": 7898,
+      "sha256": "5adb160d1f0c9ad5202ac416572bb6ef46e4dad0587e0209aae190d1053b6c88"
+    },
+    {
+      "path": "backend/test/dynamicResearchEvidence.test.js",
+      "bytes": 5507,
+      "sha256": "702acbd2b0cda8fef246cfddfcb4885dfa75fec766e0120681b5fd927c5648f6"
+    },
+    {
+      "path": "backend/test/dynamicResearchGlobalConditions.test.js",
+      "bytes": 16110,
+      "sha256": "e1b55eabf7902de887c447f5c9db928ad9f11f93e86ca7219ac16957a28ea335"
+    },
+    {
+      "path": "backend/test/dynamicResearchMedia.test.js",
+      "bytes": 3170,
+      "sha256": "6a7ee155b3924e0e26cee22474a01c88d2a72b10ff35480329bb487dfa93ce93"
+    },
+    {
+      "path": "backend/test/dynamicResearchNativeFlow.test.js",
+      "bytes": 7928,
+      "sha256": "ca78eeb6f988dfe44a1a49b403135a2248c232a7862a25d210a27c2a9adcd943"
+    },
+    {
+      "path": "backend/test/dynamicResearchPlaces.test.js",
+      "bytes": 6592,
+      "sha256": "32c00941bc5cec3e16fc5c3d10223174604500caeddc1df88d225a9a869afcd4"
+    },
+    {
+      "path": "backend/test/dynamicResearchPlanner.test.js",
+      "bytes": 15254,
+      "sha256": "df0c222b464924f1990f3167dac7bc3127acb73d21248b8d904e072a95e2fecb"
+    },
+    {
+      "path": "backend/test/dynamicResearchQuality.test.js",
+      "bytes": 15041,
+      "sha256": "f411f4d14f8747a1203b596bd1c1bf4013e19d877d6b90e8784f0f5105a88845"
+    },
+    {
+      "path": "backend/test/dynamicResearchRegionalConditions.test.js",
+      "bytes": 7595,
+      "sha256": "b5da52263f10543c651fb609dcf4b2648de1245b9f7305e379052df71fce1884"
+    },
+    {
+      "path": "backend/test/dynamicResearchRouting.test.js",
+      "bytes": 6733,
+      "sha256": "4f4b1c480bbc08fcbdac8bc8d72b97610d047637dab5eb32b0bac210cf0ebd40"
+    },
+    {
+      "path": "backend/test/dynamicResearchSourceDocuments.test.js",
+      "bytes": 6775,
+      "sha256": "e84a5dce19dc8168dde3144b42d59d4aab57614f433b0886204074fdf00479fb"
+    },
+    {
+      "path": "backend/test/dynamicResearchWeb.test.js",
+      "bytes": 7450,
+      "sha256": "69365db2fbaab25fe1d762124a89144e298862c182f956cd2c814571fb845d27"
+    },
+    {
+      "path": "backend/test/fixtures/appleAppAttestFixture.js",
+      "bytes": 8064,
+      "sha256": "6a2d590a8e92f8b7d4bd72264eaaa24c89dd7bba34c6b04950f22fe7157cf84e"
+    },
+    {
+      "path": "backend/test/fixtures/googleIntentSchemaDiagnosticWithoutStringLengths.json",
+      "bytes": 2978,
+      "sha256": "e66392ae53e2a7ba5266902ed5ab5eec0e3d93da50ebf9365e8f1d1d02274aa9"
+    },
+    {
+      "path": "backend/test/fixtures/llmFirstPlanningCorpusV1.json",
+      "bytes": 2123,
+      "sha256": "353fc834fd08f226216eb916b78d7985470fd021315b8a4c6bd646aa899cb050"
+    },
+    {
+      "path": "backend/test/fixtures/llmFirstSafetyGatedCorpusV1.json",
+      "bytes": 1651,
+      "sha256": "89fd05288a55301f92d809ae584b3a835029bed61fbabcc9346d06dce6e1f671"
+    },
+    {
+      "path": "backend/test/fixtures/llmPlanningAdapterFixturesV1.js",
+      "bytes": 1356,
+      "sha256": "6ce9db15005d0ee3929d99920bc62b49f0f58c09a2348e9369dcbc65809d5f64"
+    },
+    {
+      "path": "backend/test/fixtures/outdoorAdventureQualityV1.json",
+      "bytes": 41439,
+      "sha256": "0e4fbba794701494c73e84936b4da304e53a0a35302db45e9ca8c3b8870c06d6"
+    },
+    {
+      "path": "backend/test/fixtures/outdoorAdventureStagingProofLookalikeDriver.js",
+      "bytes": 438,
+      "sha256": "0cc1b85c2b9b865dd5e07ecad3fccc7e2b61ffd6c38003dcc2aba3d7e0f55399"
+    },
+    {
+      "path": "backend/test/fixtures/outdoorResearchExecutorExamplesV1.js",
+      "bytes": 4741,
+      "sha256": "ec99c3674e8db0ca3ed5bda90a9d5322606fde52febec790db053ff4b66e3e17"
+    },
+    {
+      "path": "backend/test/fixtures/outdoorResearchExecutorV1.json",
+      "bytes": 16596,
+      "sha256": "3b35bad48349e1392fb411bf67c40b13762161b40541893796b3023bf96b651b"
+    },
+    {
+      "path": "backend/test/fixtures/outdoorResearchPlannerV1.json",
+      "bytes": 89089,
+      "sha256": "e63cf7d2cce28ca9dcc021efe7c66a70499b6cd0f3e87d48cd35a0ba1c2fa469"
+    },
+    {
+      "path": "backend/test/fixtures/releasePackageProofIntegrity.json",
+      "bytes": 2723,
+      "sha256": "4c05dabbc7012a9ead2c6423dad9b2fa33d4d357544c505cc91b69e4d1ca8f38"
+    },
+    {
+      "path": "backend/test/fixtures/researchGuidedRouteCandidateV1.json",
+      "bytes": 40139,
+      "sha256": "8d1264313a2e71b6504843b690824a05f1f0b8452fdad6424cb1199605deee72"
+    },
+    {
+      "path": "backend/test/fixtures/researchGuidedRouteProductShapingV3.json",
+      "bytes": 733,
+      "sha256": "7c6cd611b9b0eef0c2711128ace1a3eeeb4e48fb871558f3d0aac948b1faf196"
+    },
+    {
+      "path": "backend/test/graphHopperGeocodingAdapter.test.js",
+      "bytes": 8558,
+      "sha256": "f2adf3ab0d0528e8f357eb127cf02541b9fb8e5b280a6348b07e6b5f84e2e395"
+    },
+    {
+      "path": "backend/test/graphHopperProvider.test.js",
+      "bytes": 10750,
+      "sha256": "f8552539a4adf51582ede58fc8676bdb6aac7478c7a5c462a723b28297a8a14e"
+    },
+    {
+      "path": "backend/test/graphHopperProviderRuntime.test.js",
+      "bytes": 14742,
+      "sha256": "abfebbdc66959c31d51c50c523ff706f8216b558966c15a66741557c05accb88"
+    },
+    {
+      "path": "backend/test/intentReliability.test.js",
+      "bytes": 32507,
+      "sha256": "5e8dbc9425615a0b0d2cf18cc18ae407224171c08f55d7f1709a36d8c7bf936d"
+    },
+    {
+      "path": "backend/test/intentSessionEndpoint.test.js",
+      "bytes": 3267,
+      "sha256": "1697538b9ddea5b3dfc358d717fbbfb90cf52b4de38a4373edaf96481c1cfaef"
+    },
+    {
+      "path": "backend/test/javascriptCheck.test.js",
+      "bytes": 988,
+      "sha256": "3af9795b9b9307855bd37c53dc2be077f063e993bbb37ff1808b5763378ea413"
+    },
+    {
+      "path": "backend/test/libpqEnvironment.test.js",
+      "bytes": 1002,
+      "sha256": "ece15ac3a1dcb6bf63c9ca9f422e5277e8b90eecfaf174ace99bb27a74904f12"
+    },
+    {
+      "path": "backend/test/llmFirstPlanning.test.js",
+      "bytes": 19533,
+      "sha256": "ff4f5f4fd0a818e82cb6986eb55bb27e7582f4bbbe9053ad598864c5169b192d"
+    },
+    {
+      "path": "backend/test/llmFirstPlanningEndpoint.test.js",
+      "bytes": 9625,
+      "sha256": "f2440bb2e6a61b777bf62323c15c5e8fc60939a36df46f5476952126dd9dba3c"
+    },
+    {
+      "path": "backend/test/llmFirstSafetyGatedPlanner.test.js",
+      "bytes": 12474,
+      "sha256": "f6cbaf3a2d61047b692706df466e2c0c0eb15d80ca4944eea61e4905b18ef20a"
+    },
+    {
+      "path": "backend/test/localPilotBootstrap.test.py",
+      "bytes": 1734,
+      "sha256": "0ff277279bfd5819eb99c0bb288d9e180b0c145646c27f4604b69d2bf6d8f94f"
+    },
+    {
+      "path": "backend/test/outdoorAdventureContractCorpus.test.js",
+      "bytes": 13317,
+      "sha256": "c472043ae0c5585f62e23701ee804e407b59b32834e0eb1083681c4dfba584af"
+    },
+    {
+      "path": "backend/test/outdoorAdventureContractCorpusV2.test.js",
+      "bytes": 4928,
+      "sha256": "968e4742c587731d7c7cae81c321ea3d00226e47f2f5d321371b97e47f769b05"
+    },
+    {
+      "path": "backend/test/outdoorAdventureEndpoint.test.js",
+      "bytes": 22207,
+      "sha256": "13384bfafad3071017fb44f9997cafd8ca939094789613599db19a2bdaeef96f"
+    },
+    {
+      "path": "backend/test/outdoorAdventureOrchestrator.test.js",
+      "bytes": 25569,
+      "sha256": "55fc2e895a716c88a80489fef2e5ba7a4ea155674ca3934f1a13ffa6b682d529"
+    },
+    {
+      "path": "backend/test/outdoorAdventureQualityEvaluation.test.js",
+      "bytes": 4316,
+      "sha256": "92699c895e0f22984f6889d32d7d4f1ef5b10f2a95bbcf2338116cd658c02c80"
+    },
+    {
+      "path": "backend/test/outdoorAdventureQualityHarness.test.js",
+      "bytes": 11757,
+      "sha256": "b7959bc85fe31f5498e082dad4da6daf55548dac02fa9790242597bf88a0c56a"
+    },
+    {
+      "path": "backend/test/outdoorAdventureServer.test.js",
+      "bytes": 7452,
+      "sha256": "bcfe82f9be14f24d038b0a7184cb8e1be365bb6d53abbd2de6d591f0bf3f1201"
+    },
+    {
+      "path": "backend/test/outdoorAdventureServerLiveProof.test.js",
+      "bytes": 37300,
+      "sha256": "a07c84d1fadb57b3ba37d2d9fc4fb774813526369fadd876184bf373dd14a41f"
+    },
+    {
+      "path": "backend/test/outdoorAdventureStagingProofHarness.test.js",
+      "bytes": 46484,
+      "sha256": "ea198143ab63b4c93d886a0dadf74fdae7021a1ca7cdec6645dcf3854106fa2e"
+    },
+    {
+      "path": "backend/test/outdoorAdventureStagingProofIOSReceipt.test.js",
+      "bytes": 23169,
+      "sha256": "050f9eeb49115e25ff0b6c6a8339ece173f5ee34fc74791e0ac4591abc3735fe"
+    },
+    {
+      "path": "backend/test/outdoorAdventureStagingProofOperationalDriver.test.js",
+      "bytes": 32754,
+      "sha256": "5d3c6bb056961ecdb18808432866d361f68572543d7fe9276cb6bef02dbbb9e6"
+    },
+    {
+      "path": "backend/test/outdoorAdventureStagingProofPostgresCancellationGate.test.js",
+      "bytes": 14232,
+      "sha256": "5e6999fee8125b37fbc6ab0ea2f3a58818cc6cc6a4ee63ae6fcff72734988ca2"
+    },
+    {
+      "path": "backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4.test.js",
+      "bytes": 28192,
+      "sha256": "3dd2d3b41cc1666364dbba5d6a94aa9e6fb52928766002da751cc99ee9b62f83"
+    },
+    {
+      "path": "backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4Attempt2.test.js",
+      "bytes": 2310,
+      "sha256": "a0caa190f47d21a66992ecc9de062b907858ae94f2fec551f09bbad81efc9f60"
+    },
+    {
+      "path": "backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4Attempt3.test.js",
+      "bytes": 3881,
+      "sha256": "a4c3886db39521bce6926e863197bef16f02e3c05af92adc9a82b1c0fc54fbda"
+    },
+    {
+      "path": "backend/test/outdoorAdventureTargetedLiveRouteQualityProofV4Attempt4.test.js",
+      "bytes": 19183,
+      "sha256": "5ef2f45cce26540a75e6d63f970faaad050a690e5907004694221a3000842987"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4Attempt4DatabaseGates.test.js",
+      "bytes": 16220,
+      "sha256": "4652a0f05735e64a6230b25f9900129691a5166594c278a493086271c79a81fe"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4DatabaseAdmission.test.js",
+      "bytes": 11834,
+      "sha256": "d712500bdae6663a8e7d9c7e85e8689b957e587e39671e3b657fc9f3a77e355c"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4DurableIdentityPublication.test.js",
+      "bytes": 28531,
+      "sha256": "90ee0e681e1c78335cc71a092fa336a7f34e67c40aead074fb7f898f0da00d81"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4GitCandidateAttestation.test.js",
+      "bytes": 7797,
+      "sha256": "982877a96f41ab03bcb529caed98ebc062a00613d1864ff0f9bd42b064213cf1"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4HistoricalReceipts.test.js",
+      "bytes": 2278,
+      "sha256": "3ad082af99127f5f6f5677541c8eab8490e9ab65485cab80a03df117571630de"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4ProofRunContext.test.js",
+      "bytes": 12866,
+      "sha256": "8334ec145168181a0f2c50a5cc291e878a48b074309fbdce28b9f92829925148"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4ProofRunIdentity.test.js",
+      "bytes": 17565,
+      "sha256": "c422d9d72948cb072eb77f686ac7645a6596055dc85e25670202dc88dcfec602"
+    },
+    {
+      "path": "backend/test/outdoorAdventureV4RunScopedDatabaseGates.test.js",
+      "bytes": 5304,
+      "sha256": "a8052c5b4a722b233bfd0045a2946f3057daf4dd7084032fb22205b4b094958d"
+    },
+    {
+      "path": "backend/test/outdoorCapacityAdmission.test.js",
+      "bytes": 11319,
+      "sha256": "688e3693756739448d8dc1e5d6358c2471a506e2b431f56c709514b20202c9ef"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceClassification.test.js",
+      "bytes": 5947,
+      "sha256": "2ed84ad1d76264b86f929c07462c2ec10183df46460262b5c8c2cc44a8d925d4"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceEndpoint.test.js",
+      "bytes": 5368,
+      "sha256": "19fdc6e410ddd867fc1aee55414cb0d87483cdb26319c3c7d19b9fbddb9bcefc"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceImporter.test.js",
+      "bytes": 4434,
+      "sha256": "280686c1b72dfbf45ea8d8736629517a2338f4271c685332f5af78d8fd8d6288"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceMigration.test.js",
+      "bytes": 2313,
+      "sha256": "875f3fb2e478d05ab404b6f7c7214be17b373c1d67ce0db343ab66ae0d61d9b7"
+    },
+    {
+      "path": "backend/test/outdoorEvidencePostgisIntegration.test.js",
+      "bytes": 7563,
+      "sha256": "267af66261b5dd32c31f702094db91bd828cc566f4fd6e71be5733fb721dc2b4"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceServer.test.js",
+      "bytes": 1874,
+      "sha256": "721990a8130baa15a40ea0ad3cb45d601338b9bd2511bd14b60fd0cc22a3703d"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceService.test.js",
+      "bytes": 10114,
+      "sha256": "09af30bde738039a3e28a7983b3469b2d794a181be8e2a7dbdb9f3ef9d86ccab"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceTestSupport.js",
+      "bytes": 2733,
+      "sha256": "80d30d0e5484edd6301e8ab795167d98f11581084459d018df5e59023b416150"
+    },
+    {
+      "path": "backend/test/outdoorEvidenceValidation.test.js",
+      "bytes": 4910,
+      "sha256": "68f0ef1a77e7819eb465946ce10ac1cd70e7ef6051ee5ef44bc3b809ddecfd7b"
+    },
+    {
+      "path": "backend/test/outdoorResearchContracts.test.js",
+      "bytes": 16759,
+      "sha256": "29829d3e8c01c83e99264821f02416ec034dc0a30e29dbfd60cb983fc7dd7a6e"
+    },
+    {
+      "path": "backend/test/outdoorResearchEvidenceResolution.test.js",
+      "bytes": 5996,
+      "sha256": "a640823cfa5c73a9279de4563599ed5c99f13ce7f9210830fbf7095a442ccfa3"
+    },
+    {
+      "path": "backend/test/outdoorResearchExecutor.test.js",
+      "bytes": 48717,
+      "sha256": "985d21c3542a161de32ec56b291d86beb01af7103e037d0ab976ebf8d4bd234d"
+    },
+    {
+      "path": "backend/test/outdoorResearchExecutorExamples.test.js",
+      "bytes": 1780,
+      "sha256": "0811e80060650ae771072ed18f7f991e526a38c0b5674b7ef41827f0c84f337f"
+    },
+    {
+      "path": "backend/test/outdoorResearchExecutorFixtures.test.js",
+      "bytes": 3704,
+      "sha256": "b0b729a16011ee7d7dd7e4817c3e7a4ab041e2e2737dd7af24ba287c2911eba9"
+    },
+    {
+      "path": "backend/test/outdoorResearchExecutorPostgisIntegration.test.js",
+      "bytes": 92742,
+      "sha256": "4a1fe2f663de59c1a52049e61cd2250af2775e417ac9abf206705a9853fbc639"
+    },
+    {
+      "path": "backend/test/outdoorResearchMigration.test.js",
+      "bytes": 4092,
+      "sha256": "d218bdf83f5032969a104b6e266a4b34f62babaf1485ba55bfec8e792fe94e37"
+    },
+    {
+      "path": "backend/test/outdoorResearchOsmProjectionCli.test.js",
+      "bytes": 2066,
+      "sha256": "222f2aee2ba862a3312d311afb7eaa7f0cf5357f0ba98dcfbcd96325213cd1b4"
+    },
+    {
+      "path": "backend/test/outdoorResearchOsmProjectionMigration.test.js",
+      "bytes": 6030,
+      "sha256": "76967882fa6af5d9fda62c2f3120daf8e1962af79b3ae36141338f7a05a28219"
+    },
+    {
+      "path": "backend/test/outdoorResearchOsmProjectionPerformance.test.js",
+      "bytes": 9392,
+      "sha256": "0787dd1c57d76fe657780cea1361bb042384fbb01ccc3a992ccb50ef5a9c77ca"
+    },
+    {
+      "path": "backend/test/outdoorResearchOsmProjectionPolicy.test.js",
+      "bytes": 10455,
+      "sha256": "634c76f71b260cfb8b601e4c40bd36992a5b7251c1b6158e3437b1e2351bfa27"
+    },
+    {
+      "path": "backend/test/outdoorResearchOsmProjectionPostgisIntegration.test.js",
+      "bytes": 57130,
+      "sha256": "5056ed54f6fea10b84df083b2e60549fde06956a3ff79250c3d8c8faca63ce06"
+    },
+    {
+      "path": "backend/test/outdoorResearchPlanner.test.js",
+      "bytes": 46091,
+      "sha256": "6c92ae3c2bae86cf4699b6ef50a363e14cc1957deeb01430b0ac9a82e08c407a"
+    },
+    {
+      "path": "backend/test/outdoorResearchPostgisIntegration.test.js",
+      "bytes": 23129,
+      "sha256": "2412dc76996b066b85687d1eb661d46e194a4a59b1f7454e0e043a8763f4ef68"
+    },
+    {
+      "path": "backend/test/outdoorResearchRegionBindings.test.js",
+      "bytes": 3335,
+      "sha256": "3005c6fbc905eb67aa965cb223c109dcf82221e275e63bd3b30c0eca53659645"
+    },
+    {
+      "path": "backend/test/outdoorResearchRuntimeReadMigration.test.js",
+      "bytes": 3122,
+      "sha256": "64b06e435819dd277c771a82eda4182655043a589ee282e0cf3d6ddb4f83e7dd"
+    },
+    {
+      "path": "backend/test/outdoorResearchTestSupport.js",
+      "bytes": 6298,
+      "sha256": "53e6696ced063e3f6cfb6cf7acbc94a9be606430a33d33fb7995a4daeee7cdbb"
+    },
+    {
+      "path": "backend/test/outdoorRouteMembershipPerformance.test.js",
+      "bytes": 10609,
+      "sha256": "51ba8cbe1551133509a9f3bf624e4f1c78033a5a6243a90e6bda2c8860b44960"
+    },
+    {
+      "path": "backend/test/outdoorTrailAccessPerformanceV4Attempt4.test.js",
+      "bytes": 10900,
+      "sha256": "8a52d17be0912a85000b97a2b36a33ff37bd142613fd342902cbcd478de10b67"
+    },
+    {
+      "path": "backend/test/ownerGoogleErrorClassification.test.js",
+      "bytes": 12392,
+      "sha256": "f65971161f12809d9f494f487e4ed7f2e4bc19da8b3816a57d500e2743a813c7"
+    },
+    {
+      "path": "backend/test/ownerPhoneDiagnostics.test.js",
+      "bytes": 3837,
+      "sha256": "1509653d107f84ec6c1aa79ba7b7c4b6f028c1ecaf97647f9083a18c132fe4bd"
+    },
+    {
+      "path": "backend/test/ownerPhoneProviderBudget.test.js",
+      "bytes": 7085,
+      "sha256": "f01db291e97d7a0e84adde98bb63a438db8c326266688d6b1e87e1193f33cb09"
+    },
+    {
+      "path": "backend/test/ownerPhoneResearchRuntime.test.js",
+      "bytes": 13369,
+      "sha256": "10660de6996422dddf8c9bd5a844159926461f413145e9220ccd91d45ca0c7c5"
+    },
+    {
+      "path": "backend/test/ownerPhoneTestServer.test.js",
+      "bytes": 11641,
+      "sha256": "c358eb31397c22b6d11e6e1c9b789d64459cdb08d2176ac8dec4bde19adda6e2"
+    },
+    {
+      "path": "backend/test/ownerPhoneTestSession.test.js",
+      "bytes": 3624,
+      "sha256": "8b42866dbdb5d85983f07a725c7324a8894534ac04b814b2b11a30367e34ddd3"
+    },
+    {
+      "path": "backend/test/parseIntent.test.js",
+      "bytes": 15664,
+      "sha256": "544849dd8309cd98780d1fbdcddc275815c0ec3f760d7f048137a830e48fbdcd"
+    },
+    {
+      "path": "backend/test/phoneEngineReliabilityGateV1.test.js",
+      "bytes": 11434,
+      "sha256": "071f1a81bd9049599c87d58463e64c747b3f481f494e40444cac72ec2fa50311"
+    },
+    {
+      "path": "backend/test/postgresAppAttestIntegration.test.js",
+      "bytes": 17601,
+      "sha256": "1029c82269a9ba0b105c11a9489dc991bab766cc27715a86867cd7be38d6532d"
+    },
+    {
+      "path": "backend/test/postgresAppAttestRepository.test.js",
+      "bytes": 8497,
+      "sha256": "380c4a4fe0156bf021000e7c5a9c966f701c31bd3226e191e72826b07c480e61"
+    },
+    {
+      "path": "backend/test/postgresOutdoorEvidenceRepository.test.js",
+      "bytes": 4466,
+      "sha256": "9c55da59503ddc2ff53f250339f48acb8ca345c921f98d7125c36c8cbf9aa460"
+    },
+    {
+      "path": "backend/test/postgresOutdoorResearchRepository.test.js",
+      "bytes": 26232,
+      "sha256": "71a2f38c93d393419741dbb6a327d549248c81bae1973c5cf99f8a61f277e50f"
+    },
+    {
+      "path": "backend/test/productionOperations.test.js",
+      "bytes": 15690,
+      "sha256": "2fc43dcd1d703f13902aadcd9239efba9c3ee0c137ac49ee2470fe07a9407c6b"
+    },
+    {
+      "path": "backend/test/providerFeatureFlags.test.js",
+      "bytes": 15174,
+      "sha256": "c704242d9de90a25772faca7ed64b02738ab72e5bbd3f2ff0049d6a74de66771"
+    },
+    {
+      "path": "backend/test/releasePackage.test.js",
+      "bytes": 25420,
+      "sha256": "c9a3152cca9e4474c5253802002abcf566a29fe9c2115cb3faa6acbbedcaee5b"
+    },
+    {
+      "path": "backend/test/researchGuidedRouteCandidateContract.test.js",
+      "bytes": 8266,
+      "sha256": "e31a8d722b4cebf2201987531fcd2f60b62d6aeffed4b010040de03e34507b9f"
+    },
+    {
+      "path": "backend/test/researchGuidedRouteCandidatePlanner.test.js",
+      "bytes": 62573,
+      "sha256": "2b409588a55e22fdd1ecfe2a8fc5ea3da32bd26a40a70927e6ad5dff02ab1b71"
+    },
+    {
+      "path": "backend/test/researchGuidedRouteCandidateV2.test.js",
+      "bytes": 57882,
+      "sha256": "0aa44f83c0d421cf82328d540fe5a92b576cf1f0b5d29dfdf1eb61a276e8c4fc"
+    },
+    {
+      "path": "backend/test/researchGuidedRouteProductShapingV3.test.js",
+      "bytes": 22798,
+      "sha256": "927ffd427ae6dea7b3371669166f8415fcc118816545459a944467d522c4b511"
+    },
+    {
+      "path": "backend/test/researchGuidedRoutingAdapter.test.js",
+      "bytes": 24573,
+      "sha256": "1f3bebfe3db75abf65753579cd50ae09429da5ab1bb5e46c0709442f19f9e1ad"
+    },
+    {
+      "path": "backend/test/researchTrailAccessCandidateContract.test.js",
+      "bytes": 12935,
+      "sha256": "d21b26a9d3ab5b65b9148c5b912771facb1d9b1ff2ebef0d3566f9f273dbeb77"
+    },
+    {
+      "path": "backend/test/routableHighlightAccessMigration.test.js",
+      "bytes": 855,
+      "sha256": "c2cb70bead9a18fc1e8724d0a4065c3d893c0ff6f78e00bfcf4e3825261eb086"
+    },
+    {
+      "path": "backend/test/routeEndpoint.test.js",
+      "bytes": 7562,
+      "sha256": "5ea28ca2c933dae4ef2613b45cc7617d31c08df295a4b69b07ebd04e85e47812"
+    },
+    {
+      "path": "backend/test/routeServer.test.js",
+      "bytes": 6007,
+      "sha256": "b2eadce216751206d023a53705ad62b33e3bcff989aa5e6cc99a5f384f240a10"
+    },
+    {
+      "path": "backend/test/routeSessionIntegration.test.js",
+      "bytes": 4083,
+      "sha256": "b54e1ff7f2630f7b918d0090df812f9d4635f6cb1951d927be9bbd8addbd2ada"
+    },
+    {
+      "path": "backend/test/routeTestSupport.js",
+      "bytes": 2091,
+      "sha256": "f8a8d46412bea7ab4c4b4408c7713231d3d53639c93b5dd5507c00ab4d059aef"
+    },
+    {
+      "path": "backend/test/routeValidation.test.js",
+      "bytes": 7681,
+      "sha256": "73fee8382a1a911d9e3b05e935d0e551af51617cf8ea4b54771712dbf45f0e76"
+    },
+    {
+      "path": "backend/test/selectedIntentPlanningAdapter.test.js",
+      "bytes": 7133,
+      "sha256": "22b430f5abc4504eb37b937ac8ffc9c5a0bc082ae27f7ecb8fad545323cc43ea"
+    },
+    {
+      "path": "backend/test/server.test.js",
+      "bytes": 2119,
+      "sha256": "6df37a1e0ede91856e48f1aa11aceadcca84cbf184928099ea0fad3c8c5ccb43"
+    },
+    {
+      "path": "backend/test/stagingFreeHostingContract.test.js",
+      "bytes": 5800,
+      "sha256": "bf45456d44d154f3372e90388de310d317d265c8c78d917a20d4e924525909fa"
+    },
+    {
+      "path": "backend/test/stagingHistoricalRollbackQuarantine.test.js",
+      "bytes": 2608,
+      "sha256": "00a90558867c7ac9dffd6006e8d3466d58427871813c434dc14cdb048de275f7"
+    },
+    {
+      "path": "backend/test/stagingManagedSupabaseBootstrap.test.js",
+      "bytes": 6693,
+      "sha256": "9d043f1f30826209f73f6f070cff4fc3476fb6acc760c0b12eb649ba399dcc30"
+    },
+    {
+      "path": "backend/test/stagingMigrationCapability.test.js",
+      "bytes": 8790,
+      "sha256": "a00d38a7ee33a108482228cdb0f778344f4c5685c10ad4d5cf63c940aa3c5107"
+    },
+    {
+      "path": "backend/test/stagingMigrationRunnerPostgresIntegration.test.js",
+      "bytes": 16060,
+      "sha256": "27f17390ba2499a89b43763800657d0bb140b9f56ede88a0d2e80a2012461aa5"
+    },
+    {
+      "path": "backend/test/stagingMigrationRunnerProviderOwnershipPostgresIntegration.test.js",
+      "bytes": 5409,
+      "sha256": "4993b3d976066ea1745f19c7f6d5a05ffb424e9e4a0fbc86adf7245005e72e80"
+    },
+    {
+      "path": "backend/test/stagingPhase1V2Admission.test.js",
+      "bytes": 18786,
+      "sha256": "583a9ab1b827f17c0023c4468a6d69391b04f354e533efa39276ded3a61009ad"
+    },
+    {
+      "path": "backend/test/stagingPhase1V2DiffCheckEvidence.test.js",
+      "bytes": 5674,
+      "sha256": "7f94dabdac715e1ce47ff33171bf90a3f940596c69d65b1170ac613bbbdd16ef"
+    },
+    {
+      "path": "backend/test/stagingPhase1V2LiveLauncher.test.js",
+      "bytes": 14836,
+      "sha256": "7afe898242663fa344e38517f9f0f7a3f61a7b521f68514954a4ab25b229d431"
+    },
+    {
+      "path": "backend/test/stagingPhase1V2MachineObserver.test.js",
+      "bytes": 12712,
+      "sha256": "5f6a64d16c501781ba6c75e9752ac0c2a4dfff847f13fb85df616909bcf01a8d"
+    },
+    {
+      "path": "backend/test/stagingPhase1V2Operator.test.js",
+      "bytes": 22427,
+      "sha256": "7bfc2fd82f853510b55fa0fd5c22ad8903f71aa6a3f8cae5a26d30b1d8d8d796"
+    },
+    {
+      "path": "backend/test/stagingPhase1V2SingleSessionAdapter.test.js",
+      "bytes": 40760,
+      "sha256": "acf21b5ea85f4a052bc727785beb8db32fd45e68ad6fad322ccb2ba398599a28"
+    },
+    {
+      "path": "backend/test/stagingPhase1V2SingleSessionPostgresIntegration.test.js",
+      "bytes": 47668,
+      "sha256": "21ce75945680c271aa47ae71a8b58dc50fc8b474f5ad3ae06906d7074d1262ac"
+    },
+    {
+      "path": "backend/test/stagingReadinessV1Contract.test.js",
+      "bytes": 21304,
+      "sha256": "9661b1d83980325e7ce3331158f694c5060ccf278a31018a576e7fdf46404efd"
+    },
+    {
+      "path": "backend/test/stagingReadinessV1Runner.test.js",
+      "bytes": 12696,
+      "sha256": "ebca6b4c4f0334a9aaa0fe5576586b7c27b6bda5f853ba0dddb1d0e973f26b14"
+    },
+    {
+      "path": "backend/test/stagingRuntimeAdmission.test.js",
+      "bytes": 11134,
+      "sha256": "c9bd64b59a16ef6c9a3874f5125b46e848960405d89bfda8e18e9537cf5a513a"
+    },
+    {
+      "path": "backend/test/stagingRuntimeContainer.test.js",
+      "bytes": 7480,
+      "sha256": "69c99d04617d96cb37183d8345b2615e9000f3cff0f79739deff7b3cb4784ed8"
+    },
+    {
+      "path": "backend/test/stagingRuntimeDatabaseAdmission.test.js",
+      "bytes": 6186,
+      "sha256": "1638ccf675410d16a9ab511e0bff433cf61e6ceebc1a7953c12c04969a3d6999"
+    },
+    {
+      "path": "backend/test/stagingRuntimeLifecycle.test.js",
+      "bytes": 8869,
+      "sha256": "0b4bce34e29d5c24a480ebef773b1c7775a4e95ce14f4e1f4a635bb7992b87f4"
+    },
+    {
+      "path": "backend/test/stagingRuntimePostgresIntegration.test.js",
+      "bytes": 8781,
+      "sha256": "1f99e9c4b3dbbefacb11c834b662a27efd0422e8588cac1be8676f0006551f7b"
+    },
+    {
+      "path": "backend/test/stagingSupabasePhase1RemoteAdmissionEvidence.test.js",
+      "bytes": 8931,
+      "sha256": "d6cc478683c9d871d1aa180d329c09188f330870040ec5c29b8de77987256e82"
+    },
+    {
+      "path": "backend/test/supabaseFreeCapacityProfilePostgis.test.js",
+      "bytes": 21767,
+      "sha256": "0894978ed7a7de3412a9e77377ebe0adda312664dc9b7f9c3db329a91b30b058"
+    },
+    {
+      "path": "backend/test/supabasePostgisIsolationMigrationV2.test.js",
+      "bytes": 7665,
+      "sha256": "2cbe0fb8f02faef1666e043d634c83b4a22866ae15c0a7f89a0446d03268df66"
+    },
+    {
+      "path": "backend/test/supabasePostgisIsolationV2PostgresIntegration.test.js",
+      "bytes": 23657,
+      "sha256": "d71bae109d6d6ff915780502022660cb976c1f46d3bff62d5de2a73bc27fc992"
+    },
+    {
+      "path": "backend/test/supabasePostgisIsolationV2RollbackIntegration.test.js",
+      "bytes": 11345,
+      "sha256": "a6d5243bc255f7f9b1472853e62eb5add5e5b6fa09c143bace4eaebdee238535"
+    },
+    {
+      "path": "backend/test/testHarness.test.js",
+      "bytes": 1858,
+      "sha256": "ffe54a630c4decb0cc3c1ce2a018972f0a75bcb1f3c855111efc08dd1f65a507"
+    },
+    {
+      "path": "backend/vercel.json",
+      "bytes": 149,
+      "sha256": "60598343ed81fddb1f26b01a0e7e0245bc9d910c20190f5980f528f1dd0161cc"
+    },
+    {
+      "path": "design-qa.md",
+      "bytes": 9796,
+      "sha256": "d80aa0209c44af7bc7d0831cb8bd4b6f12fa608d31e29d2d365e571206301a5d"
+    },
+    {
+      "path": "docs/ADVENTURE_RESEARCH_INTENT_ADAPTER_V1.md",
+      "bytes": 9864,
+      "sha256": "67c4c69e9a7771506d8747540435f07348bbbd642c1815fa959ab4b904cc0385"
+    },
+    {
+      "path": "docs/INTEGRATION_CHECKPOINT_2026-09-05.md",
+      "bytes": 3178,
+      "sha256": "d0824e145d35f1a027d5560663998565b024e3c75183c5a0b3cd85ffb3b5f409"
+    },
+    {
+      "path": "docs/IOS_ENVIRONMENT_SEPARATION_V1.md",
+      "bytes": 13083,
+      "sha256": "5624bc04c9572b92dab6255d744c1f374dacb96e859cd7a5a587c438bf4a5819"
+    },
+    {
+      "path": "docs/OSM_OUTDOOR_RESEARCH_PROJECTION_V1.md",
+      "bytes": 21438,
+      "sha256": "e488629c1863f24bef52d92f2c0e3df6cfd4ad6a94a9fc117b0a6f9b1b8743e1"
+    },
+    {
+      "path": "docs/OUTDOOR_ADVENTURE_ORCHESTRATION_ENDPOINT_V1.md",
+      "bytes": 10587,
+      "sha256": "b7aabec9d3cad86bcb43a57d8a02caee36d915dbbd294e449f5680eb3c61c093"
+    },
+    {
+      "path": "docs/OUTDOOR_ADVENTURE_PLANNERVIEWMODEL_INTEGRATION_V1.md",
+      "bytes": 13744,
+      "sha256": "949587d4e0627249925e92a56d87b7e23b6a0212d1d1572aa98a17cdd682b2d1"
+    },
+    {
+      "path": "docs/OUTDOOR_ADVENTURE_PLANNING_CONTRACT_CORPUS_V1.md",
+      "bytes": 8061,
+      "sha256": "af8ed1408869b92a101559b8061087c3faf849fa00b3f3a5ae80ecd16facbb21"
+    },
+    {
+      "path": "docs/OUTDOOR_ADVENTURE_PLANNING_COORDINATOR_V1.md",
+      "bytes": 7294,
+      "sha256": "6ce53783c7a77816b7de74735f49909257d92bdd62a605601a6d97f74aef040b"
+    },
+    {
+      "path": "docs/OUTDOOR_ADVENTURE_QUALITY_EVALUATION_V1.md",
+      "bytes": 10406,
+      "sha256": "c529e35cc5ce3ca5fea7eb106d938f4c8e7aa3a999a983871fc521a0672ebe9c"
+    },
+    {
+      "path": "docs/OUTDOOR_MAPPED_ROUTE_MEMBERSHIP_PERFORMANCE_V1.md",
+      "bytes": 16292,
+      "sha256": "679b082c8845f68bdd3fa19aa584ddcb6b9c783353342ad8c903793239522ea3"
+    },
+    {
+      "path": "docs/OUTDOOR_RESEARCH_EVIDENCE_GRAPH_V2.md",
+      "bytes": 35459,
+      "sha256": "92304d8c8242b507b0fe0e63c9240ffe9b8fc2dd064937a9ebc4a54c8e381fbe"
+    },
+    {
+      "path": "docs/OUTDOOR_RESEARCH_EXECUTOR_V1.md",
+      "bytes": 20313,
+      "sha256": "95c33bfa12be893ff866ea67009bb6ab6c8cd3401f807fb7d188b719139262f5"
+    },
+    {
+      "path": "docs/OUTDOOR_RESEARCH_PLANNER_V1.md",
+      "bytes": 21361,
+      "sha256": "3692a41de33b63a5ae9299f168aa0c0869d6ba38e81f3f5775db38de8b38a3fd"
+    },
+    {
+      "path": "docs/OUTDOOR_RESEARCH_PRESENTATION_UX_V1.md",
+      "bytes": 13253,
+      "sha256": "de18dd5129d1f94d60db7621c1162c7b8a7b97078dc28404558708fe1452a127"
+    },
+    {
+      "path": "docs/OWNER_PHONE_TESTING.md",
+      "bytes": 14435,
+      "sha256": "15b732c830c13662c35726881296472c5b0e409378da37d6769f76cf0c877110"
+    },
+    {
+      "path": "docs/PHONE_ENGINE_RELIABILITY_GATE_V1.md",
+      "bytes": 9177,
+      "sha256": "8cf4dfe1bdb285e7208dc549aaead6c0e2b7fdad409b6d9ebba23141ed4e4aed"
+    },
+    {
+      "path": "docs/PRIVATE_OWNER_IPHONE_VERIFICATION_20260906.md",
+      "bytes": 9145,
+      "sha256": "571b0a579ba9a88762ae1ececf348484a8b0d48f3bd19a7f3d05be46d172a2ba"
+    },
+    {
+      "path": "docs/RESEARCH_GUIDED_ROUTE_CANDIDATES_V1.md",
+      "bytes": 21917,
+      "sha256": "e279cc73a2b13a7bbbd1bd2fab0a06b97fbfcb3ff70fc83269b6ff2ec328fdb2"
+    },
+    {
+      "path": "docs/RESEARCH_GUIDED_ROUTE_PRODUCT_SHAPING_V3.md",
+      "bytes": 12120,
+      "sha256": "8f461b82fac138711352a31d6368875c280ba9717ffe1b377665a0f793dfe3f3"
+    },
+    {
+      "path": "docs/RESEARCH_GUIDED_ROUTING_ADAPTER_V1.md",
+      "bytes": 10215,
+      "sha256": "9d41df8f8963c2ac5f1504a477d9def0e13858af410fdcaf4f74485b371416cf"
+    },
+    {
+      "path": "docs/ROUTABLE_HIGHLIGHT_ACCESS_POINTS_V1.md",
+      "bytes": 8125,
+      "sha256": "c0c4101478cd20616865777e31ae1de76501588272c48deb2c9f6ba2bc840129"
+    },
+    {
+      "path": "docs/ROUTE_QUALITY_ENGINE_V1.md",
+      "bytes": 38322,
+      "sha256": "d90e2dc49b2dd5d2ba19ba3b24279bd437dc679d219311b8baebb5e52f16b3bd"
+    },
+    {
+      "path": "docs/audit/AGENT_EXECUTION_PLAN.md",
+      "bytes": 32958,
+      "sha256": "15d02bb02e9c6ec36e5ba8a1d177ceb1534bf8803c8361e528a7278af9002f6c"
+    },
+    {
+      "path": "docs/audit/ARCHITECTURE_MAP.md",
+      "bytes": 30501,
+      "sha256": "79eb2e5ef4621faea12262ccaa57218a2897c1f9f79a1738cbcd6435b34fa54b"
+    },
+    {
+      "path": "docs/audit/BUILD_AND_RUNTIME_REPORT.md",
+      "bytes": 20218,
+      "sha256": "36d3d095b09986c5a5fba0b7efcc663dd2db05a0f92c3c4cd33dd35da031620a"
+    },
+    {
+      "path": "docs/audit/FEATURE_REALITY_MATRIX.md",
+      "bytes": 66850,
+      "sha256": "5b48c9755ac2e858b08edddd23684db06bfb96540d2cb1dd6c2b5c382569302c"
+    },
+    {
+      "path": "docs/audit/LAUNCH_READINESS.md",
+      "bytes": 29119,
+      "sha256": "4206167c3cf7a66ba897a74dd6bee35071369e49119c14904c21fd4bf023ad48"
+    },
+    {
+      "path": "docs/audit/MOCK_AND_PLACEHOLDER_AUDIT.md",
+      "bytes": 26995,
+      "sha256": "1bace9527ed9e67809601003af52cdf98c82353d0ec00924093a7210e1a71364"
+    },
+    {
+      "path": "docs/audit/PRIORITISED_BACKLOG.md",
+      "bytes": 37172,
+      "sha256": "e7481437161fef5b2b24bc9f29a6993f742d541a0653db4440f72e701ad28d5c"
+    },
+    {
+      "path": "docs/audit/PRODUCT_AND_UX_GAPS.md",
+      "bytes": 24562,
+      "sha256": "27ee6d0ac8bfac5cea33269593f60ca2f3825de9b41e4661e98f96db26d18f6c"
+    },
+    {
+      "path": "docs/audit/PRODUCT_INTENT.md",
+      "bytes": 19885,
+      "sha256": "dfa5b5506ef3b4a32d1fbe4e75760b5d347dec7ebbec70388ee4eabf910620fe"
+    },
+    {
+      "path": "docs/audit/README.md",
+      "bytes": 834,
+      "sha256": "5802920a78cf1ed4d67b2dae20a0cd1a964f00e725e91ddede438e5dce60ca38"
+    },
+    {
+      "path": "docs/audit/SECURITY_AND_PRIVACY.md",
+      "bytes": 30946,
+      "sha256": "f1bb199f6bc6b25ef520b563282a1ad57d9c0b10c4564553e103de1b8120b232"
+    },
+    {
+      "path": "docs/audit/product-output-2026-07-19/01-route-results-alpen.png",
+      "bytes": 597451,
+      "sha256": "0465a52e6da46922bbe206244f67fbe75991ce5144be00c664b2551d36c13f02"
+    },
+    {
+      "path": "docs/audit/product-output-2026-07-19/route-quality-next-steps.md",
+      "bytes": 1872,
+      "sha256": "bf97d7e7babac83e8a19e484224a1f3bb3f669d30eabbaad73904035b304ad3d"
+    },
+    {
+      "path": "docs/engineering/access-local-conditions-assets/native-accessibility3.png",
+      "bytes": 1916891,
+      "sha256": "ea934cf5b0bc8bdbff3b796083557fe94066dc8caf5e4f7e714667e03e570bbb"
+    },
+    {
+      "path": "docs/engineering/access-local-conditions-assets/native-standard.png",
+      "bytes": 1033094,
+      "sha256": "1ef50273f274d62524d4885275b1a5af50ad4d00c5ece3192ed30584f1ec374e"
+    },
+    {
+      "path": "docs/engineering/access-local-conditions-validation.md",
+      "bytes": 5857,
+      "sha256": "ad1af1fd11968ad16930982d6676c2df44c8567d9ce82129f7e00bd04aad0dbd"
+    },
+    {
+      "path": "docs/engineering/access-local-conditions.md",
+      "bytes": 11420,
+      "sha256": "1abd3aa7c43bff8f157f36e65de88fec9fcdfdeb4308398d105afa190c0c3bc1"
+    },
+    {
+      "path": "docs/engineering/dynamic-route-evidence-v1.md",
+      "bytes": 7656,
+      "sha256": "3e5df5910b3ba6d9d3f57835760d8065de2d45e51d47a6a21ebba5f3fe6124c0"
+    },
+    {
+      "path": "docs/engineering/dynamic-route-evidence-verification.md",
+      "bytes": 6408,
+      "sha256": "91449c4cc67de398739a610ab0dcc59baf62e3e66cb4eb3fb2d37fed0cb7e372"
+    },
+    {
+      "path": "docs/handoff/AI_PHONE_DIAGNOSIS_2026-09-06.md",
+      "bytes": 7979,
+      "sha256": "ca43658057d0e39171d1b056a924ebb89210a653564a35d6fd6c3de3cbc4dea8"
+    },
+    {
+      "path": "docs/handoff/COMBINED_OWNER_INTEGRATION_2026-09-06.md",
+      "bytes": 4542,
+      "sha256": "bb65eec071500af97873fd0f41e4d88ab77428c3b011affea52ce5175a715dc0"
+    },
+    {
+      "path": "docs/handoff/DYNAMIC_RESEARCH_ARCHITECTURE_2026-09-07.md",
+      "bytes": 6792,
+      "sha256": "0f473f34f8d4a7022383fc7cb23ca5ea92a05d4b7dea3360b90c111dccca4e01"
+    },
+    {
+      "path": "docs/handoff/DYNAMIC_RESEARCH_OFFLINE_STATUS_2026-09-07.md",
+      "bytes": 7994,
+      "sha256": "d94d88421318045c5c454f77715a0d51ed418f04129c7909de43e632df0dce11"
+    },
+    {
+      "path": "docs/handoff/GOOGLE_ERROR_DIAGNOSTIC_PREPARATION_2026-09-06.md",
+      "bytes": 9081,
+      "sha256": "96bcb1cb32b4958d6f6df6a9312130fe8dee9502f8adcab5ea9e497abe93db83"
+    },
+    {
+      "path": "docs/handoff/OWNER_RESEARCH_ACTIVATION_SEQUENCE_2026-09-06.md",
+      "bytes": 3936,
+      "sha256": "8c6a268974fcff720b1b7da4df6683e86f3295ed37deb04014358dd89ee523ea"
+    },
+    {
+      "path": "docs/handoff/OWNER_RESEARCH_PHONE_SESSION_2026-09-06.md",
+      "bytes": 1945,
+      "sha256": "7a0d50d7ede2246db925a4e7bb2e199a004cd395b14d5aca745bf322c571a9ad"
+    },
+    {
+      "path": "docs/handoff/PREPARATION_FEATURE_2026-09-06.md",
+      "bytes": 7473,
+      "sha256": "935b30939d9291638627d94ba1c5cf084f976dbce90e2b79c8274c86a3b306ae"
+    },
+    {
+      "path": "docs/handoff/RECOVERY_PHONE_ACCEPTANCE_2026-09-08.md",
+      "bytes": 5780,
+      "sha256": "d42529d2a521d44533c276c6af9c9f7c5c3e337613114e8b97d982e878cda4bf"
+    },
+    {
+      "path": "docs/handoff/RESEARCH_FAILURE_VALIDATION_2026-09-06.md",
+      "bytes": 2468,
+      "sha256": "498336a58d9c5803b4dff89df02b38d96100029fdb37bca00be44e5701362eb0"
+    },
+    {
+      "path": "docs/handoff/RESEARCH_LED_ENGINE_2026-09-06.md",
+      "bytes": 14386,
+      "sha256": "04f63802a6f021817ce58eaa03c3a7be6b63cccb0f6fb4146f6e2de5d1cd9ffa"
+    },
+    {
+      "path": "docs/handoff/WEB_RESEARCH_INTEGRATION_2026-09-07.md",
+      "bytes": 7196,
+      "sha256": "7a2d638cd55d9ce44956739fdc7fec132a79ec30a1113d020658f48f2d3396ea"
+    },
+    {
+      "path": "docs/onboarding-intelligence-brief.md",
+      "bytes": 5377,
+      "sha256": "4797a0def7c950d9603e642c5706070dfc438458a073e3709145b10bb21174ea"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/CLOSED_BETA_ROLLOUT_V1.md",
+      "bytes": 10630,
+      "sha256": "b885334a71f1d05b9983cbd99459386f8b9e84757229061a8d20f2eb78e05219"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/OBSERVABILITY_AND_PRIVACY_V1.md",
+      "bytes": 13218,
+      "sha256": "20be1bb8b63a4566ae76ee7479e53a8382459b0db5920780cc57ae8fc030f5ca"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/PHYSICAL_IPHONE_APP_ATTEST_PROOF_V1.md",
+      "bytes": 22664,
+      "sha256": "d0a368b411aa6cb53078e0d12e33a661eb5c1c9508f6d36d28ababfa488581a5"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/README.md",
+      "bytes": 13286,
+      "sha256": "3a61c07817794764fd1864a742ff19718f80366e9a32afea5aed259940e69f38"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/ROLLBACK_AND_INCIDENT_RESPONSE_V1.md",
+      "bytes": 13360,
+      "sha256": "848d8e67b3505037dc09922f790bdf9a1aefc9b76d3a504ac77c72ed91a8fda3"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/SOURCE_EVIDENCE_MANIFEST_V1.json",
+      "bytes": 17499,
+      "sha256": "141f7d149aaa30f1c58bd024db64f2ee9018d6030e3789b4419d58842d9bfbda"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_CANDIDATE.json",
+      "bytes": 9169,
+      "sha256": "7bd7727758215c5fe8a77abf8e50d282c6445f1e173a2461bac4fba55379e0e5"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/SOURCE_EVIDENCE_MANIFEST_V1_DATABASE_SUPPLEMENT_V2_DIFF_CHECK_CORRECTION_001.json",
+      "bytes": 1966,
+      "sha256": "8311cdb26471a85b236eba02cc62db450162fe0ca285471026b39b9d47b3bfbd"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/STAGING_PROVISIONING_RUNBOOK_V1.md",
+      "bytes": 24294,
+      "sha256": "d8db0bbb42bb1e7bb6391a7e50114f444ce866b534a1bcd588e93e00bb7ee189"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/V4_OPERATIONAL_PROTOCOL.md",
+      "bytes": 17790,
+      "sha256": "9608089c07541631771f6c86548d43fcc8e0111d8a69f295460864b1b5705846"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/V4_PROOF_RUN_CLOCK_CONTRACT.md",
+      "bytes": 2776,
+      "sha256": "d5a2f8e8d0fd73a42e6c6be563e301acd73ccccb4db790c45372a2bd70bd37a4"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/V4_PROOF_RUN_IDENTITY_CONTRACT.md",
+      "bytes": 5249,
+      "sha256": "5b2aae5476bfe331bc642d732a39e5d9a2de5cf6b1451604e9f9aa37f93901d1"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/feature-flag-state-matrix-v1.json",
+      "bytes": 17816,
+      "sha256": "163eca48128a561ace76c97eabc2ec2eaf786d2486810054a93fd3e878185c5b"
+    },
+    {
+      "path": "docs/operations/closed-beta-readiness-v1/go-no-go-checklist-v1.json",
+      "bytes": 42137,
+      "sha256": "0bb8ef9a367c40bb786cf7f3c38e85c16b5b0f96d79c75a5bacbbf77256af704"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/DEPLOYMENT.md",
+      "bytes": 8624,
+      "sha256": "a42d9533a196e73080e304051e5b1d95df8715aec15a76319771e63fc32e05fc"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/STATUS.json",
+      "bytes": 1693,
+      "sha256": "f19f564228418e712f986fafc05814f20bb6f826ef6256f04f526e511b212365"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/VERIFICATION.md",
+      "bytes": 5845,
+      "sha256": "c38dd790626cf88f1f848be0de7bba187fc27d99c251a89c637a6dbd1907839d"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/backend-tests.log",
+      "bytes": 26565,
+      "sha256": "3ad1c5ff0b283b821b84a5c5eacc8e22eb08805c655b6cce135793467d894004"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/bundle-scan.json",
+      "bytes": 260,
+      "sha256": "149ada815f1225b1639c294c60483e6dcc403e406a0d6a83414124d219349ea0"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/native-tests.json",
+      "bytes": 419,
+      "sha256": "fdb3aafaf0c5d49c061b20ca32196e4d26000dc64f4797e8ba109a4e17fb26f5"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/native-tests.log",
+      "bytes": 33595,
+      "sha256": "95f8eca4d795423f60a832256aa4b297f94144246131bc7937a67146ed522c05"
+    },
+    {
+      "path": "docs/operations/durable-research-v1/release-build.json",
+      "bytes": 646,
+      "sha256": "b9d95368c8ea1922b04e19d972d8e20f553a1c00c194c361d0a2131811144644"
+    },
+    {
+      "path": "docs/operations/staging-v1/backend/IMPLEMENTED_NOT_DEPLOYED_RECEIPT_V1.json",
+      "bytes": 4149,
+      "sha256": "4a7258784c231337f38cb708d38a2d3903cbf04c18008ccd07c5330b46ac3dbc"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/DORMANT_SUPABASE_COST_AND_ACTIVATION_V1.md",
+      "bytes": 10039,
+      "sha256": "4f5aaca6015d41cab293b029fa3643233a36c25e54ca7363b05e8c2666d6f366"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_0_RESOURCE_DECISION.md",
+      "bytes": 14856,
+      "sha256": "390fa66e83963e218161a853894cba4ff7cfe3ecb881fbeaa82dd71c98c620d5"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK.sql",
+      "bytes": 6472,
+      "sha256": "4f4cdbaee71df8b5b4fd5fdc93dc5711c74cd9746c873fa1524196b52011378e"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.json",
+      "bytes": 1039,
+      "sha256": "5d66eebcff9c5c77780b77c4824f38575d4475cb98ce0d9d59312d3af0b03476"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_BLOCKED_ROLLBACK_QUARANTINE_NOTICE_001.md",
+      "bytes": 1360,
+      "sha256": "711b18894556e89db0d048d1936608535bac0b1ebcc6f73f2be7c0f7dcadb7ba"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.json",
+      "bytes": 5122,
+      "sha256": "45c756fce9a68440c36f8c2cb0ed4228bf7047015166ec603700619abce646a6"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF.md",
+      "bytes": 15376,
+      "sha256": "3209e082f48d33199c68b4cf7e4a8f4b8f08d3e1a07e09faf5faab5c1dabaaff"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF_ERRATUM_001.json",
+      "bytes": 775,
+      "sha256": "1f72741e1f7f3682107efeba7659eb356c845264f3c079317bc3d333a04761e2"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_FOUNDATION_PROOF_ERRATUM_001.md",
+      "bytes": 1362,
+      "sha256": "df2bb5a7b008ac822ea7a555ff487dc565d93ada0374cd9c17f64c1a7de02b8e"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_DIFF_CHECK_ERRATUM_001.json",
+      "bytes": 3292,
+      "sha256": "d711eae43531c78c40ef2a6260419b9eb99b60734726fe84a42b5be6521643b1"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_DIFF_CHECK_ERRATUM_001.md",
+      "bytes": 2578,
+      "sha256": "2689a9aa8f2d64f0e0ee414b39dd2a2818a63b7a83ce4b961a387d06b176ad2c"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_LOCAL_PROOF.json",
+      "bytes": 3786,
+      "sha256": "0b2fe71fd5e2f8afedd544289c55d1e6b2a731e44c8e307ad9746b09b05354af"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_LOCAL_PROOF.md",
+      "bytes": 8698,
+      "sha256": "3d20be8107a89b811921571586f8443eccac1c4b08aece0c7d355cc473d35be7"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.json",
+      "bytes": 18819,
+      "sha256": "a4387e8642926fe08bb5bc9a081fb916198f9af76060e78e15e4f8070577d793"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_002_PROOF.md",
+      "bytes": 13365,
+      "sha256": "82217430bf965676b7373836a82bc97a28211708a9f5a1bd643837ecc4c4cf9c"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_PROOF.json",
+      "bytes": 6017,
+      "sha256": "da52e0bac71de72b8d2957e0ff39849670d863702b405c18a3c9122bb8d9d73a"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POSTGIS_ISOLATION_V2_REVIEW_CORRECTION_PROOF.md",
+      "bytes": 13433,
+      "sha256": "3fb608488ac96af1e600daa3d267f28e745797653500f646f596a9af6f4e43fa"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION.sql",
+      "bytes": 12267,
+      "sha256": "f67a92fc1d003b10601555973f263d2d5a50c53d0f95e67269e6901976611485"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_POST_MIGRATION_V2.sql",
+      "bytes": 43922,
+      "sha256": "bbbd37e635a36d297dd0d67338ba4ef72672b53f0d00e22ce8fe72be139b57a4"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION.sql",
+      "bytes": 8848,
+      "sha256": "acbc878d02ddf04647c11fc6fa0f5df9ed4e53942dd9a3da7eedf5f01eee1be9"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2.sql",
+      "bytes": 23489,
+      "sha256": "de73973b48effb39d43e56098175a6417adc0e469bc8f3f82876f425dfdd11b2"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_PRE_MIGRATION_V2_ROLLBACK.sql",
+      "bytes": 22748,
+      "sha256": "55aefe612d35262948b199fecf00960cb0ee39e88a6e8255dcd7a2f36f800ed2"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_REMOTE_PROVISIONING_BLOCKED_20260828.json",
+      "bytes": 7675,
+      "sha256": "882174e09cc951d2d5145c07f85f912bbad8ab6486108866cfc283884e0b9b77"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/PHASE_1_REMOTE_PROVISIONING_BLOCKED_20260828.md",
+      "bytes": 6456,
+      "sha256": "d3bf088bfa000ef3223f5a906fc717d7e9aabdc47cc931ae482f22c03dffd353"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/SECURE_PHASE_1_V2_LIVE_LAUNCHER_V1.md",
+      "bytes": 8507,
+      "sha256": "9532323ed68d024c10281c87b7125297602fb30859092b516b749b88e25f7468"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/capacity/SHA256SUMS",
+      "bytes": 314,
+      "sha256": "8f3c6dfd5da12d0210fa1371c2c9c01e5f788e87a78141e167f4c267cae6a564"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/capacity/SUPABASE_FREE_CAPACITY_OPERATIONS_V1.md",
+      "bytes": 8800,
+      "sha256": "d6a7f0542c121d6183996da63f487507fac0162266020d5004e605eb638fccd3"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/capacity/SUPABASE_FREE_CAPACITY_PROOF_V1.md",
+      "bytes": 18428,
+      "sha256": "34ed2d8d12ad347e31b430f7ad82d9debcaca78b602abb9c460a567c80b8ab60"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/capacity/supabase-free-capacity-proof-v1.json",
+      "bytes": 27479,
+      "sha256": "88f2d0286e0cb3490f1e1072f05df5f1f6e71abf7f302b3708167f3c280cd1db"
+    },
+    {
+      "path": "docs/operations/staging-v1/database/capacity/supabase-free-capacity-proof-v1.schema.json",
+      "bytes": 1677,
+      "sha256": "08a386e17c673c766cb82a39f2491e50b9accf064a9088233b8bcdc141e2a339"
+    },
+    {
+      "path": "docs/operations/staging-v1/hosting/DEPLOYMENT_AND_ROLLBACK_V1.md",
+      "bytes": 4646,
+      "sha256": "b4ae5c82177b46601578ffa4862b37cfa90f4cb502cc97f3eeafe61a6b4de7c6"
+    },
+    {
+      "path": "docs/operations/staging-v1/hosting/MONITORING_AND_ALERTING_V1.md",
+      "bytes": 2733,
+      "sha256": "1649ad35eaaba7312b6303957411c4f3d4732f2553e0ef4ad6a2e1eeaabecffb"
+    },
+    {
+      "path": "docs/operations/staging-v1/hosting/OUTAGE_DRAIN_AND_COLD_START_V1.md",
+      "bytes": 2598,
+      "sha256": "8600176a65ff4b8ad9d17bea7b1b03f9612cc81f2dea8ec1128223c8ea04ea6b"
+    },
+    {
+      "path": "docs/operations/staging-v1/hosting/README.md",
+      "bytes": 2631,
+      "sha256": "d437419ac83d5ff529790eff3125a50ba1c4cc50ce702e6976b6b5210fef76d6"
+    },
+    {
+      "path": "docs/operations/staging-v1/hosting/ZERO_COST_PLATFORM_DECISION_V1.md",
+      "bytes": 7447,
+      "sha256": "2590981c830eb453739ec31fb8de7155417e1f1c8efec62b74746ad10cf6769a"
+    },
+    {
+      "path": "docs/operations/staging-v1/runtime/DRILLS_AND_ROLLBACK_V1.md",
+      "bytes": 4501,
+      "sha256": "ad347fc6d8a4928fcef5d38783f796a26139ad51c07d4ffbbd64e9fa63f5424c"
+    },
+    {
+      "path": "docs/operations/staging-v1/runtime/ENVIRONMENT_AND_SECRETS_V1.md",
+      "bytes": 7038,
+      "sha256": "236d46515bb6ba682f86b0f320c35a928b71d45c6433a6f3ed4b3b28fa437b75"
+    },
+    {
+      "path": "docs/operations/staging-v1/runtime/MONITORING_AND_ALERTS_V1.md",
+      "bytes": 4794,
+      "sha256": "e5bb0e65e4cace200d9808a009ab569a02de47a16cff467e7e87d96f7df37a35"
+    },
+    {
+      "path": "docs/operations/staging-v1/runtime/PLATFORM_DECISION_V1.md",
+      "bytes": 6878,
+      "sha256": "572cf8fde1cb59a97d9fdb458b8bedd3285abd9af133f145f462daaf74d39406"
+    },
+    {
+      "path": "docs/operations/staging-v1/runtime/README.md",
+      "bytes": 6139,
+      "sha256": "e15bc04dd0cca88fc3f369b601ba3ff0ea6498961409684f76aa423815b55d84"
+    },
+    {
+      "path": "docs/operations/staging-v1/runtime/VERIFICATION_V1.md",
+      "bytes": 4278,
+      "sha256": "e8fc92dc794409020ae37e38b8ba1ba14b646a30aea6b962881184f30b735c8b"
+    },
+    {
+      "path": "docs/operations/staging-v1/supabase/PHASE_1_REMOTE_ADMISSION_20260826.json",
+      "bytes": 5570,
+      "sha256": "6fde2bbec1328744f766cbaa3b9a0c9cf97c4eed1cb5fd7e2689caf742dd463b"
+    },
+    {
+      "path": "docs/operations/staging-v1/supabase/PHASE_1_REMOTE_ADMISSION_20260826.md",
+      "bytes": 4715,
+      "sha256": "168e736943d7c09cd75d41c07f73351a5cc764a2d604fc8771b4b4f634e387e1"
+    },
+    {
+      "path": "docs/release/APPLE_TEAM_GATES.md",
+      "bytes": 6722,
+      "sha256": "42a7376a8c126cf47bba7500d3babd744d7d7e034b1aae6ee916d6e24e33a0c0"
+    },
+    {
+      "path": "docs/release/APP_PRIVACY_DRAFT.md",
+      "bytes": 5991,
+      "sha256": "2b0e629f5df98838381d62f306e2ba1df1dd48c48d7b2544410efbbc910f447e"
+    },
+    {
+      "path": "docs/release/APP_REVIEW_NOTES.md",
+      "bytes": 5334,
+      "sha256": "45ba64947b8864dc6b538dba612ab758bb46f67910ec6be9406ce76b952ca12c"
+    },
+    {
+      "path": "docs/release/APP_STORE_METADATA_AND_TRACEABILITY.md",
+      "bytes": 7609,
+      "sha256": "06dca115708fcd15ed8539d12d3a305dd7c2c7686823f0f7597caa852c7632f2"
+    },
+    {
+      "path": "docs/release/ARCHIVE_VERIFICATION.md",
+      "bytes": 7590,
+      "sha256": "e2fefaf57345ce406a7340f66755f4203139d0fef837d6810129286d1b14d0e9"
+    },
+    {
+      "path": "docs/release/BACKEND_STAGING_PROOF.md",
+      "bytes": 8909,
+      "sha256": "b22ab6f6078c9bbc3cb64893834331964d109c387fa4fc55c7ef6505eb4a9106"
+    },
+    {
+      "path": "docs/release/DATA_FLOW_RETENTION_AND_DELETION.md",
+      "bytes": 9465,
+      "sha256": "0d3c816e1bbb15f74d731ed9053fef7f969ab36f164ab3d17de7444824f06857"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.md",
+      "bytes": 25015,
+      "sha256": "0fdbdee5e931bdc307f5203e58b6e653269642da0db8b5f3ea397e8773303c0c"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_END_TO_END_STAGING_PROOF_V1.summary.json",
+      "bytes": 10456,
+      "sha256": "e7614b1267390879c9037f028b40f9739eb0a61b4925fa58845fa5dd40c84e2f"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.md",
+      "bytes": 8737,
+      "sha256": "04b749fb41c44e77121ff25678a60d68b0d763636c4db054935957f92e03ae1d"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_SERVER_SIDE_LIVE_PIPELINE_PROOF_V1.summary.json",
+      "bytes": 38487,
+      "sha256": "6c57f5efc9bbec02ad0f49f7ab70bae43f9f61f4467afc8654f6c827ca7f69f3"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.md",
+      "bytes": 11199,
+      "sha256": "69c9cd93c7ea6361c625a3b8daf506a39d4e16e7363aa045a06e6516c0b1c94a"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V2.summary.json",
+      "bytes": 12683,
+      "sha256": "18946e87ea615b53c271179d648eae24b1cb427791cb3145b35fe81dfaf2b5f9"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.md",
+      "bytes": 16183,
+      "sha256": "597b4d0aa6890cf74a3b63b5dfb10e6d52220cace1d02de315aec122b8b2f522"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V3.summary.json",
+      "bytes": 12101,
+      "sha256": "6a247c8aeb21f1079cc625eba651ce32b281ab6b1c49690fbfdc183288c211bf"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4.md",
+      "bytes": 10620,
+      "sha256": "fc1e00c7063b794136c2368bc3c950f5677077934c45905c25391973abfc5a14"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4.summary.json",
+      "bytes": 13619,
+      "sha256": "5477240eb9a2569cb0ffbf167f61c1edb87ededa7e8c420e271833e4c7f0063c"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_10.md",
+      "bytes": 11585,
+      "sha256": "948ec7a903c5b99357d76769f132c60dd7e4e9d269b6af41e8120f4124da4535"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_10.summary.json",
+      "bytes": 25595,
+      "sha256": "7ba8346682360a8a095a24ee213fffa93fc88cb0586c7a911fed3e49acd7b275"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_11.md",
+      "bytes": 6694,
+      "sha256": "cafd3c27f004431623f2dccb612bf52670ec8b2bc6073fddce52955a885b95ec"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_11.summary.json",
+      "bytes": 15414,
+      "sha256": "4ce1e6f1e1cde497d82b146c02795588fbab50085334a6295783b88aa987beee"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_12.md",
+      "bytes": 8535,
+      "sha256": "7080bd193a166a022479770973fe83ec1db66b29f11e2825295a43d86fe7e55e"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_12.summary.json",
+      "bytes": 12465,
+      "sha256": "42e748a1c74683cf796d872428b2cf03cfd7470e2a4ac28fc68b18cbc59b6ce6"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_2.md",
+      "bytes": 6680,
+      "sha256": "76650b3392885ba4683d6fdcd336aca3273e2b4040e359fb9aab0bd031b1f09b"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_2.summary.json",
+      "bytes": 11193,
+      "sha256": "7aa8a4b992514ded013ef5ebc6a6218f87b559997220a3c240e7fc39a436d737"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_3.md",
+      "bytes": 8637,
+      "sha256": "3e11f9bdee5fa0da85a5f6f33d33d1065c10db017d8d078dc79afcfeca681690"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_3.summary.json",
+      "bytes": 16746,
+      "sha256": "9bd4fb94f67c997961254d70fbe58317dd40b4ef6ec111de90a81e3c3b5e2522"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_4.md",
+      "bytes": 10016,
+      "sha256": "c36f664d25e8c4641419f0848d0b117d93207249d336030c37d905a7da245b69"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_4.summary.json",
+      "bytes": 24893,
+      "sha256": "f35c64f6cecf5cfb63ecb412e2ad6ae8b2671e2709c90139a4022938fe871119"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_5.md",
+      "bytes": 9300,
+      "sha256": "b44709a907eae3227ebd7b84c09a9d48b41e304967bccb241bbfff534ba41372"
+    },
+    {
+      "path": "docs/release/OUTDOOR_ADVENTURE_TARGETED_LIVE_ROUTE_QUALITY_PROOF_V4_ATTEMPT_5.summary.json",
+      "bytes": 19126,
+      "sha256": "61191787a5b14b16196db11a6b25722a141de34b3fa21a76b563790ae839d83b"
+    },
+    {
+      "path": "docs/release/OUTDOOR_EVIDENCE_STAGING_PROOF.md",
+      "bytes": 13834,
+      "sha256": "8e57b514c81804942f4cdd1d44bd9237164660d91211ba4368bae1b771460759"
+    },
+    {
+      "path": "docs/release/PRIVACY_MANIFEST_DECISION.md",
+      "bytes": 6066,
+      "sha256": "2401e14b06b6e71d89177a69cc256bf9501feeb06842c9504cea60ab4e7c9e95"
+    },
+    {
+      "path": "docs/release/PRIVACY_POLICY_DRAFT.md",
+      "bytes": 8294,
+      "sha256": "05745338dd7243484605a0b25488dafa90cad315c4a84d4fcd91ca0c1db013fc"
+    },
+    {
+      "path": "docs/release/RELEASE_CONFIGURATION.md",
+      "bytes": 6027,
+      "sha256": "3dfd45e06905130546a388922311aad727e499ce7c71bad708274566c8d5b4b6"
+    },
+    {
+      "path": "docs/release/SCREENSHOT_PLAN.md",
+      "bytes": 5162,
+      "sha256": "caa36648a19940af4160c041b350192cd181138731bfa0187db5d415cbd5a4dd"
+    },
+    {
+      "path": "docs/release/STOREKIT_PREMIUM_FOUNDATION_V1.md",
+      "bytes": 5273,
+      "sha256": "892b0d7f6d4ae3f6d38234a56e453a85dccbd42e8ed5afb2cfe6c29a221f0f27"
+    },
+    {
+      "path": "docs/release/app-store-v1/APPLE_RELEASE_READINESS_AUDIT_V1.json",
+      "bytes": 7080,
+      "sha256": "60fde5cac904edfe798d859db5c34a7164e5309ded2dc1a672e85d6903296fe3"
+    },
+    {
+      "path": "docs/release/app-store-v1/APP_ATTEST_PHYSICAL_DEVICE_PROOF_V1.md",
+      "bytes": 5924,
+      "sha256": "a5c2ae7204e997cbbbe089d478240108b314ccc4cda37534523ac7621b787ac6"
+    },
+    {
+      "path": "docs/release/app-store-v1/APP_PRIVACY_DECLARATION_DRAFT_V1.json",
+      "bytes": 1972,
+      "sha256": "dec6f71ef341386af6c319009df5fb8a9b8993fe4093e570d9ea8746aaedbb8b"
+    },
+    {
+      "path": "docs/release/app-store-v1/APP_PRIVACY_QUESTIONNAIRE_V1.md",
+      "bytes": 4953,
+      "sha256": "685f8994a9cafa8287220a97256b2402c88b6d75428272aadcbacf742b4ac893"
+    },
+    {
+      "path": "docs/release/app-store-v1/APP_REVIEW_NOTES_V1.md",
+      "bytes": 3355,
+      "sha256": "db4bfaa293befd4ecfaa0f60f52ece1304247f6f1f68002175e7e8c86a060c15"
+    },
+    {
+      "path": "docs/release/app-store-v1/APP_STORE_METADATA_V1.md",
+      "bytes": 3478,
+      "sha256": "7ef101047f5e801d650ff53776f4682f0b4cc9eb977967027e9a61f46036170d"
+    },
+    {
+      "path": "docs/release/app-store-v1/APP_STORE_PRIVACY_ANSWERS_ENGINE_ENABLED_V1.md",
+      "bytes": 6691,
+      "sha256": "5e395f35ddf8c7401f8bddeda4cc14eb421d5fef4225267556c27d6d927a863d"
+    },
+    {
+      "path": "docs/release/app-store-v1/DEPLOY_STATIC_LEGAL_SITE_V1.md",
+      "bytes": 6231,
+      "sha256": "72e3f13f4726580746515c74cffcaeb9db2258d684cf32a5583b5656ca6d48fa"
+    },
+    {
+      "path": "docs/release/app-store-v1/EXTERNAL_ASSET_AND_ACCOUNT_INVENTORY_V1.md",
+      "bytes": 5682,
+      "sha256": "d28629235844e4638dfef2b1b520de068600bfd59ebe03eaf66c40154a131474"
+    },
+    {
+      "path": "docs/release/app-store-v1/LEGAL_AND_PLATFORM_SOURCE_NOTE_V1.md",
+      "bytes": 7854,
+      "sha256": "f7dbfc20c5c29ef5c37589a34cfbf452de2dd3463baf7000c3e50f50a51cc26d"
+    },
+    {
+      "path": "docs/release/app-store-v1/OWNER_DECISIONS_V1.md",
+      "bytes": 3589,
+      "sha256": "7ac7069d5256d050bd5459f175d9aaf040065671224dbd91f2d05198d0172f73"
+    },
+    {
+      "path": "docs/release/app-store-v1/OWNER_INPUTS_V1.json",
+      "bytes": 5677,
+      "sha256": "3f3800ee089142cbe0a934f2fbf91b9ae372238f81ea7dec9162904cb502bc07"
+    },
+    {
+      "path": "docs/release/app-store-v1/OWNER_LEGAL_INPUTS_V1.md",
+      "bytes": 2473,
+      "sha256": "36faf76262569078be65f1496a2a3f7daad675fda54c37420928ba13d5f70b75"
+    },
+    {
+      "path": "docs/release/app-store-v1/PRIVACY_POLICY_CONTENT_DRAFT_V1.md",
+      "bytes": 5466,
+      "sha256": "682ba194aab5aafabc48d9a56d53f7802489a06358fa1b87322cee91f2d778eb"
+    },
+    {
+      "path": "docs/release/app-store-v1/PRIVACY_SUPPORT_URL_REQUIREMENTS_V1.md",
+      "bytes": 6330,
+      "sha256": "bf62aaeba9646722c2287faa32376e7a53334707ab941150d440c563c2e0c43d"
+    },
+    {
+      "path": "docs/release/app-store-v1/README.md",
+      "bytes": 9495,
+      "sha256": "055491b34d0c302c8e276c1d1ea23b3758f1f040697f9629b66e63f6bb2196a8"
+    },
+    {
+      "path": "docs/release/app-store-v1/RELEASE_BLOCKERS_V1.json",
+      "bytes": 4561,
+      "sha256": "b6fde0ab9b902c8139c980bbed68575aa10794bb61f3349895b7447626cbae8b"
+    },
+    {
+      "path": "docs/release/app-store-v1/RELEASE_GATE_MATRIX.md",
+      "bytes": 5039,
+      "sha256": "116fdf8b2b7d4a788f783c22fef97afbe605b614034727ccb5720cad656a5afe"
+    },
+    {
+      "path": "docs/release/app-store-v1/SCREENSHOT_CAPTURE_PLAN_V1.md",
+      "bytes": 5040,
+      "sha256": "08c48d0e4b2029aa217c329d94efe89594abd50b6c4e16f771d173cdc50b3dc1"
+    },
+    {
+      "path": "docs/release/app-store-v1/SIGNING_TESTFLIGHT_ARCHIVE_RUNBOOK_V1.md",
+      "bytes": 3881,
+      "sha256": "3bb483f0c96747abeae4f25267f28f3951415322b2ab5ccc73b7d950983b45ac"
+    },
+    {
+      "path": "docs/release/app-store-v1/SOURCE_EVIDENCE_MANIFEST_V1.json",
+      "bytes": 31115,
+      "sha256": "0d93e4476115bdb8e7cea22573943b6b0177f2ddec14ae469a90240002a278be"
+    },
+    {
+      "path": "docs/release/app-store-v1/SUPPORT_PAGE_CONTENT_DRAFT_V1.md",
+      "bytes": 4131,
+      "sha256": "cea5b41a6cbaeb892c1144a69ffa00ed490b2df0aad19485c77ba943f6994d23"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/.gitignore",
+      "bytes": 29,
+      "sha256": "26e6be718aa46e8e8d00f7b9bb29f341fbefdda4fa231cd31103e43f32797fc0"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/README.md",
+      "bytes": 2779,
+      "sha256": "ed45288dfd25e95356bce8b94b887915afefbcb1dd3dc160e1d33b78f1a60bb2"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/_headers",
+      "bytes": 630,
+      "sha256": "4e07484cd1b981c1281520dd77d59b132fc978922959360a0d827752af9328e0"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/assets/favicon.svg",
+      "bytes": 245,
+      "sha256": "2c0920aba39183342ac36dd7618a3a10ae4d1bf8b1b4b388f9845c881164da32"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/assets/site.css",
+      "bytes": 6014,
+      "sha256": "e58aa3db78c3d728a6e036b70cfb3a9047cca65a3843aca389754660be8e70d1"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/config/.gitignore",
+      "bytes": 53,
+      "sha256": "f82bb929ff95800dc4104c36fbdfee667df259cc32c2c2183bb676922b15f610"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/config/owner-inputs.placeholder.json",
+      "bytes": 2028,
+      "sha256": "3bd8742d8a7852f64396a6b1545744c7b8e12594a0db8bb27f38ec3167495048"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/privacy-choices/index.html",
+      "bytes": 5396,
+      "sha256": "486a4f37aa30ce453c788489e30f846f37b34f3ec0bda848f5ae802b9875e90e"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/privacy/index.html",
+      "bytes": 12095,
+      "sha256": "2f11dd253ea93ba6c5e26ea4e8be9bbbd7d62b0990c83126c1842f3e82835f0b"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/robots.txt",
+      "bytes": 129,
+      "sha256": "addbda1a14dcc26cedb52269c625bb8e890b2491c71f76f1cd5d6586fbdc8949"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/support/index.html",
+      "bytes": 7523,
+      "sha256": "e67c9994da4b23cc8cbd278b7f8f2786246bc3b3e3fa25b4c1d90a59ea3d378c"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/terms/index.html",
+      "bytes": 7289,
+      "sha256": "99a6fa1611a2865c9797d302125cef8cabf485333c52b95d368ff41811833a74"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/tools/test_validate_public_site.py",
+      "bytes": 5838,
+      "sha256": "8b10971df4c1ace78d54cfd302f55059d06be2011a3c0b3f4f678cffe7bed107"
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/tools/validate_public_site.py",
+      "bytes": 22293,
+      "sha256": "c5cc1ee8b7231ce75d120daa8806151ce71daaf1073b99ac37d904483c6fd456"
+    },
+    {
+      "path": "docs/release/staging-v1/ADVERSARIAL_AUDIT_V1.md",
+      "bytes": 3229,
+      "sha256": "d8063ff4a84b851b35b58737950d4022e03e1f2f621ef5f1611f9a6e3d745d9d"
+    },
+    {
+      "path": "docs/release/staging-v1/PROOF_CONTRACT_V1.md",
+      "bytes": 5948,
+      "sha256": "4db5ecb5109c1b76e7cd817a34fb425cf2c4ffe8a1d22e86e55b45f7d03eb81f"
+    },
+    {
+      "path": "docs/release/staging-v1/README.md",
+      "bytes": 5557,
+      "sha256": "81d33244124b52d397a1129482b2011df7a0dddc20796d42cbbe1ae15e3ae2e8"
+    },
+    {
+      "path": "docs/release/staging-v1/REAL_EXECUTION_GATE_V1.md",
+      "bytes": 4282,
+      "sha256": "483d4a2632fa3e7cdaf8176bcdecb82052d365b1e5750426fffc35223b3496a4"
+    },
+    {
+      "path": "docs/release/staging-v1/ROLE_CONTRACT_V1.md",
+      "bytes": 3692,
+      "sha256": "a7f16fb7eb1a15034cb24df4813ef2d3186f13cc82cc7840974091631a6f2458"
+    },
+    {
+      "path": "docs/release/staging-v1/canonical-evidence-map-v1.json",
+      "bytes": 7172,
+      "sha256": "14955a0bc38cb50bc05b5ea5dd4536da89d3dac23690bcfb202e21f1fad4ad78"
+    },
+    {
+      "path": "docs/research/OUTDOOR_SOURCE_INVENTORY_HARZ_INNSBRUCK.md",
+      "bytes": 46271,
+      "sha256": "acc60bf5b141904a19cef80a896164b8aa94b283eb0eda53f3573ecc92c9e78d"
+    },
+    {
+      "path": "docs/research/outdoor-source-inventory-harz-innsbruck-v1.json",
+      "bytes": 110886,
+      "sha256": "a178de05e8fc2a6e670fe6e3a85b07ed62b1556bab5c8e92125364149679479c"
+    },
+    {
+      "path": "docs/route-quality/golden-set-v1/CLOSED_BETA_ACCEPTANCE_POLICY_V1.md",
+      "bytes": 14406,
+      "sha256": "e8171e547f473f5558dde54471d2ebba8edd7cff1d89bc9bb3249a2d1d24dcfa"
+    },
+    {
+      "path": "docs/route-quality/golden-set-v1/EXPERT_REVIEW_FORM.md",
+      "bytes": 10339,
+      "sha256": "3ae0ec7d6ff4c1ff30f4d2550c85d81cba8efc93b268bfc18f1aa23d21c33e9b"
+    },
+    {
+      "path": "docs/route-quality/golden-set-v1/README.md",
+      "bytes": 21589,
+      "sha256": "101e2f5bc08d4af2af766874f57b6b7b83bdeddb102ad8de9f5d57e4b9578599"
+    },
+    {
+      "path": "docs/route-quality/golden-set-v1/V4_EVALUATION_MAPPING.md",
+      "bytes": 13475,
+      "sha256": "3f397d16a8fcc2c6b87516317ad4863eec70c12ee7b85676f31643d0bbaca2f6"
+    },
+    {
+      "path": "docs/route-quality/golden-set-v1/golden-cases-v1.json",
+      "bytes": 123692,
+      "sha256": "579c5f3e5b026dc11b5087f04eb2a03f13511d7539d46b7621f846b21bcde661"
+    },
+    {
+      "path": "docs/route-quality/golden-set-v1/source-manifest-v1.json",
+      "bytes": 22782,
+      "sha256": "635088a622ceaf74d803a593f035f49cc38d5570c6b1c386d9e4e69421aac7d5"
+    },
+    {
+      "path": "render.yaml",
+      "bytes": 1897,
+      "sha256": "a60ba3e2890af7adafb5c60a5cdc65d653af9b797ed6161c54481bbc7f293941"
+    },
+    {
+      "path": "scripts/evaluation-harness.sh",
+      "bytes": 23272,
+      "sha256": "27d01c2a0a4e4b6abfbc05816df3b114c0979869a2ded72c404c5f8e229971f3"
+    },
+    {
+      "path": "scripts/release-contract.json",
+      "bytes": 7340,
+      "sha256": "c7e12b2756188bed96ce34cc1e6dcd584f43d3da4bd0e687ddc765c832681f3e"
+    },
+    {
+      "path": "scripts/run-intent-eval.sh",
+      "bytes": 584,
+      "sha256": "e09ce966ba588a1fec0ffc960981e3d6f0d5e4d72bec83b2af48396410958d4c"
+    },
+    {
+      "path": "scripts/run-route-quality-eval.sh",
+      "bytes": 595,
+      "sha256": "c75426ae1a227951dfa6047893de1a4e96993b101e794874ac4fdc3fafb5c0d2"
+    },
+    {
+      "path": "scripts/test-evaluation-harness.sh",
+      "bytes": 24623,
+      "sha256": "1a2613e272c6fc1646611cc8e7fe6cb2ff8862236a1f327d7b8aefe0d2fa81d5"
+    },
+    {
+      "path": "scripts/test-release-artifact-verifier.sh",
+      "bytes": 32634,
+      "sha256": "8aa5db69ab11ccd35fec7a9f956096b70bf94c17e3dedc3f907aee4de7363dfb"
+    },
+    {
+      "path": "scripts/verification/ResearchPromptConstraintsCheck.swift",
+      "bytes": 1975,
+      "sha256": "1b2ee682358f9422cda3624cd6fbd57c174157beb09b0b7098a021f2499757eb"
+    },
+    {
+      "path": "scripts/verification/test-research-prompt-constraints.sh",
+      "bytes": 1764,
+      "sha256": "659a6281a589e65ac85b2626ed9087a27ee00d3a1f300a10fea335df10399b8a"
+    },
+    {
+      "path": "scripts/verify-release-artifact.sh",
+      "bytes": 43893,
+      "sha256": "2de2def5e4b4d3e0237473e718bc455252c1b40338eacebdc43e40726b5316a4"
+    },
+    {
+      "path": "scripts/verify-research-app-bundle.py",
+      "bytes": 2134,
+      "sha256": "54164de0164fbadf2bd995d56c7bc047184b4146c262a187dfe3607ceb8c95f0"
+    },
+    {
+      "path": "supabase/migrations/20260819113710_hiking_intelligence_onboarding_v1.sql",
+      "bytes": 28578,
+      "sha256": "4455ef6b65b17b470a45c5ab70c0267afe9b3629f217f9a08075d40dc302cb15"
+    }
+  ],
+  "excluded": [
+    ".git",
+    "backend/node_modules"
+  ],
+  "errors": [],
+  "generatedFiles": [
+    {
+      "path": "INTEGRATION_NOTES.md",
+      "sha256": "11e7e0360ef0f8f8be48cca216f79c46e8466ddb76602a438d12218e0cbca4d8"
+    }
+  ],
+  "revisions": [
+    {
+      "previousCandidate": "171f4e350058c304c6d7277526a76a43a3ed0ce4",
+      "previousManifestSha256": "b51d5e5ba7c737d2edf7b2a53a2aadf981f64669c61d341833eaf2ff81477f4c",
+      "recordedAt": "2026-09-09T21:53:53.867216+00:00",
+      "reason": "Independent final review: conflicting publisher roles on one source URL; native test class actor isolation. Exact peer file hash imports, no assertions weakened.",
+      "files": [
+        {
+          "path": "TrailMindTests/ResearchPromptConstraintsTests.swift",
+          "previousSha256": "706c4724ff4a82ff217ce23c65f42041a45b09599b2fdda92965270901340ef1",
+          "sha256": "e9bf194fbd71f4eef97954106a5735bb85be6fed18254002b35280ba9065bea9"
+        },
+        {
+          "path": "backend/src/dynamicResearch/genericConditions.js",
+          "previousSha256": "52a364f8973327dc00b66ea529c4c8b9fca8ac37ca5adfa7db1db2e15b027b03",
+          "sha256": "756286895c44c98d6cbeee5a29ddb6be01d95d5be7747fc86785f5c8bc076a80"
+        },
+        {
+          "path": "backend/test/dynamicResearchGlobalConditions.test.js",
+          "previousSha256": "4cdbea409c614871345208108f5fc598693b3329c1f85bfa75b06fe347170dec",
+          "sha256": "e1b55eabf7902de887c447f5c9db928ad9f11f93e86ca7219ac16957a28ea335"
+        }
+      ]
+    },
+    {
+      "previousCandidate": "65a28d61da09aab1c623aa0bbbfaeeaeee5d0d9c",
+      "previousManifestSha256": "f9029c6181d919d19fcb4b9d6d36ea9c2f490bd84f0d2d8a8567b30c62953e1d",
+      "recordedAt": "2026-09-09T22:00:26.768093+00:00",
+      "reason": "Independent test setup now exercises shipping RemoteAIIntentParsingProvider with synthetic HTTP response; all original wish cases and boundary assertions unchanged.",
+      "peerCommit": "6057c59a6b04a07eba05a00f16caf32658549ee2",
+      "files": [
+        {
+          "path": "TrailMindTests/GlobalFixesAcceptanceTests.swift",
+          "previousSha256": "0f1dbc11075e4998aff85158aaecf8b083eae131d0f20878525566fe1cbfd6b1",
+          "sha256": "9f5385da7cb6c151c08515a7eabf87d87470ff10c3e0df6a4a91783e39b1594e"
+        }
+      ]
+    }
+  ]
+}

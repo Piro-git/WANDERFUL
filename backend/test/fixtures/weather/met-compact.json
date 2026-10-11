@@ -1,0 +1,138 @@
+{
+  "type": "Feature",
+  "properties": {
+    "meta": {
+      "updated_at": "2026-09-29T00:00:00Z",
+      "units": {
+        "air_temperature": "celsius",
+        "wind_speed": "m/s",
+        "precipitation_amount": "mm"
+      }
+    },
+    "timeseries": [
+      {
+        "time": "2026-09-29T00:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 10,
+              "wind_speed": 2.0
+            }
+          },
+          "next_1_hours": {
+            "details": {
+              "precipitation_amount": 0.5
+            }
+          }
+        }
+      },
+      {
+        "time": "2026-09-29T01:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 11,
+              "wind_speed": 2.5
+            }
+          },
+          "next_1_hours": {
+            "details": {
+              "precipitation_amount": 0.5
+            }
+          }
+        }
+      },
+      {
+        "time": "2026-09-29T02:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 12,
+              "wind_speed": 3.0
+            }
+          },
+          "next_1_hours": {
+            "details": {
+              "precipitation_amount": 0.5
+            }
+          }
+        }
+      },
+      {
+        "time": "2026-09-29T03:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 13,
+              "wind_speed": 3.5
+            }
+          },
+          "next_1_hours": {
+            "details": {
+              "precipitation_amount": 0.5
+            }
+          }
+        }
+      },
+      {
+        "time": "2026-09-29T04:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 14,
+              "wind_speed": 4.0
+            }
+          },
+          "next_1_hours": {
+            "details": {
+              "precipitation_amount": 0.5
+            }
+          }
+        }
+      },
+      {
+        "time": "2026-09-29T05:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 15,
+              "wind_speed": 4.5
+            }
+          },
+          "next_1_hours": {
+            "details": {
+              "precipitation_amount": 0.5
+            }
+          }
+        }
+      },
+      {
+        "time": "2026-09-29T06:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 16,
+              "wind_speed": 5.0
+            }
+          },
+          "next_6_hours": {
+            "details": {
+              "precipitation_amount": 12
+            }
+          }
+        }
+      },
+      {
+        "time": "2026-09-29T12:00:00Z",
+        "data": {
+          "instant": {
+            "details": {
+              "air_temperature": 22,
+              "wind_speed": 8.0
+            }
+          }
+        }
+      }
+    ]
+  }
+}

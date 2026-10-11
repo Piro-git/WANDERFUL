@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-09-09T16:51:03.780Z",
+  "expiresAt": "2026-09-09T17:51:03.780Z",
+  "visitTime": null,
+  "scope": "area",
+  "coverage": "partial",
+  "sources": [
+    {
+      "id": "innsbruck-path-notices",
+      "name": "Stadt Innsbruck — Wegsperren",
+      "url": "https://www.innsbruck.gv.at/freizeit/natur-umwelt/wald/wegsperren-lawinenwarnungen",
+      "authority": "official",
+      "checkedAt": "2026-09-09T16:51:03.780Z",
+      "state": "checked",
+      "reason": "maintained_local_notices_only"
+    },
+    {
+      "id": "weather-coverage",
+      "name": "Austrian weather and avalanche warnings",
+      "url": null,
+      "authority": "unknown",
+      "checkedAt": "2026-09-09T16:51:03.780Z",
+      "state": "not_checked",
+      "reason": "no_reviewed_austrian_warning_adapter"
+    },
+    {
+      "id": "regional-coverage",
+      "name": "Other local sources",
+      "url": null,
+      "authority": "unknown",
+      "checkedAt": "2026-09-09T16:51:03.780Z",
+      "state": "not_checked",
+      "reason": "no_reviewed_adapter"
+    }
+  ],
+  "notices": [
+    {
+      "id": "innsbruck-path-notices:0edfea2934a88265aa74",
+      "eventId": "innsbruck-path-notices:0edfea2934a88265aa74",
+      "title": "Emile-Béthouart-Steg",
+      "kind": "closure",
+      "status": "active",
+      "areaLabel": "Emile-Béthouart-Steg, Innsbruck",
+      "areaBounds": [
+        11.389,
+        47.27,
+        11.403,
+        47.279
+      ],
+      "publishedAt": null,
+      "sourceUpdatedAt": "2026-09-04T00:00:00.000Z",
+      "publishedPrecision": null,
+      "retrievedAt": "2026-09-09T16:51:03.780Z",
+      "temporalBasis": "explicit_interval",
+      "validFrom": "2026-09-06T22:00:00.000Z",
+      "validUntil": "2026-09-08T22:00:00.000Z",
+      "eventStart": "2026-09-06T22:00:00.000Z",
+      "eventEnd": "2026-09-08T22:00:00.000Z",
+      "sourceExcerpt": "Aufgrund abschließender Arbeiten zur Sanierung des Holzbelags ist der Emile-Béthouart-Steg am Montag, 7. September ab 9.00 Uhr und Dienstag, 8. September 2026 gesperrt. Während der Sanierungsarbeiten ist das Betreten des Emile-Béthouart-Stegs nicht möglich. Als Ausweichmöglichkeit dient die Innbrücke südwestlich des Stegs.",
+      "relevanceReason": "Named place in an independently reviewed regional context; exact route intersection is unverified.",
+      "action": "Review the official notice, affected named paths and dates before starting. A route intersection has not been verified.",
+      "source": {
+        "id": "innsbruck-path-notices",
+        "name": "Stadt Innsbruck — Wegsperren",
+        "url": "https://www.innsbruck.gv.at/freizeit/natur-umwelt/wald/wegsperren-lawinenwarnungen",
+        "authority": "official"
+      },
+      "validity": "expired",
+      "spatial": "area",
+      "blocksRoute": false,
+      "freshness": "fresh"
+    },
+    {
+      "id": "innsbruck-path-notices:552e7258f25359f56595",
+      "eventId": "innsbruck-path-notices:552e7258f25359f56595",
+      "title": "Sillschlucht Severinisteig",
+      "kind": "closure",
+      "status": "active",
+      "areaLabel": "Sillschlucht, Innsbruck",
+      "areaBounds": [
+        11.37,
+        47.22,
+        11.42,
+        47.26
+      ],
+      "publishedAt": null,
+      "sourceUpdatedAt": "2026-09-04T00:00:00.000Z",
+      "publishedPrecision": null,
+      "retrievedAt": "2026-09-09T16:51:03.780Z",
+      "temporalBasis": "until_revoked",
+      "validFrom": null,
+      "validUntil": null,
+      "eventStart": null,
+      "eventEnd": null,
+      "sourceExcerpt": "Wegen Neubau der Autobahnbrücke \"Sillbrücke\" durch die ASFINAG ist der Severinisteig zwischen Gärberbach und Sonnenburgerhof gänzlich bis auf Widerruf gesperrt. Ein Durchgang zwischen Innsbruck und Gärberbach/Mutters ist nicht möglich. Bitte achten Sie auf die Beschilderungen und Informationen vor Ort. Der nördliche Teil der Sillschlucht ist über den Sillschluchtweg begehbar. Ebenso ist der Panoramaweg Bergisel geöffnet. Weitere Infos finden Sie im folgenden Plan: Sperre Sillschlucht Severinisteig",
+      "relevanceReason": "Named place in an independently reviewed regional context; exact route intersection is unverified.",
+      "action": "Review the official notice, affected named paths and dates before starting. A route intersection has not been verified.",
+      "source": {
+        "id": "innsbruck-path-notices",
+        "name": "Stadt Innsbruck — Wegsperren",
+        "url": "https://www.innsbruck.gv.at/freizeit/natur-umwelt/wald/wegsperren-lawinenwarnungen",
+        "authority": "official"
+      },
+      "validity": "active",
+      "spatial": "area",
+      "blocksRoute": false,
+      "freshness": "fresh"
+    },
+    {
+      "id": "innsbruck-path-notices:cbb7c849a034f802a826",
+      "eventId": "innsbruck-path-notices:cbb7c849a034f802a826",
+      "title": "Sillschlucht Bauarbeiten am Brenner Basis Tunnel",
+      "kind": "closure",
+      "status": "active",
+      "areaLabel": "Sillschlucht, Innsbruck",
+      "areaBounds": [
+        11.37,
+        47.22,
+        11.42,
+        47.26
+      ],
+      "publishedAt": null,
+      "sourceUpdatedAt": "2026-09-04T00:00:00.000Z",
+      "publishedPrecision": null,
+      "retrievedAt": "2026-09-09T16:51:03.780Z",
+      "temporalBasis": "maintained_listing",
+      "validFrom": null,
+      "validUntil": null,
+      "eventStart": null,
+      "eventEnd": null,
+      "sourceExcerpt": "Im Bereich des nördlichen Zuganges zur Sillschlucht (von Innsbruck/Wilten aus) kommt es durch die Bauarbeiten am Brenner Basis Tunnel immer wieder zu zeitweise großräumigen Sperren. Diesbezüglich bitte die Informationen vor Ort beachten. Folgende Wege sind geschlossen: vom Bierstindl entlang der bestehenden Bahntrasse vom Bretterkeller über den Fahrweg in die Sillschlucht von der unteren Sillbrücke flussabwärts Richtung Innsbruck",
+      "relevanceReason": "Named place in an independently reviewed regional context; exact route intersection is unverified.",
+      "action": "Review the official notice, affected named paths and dates before starting. A route intersection has not been verified.",
+      "source": {
+        "id": "innsbruck-path-notices",
+        "name": "Stadt Innsbruck — Wegsperren",
+        "url": "https://www.innsbruck.gv.at/freizeit/natur-umwelt/wald/wegsperren-lawinenwarnungen",
+        "authority": "official"
+      },
+      "validity": "unknown",
+      "spatial": "area",
+      "blocksRoute": false,
+      "freshness": "fresh"
+    }
+  ],
+  "blockingNoticeIds": [],
+  "limitations": [
+    "Only the listed sources were checked. No report does not mean paths are open or safe.",
+    "Current information only; no hiking date was provided."
+  ]
+}

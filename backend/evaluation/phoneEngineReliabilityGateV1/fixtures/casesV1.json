@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "gateId": "phone-engine-reliability-gate-v1",
+  "classification": "launch_acceptance_contract",
+  "policyVersions": [
+    "golden-set-v1-schema-2",
+    "hiking-route-quality-v1-server-proof-projection",
+    "research-guided-routing-adapter-v2",
+    "foreground-route-guidance-temporal-integrity-v1"
+  ],
+  "limits": {
+    "caseCount": 18,
+    "maximumCaseRuntimeMilliseconds": 180000,
+    "maximumTotalRuntimeMilliseconds": 900000,
+    "maximumSummaryBytes": 65536
+  },
+  "cases": [
+    {
+      "id": "phone-01-clear-harz-loop",
+      "sourceCaseIds": ["harz-v1-exact-distance-008", "case-01-harz-ilsenburg-loop-viewpoints-forest"],
+      "sourceTestSelectors": ["TrailMindTests/PlannerViewModelResearchGuidedPlanningTests/testPartialDisplaysVerifiedAlternativesWithBoundedNoticeAndAllContext"],
+      "expectedTerminalState": "suggestions_presented",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "expectedProductQualityOutcome": "pass",
+      "requiredAssertionIds": ["structured_intent_bound", "real_place_resolved", "graphhopper_geometry_present", "geometry_stats_consistent", "activity_shape_compatible", "provenance_complete", "eligible_routes_ranked", "truthful_unknown_conditions"]
+    },
+    {
+      "id": "phone-02-broad-alps-clarification",
+      "sourceCaseIds": ["case-09-broad-alps-requires-clarification", "innsbruck-alps-v1-moderate-loop-002"],
+      "sourceTestSelectors": ["TrailMindTests/PlannerViewModelResearchGuidedPlanningTests/testBroadRegionNeverReachesAdapterOrEitherRouterWhenFeatureEnabled"],
+      "expectedTerminalState": "clarification_required",
+      "expectedTechnicalPipelineOutcome": "not_run",
+      "expectedProductQualityOutcome": "not_applicable",
+      "requiredAssertionIds": ["clarification_specific", "zero_routing_calls", "zero_suggestions", "truthful_unknown_conditions"]
+    },
+    {
+      "id": "phone-03-ambiguous-place",
+      "sourceCaseIds": ["harz-v1-moderate-loop-002"],
+      "sourceTestSelectors": ["TrailMindTests/OutdoorAdventurePlanningCoordinatorTests/testClarificationRequiredPreservesIntentGapsAndQuestions"],
+      "expectedTerminalState": "clarification_required",
+      "expectedTechnicalPipelineOutcome": "not_run",
+      "expectedProductQualityOutcome": "not_applicable",
+      "requiredAssertionIds": ["ambiguous_place_not_guessed", "clarification_specific", "zero_routing_calls"]
+    },
+    {
+      "id": "phone-04-point-to-point",
+      "sourceCaseIds": ["case-12-point-to-point-unsupported-documented-fallback"],
+      "sourceTestSelectors": ["TrailMindUITests/TrailMindCriticalPathUITests/testPointToPointPlanningOpensVerifiedRouteActions"],
+      "expectedTerminalState": "detail_presented",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "expectedProductQualityOutcome": "pass",
+      "requiredAssertionIds": ["waypoint_order_preserved", "graphhopper_geometry_present", "geometry_stats_consistent", "activity_shape_compatible", "provenance_complete"]
+    },
+    {
+      "id": "phone-05-trail-run",
+      "sourceCaseIds": ["case-03-harz-trail-running-loop", "harz-v1-trail-running-loop-003"],
+      "sourceTestSelectors": ["TrailMindTests/PlannerViewModelResearchGuidedPlanningTests/testReadyInvokesCoordinatorOnceWithoutLegacyRoutingAndForwardsOnlyAdaptedIntent"],
+      "expectedTerminalState": "suggestions_presented",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "expectedProductQualityOutcome": "pass",
+      "requiredAssertionIds": ["trail_run_activity_preserved", "activity_shape_compatible", "eligible_routes_ranked", "truthful_unknown_conditions"]
+    },
+    {
+      "id": "phone-06-easy-demanding-output",
+      "sourceCaseIds": ["harz-v1-group-constraint-012", "innsbruck-alps-v1-group-constraint-012"],
+      "sourceTestSelectors": ["TrailMindTests/HikingRouteQualityEngineTests/testHardEligibilityRunsBeforeRankingAndDiversity"],
+      "expectedTerminalState": "no_viable_route",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "fail",
+      "requiredAssertionIds": ["demanding_route_rejected", "zero_eligible_routes", "no_safe_claim", "recovery_copy_present"]
+    },
+    {
+      "id": "phone-07-unverified-viewpoint",
+      "sourceCaseIds": ["case-05-harz-unsatisfied-must-have-highlight", "innsbruck-alps-v1-viewpoint-focus-004"],
+      "sourceTestSelectors": ["TrailMindTests/PlannerViewModelResearchGuidedPlanningTests/testUnsatisfiedGenericMustHaveFallsBackWithoutFakeResearchRoute"],
+      "expectedTerminalState": "recovered_without_claim",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "fail",
+      "requiredAssertionIds": ["unreached_must_have_rejected", "requested_not_verified_copy", "no_viewpoint_claim", "fallback_not_relabelled"]
+    },
+    {
+      "id": "phone-08-badly-snapped-stop",
+      "sourceCaseIds": ["innsbruck-alps-v1-viewpoint-focus-004"],
+      "sourceTestSelectors": ["TrailMindTests/ResearchGuidedRoutingAdapterTests/testExcessiveResearchViaSnappingRejectsEveryAffectedAlternative"],
+      "expectedTerminalState": "no_viable_route",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "fail",
+      "requiredAssertionIds": ["provider_snap_within_100m_required", "route_to_access_within_100m_required", "evidence_reach_within_25m_required", "bad_stop_rejected"]
+    },
+    {
+      "id": "phone-09-excessive-distance",
+      "sourceCaseIds": ["harz-v1-exact-distance-008"],
+      "sourceTestSelectors": ["TrailMindTests/RouteQualityEvaluationTests/testMalformedLoopGeometryAndHardDistanceMissFail"],
+      "expectedTerminalState": "no_viable_route",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "fail",
+      "requiredAssertionIds": ["distance_envelope_enforced", "excessive_distance_rejected", "no_close_match_claim"]
+    },
+    {
+      "id": "phone-10-backtracking-loop",
+      "sourceCaseIds": ["harz-v1-route-coherence-010", "innsbruck-alps-v1-route-coherence-010"],
+      "sourceTestSelectors": ["TrailMindTests/HikingRouteQualityEngineTests/testHardEligibilityRunsBeforeRankingAndDiversity"],
+      "expectedTerminalState": "no_viable_route",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "fail",
+      "requiredAssertionIds": ["backtracking_ceiling_enforced", "backtracking_route_rejected", "rejected_route_not_ranked"]
+    },
+    {
+      "id": "phone-11-malformed-or-empty-llm",
+      "sourceCaseIds": ["case-16-malformed-backend-response-rejected-by-ios"],
+      "sourceTestSelectors": ["TrailMindTests/IntentParsingFoundationTests/testInvalidOrUnderspecifiedIntentProducesGracefulValidationError", "TrailMindTests/OutdoorAdventurePlanningClientTests/testInvalidSchemaPolicyAndStateFailClosed"],
+      "expectedTerminalState": "rejected",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "not_applicable",
+      "requiredAssertionIds": ["malformed_intent_rejected", "empty_intent_rejected", "zero_routing_calls", "recovery_copy_present"]
+    },
+    {
+      "id": "phone-12-no-route-or-rate-limit",
+      "sourceCaseIds": ["case-14-timeout-during-graphhopper"],
+      "sourceTestSelectors": ["TrailMindTests/OutdoorAdventurePlanningCoordinatorTests/testEveryClientFailureMapsToExactCoordinatorFailure", "TrailMindUITests/TrailMindCriticalPathUITests/testNoRouteRecoveryOffersRetryAndEdit"],
+      "expectedTerminalState": "recoverable_failure",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "not_applicable",
+      "requiredAssertionIds": ["no_route_typed", "rate_limit_typed", "zero_suggestions", "retry_or_edit_present", "provider_error_redacted"]
+    },
+    {
+      "id": "phone-13-cancellation-and-stale-response",
+      "sourceCaseIds": ["case-13-cancel-during-postgis-research", "case-18-retry-does-not-reuse-stale-state"],
+      "sourceTestSelectors": ["TrailMindTests/PlannerViewModelResearchGuidedPlanningTests/testCancellationAbandonsResearchAndLateCompletionCannotOverwriteIt", "TrailMindTests/PlannerViewModelResearchGuidedPlanningTests/testOlderResearchResultCannotOverwriteNewerPrompt"],
+      "expectedTerminalState": "cancelled_cleanly",
+      "expectedTechnicalPipelineOutcome": "not_run",
+      "expectedProductQualityOutcome": "not_applicable",
+      "requiredAssertionIds": ["cancellation_preserved", "late_result_ignored", "newer_request_preserved", "no_stale_suggestions"]
+    },
+    {
+      "id": "phone-14-zero-survivors",
+      "sourceCaseIds": ["case-05-harz-unsatisfied-must-have-highlight", "innsbruck-alps-v1-multi-must-have-009"],
+      "sourceTestSelectors": ["TrailMindTests/OutdoorAdventurePlanningCoordinatorTests/testNoViableRoutePreservesTypedNonRoutedContext"],
+      "expectedTerminalState": "no_viable_route",
+      "expectedTechnicalPipelineOutcome": "fail",
+      "expectedProductQualityOutcome": "fail",
+      "requiredAssertionIds": ["zero_eligible_routes", "zero_suggestions", "required_shortfall_visible", "recovery_copy_present"]
+    },
+    {
+      "id": "phone-15-one-eligible-route",
+      "sourceCaseIds": ["case-15-partial-provider-failure-survivor", "harz-v1-route-coherence-010"],
+      "sourceTestSelectors": ["TrailMindTests/RouteQualityEvaluationTests/testSingleValidLoopIsWarningNotHardFailure"],
+      "expectedTerminalState": "suggestions_presented",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "expectedProductQualityOutcome": "pass",
+      "requiredAssertionIds": ["exactly_one_route_eligible", "failed_candidates_excluded", "survivor_independently_valid", "single_route_not_called_diverse", "provenance_complete"]
+    },
+    {
+      "id": "phone-16-foreground-navigation-lifecycle",
+      "sourceCaseIds": ["harz-v1-easy-loop-001"],
+      "sourceTestSelectors": ["TrailMindTests/RouteGuidanceModelTests/testPauseResumeBackgroundAndEndCancelLocationAndRestoreAwakeState", "TrailMindTests/RouteGuidanceModelTests/testStaleCachedSampleCannotMutateLatestProgressStalenessOrMapState", "TrailMindTests/RouteGuidanceModelTests/testOffRouteRecoveryReplayPresentsOneBoundedRecoveryNotice", "TrailMindTests/RouteGuidanceModelTests/testRejectedFinishSamplesDoNotIncrementCompletionCounter"],
+      "expectedTerminalState": "navigation_ended",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "expectedProductQualityOutcome": "pass",
+      "requiredAssertionIds": ["verified_route_required", "navigation_started", "stale_gps_ignored", "off_route_hysteresis", "pause_preserves_state", "resume_restarts_freshness", "end_clears_session"]
+    },
+    {
+      "id": "phone-17-detail-and-saved-route",
+      "sourceCaseIds": ["harz-v1-easy-loop-001"],
+      "sourceTestSelectors": ["TrailMindUITests/TrailMindCriticalPathUITests/testSaveReopenAndDeleteUsesOnlyInMemoryUITestStore", "TrailMindTests/SavedRouteStoreTests/testCompleteRouteSurvivesStoreRecreation"],
+      "expectedTerminalState": "saved_route_reopened",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "expectedProductQualityOutcome": "pass",
+      "requiredAssertionIds": ["detail_matches_selected_route", "saved_route_provenance_preserved", "saved_geometry_stats_consistent", "reopened_route_actions_eligible"]
+    },
+    {
+      "id": "phone-18-gpx-provenance",
+      "sourceCaseIds": ["harz-v1-easy-loop-001"],
+      "sourceTestSelectors": ["TrailMindTests/GPXExporterTests/testVerifiedRouteExportsRealTypedProtectedFile", "TrailMindTests/GPXExporterTests/testEveryIneligibleProvenanceCategoryIsRejectedByExporter", "TrailMindUITests/TrailMindCriticalPathUITests/testGPXExportPresentsSystemHandoff"],
+      "expectedTerminalState": "gpx_handoff_presented",
+      "expectedTechnicalPipelineOutcome": "pass",
+      "expectedProductQualityOutcome": "pass",
+      "requiredAssertionIds": ["verified_provenance_required", "gpx_geometry_matches_route", "coordinate_order_preserved", "unverified_export_rejected", "system_handoff_presented"]
+    }
+  ]
+}

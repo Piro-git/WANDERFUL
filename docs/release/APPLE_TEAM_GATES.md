@@ -32,7 +32,7 @@ These items should not wait for App Store Connect access.
 | Credential incident | Rotation/revocation and containment record | **Unresolved** |
 | Live evaluation authority | Permission and cost owner for 40 intent + 20 route baselines | **Unresolved** |
 | Production operations | Backend owner, database, monitoring, backups, pruning, on-call | **Unresolved** |
-| Language/market | Approve the Germany-first English-interface beta, Germany-biased unqualified geocoding, primary locale, territories, and reviewer path; German prompt parsing does not equal a localized German interface | **Repository behavior defined; owner decision unresolved** |
+| Language/market | Confirm candidate-build language and location support, primary locale, distribution territories, and reviewer path. Product scope is any supported, resolved place; German prompt parsing does not equal a localized German interface | **Repository behavior defined; owner decision unresolved** |
 
 ## Requires Apple Developer Program/team access
 

@@ -1,0 +1,9 @@
+{
+  "title": "Test - TrailMind",
+  "result": "Failed",
+  "totalTestCount": 1,
+  "passedTests": 0,
+  "failedTests": 1,
+  "skippedTests": 0,
+  "cause": "English Profile locator did not match German Profil tab; confirmed in captured accessibility hierarchy. Privacy screen not reached."
+}

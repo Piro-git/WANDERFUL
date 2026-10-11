@@ -256,10 +256,10 @@ async function assertMigrationOperator(client) {
     )
     SELECT session_user = 'postgres' AS exact_session,
            current_user = 'postgres' AS exact_current,
-           operator.rolcanlogin AND NOT operator.rolinherit
+           operator.rolcanlogin AND operator.rolinherit
              AND NOT operator.rolsuper AND operator.rolcreatedb
-             AND operator.rolcreaterole AND NOT operator.rolreplication
-             AND NOT operator.rolbypassrls AS exact_operator_attributes,
+             AND operator.rolcreaterole AND operator.rolreplication
+             AND operator.rolbypassrls AS exact_operator_attributes,
            NOT migration.rolcanlogin AND NOT migration.rolinherit
              AND NOT migration.rolsuper AND NOT migration.rolcreatedb
              AND NOT migration.rolcreaterole AND NOT migration.rolreplication

@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /
+
+# The source package is intentionally non-publishable. A validated release render replaces this file.
