@@ -225,6 +225,8 @@
     "test.app.wanderful.premium",
     "local.storekit.test",
     "TrailMindTests",
-    "TrailMindUITests"
+    "TrailMindUITests",
+    "OwnerResearchSessionAuthorizer",
+    "WANDERFUL_PRIVATE_RESEARCH_OWNER"
   ]
 }

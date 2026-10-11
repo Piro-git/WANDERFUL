@@ -80,7 +80,7 @@ struct TrailMindApp: App {
             .environment(languageController)
             .environment(\.locale, languageController.language.locale)
             .tint(theme.forestBright)
-            #if DEBUG && WANDERFUL_PRIVATE_OWNER
+            #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
             .task {
                 await exportOwnerPublicKeyIfRequested()
             }
@@ -102,7 +102,7 @@ struct TrailMindApp: App {
         }
     }
 
-    #if DEBUG && WANDERFUL_PRIVATE_OWNER
+    #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
     /// Operator-only launch action; exports public enrollment material, never the device secret.
     private func exportOwnerPublicKeyIfRequested() async {
         guard ProcessInfo.processInfo.arguments.contains("--wanderful-export-owner-public-key"),

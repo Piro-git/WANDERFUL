@@ -7,6 +7,7 @@ on:
       - main
       - 'codex/source-review-*'
       - 'codex/release-recovery-*'
+      - 'codex/latest-*'
   workflow_dispatch:
 
 permissions:

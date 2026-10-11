@@ -70,10 +70,16 @@ protocol DynamicResearchPlanning: Sendable {
     func validateConfiguration() throws
     func recheck(route: TrailRoute, plannedStartAt: Date?) async throws -> RouteLocalConditions
     func plan(prompt: String, request: RoutePlanningRequest, start: Coordinate,
-              end: Coordinate?, context: ResearchLedPlanningContext) async throws -> DynamicResearchPlanningResult
+              end: Coordinate?, context: ResearchLedPlanningContext, language: AppLanguage) async throws -> DynamicResearchPlanningResult
 }
 
 extension DynamicResearchPlanning {
+    // Preserve older callers without inferring language from the prompt.
+    func plan(prompt: String, request: RoutePlanningRequest, start: Coordinate,
+              end: Coordinate?, context: ResearchLedPlanningContext) async throws -> DynamicResearchPlanningResult {
+        try await plan(prompt: prompt, request: request, start: start, end: end,
+                       context: context, language: .english)
+    }
     func validateConfiguration() throws {}
     func recheck(route: TrailRoute, plannedStartAt: Date?) async throws -> RouteLocalConditions {
         throw OutdoorAdventurePlanningClientFailure.unavailable
@@ -85,18 +91,26 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
     let session: URLSession
     let authorizer: any RouteSessionAuthorizing
 
+    private var planningEndpointURL: URL {
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        baseURL.appendingPathComponent(OwnerResearchTransportPaths.planning)
+        #else
+        baseURL.appendingPathComponent("api/llm-plan-route")
+        #endif
+    }
+
     func plan(prompt: String, request: RoutePlanningRequest, start: Coordinate,
-              end: Coordinate?, context: ResearchLedPlanningContext) async throws -> DynamicResearchPlanningResult {
+              end: Coordinate?, context: ResearchLedPlanningContext, language: AppLanguage = .english) async throws -> DynamicResearchPlanningResult {
         try Task.checkCancellation()
         guard (request.routeType == .loop && end == nil) || (request.routeType == .pointToPoint && end != nil) else {
             throw OutdoorAdventurePlanningClientFailure.rejected
         }
         // Encode once. Only an explicit pre-provider expiry can trigger one fresh session.
-        let body = try Self.requestBody(prompt: prompt, request: request, start: start, end: end, context: context)
+        let body = try Self.requestBody(prompt: prompt, request: request, start: start, end: end, context: context, language: language)
         for attempt in 0...1 {
             let authorization = try await authorizer.authorization(cost: 12)
             try Task.checkCancellation()
-            var http = URLRequest(url: baseURL.appendingPathComponent("api/llm-plan-route"))
+            var http = URLRequest(url: planningEndpointURL)
             http.httpMethod = "POST"
             http.timeoutInterval = 160
             http.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -159,7 +173,7 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
         for attempt in 0...1 {
             try Task.checkCancellation()
             let authorization = try await authorizer.authorization(cost: 12)
-            var http = URLRequest(url: baseURL.appendingPathComponent("api/llm-plan-route"))
+            var http = URLRequest(url: planningEndpointURL)
             http.httpMethod = "POST"; http.httpBody = body; http.timeoutInterval = 130
             http.setValue("application/json", forHTTPHeaderField: "Content-Type")
             http.setValue("TrailMindRouteSession \(authorization.token)", forHTTPHeaderField: "Authorization")
@@ -196,10 +210,10 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
     }
 
     static func requestBody(prompt: String, request: RoutePlanningRequest, start: Coordinate,
-                            end: Coordinate?, context: ResearchLedPlanningContext) throws -> Data {
+                            end: Coordinate?, context: ResearchLedPlanningContext, language: AppLanguage = .english) throws -> Data {
         let null = NSNull()
         let body: [String: Any] = [
-            "schemaVersion": 3, "parserSource": "remoteAI", "prompt": prompt,
+            "schemaVersion": 3, "parserSource": "remoteAI", "prompt": prompt, "locale": language.rawValue,
             "plannedStartAt": request.plannedStartAt.map { ISO8601DateFormatter().string(from: $0) } as Any? ?? null,
             "researchMode": "web_and_map", "locationName": request.startQuery,
             "anchor": ["latitude": start.latitude, "longitude": start.longitude],
@@ -303,8 +317,7 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
             }
             // Free model prose has no independently verified claim mapping. Validate
             // the envelope, but never promote summary/remainingWishes to route facts.
-            route.dynamicResearchExplanation = trustedExplanation(for: route,
-                partial: decision == "partial", hasUnresolvedWishes: !remaining.isEmpty)
+            route.dynamicRouteOutcome = DynamicRouteOutcome(isPartial: decision == "partial", hasUnresolvedWishes: !remaining.isEmpty)
         } else if requiresWebResearch {
             throw OutdoorAdventurePlanningClientFailure.invalidResponse
         }
@@ -318,20 +331,11 @@ struct BackendDynamicResearchPlanningClient: DynamicResearchPlanning {
             }
         }
         route.dynamicResearchStops = stops
-        route.dynamicResearchExplanation = route.dynamicResearchExplanation ?? trustedExplanation(for: route,
-            partial: false, hasUnresolvedWishes: false)
+        route.dynamicRouteOutcome = route.dynamicRouteOutcome ?? DynamicRouteOutcome(isPartial: false, hasUnresolvedWishes: false)
+        // Compatibility copy for non-UI consumers; views render the typed state
+        // using the current interface language instead of persisting a translation.
+        route.dynamicResearchExplanation = RouteLocalizedCopy(route: route, language: .english).outcomeExplanation
         return DynamicResearchPlanningResult(suggestion: RouteSuggestion(route: route, explanation: route.dynamicResearchExplanation ?? route.whyItMatches))
-    }
-
-    private static func trustedExplanation(for route: TrailRoute, partial: Bool, hasUnresolvedWishes: Bool) -> String {
-        var parts = [String]()
-        if partial { parts.append("Partial match — the planner left some preferences unresolved.") }
-        parts.append("GraphHopper calculated \(route.distanceLabel).")
-        if hasUnresolvedWishes {
-            parts.append("Review the route against your original request; not all preferences are confirmed.")
-        }
-        parts.append("Current access, safety and drinking water availability are not verified. Check weather, local rules and trail conditions before starting.")
-        return parts.joined(separator: "\n")
     }
 
     static func validateStoredEvidence(_ stops: [DynamicResearchStop]) throws {
@@ -392,7 +396,14 @@ enum DynamicResearchPlanningClientFactory {
     }
 
     static func make(configuration: WanderfulAppConfiguration?, session: URLSession = .shared,
-                     authorizer: (any RouteSessionAuthorizing)? = nil) -> (any DynamicResearchPlanning)? {
+                     authorizer: (any RouteSessionAuthorizing)? = nil, bundle: Bundle = .main) -> (any DynamicResearchPlanning)? {
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        guard let owner = OwnerAccessConfiguration.loadForResearch(bundle: bundle, configuration: configuration) else {
+            return UnavailableDynamicResearchClient()
+        }
+        return BackendDynamicResearchPlanningClient(baseURL: owner.baseURL, session: session,
+            authorizer: authorizer ?? OwnerResearchSessionAuthorizer(configuration: owner))
+        #else
         guard let configuration else { return UnavailableDynamicResearchClient() }
         guard !configuration.features.invalidKeys.contains("RESEARCH_GUIDED_PLANNING_ENABLED") else {
             return UnavailableDynamicResearchClient()
@@ -414,6 +425,7 @@ enum DynamicResearchPlanningClientFactory {
         )
         return BackendDynamicResearchPlanningClient(baseURL: backend.baseURL, session: session,
             authorizer: sessions)
+        #endif
     }
 }
 
@@ -426,7 +438,7 @@ struct DynamicResearchConfigurationFailure: LocalizedError, Sendable {
 private struct UnavailableDynamicResearchClient: DynamicResearchPlanning {
     func validateConfiguration() throws { throw DynamicResearchConfigurationFailure() }
     func plan(prompt: String, request: RoutePlanningRequest, start: Coordinate,
-              end: Coordinate?, context: ResearchLedPlanningContext) async throws -> DynamicResearchPlanningResult {
+              end: Coordinate?, context: ResearchLedPlanningContext, language: AppLanguage = .english) async throws -> DynamicResearchPlanningResult {
         throw DynamicResearchConfigurationFailure()
     }
 }

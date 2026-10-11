@@ -354,7 +354,11 @@ final class IntentParsingFoundationTests: XCTestCase {
         let body = try XCTUnwrap(request.httpBody)
         let payload = try JSONSerialization.jsonObject(with: body) as? [String: Any]
 
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:3000/api/private-owner/parse-intent")
+        #else
         XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:3000/api/parse-intent")
+        #endif
         XCTAssertEqual(request.httpMethod, "POST")
         XCTAssertEqual(
             request.value(forHTTPHeaderField: "Authorization"),

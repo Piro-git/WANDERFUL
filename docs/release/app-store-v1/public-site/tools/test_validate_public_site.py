@@ -66,8 +66,8 @@ class PublicSiteValidatorTests(unittest.TestCase):
     def test_source_package_is_valid_and_fail_closed(self) -> None:
         validator.validate_site(validator.SITE_ROOT)
 
-    def test_current_ai_and_guidance_inputs_cannot_be_omitted(self) -> None:
-        for field in ("AI_PROCESSING_DETAILS", "GUIDANCE_AVAILABILITY_DETAILS"):
+    def test_current_processing_and_availability_inputs_cannot_be_omitted(self) -> None:
+        for field in ("AI_PROCESSING_DETAILS", "GUIDANCE_AVAILABILITY_DETAILS", "PLANNING_AVAILABILITY_DETAILS", "SERVICE_STORAGE_DETAILS"):
             with self.subTest(field=field):
                 payload = self.valid_config()
                 del payload[field]

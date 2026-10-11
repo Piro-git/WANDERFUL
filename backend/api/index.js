@@ -1,4 +1,6 @@
 import pg from "pg";
+import {createVercelPrivateOwnerHandler,isPrivateOwnerPath} from '../src/ownerAccess/vercelOwnerRuntime.js';
+import { prepareVercelDatabaseCA } from "../src/operations/vercelDatabaseCA.js";
 import { createIntentRequestHandler } from "../src/server.js";
 import { createAppAttestRuntime } from "../src/appAttest/appAttestRuntime.js";
 import { PostgresAppAttestRepository } from "../src/appAttest/postgresAppAttestRepository.js";
@@ -31,6 +33,7 @@ export function createVercelHandler(options = {}) {
       try {
         if (!runtime) {
           requireVerifiedDatabaseTLS(env);
+          prepareVercelDatabaseCA(env);
           const owned = [];
           try {
             const pools = createRuntimePools(env, options.PoolClass ?? pg.Pool, owned,
@@ -96,7 +99,13 @@ export function createVercelHandler(options = {}) {
   };
 }
 
-export default createVercelHandler();
+export function createVercelEntrypoint(options={}){
+  const publicHandler=createVercelHandler(options);
+  const ownerHandler=createVercelPrivateOwnerHandler(options);
+  return (request,response)=>isPrivateOwnerPath(request.url)?ownerHandler(request,response):publicHandler(request,response);
+}
+
+export default createVercelEntrypoint();
 
 function isLivenessPath(url) {
   return url === "/healthz" || url === "/health/live";

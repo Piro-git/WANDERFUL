@@ -343,7 +343,7 @@ struct URLSessionAppAttestAPI: AppAttestAPI, Sendable {
 
 enum TrailMindBackendConfiguration {
     nonisolated static func baseURL(bundle: Bundle = .main) -> URL? {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
         return OwnerAccessConfiguration.load(bundle: bundle)?.baseURL
         #else
         #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
@@ -354,7 +354,7 @@ enum TrailMindBackendConfiguration {
     }
 
     nonisolated static func outdoorEvidenceEnabled(bundle: Bundle = .main) -> Bool {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
         return false
         #else
         guard let configuration = configuration(bundle: bundle) else { return false }
@@ -365,7 +365,9 @@ enum TrailMindBackendConfiguration {
     nonisolated static func researchGuidedPlanningEnabled(
         bundle: Bundle = .main
     ) -> Bool {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        return OwnerAccessConfiguration.loadForResearch(bundle: bundle, configuration: configuration(bundle: bundle)) != nil
+        #elseif DEBUG && WANDERFUL_PRIVATE_OWNER
         return false
         #else
         guard let configuration = configuration(bundle: bundle) else { return false }
@@ -381,7 +383,9 @@ enum TrailMindBackendConfiguration {
     nonisolated static func routableHighlightAccessEnabled(
         bundle: Bundle = .main
     ) -> Bool {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        return OwnerAccessConfiguration.loadForResearch(bundle: bundle, configuration: configuration(bundle: bundle)) != nil
+        #elseif DEBUG && WANDERFUL_PRIVATE_OWNER
         return false
         #else
         guard let configuration = configuration(bundle: bundle) else { return false }
@@ -397,7 +401,7 @@ enum TrailMindBackendConfiguration {
     }
 
     nonisolated static func remoteIntentEnabled() -> Bool {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
         return OwnerAccessConfiguration.load() != nil
         #else
         #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
@@ -408,7 +412,7 @@ enum TrailMindBackendConfiguration {
     }
 
     nonisolated static func directGraphHopperEnabled() -> Bool {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
         return false
         #else
         guard let configuration = WanderfulAppConfigurationSnapshot.configuration else {
@@ -419,7 +423,7 @@ enum TrailMindBackendConfiguration {
     }
 
     nonisolated static func insecureLocalBackendAuthorizationEnabled() -> Bool {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
         return false
         #else
         guard let configuration = WanderfulAppConfigurationSnapshot.configuration else {

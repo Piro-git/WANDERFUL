@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { hashOpaqueValue } from "../appAttest/clientData.js";
 import { appAttestError } from "../appAttest/appAttestErrors.js";
+import {OWNER_PLANNING_WAVE,OWNER_PLANNING_CAPS} from './ownerDynamicPlanning.js';
 
 // Serialize the tiny private lane across processes, including revocation and all
 // budget windows. This is a database transaction lock, not an in-memory mutex.
@@ -78,6 +79,14 @@ export class PostgresOwnerRepository {
       const session = await activeSession(c,input.tokenHash,true);
       if (!session) throw appAttestError("route_session_invalid");
       if (session.expired) throw appAttestError("route_session_expired");
+      if(input.planning){
+        if(input.scope!=='intent'||input.maximumConcurrency!==1||
+          ![3,12].includes(input.cost)||typeof input.planning.admitRequest!=='boolean'||
+          input.planning.admitRequest!==(input.cost===12)||session.key_id!==input.planning.keyId||
+          !Number.isSafeInteger(input.planning.expiresAt)) throw appAttestError('route_session_invalid');
+        const clock=await c.query('SELECT extract(epoch FROM clock_timestamp())*1000 AS now_ms');
+        if(Number(clock.rows[0].now_ms)>=input.planning.expiresAt)throw appAttestError('route_session_expired');
+      }
       const repeated = await c.query(`SELECT 1 FROM wanderful_owner_v1.requests WHERE token_hash=$1 AND request_id=$2`,
         [input.tokenHash,input.requestId]);
       if (repeated.rowCount) throw appAttestError("request_replayed");
@@ -85,12 +94,17 @@ export class PostgresOwnerRepository {
       const { rows } = await c.query(`SELECT count(*)::int AS count FROM wanderful_owner_v1.leases
         WHERE released_at IS NULL AND expires_at>clock_timestamp()`);
       if (rows[0].count >= input.maximumConcurrency) throw appAttestError("app_attest_rate_limited");
+      if(input.planning?.admitRequest && !await consumePlanningWindow(c,'requests',OWNER_PLANNING_CAPS.requests)) {
+        throw appAttestError('route_session_exhausted');
+      }
       await c.query(`INSERT INTO wanderful_owner_v1.requests(token_hash,request_id) VALUES($1,$2)`, [input.tokenHash,input.requestId]);
       await c.query(`UPDATE wanderful_owner_v1.sessions SET remaining_cost=remaining_cost-$2 WHERE token_hash=$1`, [input.tokenHash,input.cost]);
       const leaseId = randomUUID();
       await c.query(`INSERT INTO wanderful_owner_v1.leases(lease_id,token_hash,installation_id,scope,expires_at)
-        VALUES($1,$2,$3,$4,clock_timestamp()+interval '90 seconds')`,
-      [leaseId,input.tokenHash,session.installation_id,input.scope]);
+        VALUES($1,$2,$3,$4,clock_timestamp()+($5*interval '1 second'))`,
+      // Private planning has a 120s HTTP work deadline and a 30s abort/release
+      // margin. Legacy route/intent service keeps its original 90s lease.
+      [leaseId,input.tokenHash,session.installation_id,input.scope,input.planning?150:90]);
       return { leaseId, installationId: session.installation_id, remainingCost: session.remaining_cost-input.cost };
     });
   }
@@ -118,6 +132,33 @@ export class PostgresOwnerRepository {
   async releaseLease(leaseId) {
     await this.pool.query(`UPDATE wanderful_owner_v1.leases SET released_at=clock_timestamp()
       WHERE lease_id=$1 AND released_at IS NULL`,[leaseId]);
+  }
+  async consumePlanningProviderAttempt(input){
+    if(!['google','graphhopper'].includes(input.provider)||!Number.isSafeInteger(input.expiresAt))return false;
+    return this.transaction(async c=>{
+      const session=await activeSession(c,input.tokenHash);
+      if(!session||session.key_id!==input.keyId)return false;
+      const lease=await c.query(`SELECT 1 FROM wanderful_owner_v1.leases WHERE lease_id=$1 AND token_hash=$2
+        AND scope='intent' AND released_at IS NULL AND expires_at>clock_timestamp()
+        AND clock_timestamp()<to_timestamp($3/1000.0)`,[input.leaseId,input.tokenHash,input.expiresAt]);
+      if(!lease.rowCount)return false;
+      return consumePlanningWindow(c,input.provider,OWNER_PLANNING_CAPS[input.provider]);
+    });
+  }
+  async planningWaveUsage(){
+    const {rows}=await this.pool.query(`SELECT scope,cost FROM wanderful_owner_v1.windows WHERE identity_hash='global'
+      AND scope=ANY($1::text[])`,[Object.keys(OWNER_PLANNING_CAPS).map(k=>`${OWNER_PLANNING_WAVE}:${k}`)]);
+    return Object.fromEntries(Object.keys(OWNER_PLANNING_CAPS).map(k=>[k,rows.find(r=>r.scope===`${OWNER_PLANNING_WAVE}:${k}`)?.cost??0]));
+  }
+  async planningWaveReadiness(){
+    const result=await this.pool.query(`SELECT 1 FROM pg_trigger t
+      JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+      JOIN pg_proc p ON p.oid=t.tgfoid
+      WHERE n.nspname='wanderful_owner_v1' AND c.relname='windows'
+      AND t.tgname='guard_planning_wave' AND NOT t.tgisinternal AND t.tgenabled='O' AND t.tgtype=31
+      AND p.proname='guard_planning_wave' AND p.pronamespace=n.oid AND NOT p.prosecdef
+      AND pg_get_userbyid(p.proowner)<>current_user AND NOT has_schema_privilege(n.oid,'CREATE')`);
+    if(result.rowCount!==1)throw Error('Private planning wave guard unavailable');
   }
   // Operator-only pool: runtime role deliberately cannot update owners or keys.
   async revokeOwner(installationId) {
@@ -185,5 +226,16 @@ async function consumeWindow(c,scope,identity,maximum,windowMs) {
     cost=CASE WHEN wanderful_owner_v1.windows.reset_at<=clock_timestamp() THEN 1 ELSE wanderful_owner_v1.windows.cost+1 END,
     reset_at=CASE WHEN wanderful_owner_v1.windows.reset_at<=clock_timestamp()
       THEN clock_timestamp()+($3*interval '1 millisecond') ELSE wanderful_owner_v1.windows.reset_at END`,[scope,identity,windowMs]);
+  return true;
+}
+// Wave counters NEVER reset on elapsed daily windows, session/key renewal or
+// process restart. Existing table and transaction/advisory lock are reused.
+async function consumePlanningWindow(c,provider,maximum){
+  const scope=`${OWNER_PLANNING_WAVE}:${provider}`;
+  const {rows}=await c.query(`SELECT cost FROM wanderful_owner_v1.windows WHERE scope=$1 AND identity_hash='global'`,[scope]);
+  if(rows[0] && (!Number.isInteger(rows[0].cost)||rows[0].cost>=maximum))return false;
+  await c.query(`INSERT INTO wanderful_owner_v1.windows(scope,identity_hash,cost,reset_at)
+    VALUES($1,'global',1,'infinity'::timestamptz) ON CONFLICT(scope,identity_hash)
+    DO UPDATE SET cost=wanderful_owner_v1.windows.cost+1,reset_at='infinity'::timestamptz`,[scope]);
   return true;
 }

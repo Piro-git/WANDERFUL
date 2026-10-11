@@ -6,7 +6,7 @@ This directory is a static, dependency-free package for Wanderful's public priva
 
 - The checked-in HTML shows a **draft — do not publish** banner and asks search engines not to index it.
 - `config/owner-inputs.placeholder.json` is intentionally incomplete and must fail release validation.
-- A release render requires a separate owner-completed JSON file, `PUBLISHABLE: true`, a canonical HTTPS origin, real monitored contacts, proved processor/retention facts, and legal approval.
+- A release render requires a separate owner-completed JSON file, `PUBLISHABLE: true`, a canonical HTTPS origin, real monitored contacts, proved processor/retention facts, exact-release planning availability, service storage/cache/backup details, and legal approval.
 - The renderer removes the draft banner, changes robots metadata to `index, follow`, writes canonical URLs, and rejects any unresolved token or placeholder.
 - Rendered output contains only the four page directories, `assets/site.css`, `_headers`, and `robots.txt`. Configuration and build tools are not published.
 
@@ -21,7 +21,7 @@ python3 docs/release/app-store-v1/public-site/tools/validate_public_site.py
 python3 -m unittest docs/release/app-store-v1/public-site/tools/test_validate_public_site.py
 ```
 
-The first command validates the source templates, privacy invariants, internal links, semantic structure, contrast tokens, and responsive/accessibility CSS. The unit suite proves that the placeholder configuration fails closed and that a complete synthetic configuration can render only into a temporary directory.
+The first command validates the source templates, privacy invariants, internal links, semantic structure, contrast tokens, and responsive/accessibility CSS. This checks local links only; it does not prove a live HTTPS endpoint, monitored email, processor contract or deployed retention. The unit suite proves that the placeholder configuration fails closed and that a complete synthetic configuration can render only into a temporary directory.
 
 ## Owner-approved release render
 

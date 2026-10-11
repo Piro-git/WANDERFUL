@@ -27,14 +27,21 @@ final class DurableResearchTransportTests: XCTestCase {
         XCTAssertTrue(IntentParsingProviderFactory.makeDefaultProvider(remoteIntentEnabled: false) is LocalIntentParsingProvider)
     }
     #endif
-    func testNormalFactoryCreatesAttestedClientWithoutOwnerFlag() throws {
+    func testFactoryAuthorizationMatchesExplicitBuildLane() throws {
         let client = DynamicResearchPlanningClientFactory.make(configuration: try configuration())
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        XCTAssertFalse(client is BackendDynamicResearchPlanningClient)
+        XCTAssertThrowsError(try XCTUnwrap(client).validateConfiguration())
+        let disabled = try XCTUnwrap(DynamicResearchPlanningClientFactory.make(configuration: try configuration(enabled: "false")))
+        XCTAssertThrowsError(try disabled.validateConfiguration())
+        #else
         XCTAssertTrue(client is BackendDynamicResearchPlanningClient)
         XCTAssertNoThrow(try client?.validateConfiguration())
         XCTAssertNil(DynamicResearchPlanningClientFactory.make(configuration: try configuration(enabled: "false")))
+        #endif
     }
     #if DEBUG && targetEnvironment(simulator)
-    func testExplicitLocalLoopbackReusesDevelopmentAuthorization() throws {
+    func testExplicitLoopbackIsConfinedToDevelopmentLane() throws {
         let values: [String: Any] = [
             "TRAILMIND_APP_ENVIRONMENT": "local", "TRAILMIND_APP_ATTEST_ENVIRONMENT": "development",
             "CFBundleIdentifier": "com.trailmind.app.local", "CFBundleDisplayName": "Wanderful Local",
@@ -45,10 +52,16 @@ final class DurableResearchTransportTests: XCTestCase {
             signedIdentity: WanderfulLaneIdentityPolicy(environment: .local,
                 bundleIdentifier: "com.trailmind.app.local", displayName: "Wanderful Local",
                 appAttestEnvironment: .development, backend: .loopbackOnly, supabase: .unavailable))
+        #if WANDERFUL_PRIVATE_RESEARCH_OWNER
+        let client = try XCTUnwrap(DynamicResearchPlanningClientFactory.make(configuration: local))
+        XCTAssertFalse(client is BackendDynamicResearchPlanningClient)
+        XCTAssertThrowsError(try client.validateConfiguration())
+        #else
         let client = try XCTUnwrap(DynamicResearchPlanningClientFactory.make(configuration: local) as? BackendDynamicResearchPlanningClient)
         XCTAssertTrue(client.authorizer is LoopbackDevelopmentSessionAuthorizer)
         let remote = try XCTUnwrap(DynamicResearchPlanningClientFactory.make(configuration: configuration()) as? BackendDynamicResearchPlanningClient)
         XCTAssertFalse(remote.authorizer is LoopbackDevelopmentSessionAuthorizer)
+        #endif
     }
     #endif
     func testMissingInvalidOrMalformedConfigurationIsExplicit() throws {
@@ -66,13 +79,23 @@ final class DurableResearchTransportTests: XCTestCase {
         let data = try successfulFixture()
         ResearchTransportProtocol.reset([.http(401, error("route_session_expired")), .http(200, data)])
         let result = try await client(authorizer).plan(prompt: "Public village loop", request: request,
-            start: start, end: nil, context: .unspecified)
+            start: start, end: nil, context: .unspecified, language: .german)
         XCTAssertTrue(result.suggestion.route.isVerifiedRoutedResult)
         XCTAssertEqual(result.suggestion.route.dynamicResearchStops.count, 3)
         let count = await opener.count
         XCTAssertEqual(count, 2)
         let sent = ResearchTransportProtocol.sent()
         XCTAssertEqual(sent.count, 2)
+        let firstBody = try XCTUnwrap(sent[0].httpBody)
+        let retryBody = try XCTUnwrap(sent[1].httpBody)
+        XCTAssertEqual(firstBody, retryBody)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: firstBody) as? [String: Any])
+        XCTAssertEqual(body["locale"] as? String, "de")
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        XCTAssertEqual(sent[0].url?.absoluteString, "https://planning.example.org/api/private-owner/llm-plan-route")
+        #else
+        XCTAssertEqual(sent[0].url?.absoluteString, "https://planning.example.org/api/llm-plan-route")
+        #endif
         XCTAssertNotEqual(sent[0].value(forHTTPHeaderField: "Authorization"), sent[1].value(forHTTPHeaderField: "Authorization"))
         XCTAssertNotEqual(sent[0].value(forHTTPHeaderField: "X-TrailMind-Request-ID"), sent[1].value(forHTTPHeaderField: "X-TrailMind-Request-ID"))
     }
@@ -176,8 +199,31 @@ private final class ResearchTransportProtocol: URLProtocol, @unchecked Sendable 
     static func sent() -> [URLRequest] { lock.lock();defer { lock.unlock() };return requests }
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    // URLSession can expose an encoded body as a stream to URLProtocol.
+    // Capture the actual bytes so the retry assertion cannot compare two nils.
+    private func capturedRequest() throws -> URLRequest {
+        var captured = request
+        guard captured.httpBody == nil, let stream = captured.httpBodyStream else { return captured }
+        stream.open()
+        defer { stream.close() }
+        let capacity = 4096
+        var buffer = [UInt8](repeating: 0, count: capacity)
+        var body = Data()
+        while true {
+            let count = stream.read(&buffer, maxLength: capacity)
+            guard count >= 0 else { throw stream.streamError ?? URLError(.cannotDecodeRawData) }
+            if count == 0 { break }
+            guard body.count + count <= 600_000 else { throw URLError(.dataLengthExceedsMaximum) }
+            body.append(contentsOf: buffer.prefix(count))
+        }
+        captured.httpBody = body
+        return captured
+    }
     override func startLoading() {
-        Self.lock.lock();Self.requests.append(request)
+        let captured: URLRequest
+        do { captured = try capturedRequest() }
+        catch { client?.urlProtocol(self, didFailWithError: error); return }
+        Self.lock.lock();Self.requests.append(captured)
         let reply = Self.replies.isEmpty ? Reply.http(500,Data()) : Self.replies.removeFirst()
         Self.lock.unlock()
         switch reply {

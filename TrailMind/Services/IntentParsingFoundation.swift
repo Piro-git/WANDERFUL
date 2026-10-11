@@ -339,14 +339,18 @@ struct RemoteAIIntentParsingProvider: IntentParsingProvider, IntentParsingDebugP
 
     private func endpointURL(baseURL: URL?) -> URL? {
         guard let baseURL else { return nil }
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        return baseURL.appendingPathComponent(OwnerResearchTransportPaths.intent)
+        #else
         return baseURL.appending(path: "api").appending(path: "parse-intent")
+        #endif
     }
 
     private nonisolated static func defaultBaseURL(
         bundle: Bundle = .main,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> URL? {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
         return OwnerAccessConfiguration.load(bundle: bundle)?.baseURL
         #else
         #if DEBUG && WANDERFUL_OWNER_PHONE_TEST

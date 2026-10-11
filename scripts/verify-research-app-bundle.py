@@ -32,7 +32,7 @@ for path in app.rglob('*'):
                 findings.add('google_key_pattern_in_bundle')
             if re.search(rb'sk-(?:proj-|or-v1-)[0-9A-Za-z_-]{24,}', data):
                 findings.add('provider_key_pattern_in_bundle')
-            if any(marker in data for marker in [b'OwnerPhoneTest.json', b'OwnerPhoneTestAuthorizer', b'WANDERFUL_OWNER_PHONE_TEST']):
+            if any(marker in data for marker in [b'OwnerPhoneTest.json', b'OwnerPhoneTestAuthorizer', b'WANDERFUL_OWNER_PHONE_TEST', b'OwnerResearchSessionAuthorizer', b'WANDERFUL_PRIVATE_RESEARCH_OWNER']):
                 findings.add('owner_test_code_in_bundle')
             tail = data[-256:]
 print(json.dumps({'schemaVersion': 1, 'bundleIdentifier': info.get('CFBundleIdentifier'),

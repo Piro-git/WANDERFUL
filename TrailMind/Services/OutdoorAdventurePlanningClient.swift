@@ -309,6 +309,10 @@ enum OutdoorAdventurePlanningClientFactory {
         authorizer: (any RouteSessionAuthorizing)?,
         limits: OutdoorAdventurePlanningTransportLimitsV1
     ) -> any OutdoorAdventurePlanningClientV1 {
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        // This lane accepts the complete schema3 DynamicResearch client only.
+        return NoOpOutdoorAdventurePlanningClientV1()
+        #else
         #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
         if let configuration, configuration.environment == .local {
             guard let owner = OwnerPhoneTestConfiguration.loadForResearch(
@@ -337,6 +341,7 @@ enum OutdoorAdventurePlanningClientFactory {
                 configuration.features.routableHighlightAccess,
             usesResearchLedPlanning: configuration.features.routableHighlightAccess
         )
+        #endif
     }
 
     static func makeDefault(
