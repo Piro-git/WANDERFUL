@@ -2,7 +2,8 @@ import Foundation
 import Observation
 
 /// The language used by Wanderful's interface. It intentionally does not affect
-/// route prompts, place names, or content returned by external providers.
+/// route prompts or place names. New researched routes request native provider
+/// instructions in this language; stored provider text is never translated.
 enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case german = "de"
     case english = "en"

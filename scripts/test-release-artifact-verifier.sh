@@ -619,6 +619,13 @@ print -r -- 'RemoteWithLocalFallbackIntentParsingProvider' >> "$fallback_provide
 expect_status 1 "$VERIFIER" simulator-app "$fallback_provider_app"
 assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
 
+for owner_marker in OwnerResearchSessionAuthorizer WANDERFUL_PRIVATE_RESEARCH_OWNER; do
+  owner_marker_app="$(clone_simulator_fixture private-research-owner)"
+  print -r -- "$owner_marker" >> "$owner_marker_app/TrailMind"
+  expect_status 1 "$VERIFIER" simulator-app "$owner_marker_app"
+  assert_report '.final_status == "failed" and (.failed_check_ids | index("release_composition_markers") != null)'
+done
+
 debug_marker_app="$(clone_simulator_fixture debug-marker)"
 print -r -- '--trailmind-ui-testing' >> "$debug_marker_app/TrailMind"
 expect_status 1 "$VERIFIER" simulator-app "$debug_marker_app"

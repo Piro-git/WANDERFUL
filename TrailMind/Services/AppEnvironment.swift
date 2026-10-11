@@ -298,6 +298,12 @@ nonisolated struct WanderfulAppConfiguration: Equatable, Sendable {
             )
         }
         #endif
+        #if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER
+        if signedIdentity.environment == .local, signedIdentity.bundleIdentifier == "com.trailmind.app.local" {
+            matchesBundleIdentifier = OwnerAccessConfiguration.allowsIdentity(
+                environment: environment.rawValue, bundleIdentifier: bundleIdentifier)
+        }
+        #endif
         guard matchesBundleIdentifier else {
             throw WanderfulEnvironmentConfigurationError.bundleIdentifierMismatch
         }

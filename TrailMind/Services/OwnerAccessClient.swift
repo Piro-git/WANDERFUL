@@ -1,3 +1,6 @@
+#if DEBUG && WANDERFUL_PRIVATE_RESEARCH_OWNER && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_OWNER_PHONE_TEST)
+#error("Private research owner must not enable a legacy owner or embedded bearer lane")
+#endif
 #if DEBUG
 import CryptoKit
 import Foundation
@@ -6,8 +9,9 @@ import Security
 nonisolated struct OwnerAccessConfiguration: Sendable {
     let origin: String
     let baseURL: URL
+    let expiresAt: Date?
 
-    init(origin: String) throws {
+    init(origin: String, expiresAt: Date? = nil) throws {
         _ = try OwnerAccessProof.clientData(origin: origin,
             keyID: OwnerAccessProof.base64URL(Data(repeating: 0, count: 32)),
             challengeID: OwnerAccessProof.base64URL(Data(repeating: 0, count: 24)),
@@ -15,19 +19,51 @@ nonisolated struct OwnerAccessConfiguration: Sendable {
         guard let url = URL(string: origin) else { throw AppAttestServiceError.configurationUnavailable }
         self.origin = origin
         self.baseURL = url
+        self.expiresAt = expiresAt
+    }
+
+    static func allowsIdentity(environment: String?, bundleIdentifier: String?) -> Bool {
+        environment == "local" &&
+            ["com.trailmind.app.local", "com.piroscheibe.wanderful.local"].contains(bundleIdentifier ?? "")
     }
 
     /// An explicit build opt-in and local bundle identity are both required.
-    static func load(bundle: Bundle = .main) -> Self? {
-        #if WANDERFUL_PRIVATE_OWNER
-        guard bundle.object(forInfoDictionaryKey: "TRAILMIND_APP_ENVIRONMENT") as? String == "local",
-              ["com.trailmind.app.local", "com.piroscheibe.wanderful.local"].contains(bundle.bundleIdentifier ?? ""),
+    static func load(bundle: Bundle = .main, now: Date = .now) -> Self? {
+        #if WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER
+        guard allowsIdentity(environment: bundle.object(forInfoDictionaryKey: "TRAILMIND_APP_ENVIRONMENT") as? String,
+                             bundleIdentifier: bundle.bundleIdentifier),
               let origin = bundle.object(forInfoDictionaryKey: "WANDERFUL_OWNER_ACCESS_ORIGIN") as? String else { return nil }
+        #if WANDERFUL_PRIVATE_RESEARCH_OWNER
+        // The build is only useful inside its explicitly reviewed private test window.
+        guard let raw = bundle.object(forInfoDictionaryKey: "WANDERFUL_OWNER_ACCESS_EXPIRES_AT") as? String,
+              let expiry = Double(raw), expiry.isFinite,
+              expiry > now.timeIntervalSince1970,
+              expiry <= now.timeIntervalSince1970 + 7200 else { return nil }
+        #endif
+        #if WANDERFUL_PRIVATE_RESEARCH_OWNER
+        return try? Self(origin: origin, expiresAt: Date(timeIntervalSince1970: expiry))
+        #else
         return try? Self(origin: origin)
+        #endif
         #else
         return nil
         #endif
     }
+
+    #if WANDERFUL_PRIVATE_RESEARCH_OWNER
+    static func loadForResearch(bundle: Bundle = .main, configuration: WanderfulAppConfiguration?,
+                                now: Date = .now) -> Self? {
+        guard let configuration, configuration.environment == .local,
+              configuration.features.remoteIntent, configuration.features.researchGuidedPlanning,
+              configuration.features.routableHighlightAccess,
+              configuration.features.invalidKeys.isEmpty,
+              !configuration.features.directGraphHopper, !configuration.features.insecureLocalBackendAuthorization,
+              !configuration.features.inMemoryAppAttest, !configuration.features.outdoorEvidence,
+              !configuration.features.routeWeather, !configuration.features.supabaseOnboardingSync,
+              !configuration.features.superwall, !configuration.features.monetization else { return nil }
+        return load(bundle: bundle, now: now)
+    }
+    #endif
 }
 
 nonisolated protocol OwnerAccessSigning: Sendable {
@@ -56,6 +92,9 @@ actor OwnerAccessClient: RouteSessionOpening {
     }
 
     func openRouteSession() async throws -> RouteSession {
+        guard configuration.expiresAt.map({ now() < $0 }) ?? true else {
+            throw AppAttestServiceError.configurationUnavailable
+        }
         do {
             let key = try await signer.publicKey()
             let keyID = OwnerAccessProof.keyID(for: key)
@@ -166,6 +205,35 @@ actor OwnerAccessClient: RouteSessionOpening {
     private struct Challenge: Decodable, Sendable { let challengeId: String; let challenge: String; let expiresAt: String }
     private struct SessionResponse: Decodable, Sendable { let routeSessionToken: String; let expiresAt: String; let remainingCost: Int }
 }
+
+#if WANDERFUL_PRIVATE_RESEARCH_OWNER
+nonisolated enum OwnerResearchTransportPaths {
+    // Authentication keeps the original signed-purpose paths. Only paid work is namespaced.
+    static let intent = "api/private-owner/parse-intent"
+    static let planning = "api/private-owner/llm-plan-route"
+}
+
+actor OwnerResearchSessionAuthorizer: RouteSessionAuthorizing {
+    private let expiry: Date?
+    private let sessions: any RouteSessionAuthorizing
+    private let now: @Sendable () -> Date
+
+    init(configuration: OwnerAccessConfiguration, sessions: (any RouteSessionAuthorizing)? = nil,
+         now: @escaping @Sendable () -> Date = { .now }) {
+        self.expiry = configuration.expiresAt
+        self.sessions = sessions ?? RouteSessionService(opener: OwnerAccessClient(configuration: configuration))
+        self.now = now
+    }
+
+    func authorization(cost: Int) async throws -> RouteSessionAuthorization {
+        try Task.checkCancellation()
+        guard let expiry, now() < expiry else { throw AppAttestServiceError.configurationUnavailable }
+        return try await sessions.authorization(cost: cost)
+    }
+
+    func invalidate(token: String) async { await sessions.invalidate(token: token) }
+}
+#endif
 
 nonisolated struct OwnerAccessPublicKeyExport: Sendable, Encodable {
     let keyId: String

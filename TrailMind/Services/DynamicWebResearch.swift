@@ -132,7 +132,6 @@ nonisolated struct DynamicRouteEvidence: Decodable, Hashable, Sendable {
                           let place = places.first(where: { $0.placeId == placeId }),
                           ["stable_reference", "structured_name_coordinate"].contains(claim.identityMethod ?? ""),
                           let passage = claim.sourcePassage,
-                          ["www.nationalpark-harz.de", "nationalpark-harz.de", "www.innsbruck.gv.at", "www.innsbruck.info", "www.harzinfo.de", "www.tirol.gv.at"].contains(passage.url.host ?? ""),
                           passage.url.host == citation.url.host, DynamicWebResearch.isPublicCitation(passage.url),
                           research.retrievedSourceURLs.contains(citation.url),
                           (12...1200).contains(passage.text.utf16.count),

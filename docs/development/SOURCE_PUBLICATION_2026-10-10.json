@@ -1,0 +1,620 @@
+{
+  "formatVersion": 1,
+  "purpose": "Publish current source and tests without local credentials or private execution receipts",
+  "baseCommit": "94bfa66a6e50a5e24bcea52e45e75dfaa64c8652",
+  "sourceCommits": {
+    "integration": "9496ce98e75b1da37f45dc8f4dfdfb4bb9f5a22b"
+  },
+  "selection": "source snapshot for integration",
+  "privateRuntimeEvidenceIncluded": false,
+  "files": [
+    {
+      "path": ".github/workflows/ui-localization.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f8a06add5dbadfcb572cf13185d8a284cafdad2",
+      "sourceSha": "2f8a06add5dbadfcb572cf13185d8a284cafdad2",
+      "portableAdaptation": false
+    },
+    {
+      "path": "Configuration/TrailMind-Info.plist",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "48398157755de4335e0d0512648585f4a3b8c421",
+      "sourceSha": "48398157755de4335e0d0512648585f4a3b8c421",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/App/TrailMindApp.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c9a14f2a68a3cdaf67772ef417e4bc09c0eb6643",
+      "sourceSha": "c9a14f2a68a3cdaf67772ef417e4bc09c0eb6643",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Localizable.xcstrings",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "173a53ee5e9e3d70e3f907eb0dda781ecbbaa060",
+      "sourceSha": "173a53ee5e9e3d70e3f907eb0dda781ecbbaa060",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Models/AdventureModels.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c3c0e9d01c6379fd515c40b50850b325d606b46f",
+      "sourceSha": "c3c0e9d01c6379fd515c40b50850b325d606b46f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/AppAttestService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e8dcc358950e719fccff3e124b115cde662483c",
+      "sourceSha": "9e8dcc358950e719fccff3e124b115cde662483c",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/AppEnvironment.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "849346adfac5af4ed289301b4496b3fadbf1357b",
+      "sourceSha": "849346adfac5af4ed289301b4496b3fadbf1357b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/AppLanguage.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6eacff46982b229765e0b59801c92ec3baeda0a",
+      "sourceSha": "e6eacff46982b229765e0b59801c92ec3baeda0a",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/DynamicResearchPlanningClient.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a19698fc2d4aa503dd736d2264b6c1a4529c89c9",
+      "sourceSha": "a19698fc2d4aa503dd736d2264b6c1a4529c89c9",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/DynamicWebResearch.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "44b478d3883b161eaae29de7836511791a5850c7",
+      "sourceSha": "44b478d3883b161eaae29de7836511791a5850c7",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/IntentParsingFoundation.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3546e8dd4bb9413ce432494f11142fc0f0d9a42",
+      "sourceSha": "b3546e8dd4bb9413ce432494f11142fc0f0d9a42",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/OutdoorAdventurePlanningClient.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8352a48d438b16fc493bc019c4f235d13238efa5",
+      "sourceSha": "8352a48d438b16fc493bc019c4f235d13238efa5",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/OwnerAccessClient.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f82a78270db2488caa26049065eecd30838994b9",
+      "sourceSha": "f82a78270db2488caa26049065eecd30838994b9",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/RouteLocalizedCopy.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f21776efd94d7c0bdb3ffe2b6845637b27a612c1",
+      "sourceSha": "f21776efd94d7c0bdb3ffe2b6845637b27a612c1",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/RouteSessionService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87dfa2b3bc7da96df13965c2fece1108ce6f6dcb",
+      "sourceSha": "87dfa2b3bc7da96df13965c2fece1108ce6f6dcb",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Services/SavedRouteStore.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b6407924c7a04392de6328690a7a1b41510b09c1",
+      "sourceSha": "b6407924c7a04392de6328690a7a1b41510b09c1",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/ViewModels/PlannerViewModel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33b761ab0a687eb8407db82450cd5a91485e1002",
+      "sourceSha": "33b761ab0a687eb8407db82450cd5a91485e1002",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Home/HomeView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2754f464ff29f00b72d66b88ac5274d06c98ff97",
+      "sourceSha": "2754f464ff29f00b72d66b88ac5274d06c98ff97",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Planning/PlanningViews.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dd0b7ec92d292f276f0a55a44a41bdc86f14c725",
+      "sourceSha": "dd0b7ec92d292f276f0a55a44a41bdc86f14c725",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteCardStopPhoto.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d53e62931680c6c7614d87103cb7f44277ff0d6",
+      "sourceSha": "3d53e62931680c6c7614d87103cb7f44277ff0d6",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteComponents.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d7f272c252e9eff7945cea2516cc6e831889ce0",
+      "sourceSha": "9d7f272c252e9eff7945cea2516cc6e831889ce0",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Route/RouteDetailView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba3f119e2dcd64107a5d0edaef7575ac9977e720",
+      "sourceSha": "ba3f119e2dcd64107a5d0edaef7575ac9977e720",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMind/Views/Shared/SharedComponents.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3e1a7453c43e0bba8b2025115f464ba3015376f",
+      "sourceSha": "d3e1a7453c43e0bba8b2025115f464ba3015376f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/AppEnvironmentTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0bccba354b90b5139a74b11636909776cc8ec556",
+      "sourceSha": "0bccba354b90b5139a74b11636909776cc8ec556",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/DurableResearchTransportTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a5df7f12784fc8c1238e8a14da6d096bc405569b",
+      "sourceSha": "a5df7f12784fc8c1238e8a14da6d096bc405569b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/DynamicResearchPlanningClientTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a5bcc3a36250f51df5cd900a1e5c0b4a0936b603",
+      "sourceSha": "a5bcc3a36250f51df5cd900a1e5c0b4a0936b603",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/HikingRouteQualityEngineTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b11206338ee51a82ebaae5d1ba6f8cd159bb3615",
+      "sourceSha": "b11206338ee51a82ebaae5d1ba6f8cd159bb3615",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/IntentParsingFoundationTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d97c2394a233b53927eef25fa2bd8bc13d008a1e",
+      "sourceSha": "d97c2394a233b53927eef25fa2bd8bc13d008a1e",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/OwnerAccessClientTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cde245d7347aaa674b73c324b2ad0e2a816ee7c8",
+      "sourceSha": "cde245d7347aaa674b73c324b2ad0e2a816ee7c8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/OwnerAccessIntegrationTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6f8fcaa2d5f9a15883e8b330b649f670eed298f",
+      "sourceSha": "c6f8fcaa2d5f9a15883e8b330b649f670eed298f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/RouteLocalizedCopyTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1ba8297380f8451dc0ea03b8034dfb4f56c0dbd",
+      "sourceSha": "d1ba8297380f8451dc0ea03b8034dfb4f56c0dbd",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindTests/SavedRouteStoreTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5242236cb14c69b064f297e4c65de0a5d84f984",
+      "sourceSha": "f5242236cb14c69b064f297e4c65de0a5d84f984",
+      "portableAdaptation": false
+    },
+    {
+      "path": "TrailMindUITests/RouteCardPhotoUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "051835c27f572b1e801d966b7ef70bc46b7966d5",
+      "sourceSha": "051835c27f572b1e801d966b7ef70bc46b7966d5",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/api/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1cc4f90150358d75ab0113ea060f1b261cccc80",
+      "sourceSha": "b1cc4f90150358d75ab0113ea060f1b261cccc80",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/config/vercel-pilot-v1.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "854218bee427046fa9e064eb411fe69896779771",
+      "sourceSha": "854218bee427046fa9e064eb411fe69896779771",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/dynamicResearch/contract.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23c092327fc2b307063ebcab6ee5d76dc532057a",
+      "sourceSha": "23c092327fc2b307063ebcab6ee5d76dc532057a",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/dynamicResearch/evidence.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "181a99871fb8aad01e0980762b444eb75d4423ee",
+      "sourceSha": "181a99871fb8aad01e0980762b444eb75d4423ee",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/dynamicResearch/routing.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be5a5d20f02698ac1e5fadfcd348e63a0a69a88b",
+      "sourceSha": "be5a5d20f02698ac1e5fadfcd348e63a0a69a88b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningEndpoint.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ad00cfaee176bce6d5b1fcc8e2847e456d14298",
+      "sourceSha": "6ad00cfaee176bce6d5b1fcc8e2847e456d14298",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/llmPlanning/llmFirstPlanningOrchestrator.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23d9600c8c960e9b0ff6b947d586eb5d904380a8",
+      "sourceSha": "23d9600c8c960e9b0ff6b947d586eb5d904380a8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/operations/dynamicResearchBudget.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d31cdf176d1174a715538f3510246dd7d734cc7b",
+      "sourceSha": "d31cdf176d1174a715538f3510246dd7d734cc7b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/operations/vercelDatabaseCA.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "975a32b8b268c56deed93a6a65e181f94991a086",
+      "sourceSha": "975a32b8b268c56deed93a6a65e181f94991a086",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/003_private_owner_bootstrap_20261005.sql",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64b8561031d42a91dbe99b9a8164844fc509fe89",
+      "sourceSha": "64b8561031d42a91dbe99b9a8164844fc509fe89",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/ownerDynamicPlanning.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c28a569a51736a71f5a12b0c2d0e83abc91470df",
+      "sourceSha": "c28a569a51736a71f5a12b0c2d0e83abc91470df",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/ownerService.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf293ed8bb696b70c873bfc9b3a23f8a8d3f1c1e",
+      "sourceSha": "cf293ed8bb696b70c873bfc9b3a23f8a8d3f1c1e",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/postgresOwnerRepository.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "277a2db9aeab0eade8d4e090e89bcc2aae2a758b",
+      "sourceSha": "277a2db9aeab0eade8d4e090e89bcc2aae2a758b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/ownerAccess/vercelOwnerRuntime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25b8ad4d3ca427da8e201fefe0f2b98ee78259fe",
+      "sourceSha": "25b8ad4d3ca427da8e201fefe0f2b98ee78259fe",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/src/routing/graphHopperProvider.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "803a169f431047424dbb33e939855f4bf3fd33e3",
+      "sourceSha": "803a169f431047424dbb33e939855f4bf3fd33e3",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchEndpoint.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60da1866a406f1cad69f689cfccb92f945d16d20",
+      "sourceSha": "60da1866a406f1cad69f689cfccb92f945d16d20",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchNativeFlow.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b908356b1d928684eba62262c63b6991dab12afc",
+      "sourceSha": "b908356b1d928684eba62262c63b6991dab12afc",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchRouting.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a00fbaca69f720d0fe79b0297a75a7991277918",
+      "sourceSha": "4a00fbaca69f720d0fe79b0297a75a7991277918",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/dynamicResearchStatistics.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d68ae27051ef9ace7c04f4bbb77085ea8502a4aa",
+      "sourceSha": "d68ae27051ef9ace7c04f4bbb77085ea8502a4aa",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/fixtures/supabase-public-ca-20261005.pem",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d693669b23c340c57a3457bdc8b6fefe1806cc5",
+      "sourceSha": "3d693669b23c340c57a3457bdc8b6fefe1806cc5",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/graphHopperProvider.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57d801f231ab65e203585cc7793bf8cd7d78239b",
+      "sourceSha": "57d801f231ab65e203585cc7793bf8cd7d78239b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/ownerAccessPostgres.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "811e4cc3bcfd033ac03c49b9e5571021ad9d6fd8",
+      "sourceSha": "811e4cc3bcfd033ac03c49b9e5571021ad9d6fd8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/ownerDynamicPlanning.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "752d074e0f7338aa271e18b092fe730adbabf34b",
+      "sourceSha": "752d074e0f7338aa271e18b092fe730adbabf34b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/routeSourceReconciliation20261003.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f23f8546e3743183e9ff32f4b6593b5f65adfa0b",
+      "sourceSha": "f23f8546e3743183e9ff32f4b6593b5f65adfa0b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/vercelDatabaseCA.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ede6aa2018184d5a53b5141b9b3450cfc7e3a6d8",
+      "sourceSha": "ede6aa2018184d5a53b5141b9b3450cfc7e3a6d8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "backend/test/vercelOwnerMount.test.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87db57993cc88847b2f45ea98c7be4e27c6c5fac",
+      "sourceSha": "87db57993cc88847b2f45ea98c7be4e27c6c5fac",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e94faf1ee14204122097907cd8ef72ffae5844d8",
+      "sourceSha": "e94faf1ee14204122097907cd8ef72ffae5844d8",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/config/owner-inputs.placeholder.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dec247c0417f497c65c9e894afac1a7d7344654e",
+      "sourceSha": "dec247c0417f497c65c9e894afac1a7d7344654e",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/privacy-choices/index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "604b6cd6aecaa868300d7d51fbd39ae306dca9e1",
+      "sourceSha": "604b6cd6aecaa868300d7d51fbd39ae306dca9e1",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/privacy/index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5008bda7db9b62c922851bb12810511d2d2b802",
+      "sourceSha": "d5008bda7db9b62c922851bb12810511d2d2b802",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/support/index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1f14aa6ff02be6dbb18a5980a561ebbf1314ecc6",
+      "sourceSha": "1f14aa6ff02be6dbb18a5980a561ebbf1314ecc6",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/tools/test_validate_public_site.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8372b78017a6bf19a0279afe44654057bd53ac08",
+      "sourceSha": "8372b78017a6bf19a0279afe44654057bd53ac08",
+      "portableAdaptation": false
+    },
+    {
+      "path": "docs/release/app-store-v1/public-site/tools/validate_public_site.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eed421124b19b498f78ecb5dcb154053da00fcc6",
+      "sourceSha": "eed421124b19b498f78ecb5dcb154053da00fcc6",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/release-contract.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "941b6289c1e9602400b4f39fb8588ccac41646f1",
+      "sourceSha": "941b6289c1e9602400b4f39fb8588ccac41646f1",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/test-live-iphone-artifact-verifier.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3f1cd25531d0c814d6e9c8ac5ff15a30f584b68",
+      "sourceSha": "b3f1cd25531d0c814d6e9c8ac5ff15a30f584b68",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/test-private-owner-iphone-artifact-verifier.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "117771f3b44ae0af7dec540866ee1b819cad4976",
+      "sourceSha": "117771f3b44ae0af7dec540866ee1b819cad4976",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/test-release-artifact-verifier.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "7134c23d63c8366bd68bed3b9a37a385907901e5",
+      "sourceSha": "7134c23d63c8366bd68bed3b9a37a385907901e5",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/test-ui-localization-ci.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b4f1917f157575fb596cb390c11056d4adfaa9e",
+      "sourceSha": "9b4f1917f157575fb596cb390c11056d4adfaa9e",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/test-ui-localization-result-verifier.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f16f9fe0d1596151ec2aba7d44350c8f814802b",
+      "sourceSha": "9f16f9fe0d1596151ec2aba7d44350c8f814802b",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/verify-live-iphone-artifact.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6642f8f996238b79656033831dd108fcf723d6d2",
+      "sourceSha": "6642f8f996238b79656033831dd108fcf723d6d2",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/verify-private-owner-iphone-artifact.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c4f3f5e9110867c3814dc46b6fdef485816996f",
+      "sourceSha": "6c4f3f5e9110867c3814dc46b6fdef485816996f",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/verify-research-app-bundle.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78d36834ce8cbc69ff776c52d55fa64b73ec991c",
+      "sourceSha": "78d36834ce8cbc69ff776c52d55fa64b73ec991c",
+      "portableAdaptation": false
+    },
+    {
+      "path": "scripts/verify-ui-localization-results.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da3b67b4961bfea0bde166c8cac981382fbd4cf2",
+      "sourceSha": "da3b67b4961bfea0bde166c8cac981382fbd4cf2",
+      "portableAdaptation": false
+    }
+  ]
+}

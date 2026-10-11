@@ -5,8 +5,13 @@ import { createRouteEndpoint } from "../routing/routeEndpoint.js";
 import { createIntentSessionEndpoint } from "../appAttest/intentSessionEndpoint.js";
 import { GOOGLE_INTERACTIONS_URL } from "../intentSchema.js";
 import { appAttestErrorResult } from "../appAttest/appAttestErrors.js";
+import {ownerDynamicPlanningConfiguration,createOwnerDynamicPlanningEndpoints} from './ownerDynamicPlanning.js';
 
 export function ownerServiceConfiguration(env) {
+  if(env.OWNER_ACCESS_DYNAMIC_RESEARCH_ENABLED==='true'){
+    const dynamic=ownerDynamicPlanningConfiguration(env);
+    return Object.freeze({origin:dynamic.origin,dynamic});
+  }
   if (env.NODE_ENV !== "production" || env.OWNER_ACCESS_ENABLED !== "true" || env.AI_PROVIDER !== "google" ||
       !/^gemini-[a-z0-9.-]+$/.test(env.GOOGLE_MODEL ?? "") || !env.GOOGLE_API_KEY?.trim() ||
       !env.GRAPHHOPPER_API_KEY?.trim()) throw new Error("Owner service configuration unavailable");
@@ -31,36 +36,54 @@ export function ownerServiceConfiguration(env) {
       ROUTE_MAX_DISTANCE_METERS:"200000",INTENT_ALLOW_INSECURE_LOCAL_PARSING:"false" }) });
 }
 
-export function createOwnerService({ repository, configuration, fetchImpl=globalThis.fetch }) {
+export function createOwnerService(options) {return createServer(createOwnerRequestHandler(options));}
+
+export function createOwnerRequestHandler({ repository, configuration, fetchImpl=globalThis.fetch,privatePrefix=false }) {
   if (!repository?.isDurable) throw new Error("Durable owner repository required");
-  const authEndpoint=createOwnerAccessEndpoint({ repository,enabled:true,origin:configuration.origin,environment:"production" });
-  return createServer(async (req,res) => {
+  const ownerRepository=configuration.dynamic?Object.assign(Object.create(repository),{
+    async findActiveOwnerKey(input){return input.keyId===configuration.dynamic.keyId && Date.now()<configuration.dynamic.expiresAt
+      ? repository.findActiveOwnerKey(input):undefined;}
+  }):repository;
+  const authEndpoint=createOwnerAccessEndpoint({ repository:ownerRepository,enabled:true,origin:configuration.origin,environment:"production" });
+  const dynamic=configuration.dynamic?createOwnerDynamicPlanningEndpoints({repository,configuration:configuration.dynamic,fetchImpl}):undefined;
+  return async (req,res) => {
+    const path=privatePrefix?privateOwnerPath(req.url):req.url;
     const controller=new AbortController();
     const abort=()=>controller.abort();
     req.once("aborted",abort);
     res.once("close",()=>{ if(!res.writableEnded) abort(); });
-    const deadline=setTimeout(()=>{ abort(); if(!res.headersSent) send(res,504,{error:{code:"route_timed_out",message:"The request timed out."}}); },40_000);
+    const deadline=setTimeout(()=>{ abort(); if(!res.headersSent) send(res,504,{error:{code:"route_timed_out",message:"The request timed out."}}); },dynamic?120_000:40_000);
     deadline.unref();
     try {
-      if (req.method==="GET" && req.url==="/healthz") return send(res,200,{status:"live"});
-      if (req.method==="GET" && req.url==="/readyz") {
+      // Host is only a rejection bound; it never supplies signing origin or
+      // owner identity. Ignore forwarded host/identity entirely.
+      if(dynamic && req.headers.host!==new URL(configuration.origin).host)return send(res,404,{error:{code:'not_found',message:'Not found.'}});
+      if (req.method==="GET" && path==="/healthz") return send(res,200,{status:"live"});
+      if (req.method==="GET" && path==="/readyz") {
+        if(configuration.dynamic && Date.now()>=configuration.dynamic.expiresAt)throw Error('owner_access_expired');
         await repository.readiness();
         return send(res,200,{status:"ready"});
       }
-      const paths=[OWNER_CHALLENGE_PATH,OWNER_SESSION_PATH,"/api/parse-intent","/api/route"];
-      if (req.method!=="POST" || !paths.includes(req.url)) return send(res,404,{error:{code:"not_found",message:"Not found."}});
+      const paths=[OWNER_CHALLENGE_PATH,OWNER_SESSION_PATH,"/api/parse-intent",dynamic?"/api/llm-plan-route":"/api/route"];
+      if (req.method!=="POST" || !paths.includes(path)) return send(res,404,{error:{code:"not_found",message:"Not found."}});
       if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(req.headers["content-type"] ?? "")) {
         return send(res,415,{error:{code:"invalid_request",message:"Use a JSON request."}});
       }
       const body=await readBody(req,controller.signal);
       // Socket peer is trusted but deliberately coarse behind a reverse proxy.
       // Never derive identity or signed origin from client-controlled headers.
-      const context={headers:req.headers,signal:controller.signal,edgeIdentity:req.socket.remoteAddress ?? "shared-ingress"};
-      if(req.url===OWNER_CHALLENGE_PATH || req.url===OWNER_SESSION_PATH) {
-        const result=await authEndpoint(req.url,body,context);
+      const context={headers:req.headers,signal:controller.signal,edgeIdentity:req.socket?.remoteAddress ?? "shared-ingress"};
+      if(configuration.dynamic && Date.now()>=configuration.dynamic.expiresAt)return send(res,403,{error:{code:'owner_access_expired',message:'The private test has ended.'}});
+      if(path===OWNER_CHALLENGE_PATH || path===OWNER_SESSION_PATH) {
+        const result=await authEndpoint(path,body,context);
         return send(res,result.statusCode,result.payload,result.headers);
       }
-      const scope=req.url==="/api/route"?"route":"intent";
+      if(dynamic){
+        const endpoint=path==='/api/parse-intent'?dynamic.parseIntent:dynamic.plan;
+        const result=await endpoint(body,context);
+        return send(res,result.statusCode,result.payload,result.headers);
+      }
+      const scope=path==="/api/route"?"route":"intent";
       if(scope==="intent" && (!body || Object.keys(body).some((k)=>!["prompt","locale","userLocationHint"].includes(k)))) {
         return send(res,400,{error:{code:"invalid_request",message:"The intent request is invalid."}});
       }
@@ -91,7 +114,18 @@ export function createOwnerService({ repository, configuration, fetchImpl=global
     } catch {
       if(!res.headersSent) send(res,503,{error:{code:"owner_access_unavailable",message:"Owner access is temporarily unavailable."}});
     } finally { clearTimeout(deadline);req.removeListener("aborted",abort); }
-  });
+  };
+}
+
+function privateOwnerPath(path){
+  if([OWNER_CHALLENGE_PATH,OWNER_SESSION_PATH].includes(path))return path;
+  const map={
+    '/api/private-owner/parse-intent':'/api/parse-intent',
+    '/api/private-owner/llm-plan-route':'/api/llm-plan-route',
+    '/api/private-owner/healthz':'/healthz',
+    '/api/private-owner/readyz':'/readyz'
+  };
+  return Object.hasOwn(map,path??'')?map[path]:undefined;
 }
 
 function send(res,status,payload,headers={}) {

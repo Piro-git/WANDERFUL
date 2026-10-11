@@ -34,6 +34,19 @@ final class OwnerAccessClientTests: XCTestCase {
             signer: signer, session: URLSession(configuration: config), now: { fixedNow }, nonce: { fixedNonce })
     }
 
+    func testExpiredPrivateWindowSendsNoChallengeOrProviderRequest() async throws {
+        URLProtocolStub.reset(responses: [])
+        let fixedNow = now
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.protocolClasses = [URLProtocolStub.self]
+        let client = OwnerAccessClient(configuration: try OwnerAccessConfiguration(
+            origin: "https://owner.example.com", expiresAt: fixedNow),
+            signer: OwnerAccessMemorySigner(), session: URLSession(configuration: sessionConfig), now: { fixedNow })
+        do { _ = try await client.openRouteSession(); XCTFail("Expired private window sent authorization") }
+        catch { XCTAssertEqual(error as? AppAttestServiceError, .configurationUnavailable) }
+        XCTAssertEqual(URLProtocolStub.requestBodies().count, 0)
+    }
+
     func testSessionAllowsBoundedFreeHostWakeWithoutPersistentCaches() {
         let session = OwnerAccessClient.makeSession()
         defer { session.invalidateAndCancel() }

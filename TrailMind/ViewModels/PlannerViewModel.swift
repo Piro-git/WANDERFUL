@@ -449,6 +449,7 @@ final class PlannerViewModel {
     private let routingCoordinator: any RoutingCoordinating
     private let researchIntentAdapter: any AdventureResearchIntentAdaptingV1
     var plannedStartAt: Date? = nil
+    var interfaceLanguage: AppLanguage = .english
     private let dynamicResearchClient: (any DynamicResearchPlanning)?
     private let researchPlanningCoordinator:
         any OutdoorAdventurePlanningCoordinatingV1
@@ -2018,10 +2019,12 @@ private extension PlannerViewModel {
                     throw PlannerIssue.remoteIntentUnavailable
                 }
                 let originalPrompt = workingPrepared.originalPrompt
+                let instructionLanguage = interfaceLanguage
                 // Includes first-install App Attest exchanges plus the 160s planning transport.
                 let result = try await withTimeout(seconds: 260) {
                     try await dynamicResearchClient.plan(prompt: originalPrompt,
-                        request: planningRequest, start: start, end: end, context: researchPlanningContext)
+                        request: planningRequest, start: start, end: end, context: researchPlanningContext,
+                        language: instructionLanguage)
                 }
                 try ensureActive(requestID)
                 try RouteEligibilityPolicy.validate(result.suggestion.route, for: .productionSuccess)

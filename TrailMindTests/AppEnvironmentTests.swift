@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class AppEnvironmentTests: XCTestCase {
-    #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
+    #if DEBUG && (WANDERFUL_OWNER_PHONE_TEST || WANDERFUL_PRIVATE_RESEARCH_OWNER)
     func testExistingOwnerPhoneIdentityIsLocalOnly() throws {
         let ownerIdentifier = "com.piroscheibe.wanderful.local"
         let entries = replacing(validEntries(for: .local), "CFBundleIdentifier", ownerIdentifier)

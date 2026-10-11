@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct PlanFlowView: View {
+    @Environment(AppLanguageController.self) private var languageController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(TrailTheme.self) private var theme
     @State private var planner: PlannerViewModel
@@ -97,6 +98,9 @@ struct PlanFlowView: View {
             }
             .animation(reduceMotion ? nil : .smooth, value: planner.phase)
         }
+        .onChange(of: languageController.language, initial: true) { _, language in
+            planner.interfaceLanguage = language
+        }
         #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
         .task {
             guard !hasStartedOwnerAcceptance, let ownerAcceptancePrompt else { return }
@@ -108,6 +112,7 @@ struct PlanFlowView: View {
 
     private func startPlanning(_ prompt: String) {
         withAnimation(reduceMotion ? nil : .smooth) {
+            planner.interfaceLanguage = languageController.language
             planner.startPlanning(prompt: prompt)
         }
     }

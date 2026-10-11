@@ -46,7 +46,7 @@
           <li>Your stored Trail Profile, onboarding progress, and saved routes stay on your iPhone. Relevant profile defaults can be included in a route-planning request. Wanderful V1 has no user account or cloud sync.</li>
           <li>When you request a route, Wanderful may send your prompt, requested places or coordinates, activity, constraints, and preferences to the Wanderful backend so it can plan the route and gather relevant outdoor evidence.</li>
           <li>The routing provider receives the coordinates, activity profile, and routing constraints needed to calculate route geometry. It does not need your identity or a Wanderful account.</li>
-          <li>Wanderful is designed not to create a prompt-history or exact-location-history feature. Transient processing and bounded security logs are described below.</li>
+          <li>Wanderful is designed not to create a prompt-history or exact-location-history feature. Processing, service records, caches and security logs are described below. Local deletion does not delete off-device records.</li>
           <li>There are no ads, analytics, tracking pixels, or cross-company tracking in this V1 boundary.</li>
         </ul>
         <div class="callout">
@@ -68,15 +68,21 @@
         <h3>Route planning requests</h3>
         <p>When you ask Wanderful to plan an adventure, the app and backend process the text you enter, requested start and destination places, resolved coordinates, activity type, target distance or duration, route type, difficulty and other preferences or constraints. The purpose is to understand your request, find relevant evidence, calculate route options, and explain how an option matches your request.</p>
         <p>Before sending a planning request, the app asks you to allow online processing for that request, including related clarification answers and retries. You can close the composer without sending; a new request asks again.</p>
-        <p>AI-assisted planning uses Google Gemini through the backend. Relevant searches can also go to research providers. AI processing, provider roles, regions, data-use terms and retention for this deployment: {{AI_PROCESSING_DETAILS}}.</p>
+        <p>When online AI planning is available, it uses Google Gemini through the backend. Planning availability for this release: {{PLANNING_AVAILABILITY_DETAILS}}. Relevant searches can also go to research providers. AI processing, provider roles, regions, data-use terms and retention for this deployment: {{AI_PROCESSING_DETAILS}}.</p>
         <p>Legal basis: {{ROUTING_LEGAL_BASIS}}.</p>
 
         <h3>Information kept on your iPhone</h3>
-        <p>Onboarding state, your optional Trail Profile, and saved routes are stored locally. V1 does not create a Wanderful account and does not sync those records to Supabase or another cloud profile. Planning can include relevant profile preferences in the request; local profile storage is not a promise that its preferences never leave the phone. You can edit or remove them in the app. A user-directed GPX export contains route coordinates and goes to the app or person you choose in Apple’s share sheet.</p>
+        <p>Onboarding state, your optional Trail Profile, and saved routes are stored locally. This release has account creation and cloud profile sync disabled. Planning can include relevant profile preferences in the request; local profile storage is not a promise that its preferences never leave the phone. New saved-route files are protected and excluded from device backups; other local settings can follow Apple’s device and backup behavior. You can edit or remove them in the app. A user-directed GPX export contains route coordinates and goes to the app or person you choose in Apple’s share sheet.</p>
 
         <h3>Route guidance and device location</h3>
         <p>{{GUIDANCE_AVAILABILITY_DETAILS}}</p>
         <p>Preparing route geometry or instructions locally does not download Apple map tiles. AI planning and route recalculation need connectivity. No offline-map availability is guaranteed.</p>
+
+        <h3>Place photos</h3>
+        <p>Opening route stops can send mapped place identifiers and photo file names to Wikidata and Wikimedia Commons. Images load from Wikimedia servers, which receive your network address. A photo is shown only when matching source and license information is available. Author, source and license links accompany the image. Photos do not confirm current access, conditions or what you will see on your visit.</p>
+
+        <h3>Optional preparation information</h3>
+        <p>A packing checklist is planning assistance, not a complete equipment or safety assessment. Any enabled forecast or overnight-place lookup can process route area, coordinates and planned dates. The services and data involved must be described in the provider and storage details below; availability is stated in the app. An accommodation listing does not establish availability, permission to camp or a booking.</p>
 
         <h3>Optional speech input</h3>
         <p>If you actively start voice input and grant Microphone and Speech Recognition permission, Apple’s Speech service may process the audio to produce text. Typed planning remains available when you decline. Wanderful does not keep the raw audio or send raw audio to its own backend.</p>
@@ -99,8 +105,8 @@
             <tbody>
               <tr>
                 <td>Apple platform services</td>
-                <td>Geocoding, optional Speech, App Attest, and the system share sheet</td>
-                <td>Place queries; optional audio; an app attestation; or a file you choose to share, depending on the action</td>
+                <td>Map display, geocoding, optional Speech, App Attest, and the system share sheet</td>
+                <td>Map requests and place queries; optional audio; an app attestation; or a file you choose to share, depending on the action</td>
               </tr>
               <tr>
                 <td>Wanderful backend</td>
@@ -115,7 +121,12 @@
               <tr>
                 <td>AI and outdoor research providers</td>
                 <td>Google Gemini assists planning; research services find supporting outdoor or route context</td>
-                <td>Request context, search terms, route area, and relevant constraints—not a Wanderful account. Providers/roles/regions: {{EVIDENCE_PROVIDER_DETAILS}}</td>
+                <td>Request context, search terms, route area, and relevant constraints. Providers/roles/regions: {{EVIDENCE_PROVIDER_DETAILS}}</td>
+              </tr>
+              <tr>
+                <td>Wikidata and Wikimedia Commons</td>
+                <td>Resolve explicitly linked place photos and deliver images with attribution</td>
+                <td>Mapped place identifiers, photo file names and network request metadata, including your network address</td>
               </tr>
             </tbody>
           </table>
@@ -127,11 +138,13 @@
         <h2 id="retention-heading">How long information is kept</h2>
         <dl>
           <dt>Route request processing</dt>
-          <dd>Wanderful is designed not to maintain a user-facing prompt or exact-location history. Request content and precise coordinates used in backend processing are removed or de-identified within {{ROUTING_REQUEST_TRANSIENT_PERIOD}}.</dd>
+          <dd>Wanderful is designed not to maintain a user-facing prompt or exact-location history. Handling and retention of request content and precise coordinates during processing: {{ROUTING_REQUEST_TRANSIENT_PERIOD}}.</dd>
+          <dt>Service storage, caches and backups</dt>
+          <dd>{{SERVICE_STORAGE_DETAILS}}</dd>
           <dt>Security and operational logs</dt>
           <dd>The bounded fields listed above are retained for {{SECURITY_LOG_RETENTION}}, unless a specific security incident requires a documented longer hold.</dd>
           <dt>Local app data</dt>
-          <dd>Trail Profile and saved-route data remain on your iPhone until you delete them or remove the app, subject to normal device and backup behavior described by Apple.</dd>
+          <dd>Trail Profile and saved-route data remain on your iPhone until you delete them or remove the app. New saved-route files are excluded from device backups. Other local settings follow Apple’s device and backup behavior. Removing local data does not erase service, provider or support records.</dd>
           <dt>Support correspondence</dt>
           <dd>If you email support, the message and contact details are retained for {{SUPPORT_MESSAGE_RETENTION}}. Legal basis: {{SUPPORT_LEGAL_BASIS}}.</dd>
         </dl>

@@ -32,11 +32,15 @@ enum TrailMindBackendSecurity {
             .insecureLocalBackendAuthorizationEnabled(),
         attestedSessionAuthorizer: any RouteSessionAuthorizing = TrailMindBackendSecurity.attestedSessionAuthorizer
     ) -> any RouteSessionAuthorizing {
-        #if DEBUG && WANDERFUL_PRIVATE_OWNER
+        #if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
         guard let owner = OwnerAccessConfiguration.load(), owner.baseURL == baseURL else {
             return RouteSessionService(opener: UnconfiguredOwnerSessionOpener())
         }
+        #if WANDERFUL_PRIVATE_RESEARCH_OWNER
+        return OwnerResearchSessionAuthorizer(configuration: owner)
+        #else
         return RouteSessionService(opener: OwnerAccessClient(configuration: owner))
+        #endif
         #else
         #if DEBUG && WANDERFUL_OWNER_PHONE_TEST
         if let owner = OwnerPhoneTestConfiguration.load(), owner.baseURL == baseURL {
@@ -174,7 +178,7 @@ actor RouteSessionService: RouteSessionAuthorizing {
     }
 }
 
-#if DEBUG && WANDERFUL_PRIVATE_OWNER
+#if DEBUG && (WANDERFUL_PRIVATE_OWNER || WANDERFUL_PRIVATE_RESEARCH_OWNER)
 private struct UnconfiguredOwnerSessionOpener: RouteSessionOpening {
     func openRouteSession() async throws -> RouteSession {
         throw AppAttestServiceError.configurationUnavailable

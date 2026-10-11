@@ -570,6 +570,7 @@ struct PlanningRecoveryView: View {
 }
 
 struct RouteSuggestionsView: View {
+    @Environment(AppLanguageController.self) private var languageController
     @Environment(TrailTheme.self) private var theme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let prompt: String
@@ -603,7 +604,7 @@ struct RouteSuggestionsView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TrailSpacing.section) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(routeCountTitle)
+                    Text(LocalizedStringKey(routeCountTitle))
                         .font(.trailTitle)
                     Text("Built around “\(prompt)”")
                         .font(.body)
@@ -619,7 +620,7 @@ struct RouteSuggestionsView: View {
                         )
                 }
 
-                if let notice {
+                if let notice = localizedNotice {
                     PlanningNoticeView(message: notice, symbol: "info.circle.fill")
                 }
 
@@ -659,6 +660,13 @@ struct RouteSuggestionsView: View {
         .accessibilityIdentifier(PlanningAccessibilityID.suggestions)
         .navigationTitle("Your routes")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var localizedNotice: String? {
+        if suggestions.count == 1, let route = suggestions.first?.route, route.dynamicRouteOutcome != nil {
+            return RouteLocalizedCopy(route: route, language: languageController.language).outcomeExplanation
+        }
+        return notice
     }
 
     private var requestedPreferenceDisclosure: String? {
