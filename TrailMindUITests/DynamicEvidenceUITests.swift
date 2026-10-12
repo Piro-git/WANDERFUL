@@ -45,24 +45,47 @@ final class DynamicEvidenceUITests: XCTestCase {
             ("de", "Web-Recherche mit Google", "In der Recherche genannt und gelesen. Die Quelle ist keinem bestimmten Satz zugeordnet."),
             ("en", "Web research with Google", "Cited and read during research. The source is not linked to a specific sentence.")
         ] {
-            let app = launch(extra: ["--trailmind-ui-evidence-source-only"], language: language)
+            for largeText in [false, true] {
+                let extra = ["--trailmind-ui-evidence-source-only"] + (largeText ? ["--trailmind-ui-accessibility-xxxl"] : [])
+                let app = launch(extra: extra, language: language)
+                let research = app.buttons["route.evidence.originalResearch"]
+                for _ in 0..<8 where !research.isHittable { app.swipeUp() }
+                XCTAssertTrue(research.waitForExistence(timeout: 5))
+                research.tap()
+                XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
+                let sources = app.buttons["route.evidence.sources"]
+                for _ in 0..<8 where !sources.isHittable { app.swipeUp() }
+                XCTAssertTrue(sources.waitForExistence(timeout: 5))
+                sources.tap()
+                let reference = app.staticTexts["route.evidence.sourceScope.0.0"]
+                for _ in 0..<6 where !reference.isHittable { app.swipeUp() }
+                XCTAssertEqual(reference.label, description)
+                XCTAssertTrue(reference.isHittable)
+                XCTAssertFalse(app.staticTexts["Selected map record."].exists)
+                XCTAssertEqual(app.webViews.count, 0, "No provider HTML was supplied in this synthetic response.")
+                let attachment = XCTAttachment(screenshot: app.screenshot())
+                attachment.name = "Source reference without sentence span · " + language + (largeText ? " · largest text" : "")
+                attachment.lifetime = .keepAlways
+                add(attachment)
+                app.terminate()
+            }
+        }
+    }
+
+    @MainActor
+    func testSuppliedSearchSuggestionsRemainAccessibleInEitherLanguage() {
+        for language in ["de", "en"] {
+            let app = launch(language: language)
             let research = app.buttons["route.evidence.originalResearch"]
             for _ in 0..<8 where !research.isHittable { app.swipeUp() }
             XCTAssertTrue(research.waitForExistence(timeout: 5))
             research.tap()
-            XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
-            let sources = app.buttons["route.evidence.sources"]
-            for _ in 0..<8 where !sources.isHittable { app.swipeUp() }
-            XCTAssertTrue(sources.waitForExistence(timeout: 5))
-            sources.tap()
-            let reference = app.staticTexts["route.evidence.sourceScope.0.0"]
-            for _ in 0..<6 where !reference.isHittable { app.swipeUp() }
-            XCTAssertEqual(reference.label, description)
-            XCTAssertTrue(reference.isHittable)
-            XCTAssertFalse(app.staticTexts["Selected map record."].exists)
-            XCTAssertEqual(app.webViews.count, 0, "No provider HTML was supplied in this synthetic response.")
+            let suggestions = app.webViews.firstMatch
+            for _ in 0..<8 where !suggestions.isHittable { app.swipeUp() }
+            XCTAssertTrue(suggestions.waitForExistence(timeout: 5))
+            XCTAssertTrue(suggestions.staticTexts["Offline Google suggestions fixture"].waitForExistence(timeout: 5))
             let attachment = XCTAttachment(screenshot: app.screenshot())
-            attachment.name = "Source reference without sentence span · " + language
+            attachment.name = "Supplied suggestions HTML · " + language
             attachment.lifetime = .keepAlways
             add(attachment)
             app.terminate()

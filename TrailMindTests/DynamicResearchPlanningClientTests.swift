@@ -220,7 +220,17 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
         let route = try validate(response)
         XCTAssertEqual(route.path, baseline.path)
         XCTAssertEqual(route.distanceKilometers, baseline.distanceKilometers)
-        XCTAssertEqual(route.routeInstructions, baseline.routeInstructions)
+        // Decoding assigns fresh presentation IDs. Compare every provider field,
+        // preserving instruction count and order without treating UUIDs as payload.
+        XCTAssertEqual(route.routeInstructions.count, baseline.routeInstructions.count)
+        for (actual, expected) in zip(route.routeInstructions, baseline.routeInstructions) {
+            XCTAssertEqual(actual.text, expected.text)
+            XCTAssertEqual(actual.streetName, expected.streetName)
+            XCTAssertEqual(actual.distanceMeters, expected.distanceMeters)
+            XCTAssertEqual(actual.durationSeconds, expected.durationSeconds)
+            XCTAssertEqual(actual.sign, expected.sign)
+            XCTAssertEqual(actual.coordinate, expected.coordinate)
+        }
         XCTAssertEqual(route.dynamicResearchStops, baseline.dynamicResearchStops)
         XCTAssertNil(route.dynamicWebResearch?.observedSearchQueries)
         XCTAssertEqual(route.dynamicWebResearch?.routeEvidence?.claims.first?.relationship, "unconfirmed")

@@ -6,7 +6,7 @@ Base: published main `d850970a67c52b92a456ea893553a0c55e392851`. Continue the na
 
 ## Source and checks
 
-Source checkpoint; full native acceptance remains pending at this stage.
+Native unit validation recorded: 87 checks passed; full UI acceptance remains pending at this checkpoint.
 
 The final source includes source-only citation metadata and the narrow accessibility-identifier correction. Route geometry, routing instructions, saved-route identities and separate packing state retain their existing contracts. Supplied provider text and HTML must remain unchanged; absent spans or suggestions must not be invented.
 
