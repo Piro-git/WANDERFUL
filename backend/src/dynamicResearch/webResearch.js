@@ -1,6 +1,6 @@
 import {fetchBoundedJson} from '../llmPlanning/adapters/providerHttp.js';
 
-const invalid=()=>{throw Object.assign(new Error('web_research_unverified'),{code:'web_research_unverified'});};
+const invalid=(reason='web_envelope_invalid')=>{throw Object.assign(new Error('web_research_unverified'),{code:'web_research_unverified',privateResearchValidationReason:reason});};
 export const WEB_RESEARCH_LIMITS=Object.freeze({maximumSteps:60,maximumTextCharacters:12000,maximumCitations:40,maximumSuggestionBytes:65536,timeoutMs:60000});
 function publicSourceURL(value) {
   if(typeof value!=='string'||value.length>4096)return null;
@@ -17,7 +17,7 @@ function citationBoundaries(text) {
   const boundaries=new Map([[0,0]]);let bytes=0,units=0;
   for(const scalar of text) {
     const code=scalar.codePointAt(0);
-    if(code>=0xD800&&code<=0xDFFF)invalid();
+    if(code>=0xD800&&code<=0xDFFF)invalid('unicode_invalid');
     bytes+=Buffer.byteLength(scalar,'utf8');units+=scalar.length;boundaries.set(bytes,units);
   }
   return boundaries;
@@ -32,27 +32,36 @@ async function diagnosticStage(stage,operation){try{return await operation();}ca
  */
 export function parseGroundedWebResearch(payload,{now=Date.now(),requirePageRead=true}={}) {
   const steps=payload?.steps;
-  if(!Array.isArray(steps)||steps.length>WEB_RESEARCH_LIMITS.maximumSteps||!Number.isFinite(now))invalid();
+  if(payload?.status!==undefined&&payload.status!=='completed')invalid('provider_not_completed');
+  if(!Array.isArray(steps)||steps.length>WEB_RESEARCH_LIMITS.maximumSteps||!Number.isFinite(now))invalid('provider_steps_invalid');
   const searches=new Map(),reads=new Map(),searchResults=new Set(),readResults=new Set();
   const suggestions=[],retrievedURLs=new Set(),blocks=[];
   let queryCount=0,citationCount=0,textCharacters=0;
   for(const step of steps) {
     if(step?.type==='google_search_call') {
       const queries=step.arguments?.queries;
-      if(!validId(step.id)||searches.has(step.id)||!Array.isArray(queries)||!queries.length||queries.length>20||
-        queries.some(q=>typeof q!=='string'||!q.trim()||q.length>1000))invalid();
+      if(!validId(step.id)||searches.has(step.id))invalid('search_call_invalid');
+      // The API permits omitted queries. The current native evidence contract
+      // requires an observed positive count; never substitute an invented query.
+      if(queries===undefined)invalid('search_queries_missing');
+      if(!Array.isArray(queries)||!queries.length||queries.length>20||
+        queries.some(q=>typeof q!=='string'||!q.trim()||q.length>1000))invalid('search_call_invalid');
       searches.set(step.id,true);queryCount+=queries.length;
     } else if(step?.type==='google_search_result') {
-      if(!searches.has(step.call_id)||searchResults.has(step.call_id)||step.is_error===true||!Array.isArray(step.result))invalid();
+      if(!searches.has(step.call_id)||searchResults.has(step.call_id)||step.is_error===true||!Array.isArray(step.result)||!step.result.length)invalid('search_result_invalid');
       searchResults.add(step.call_id);
-      for(const item of step.result)if(typeof item.search_suggestions==='string'&&item.search_suggestions.trim())suggestions.push(item.search_suggestions);
+      for(const item of step.result) {
+        if(item?.search_suggestions===undefined)continue;
+        if(typeof item.search_suggestions!=='string'||!item.search_suggestions.trim())invalid('search_suggestions_invalid');
+        suggestions.push(item.search_suggestions);
+      }
     } else if(step?.type==='url_context_call') {
       const urls=step.arguments?.urls;
-      if(!validId(step.id)||reads.has(step.id)||!Array.isArray(urls)||!urls.length||urls.length>20||urls.some(url=>!publicSourceURL(url)))invalid();
+      if(!validId(step.id)||reads.has(step.id)||!Array.isArray(urls)||!urls.length||urls.length>20||urls.some(url=>!publicSourceURL(url)))invalid('page_call_invalid');
       reads.set(step.id,new Set(urls.map(publicSourceURL)));
     } else if(step?.type==='url_context_result') {
       const requested=reads.get(step.call_id);
-      if(!requested||readResults.has(step.call_id)||!Array.isArray(step.result))invalid();
+      if(!requested||readResults.has(step.call_id)||!Array.isArray(step.result))invalid('page_result_invalid');
       readResults.add(step.call_id);
       if(step.is_error===true)continue;
       for(const item of step.result) {
@@ -60,31 +69,45 @@ export function parseGroundedWebResearch(payload,{now=Date.now(),requirePageRead
         if(url&&requested.has(url)&&item.status==='success')retrievedURLs.add(url);
       }
     } else if(step?.type==='model_output') {
-      if(!Array.isArray(step.content))invalid();
+      // ModelOutputStep.content and TextContent.annotations are API-optional.
+      // Empty/non-grounded output contributes no evidence and is never displayed.
+      if(step.error!==undefined&&step.error!==null)invalid('model_output_failed');
+      if(step.content===undefined)continue;
+      if(!Array.isArray(step.content))invalid('model_content_invalid');
       for(const block of step.content) {
+        if(!block||typeof block!=='object')invalid('model_content_invalid');
         if(block.type!=='text')continue;
-        if(typeof block.text!=='string'||!block.text.trim()||!Array.isArray(block.annotations))invalid();
+        if(typeof block.text!=='string'||!block.text.trim())invalid('answer_text_invalid');
+        if(block.annotations!==undefined&&!Array.isArray(block.annotations))invalid('annotation_list_invalid');
         textCharacters+=block.text.length;
         const citations=[],boundaries=citationBoundaries(block.text);
-        for(const annotation of block.annotations) {
+        for(const annotation of block.annotations??[]) {
+          if(!annotation||typeof annotation!=='object')invalid('annotation_list_invalid');
           if(annotation.type!=='url_citation')continue;
           const url=publicSourceURL(annotation.url),start=annotation.start_index,end=annotation.end_index;
-          if(!url||(annotation.title!==undefined&&(typeof annotation.title!=='string'||annotation.title.length>500))||!Number.isInteger(start)||!Number.isInteger(end)||
-            start<0||end<=start||!boundaries.has(start)||!boundaries.has(end))invalid();
+          if(!url)invalid('citation_url_invalid');
+          if(annotation.title!==undefined&&(typeof annotation.title!=='string'||annotation.title.length>500))invalid('citation_title_invalid');
+          // Optional API offsets are still required for a verifiable native span.
+          if(start===undefined||end===undefined)invalid('citation_range_missing');
+          if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start||!boundaries.has(start)||!boundaries.has(end))invalid('citation_range_invalid');
           // UrlCitation.title is optional in the primary Interactions schema.
           // A host label carries no claim about source content or route quality.
           const title=annotation.title===undefined?new URL(url).hostname:annotation.title;
           citations.push({url,title,startIndex:boundaries.get(start),endIndex:boundaries.get(end)});citationCount++;
         }
-        if(!citations.length)invalid();
+        if(!citations.length)continue;
         blocks.push({text:block.text,citations});
       }
     }
   }
-  if(!searches.size||searchResults.size!==searches.size||!blocks.length||blocks.length>8||
-    !suggestions.length||suggestions.length>5||Buffer.byteLength(suggestions.join(''))>WEB_RESEARCH_LIMITS.maximumSuggestionBytes||
-    textCharacters>WEB_RESEARCH_LIMITS.maximumTextCharacters||citationCount>WEB_RESEARCH_LIMITS.maximumCitations||
-    (requirePageRead&&(!retrievedURLs.size||!blocks.some(b=>b.citations.some(c=>retrievedURLs.has(c.url))))))invalid();
+  if(!searches.size||searchResults.size!==searches.size)invalid('search_evidence_missing');
+  if(!blocks.length)invalid('grounded_text_missing');
+  // Search suggestions are API-optional, but required by the current native
+  // attribution display. Missing HTML must be reported, never manufactured.
+  if(!suggestions.length)invalid('search_suggestions_missing');
+  if(blocks.length>8||suggestions.length>5||Buffer.byteLength(suggestions.join(''))>WEB_RESEARCH_LIMITS.maximumSuggestionBytes||
+    textCharacters>WEB_RESEARCH_LIMITS.maximumTextCharacters||citationCount>WEB_RESEARCH_LIMITS.maximumCitations)invalid('web_limits_exceeded');
+  if(requirePageRead&&(!retrievedURLs.size||!blocks.some(b=>b.citations.some(c=>retrievedURLs.has(c.url)))))invalid('source_page_evidence_missing');
   return {provider:'google_grounding',retrievedAt:new Date(now).toISOString(),blocks,searchSuggestions:suggestions,
     retrievedSourceURLs:[...retrievedURLs],observedSearchQueries:queryCount,
     limitations:['Web citations attribute source statements; they do not verify current access, safety, water or route geometry.']};
