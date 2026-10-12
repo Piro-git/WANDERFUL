@@ -1,17 +1,19 @@
-# Research lifecycle diagnostic preparation
+# Functional research lifecycle repair source handoff
 
-Source checkpoint: `33c759eff28bf8c9330288b82f39ed32cc951f05`. Publication continues `codex/github-iphone-candidate-20261012`.
+Source checkpoint: `2ae22dc66ef6d417a8728b5a319f4efd2d320bdc`. Publication continues `codex/github-iphone-candidate-20261012`.
 
 ## Completed and decisions
 
-The source prepares one explicitly selected operator diagnostic and a separately bound later native phase. The operator is inactive without its exact flag and source/approval binding. It reserves a single Google attempt before invocation and retains only typed lifecycle/shape fields, bounded counts and validation results. A completed transient payload is checked locally by existing validators; incomplete, failed or pending research remains rejected.
+For a research response with a pending unregistered client function, the dispatcher does not execute the function. It supplies truthful `function_result` error feedback tied to the original call, then permits exactly one separately reserved stateless recovery generation. Another pending, failed, incomplete or malformed response remains terminal.
 
-Append-only entitlement guards preserve prior accounting and cumulative provider ceilings. The later native phase requires a distinct source/approval/time binding. The app and native test trees remain unchanged. Ordinary package and deployment build configuration is unchanged; the operator proposal file must be explicitly selected.
+Complete transport history and opaque signatures remain transient and unchanged in memory. If recovery needs the existing one-time URL Context readback, that readback receives the full history. Every additional generation reserves before IO, checks cancellation and respects durable budget/expiry. Histories are bounded by structure, depth and 512 KiB and are neither logged nor persisted. No polling, background/stored interaction or opaque-token continuation is introduced.
+
+Evidence remains separate: genuine server tool records survive while unfinished model output is excluded. Acceptance requires completed status, correlated unique calls/results, successful public source reads and valid citations. Unsafe or executable histories, conflicting IDs and denied reservations cannot bypass these checks. Native source, SQL, entitlement accounting implementation and ordinary build configuration are unchanged.
 
 ## Checks and limits
 
-The coordinator reports manual code/SQL/operator review after four guard corrections, 46 independent fixture checks and seven disposable PostgreSQL checks, with zero failures. These were not rerun for publication. No actual functional correction, provider result, route success or phone acceptance is established.
+The source owner recorded 108 focused credential-free fixture checks passing at this checkpoint. These checks were not rerun by the backup owner. Mocked functional behavior is established; real provider routes, Commons photographs and physical-phone Saved/packing acceptance remain unproven.
 
 ## Continuation
 
-Read the candidate publication handoff and provenance mapping. Later operator execution, database activation, deployment and native acceptance belong to separately authorized coordination. Private approvals, status records, runtime bindings and execution artifacts remain outside Git.
+Read the publication handoff and provenance mapping. Any deployment, database binding, provider request or native acceptance belongs to separately authorized coordination. Public source backup does not grant retries or reopen a spent/expired phase. Private runtime, deployment, trial, key/role and approval records remain outside Git.

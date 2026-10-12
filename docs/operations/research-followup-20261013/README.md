@@ -25,3 +25,9 @@ The operator uses a public fixed reproduction input. It keeps only closed status
 Synthetic/disposable PostgreSQL tests cover immutable bindings, race/replay, cumulative accounting, disabled guards, unsafe grants, expired/future/prebound inserts and reset refusal. Fixture results do not prove actual provider completion or route/photo/Saved/packing behavior. Observe and review any real result before claiming a functional correction or authorizing later native acceptance.
 
 Revocation preserves all spent phase and original counters. Expired or used phases cannot be silently renewed.
+
+## Functional recovery source checkpoint
+
+The reviewed repair rejects an unregistered client function with truthful error feedback and permits one separately reserved stateless recovery generation. Only a completed, genuinely search/read-backed result can be accepted. Complete transient history and opaque signatures are preserved in memory, including any later bounded readback; histories are not logged or persisted. Pending/failed/malformed responses, unsafe histories, budget refusal and expiry remain closed.
+
+The coordinator reports 130 independent credential-free fixtures and manual review for the final repair. This establishes mocked behavior, not actual provider, route, photograph or physical-phone acceptance. Publication does not grant another operator run or activate a native phase. Existing single-use diagnostic/phase guards and cumulative ceilings remain unchanged.
