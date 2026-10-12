@@ -23,6 +23,7 @@ function citationBoundaries(text) {
   return boundaries;
 }
 const validId=id=>typeof id==='string'&&id.length>0&&id.length<=200;
+const NON_COMPLETED_STATUSES=new Set(['in_progress','requires_action','failed','cancelled','incomplete','budget_exceeded','queued']);
 async function diagnosticStage(stage,operation){try{return await operation();}catch(error){try{if(error&&typeof error==='object')error.privateResearchStage=stage;}catch{}throw error;}}
 
 
@@ -32,7 +33,10 @@ async function diagnosticStage(stage,operation){try{return await operation();}ca
  */
 export function parseGroundedWebResearch(payload,{now=Date.now(),requirePageRead=true}={}) {
   const steps=payload?.steps;
-  if(payload?.status!==undefined&&payload.status!=='completed')invalid('provider_not_completed');
+  if(payload?.status!==undefined&&payload.status!=='completed') {
+    const status=NON_COMPLETED_STATUSES.has(payload.status)?payload.status:'unrecognized';
+    throw Object.assign(new Error('web_research_unverified'),{code:'web_research_unverified',privateResearchValidationReason:'provider_not_completed',privateResearchProviderStatus:status});
+  }
   if(!Array.isArray(steps)||steps.length>WEB_RESEARCH_LIMITS.maximumSteps||!Number.isFinite(now))invalid('provider_steps_invalid');
   const searches=new Map(),reads=new Map(),searchResults=new Set(),readResults=new Set();
   const suggestions=[],retrievedURLs=new Set(),blocks=[];

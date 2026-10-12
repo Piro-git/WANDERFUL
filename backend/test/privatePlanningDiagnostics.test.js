@@ -40,3 +40,21 @@ test('closed validation subreason is preserved while arbitrary provider shape va
  assert.deepEqual(rows[1],{event:'llm_first_planning_completed'});
  assert.ok(!JSON.stringify(rows).includes(SECRET));
 });
+
+test('non-completed provider lifecycle emits only documented closed states and never raw provider status/body',async()=>{
+ const states=['in_progress','requires_action','failed','cancelled','incomplete','budget_exceeded','queued'];
+ for(const status of [...states,SECRET,null,42,{private:SECRET}]){
+  let calls=0;const research=createGeminiWebResearch({apiKey:'offline-only',model:'gemini-3.8-flash',fetchImpl:async()=>{calls++;return Response.json({status,steps:[],private:SECRET});}});
+  await assert.rejects(research({prompt:'Public test walk',locationName:'Public town'}),error=>{
+   const summary=safePrivateFailure(error),rows=[];
+   assert.equal(summary.diagnosticValidationReason,'provider_not_completed');
+   assert.equal(summary.diagnosticStage,'web_search_validation');
+   assert.equal(summary.diagnosticProviderStatus,states.includes(status)?status:'unrecognized');
+   createPrivatePlanningLogger({info:x=>rows.push(x)}).info({event:'llm_first_planning_completed',...summary,body:SECRET});
+   assert.equal(rows[0].diagnosticProviderStatus,summary.diagnosticProviderStatus);
+   assert.ok(!JSON.stringify(rows).includes(SECRET));return true;
+  });assert.equal(calls,1);
+ }
+ const summary=safePrivateFailure({code:'web_research_unverified',privateResearchProviderStatus:SECRET});assert.equal(summary.diagnosticProviderStatus,undefined);
+ const rows=[];createPrivatePlanningLogger({info:x=>rows.push(x)}).info({event:'llm_first_planning_completed',diagnosticProviderStatus:SECRET});assert.equal(rows[0].diagnosticProviderStatus,undefined);
+});
