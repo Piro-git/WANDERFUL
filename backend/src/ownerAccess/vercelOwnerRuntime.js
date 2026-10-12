@@ -50,6 +50,7 @@ export function createVercelPrivateOwnerHandler({env=process.env,PoolClass=pg.Po
         await runtime.repository.readiness();
         await runtime.repository.planningWaveReadiness();
         if(runtime.configuration.dynamic.supplement)await runtime.repository.planningSupplementReadiness(runtime.configuration.dynamic.supplement);
+        if(runtime.configuration.dynamic.followup)await runtime.repository.planningFollowupReadiness(runtime.configuration.dynamic.followup);
         if(!await runtime.repository.findActiveOwnerKey({keyId:runtime.configuration.dynamic.keyId}))return false;
         return true;
       }catch{return false;}

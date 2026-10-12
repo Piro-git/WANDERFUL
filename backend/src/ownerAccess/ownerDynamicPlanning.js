@@ -1,3 +1,4 @@
+import {followupConfiguration} from './planningFollowupEntitlement.js';
 import {supplementConfiguration} from './planningSupplement.js';
 import {canonicalOwnerOrigin} from './ownerAccessEndpoint.js';
 import {assertRequestId,decodeBase64Url,hashOpaqueValue} from '../appAttest/clientData.js';
@@ -21,7 +22,8 @@ export function ownerDynamicPlanningConfiguration(env,{now=Date.now()}={}) {
   if(!Number.isFinite(now)||!Number.isFinite(expiresAt)||new Date(expiresAt).toISOString()!==expiry||expiresAt<=now||expiresAt-now>1800000||
     typeof env.DYNAMIC_RESEARCH_USER_AGENT!=='string'||!env.DYNAMIC_RESEARCH_USER_AGENT.trim()||env.DYNAMIC_RESEARCH_USER_AGENT.length>200||/[\u0000-\u001f]/.test(env.DYNAMIC_RESEARCH_USER_AGENT)) unavailable();
   const supplement=supplementConfiguration(env,{origin,keyId,expiresAt});
-  return Object.freeze({origin,keyId,expiresAt,...(supplement?{supplement}:{}),providerEnv:Object.freeze({
+  const followup=followupConfiguration(env,{origin,keyId,expiresAt});
+  return Object.freeze({origin,keyId,expiresAt,...(supplement?{supplement}:{}),...(followup?{followup}:{}),providerEnv:Object.freeze({
     NODE_ENV:'production',AI_PROVIDER:'google',GOOGLE_MODEL:'gemini-3.8-flash',GOOGLE_API_KEY:env.GOOGLE_API_KEY,GRAPHHOPPER_API_KEY:env.GRAPHHOPPER_API_KEY,
     LLM_FIRST_PLANNING_ENABLED:'true',ROUTE_PROVIDER_ENABLED:'true',INTENT_PROVIDER_ENABLED:'true',INTENT_REQUEST_COST:'3',
     DYNAMIC_RESEARCH_ENABLED:'true',DYNAMIC_WEB_RESEARCH_ENABLED:'true',DYNAMIC_RESEARCH_USER_AGENT:env.DYNAMIC_RESEARCH_USER_AGENT,
@@ -41,7 +43,7 @@ export function createOwnerDynamicPlanningEndpoints({repository,configuration,fe
   const run=async (body,context={},intentOnly=false)=>{
     if(now()>=configuration.expiresAt)return failure(403,'owner_access_expired');
     try {if(intentOnly){if(!body||typeof body.prompt!=='string'||Object.keys(body).some(k=>!['prompt','locale','userLocationHint'].includes(k)))throw Error();}
-      else {validateDynamicRequest(body);if(body.researchMode!=='web_and_map'||configuration.supplement&&body.schemaVersion!==3)throw Error();}}
+      else {validateDynamicRequest(body);if(body.researchMode!=='web_and_map'||(configuration.supplement||configuration.followup)&&body.schemaVersion!==3)throw Error();}}
     catch{return failure(400,'invalid_request');}
     let access,providerBudgetError;
     const authorizer={async authorize({headers,cost,signal}){
@@ -51,7 +53,7 @@ export function createOwnerDynamicPlanningEndpoints({repository,configuration,fe
       const token=value.slice('TrailMindRouteSession '.length);decodeBase64Url(token,{expectedLength:32,maxLength:64});
       const tokenHash=hashOpaqueValue(token),requestId=assertRequestId(headers['x-trailmind-request-id']);
       const result=await repository.authorizeSession({tokenHash,requestId,cost,scope:'intent',maximumConcurrency:1,
-        planning:{keyId:configuration.keyId,expiresAt:configuration.expiresAt,admitRequest:!intentOnly,...(configuration.supplement?{supplement:configuration.supplement}:{})}});
+        planning:{keyId:configuration.keyId,expiresAt:configuration.expiresAt,admitRequest:!intentOnly,...(configuration.supplement?{supplement:configuration.supplement}:{}),...(configuration.followup?{followup:configuration.followup}:{})}});
       access={tokenHash,leaseId:result.leaseId};
       return {authorized:true,limitsConsumed:true,rateLimitKey:result.installationId,remainingCost:result.remainingCost,
         async release(){await repository.releaseLease(result.leaseId);}};
@@ -71,7 +73,7 @@ export function createOwnerDynamicPlanningEndpoints({repository,configuration,fe
           request.store=false;init={...init,body:JSON.stringify(request)};
         } else if([...target.searchParams.keys()].some(k=>k!=='key'))throw Error('owner_provider_unavailable');
         try {
-          const reserved=await repository.consumePlanningProviderAttempt({...access,provider,keyId:configuration.keyId,expiresAt:configuration.expiresAt,...(configuration.supplement?{supplement:configuration.supplement}:{})});
+          const reserved=await repository.consumePlanningProviderAttempt({...access,provider,keyId:configuration.keyId,expiresAt:configuration.expiresAt,...(configuration.supplement?{supplement:configuration.supplement}:{}),...(configuration.followup?{followup:configuration.followup}:{})});
           if(!reserved)throw appAttestError('app_attest_rate_limited');
         } catch(error){
           if(error.code==='app_attest_rate_limited')providerBudgetError=error;
