@@ -1,0 +1,6 @@
+interface:
+  display_name: "Gerätewechsel"
+  short_description: "Arbeitsstand prüfen, sichern und zwischen Geräten übernehmen"
+  default_prompt: "Nutze $device-handoff für dieses Projekt: Prüfe den Git-Stand und übernimm die bekannte Aufgabe oder sichere ihre Änderungen mit einer Übergabe."
+policy:
+  allow_implicit_invocation: true

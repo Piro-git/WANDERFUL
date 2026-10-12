@@ -1,0 +1,32 @@
+name: Device handoff skill
+
+on:
+  pull_request:
+    paths:
+      - '.agents/skills/device-handoff/**'
+      - '.github/workflows/device-handoff.yml'
+      - 'AGENTS.md'
+      - 'CLOUD_HANDOFF.md'
+  push:
+    branches: [main, 'codex/**']
+    paths:
+      - '.agents/skills/device-handoff/**'
+      - '.github/workflows/device-handoff.yml'
+      - 'AGENTS.md'
+      - 'CLOUD_HANDOFF.md'
+
+permissions:
+  contents: read
+
+jobs:
+  git-safety:
+    name: Device handoff Git state tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out skill
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Test dirty, divergent, stale and missing Git states without external network
+        run: python3 .agents/skills/device-handoff/scripts/test_git_state.py
