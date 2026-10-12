@@ -31,11 +31,12 @@ struct DynamicWebResearchView: View {
             }
             // Separate from the complete provider result: preserve every citation,
             // including overlapping ranges that a single inline link cannot represent.
-            DisclosureGroup(isGerman ? "Quellen" : "Sources") {
+            DisclosureGroup {
                 ForEach(Array(research.blocks.enumerated()), id: \.offset) { blockIndex, block in
                     ForEach(Array(block.citations.enumerated()), id: \.offset) { citationIndex, citation in
                         VStack(alignment: .leading, spacing: 6) {
                             Link("\(blockIndex + 1).\(citationIndex + 1) · \(citation.title.isEmpty ? citation.url.host ?? (isGerman ? "Quelle" : "Source") : citation.title)", destination: citation.url)
+                                .accessibilityIdentifier("route.evidence.sourceLink.\(blockIndex).\(citationIndex)")
                             if let passage = citation.passage(in: block.text) {
                                 Text(passage).textSelection(.enabled)
                                 Text(isGerman ? "Dieser Text verweist auf die Quelle. Aktuelle Bedingungen sind nicht bestätigt." : "This text cites the source. Current conditions are not confirmed.")
@@ -48,8 +49,10 @@ struct DynamicWebResearchView: View {
                         }.font(.caption).padding(.vertical, 6)
                     }
                 }
+            } label: {
+                Text(isGerman ? "Quellen" : "Sources")
+                    .accessibilityIdentifier("route.evidence.sources")
             }
-            .accessibilityIdentifier("route.evidence.sources")
         }
         .padding(18)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22))

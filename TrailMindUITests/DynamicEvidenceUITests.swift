@@ -33,6 +33,10 @@ final class DynamicEvidenceUITests: XCTestCase {
             XCTAssertTrue(app.staticTexts["Stops on this route"].waitForExistence(timeout: 10))
             revealSources("osm:node:1", in: app)
             XCTAssertTrue(app.staticTexts["route.evidence.osm:node:1"].label.contains("Web evidence unavailable"))
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Unavailable web evidence · " + mode
+            attachment.lifetime = .keepAlways
+            add(attachment)
             app.swipeUp()
             XCTAssertFalse(app.buttons["route.evidence.originalResearch"].exists)
             app.terminate()
@@ -61,6 +65,9 @@ final class DynamicEvidenceUITests: XCTestCase {
                 for _ in 0..<6 where !reference.isHittable { app.swipeUp() }
                 XCTAssertEqual(reference.label, description)
                 XCTAssertTrue(reference.isHittable)
+                let sourceLink = app.buttons["route.evidence.sourceLink.0.0"]
+                XCTAssertTrue(sourceLink.exists)
+                XCTAssertTrue(sourceLink.isHittable)
                 XCTAssertFalse(app.staticTexts["Selected map record."].exists)
                 XCTAssertEqual(app.webViews.count, 0, "No provider HTML was supplied in this synthetic response.")
                 let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -133,6 +140,10 @@ final class DynamicEvidenceUITests: XCTestCase {
         for _ in 0..<6 where !restored.isHittable { reopened.swipeUp() }
         XCTAssertEqual(restored.label, "Water & carrying bottles")
         XCTAssertEqual(restored.value as? String, "Packed")
+        let attachment = XCTAttachment(screenshot: reopened.screenshot())
+        attachment.name = "Restored packing after language change · en"
+        attachment.lifetime = .keepAlways
+        add(attachment)
         reopened.terminate()
     }
 

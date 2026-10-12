@@ -97,10 +97,12 @@ struct DynamicRouteEvidenceView: View {
         VStack(alignment: .leading, spacing: 18) {
             DynamicResearchStopsView(stops: stops, explanation: explanation, research: available)
             if let available {
-                DisclosureGroup("Research and alternatives", isExpanded: $isResearchExpanded) {
+                DisclosureGroup(isExpanded: $isResearchExpanded) {
                     DynamicWebResearchView(research: available)
+                } label: {
+                    Text("Research and alternatives")
+                        .accessibilityIdentifier("route.evidence.originalResearch")
                 }
-                .accessibilityIdentifier("route.evidence.originalResearch")
             }
         }
         .task(id: research?.retrievedAt) {
