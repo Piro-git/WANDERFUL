@@ -76,8 +76,7 @@ struct DynamicResearchStopsView: View {
         }
         let claims = research.routeEvidence?.claims.filter { $0.placeId == stop.id && ["source_identity", "source_passage"].contains($0.relationship) } ?? []
         guard !claims.isEmpty else { return Text("No web passage reliably linked to this stop.") }
-        let references = claims.map { "\($0.blockIndex + 1).\($0.citationIndex + 1)" }.joined(separator: ", ")
-        return Text("Research links a source identity or named passage (\(references)). Read the original research for context; its statements are not confirmed route conditions.")
+        return Text("The research includes a source linked to this stop. Read it for context; current conditions are not confirmed.")
     }
 }
 

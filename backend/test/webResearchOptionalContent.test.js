@@ -29,14 +29,19 @@ test('documented optional-content HTTP200 fixture succeeds in one call without i
  assert.equal(calls,1);assert.deepEqual(web.blocks.map(b=>b.text),[text]);
 });
 
-test('API-optional metadata required by the current native envelope is refused precisely, never manufactured',()=>{
- const cases=[
-  ['search_queries_missing',f=>{delete f.steps[0].arguments.queries;}],
-  ['search_suggestions_missing',f=>{delete f.steps[1].result[0].search_suggestions;}],
-  ['citation_range_missing',f=>{delete f.steps[4].content[0].annotations[0].start_index;}],
-  ['citation_range_missing',f=>{delete f.steps[4].content[0].annotations[0].end_index;}]
- ];
- for(const [reason,mutate] of cases){const f=fixture();mutate(f);assert.throws(()=>parseGroundedWebResearch(f),{code:'web_research_unverified',privateResearchValidationReason:reason});}
+test('API-optional display metadata is preserved as unknown or source-only, never fabricated',()=>{
+ for(const field of ['queries','suggestions','start','end']) {
+  const f=fixture();
+  if(field==='queries')delete f.steps[0].arguments.queries;
+  if(field==='suggestions')delete f.steps[1].result[0].search_suggestions;
+  if(field==='start')delete f.steps[4].content[0].annotations[0].start_index;
+  if(field==='end')delete f.steps[4].content[0].annotations[0].end_index;
+  const web=parseGroundedWebResearch(f);validateWebResearchEnvelope(web);
+  assert.equal(web.observedSearchCalls,1);
+  assert.equal(web.observedSearchQueries,field==='queries'?null:1);
+  if(field==='suggestions')assert.deepEqual(web.searchSuggestions,[]);
+  if(['start','end'].includes(field))assert.deepEqual(web.blocks[0].citations[0],{url,title:'official.example.org',scope:'source'});
+ }
 });
 test('only ungrounded text never becomes evidence even with a successful tool call and page read',()=>{
  for(const annotations of [undefined,[]]){const f=fixture();f.steps[4].content[0].annotations=annotations;assert.throws(()=>parseGroundedWebResearch(f),{code:'web_research_unverified',privateResearchValidationReason:'grounded_text_missing'});}
@@ -48,7 +53,7 @@ test('optional-content compatibility preserves call correlation, public URLs, ci
   ['citation_url_invalid',f=>{f.steps[4].content[0].annotations[0].url='https://127.0.0.1/';}],
   ['citation_range_invalid',f=>{f.steps[4].content[0].annotations[0].end_index=999;}],
   ['source_page_evidence_missing',f=>{f.steps[3].result[0].status='paywall';}],
-  ['source_page_evidence_missing',f=>{f.steps[3].result[0].url='https://other.example.org/';}]
+  ['page_result_invalid',f=>{f.steps[3].result[0].url='https://other.example.org/';}]
  ]){const f=fixture();mutate(f);f.steps[4].content.unshift({type:'text',text:'Unverified fragment.'});assert.throws(()=>parseGroundedWebResearch(f),{code:'web_research_unverified',privateResearchValidationReason:reason});}
 });
 test('ignored fragments still obey total text limits and Unicode scalar validation',()=>{
@@ -72,9 +77,11 @@ test('no undocumented outputs fallback or fabricated call IDs are accepted',()=>
  const f=fixture();assert.throws(()=>parseGroundedWebResearch({outputs:f.steps}),{code:'web_research_unverified',privateResearchValidationReason:'provider_steps_invalid'});
  delete f.steps[0].id;assert.throws(()=>parseGroundedWebResearch(f),{code:'web_research_unverified',privateResearchValidationReason:'search_call_invalid'});
 });
-test('missing citation offsets from HTTP200 fail once with a closed reason before any page-read followup',async()=>{
+test('missing citation offsets from synthetic HTTP200 retain only a source reference after actual read',async()=>{
  let calls=0;const f=fixture();delete f.steps[4].content[0].annotations[0].end_index;
  const research=createGeminiWebResearch({apiKey:'offline-only',model:'gemini-3.8-flash',fetchImpl:async()=>{calls++;return Response.json(f);}});
- await assert.rejects(research({prompt:'Public walk',locationName:'Public village'}),{code:'web_research_unverified',privateResearchStage:'web_search_validation',privateResearchValidationReason:'citation_range_missing'});
+ const web=await research({prompt:'Public walk',locationName:'Public village'});
+ assert.equal(web.blocks[0].citations[0].scope,'source');
+ assert.equal(web.blocks[0].citations[0].startIndex,undefined);
  assert.equal(calls,1);
 });

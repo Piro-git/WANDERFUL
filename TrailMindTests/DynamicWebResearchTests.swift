@@ -3,7 +3,7 @@ import XCTest
 @testable import TrailMind
 
 final class DynamicWebResearchTests: XCTestCase {
-    func testGroundedTextRequiresCitationsSuccessfulSourceAndSuggestions() throws {
+    func testGroundedTextRequiresCitationsAndSuccessfulSourceButSuggestionsAreOptional() throws {
         let url = URL(string: "https://park.example.org/ridge")!
         let citation = DynamicWebResearch.Citation(url: url, title: "Park source", startIndex: 0, endIndex: 36)
         let block = DynamicWebResearch.Block(text: "The park describes a ridge viewpoint.", citations: [citation])
@@ -12,7 +12,7 @@ final class DynamicWebResearchTests: XCTestCase {
         XCTAssertNoThrow(try research.validate())
         let missing = DynamicWebResearch(provider: research.provider, retrievedAt: research.retrievedAt,
             blocks: research.blocks, searchSuggestions: [], retrievedSourceURLs: [url], observedSearchQueries: 1)
-        XCTAssertThrowsError(try missing.validate())
+        XCTAssertNoThrow(try missing.validate())
         XCTAssertEqual(research.blocks[0].text, block.text)
     }
     func testUnsafeCitationLinksAreNotAccepted() {
@@ -29,8 +29,8 @@ final class DynamicWebResearchTests: XCTestCase {
             try research.validate()
             let block = try XCTUnwrap(research.blocks.first)
             let citation = try XCTUnwrap(block.citations.first)
-            let range = try XCTUnwrap(Range(NSRange(location: citation.startIndex,
-                length: citation.endIndex - citation.startIndex), in: block.text))
+            let start = try XCTUnwrap(citation.startIndex), end = try XCTUnwrap(citation.endIndex)
+            let range = try XCTUnwrap(Range(NSRange(location: start, length: end - start), in: block.text))
             XCTAssertEqual(String(block.text[range]), citation.title)
         }
     }
@@ -49,6 +49,56 @@ final class DynamicWebResearchTests: XCTestCase {
             XCTAssertFalse(web.isAvailable(at: now.addingTimeInterval(86_400)))
             XCTAssertFalse(web.isAvailable(at: now.addingTimeInterval(-7_200)))
         }
+    }
+
+    func testSharedOptionalMetadataFixtureHasNoInventedQueryCountOrTextRange() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-web-optional-metadata.json")
+        let research = try JSONDecoder().decode(DynamicWebResearch.self, from: Data(contentsOf: url))
+        try research.validate()
+        XCTAssertNil(research.observedSearchQueries)
+        XCTAssertEqual(research.observedSearchCalls, 1)
+        XCTAssertTrue(research.searchSuggestions.isEmpty)
+        let block = try XCTUnwrap(research.blocks.first), citation = try XCTUnwrap(block.citations.first)
+        XCTAssertEqual(citation.scope, .source)
+        XCTAssertNil(citation.startIndex); XCTAssertNil(citation.endIndex)
+        XCTAssertNil(citation.passage(in: block.text))
+        XCTAssertFalse(DynamicWebResearch.validRange(citation, in: block.text))
+    }
+
+    func testUnknownQueriesRequireSuccessfulSearchCallsAndSourceReferencesRequireTheirOwnRead() throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-web-optional-metadata.json")
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: fixture)) as? [String: Any])
+        for change in ["missingCalls", "zeroCalls", "negativeQueries", "oversizedQueries", "unread", "scope", "inventedSpan", "missingScope"] {
+            var invalid = object
+            switch change {
+            case "missingCalls": invalid.removeValue(forKey: "observedSearchCalls")
+            case "zeroCalls": invalid["observedSearchCalls"] = 0
+            case "negativeQueries": invalid["observedSearchQueries"] = -1
+            case "oversizedQueries": invalid["observedSearchQueries"] = 1201
+            case "unread": invalid["retrievedSourceURLs"] = ["https://other.example.org/source"]
+            default:
+                var blocks = invalid["blocks"] as! [[String: Any]]
+                var citations = blocks[0]["citations"] as! [[String: Any]]
+                if change == "scope" { citations[0]["scope"] = "verified" }
+                if change == "inventedSpan" { citations[0]["startIndex"] = 0; citations[0]["endIndex"] = 2 }
+                if change == "missingScope" { citations[0].removeValue(forKey: "scope") }
+                blocks[0]["citations"] = citations; invalid["blocks"] = blocks
+            }
+            XCTAssertThrowsError(try JSONDecoder().decode(DynamicWebResearch.self,
+                from: JSONSerialization.data(withJSONObject: invalid)).validate(), change)
+        }
+        var zero = object; zero["observedSearchQueries"] = 0
+        XCTAssertNoThrow(try JSONDecoder().decode(DynamicWebResearch.self,
+            from: JSONSerialization.data(withJSONObject: zero)).validate())
+    }
+
+    func testUnicodePassageExtractionAllowsScalarButNotSurrogateSplits() {
+        let url = URL(string: "https://park.example.org/source")!
+        let text = "🥾 e\u{301} 山"
+        XCTAssertEqual(DynamicWebResearch.Citation(url: url, title: "Source", startIndex: 4, endIndex: 5).passage(in: text), "\u{301}")
+        XCTAssertNil(DynamicWebResearch.Citation(url: url, title: "Source", startIndex: 1, endIndex: 2).passage(in: text))
     }
 
 }

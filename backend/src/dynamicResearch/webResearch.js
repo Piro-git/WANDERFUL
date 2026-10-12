@@ -37,36 +37,42 @@ export function parseGroundedWebResearch(payload,{now=Date.now(),requirePageRead
   const searches=new Map(),reads=new Map(),searchResults=new Set(),readResults=new Set();
   const suggestions=[],retrievedURLs=new Set(),blocks=[];
   let queryCount=0,citationCount=0,textCharacters=0;
+  const toolIds=new Set();
+  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
   for(const step of steps) {
+    if(!object(step)||typeof step.type!=='string')invalid('provider_steps_invalid');
     if(step?.type==='google_search_call') {
       const queries=step.arguments?.queries;
-      if(!validId(step.id)||searches.has(step.id))invalid('search_call_invalid');
-      // The API permits omitted queries. The current native evidence contract
-      // requires an observed positive count; never substitute an invented query.
-      if(queries===undefined)invalid('search_queries_missing');
-      if(!Array.isArray(queries)||!queries.length||queries.length>20||
-        queries.some(q=>typeof q!=='string'||!q.trim()||q.length>1000))invalid('search_call_invalid');
-      searches.set(step.id,true);queryCount+=queries.length;
+      if(!validId(step.id)||toolIds.has(step.id)||!object(step.arguments))invalid('search_call_invalid');
+      if(queries!==undefined&&(!Array.isArray(queries)||queries.length>20||
+        queries.some(q=>typeof q!=='string'||!q.trim()||q.length>1000)))invalid('search_call_invalid');
+      toolIds.add(step.id);searches.set(step.id,true);
+      // Any undisclosed query list makes the total unknown, not zero or one.
+      if(queries===undefined)queryCount=null;
+      else if(queryCount!==null)queryCount+=queries.length;
     } else if(step?.type==='google_search_result') {
-      if(!searches.has(step.call_id)||searchResults.has(step.call_id)||step.is_error===true||!Array.isArray(step.result)||!step.result.length)invalid('search_result_invalid');
+      if(!searches.has(step.call_id)||searchResults.has(step.call_id)||step.is_error!==undefined&&typeof step.is_error!=='boolean'||step.is_error===true||!Array.isArray(step.result))invalid('search_result_invalid');
       searchResults.add(step.call_id);
       for(const item of step.result) {
-        if(item?.search_suggestions===undefined)continue;
+        if(!object(item))invalid('search_result_invalid');
+        if(item.search_suggestions===undefined)continue;
         if(typeof item.search_suggestions!=='string'||!item.search_suggestions.trim())invalid('search_suggestions_invalid');
         suggestions.push(item.search_suggestions);
       }
     } else if(step?.type==='url_context_call') {
       const urls=step.arguments?.urls;
-      if(!validId(step.id)||reads.has(step.id)||!Array.isArray(urls)||!urls.length||urls.length>20||urls.some(url=>!publicSourceURL(url)))invalid('page_call_invalid');
-      reads.set(step.id,new Set(urls.map(publicSourceURL)));
+      if(!validId(step.id)||toolIds.has(step.id)||!object(step.arguments)||!Array.isArray(urls)||!urls.length||urls.length>20||urls.some(url=>!publicSourceURL(url)))invalid('page_call_invalid');
+      toolIds.add(step.id);reads.set(step.id,new Set(urls.map(publicSourceURL)));
     } else if(step?.type==='url_context_result') {
       const requested=reads.get(step.call_id);
-      if(!requested||readResults.has(step.call_id)||!Array.isArray(step.result))invalid('page_result_invalid');
+      if(!requested||readResults.has(step.call_id)||!Array.isArray(step.result)||step.is_error!==undefined&&typeof step.is_error!=='boolean')invalid('page_result_invalid');
       readResults.add(step.call_id);
       if(step.is_error===true)continue;
       for(const item of step.result) {
+        if(!object(item))invalid('page_result_invalid');
         const url=publicSourceURL(item.url);
-        if(url&&requested.has(url)&&item.status==='success')retrievedURLs.add(url);
+        if(item.url!==undefined&&(!url||!requested.has(url))||item.status!==undefined&&typeof item.status!=='string')invalid('page_result_invalid');
+        if(url&&item.status==='success')retrievedURLs.add(url);
       }
     } else if(step?.type==='model_output') {
       // ModelOutputStep.content and TextContent.annotations are API-optional.
@@ -87,13 +93,15 @@ export function parseGroundedWebResearch(payload,{now=Date.now(),requirePageRead
           const url=publicSourceURL(annotation.url),start=annotation.start_index,end=annotation.end_index;
           if(!url)invalid('citation_url_invalid');
           if(annotation.title!==undefined&&(typeof annotation.title!=='string'||annotation.title.length>500))invalid('citation_title_invalid');
-          // Optional API offsets are still required for a verifiable native span.
-          if(start===undefined||end===undefined)invalid('citation_range_missing');
-          if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start||!boundaries.has(start)||!boundaries.has(end))invalid('citation_range_invalid');
+          // Every supplied offset is checked, even if its partner is omitted.
+          for(const offset of [start,end])if(offset!==undefined&&(!Number.isSafeInteger(offset)||offset<0||!boundaries.has(offset)))invalid('citation_range_invalid');
+          const hasSpan=start!==undefined&&end!==undefined;
+          if(hasSpan&&end<=start)invalid('citation_range_invalid');
           // UrlCitation.title is optional in the primary Interactions schema.
           // A host label carries no claim about source content or route quality.
           const title=annotation.title===undefined?new URL(url).hostname:annotation.title;
-          citations.push({url,title,startIndex:boundaries.get(start),endIndex:boundaries.get(end)});citationCount++;
+          citations.push({url,title,scope:hasSpan?'passage':'source',
+            ...(hasSpan?{startIndex:boundaries.get(start),endIndex:boundaries.get(end)}:{})});citationCount++;
         }
         if(!citations.length)continue;
         blocks.push({text:block.text,citations});
@@ -102,15 +110,13 @@ export function parseGroundedWebResearch(payload,{now=Date.now(),requirePageRead
   }
   if(!searches.size||searchResults.size!==searches.size)invalid('search_evidence_missing');
   if(!blocks.length)invalid('grounded_text_missing');
-  // Search suggestions are API-optional, but required by the current native
-  // attribution display. Missing HTML must be reported, never manufactured.
-  if(!suggestions.length)invalid('search_suggestions_missing');
   if(blocks.length>8||suggestions.length>5||Buffer.byteLength(suggestions.join(''))>WEB_RESEARCH_LIMITS.maximumSuggestionBytes||
     textCharacters>WEB_RESEARCH_LIMITS.maximumTextCharacters||citationCount>WEB_RESEARCH_LIMITS.maximumCitations)invalid('web_limits_exceeded');
-  if(requirePageRead&&(!retrievedURLs.size||!blocks.some(b=>b.citations.some(c=>retrievedURLs.has(c.url)))))invalid('source_page_evidence_missing');
+  if(requirePageRead&&(!retrievedURLs.size||!blocks.some(b=>b.citations.some(c=>retrievedURLs.has(c.url)))||
+    blocks.some(b=>b.citations.some(c=>c.scope==='source'&&!retrievedURLs.has(c.url)))))invalid('source_page_evidence_missing');
   return {provider:'google_grounding',retrievedAt:new Date(now).toISOString(),blocks,searchSuggestions:suggestions,
-    retrievedSourceURLs:[...retrievedURLs],observedSearchQueries:queryCount,
-    limitations:['Web citations attribute source statements; they do not verify current access, safety, water or route geometry.']};
+    retrievedSourceURLs:[...retrievedURLs],observedSearchQueries:queryCount,observedSearchCalls:searchResults.size,
+    limitations:['Source references attribute research; they do not verify current access, safety, water or route geometry.']};
 }
 
 // Prepare with the existing durable accounting fetch; live grounding needs its own explicit allowance.
@@ -145,7 +151,7 @@ export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch
     ],[{type:'url_context'}]));
     if(!Array.isArray(followup?.steps))return diagnosticStage('web_followup_validation',()=>invalid());
     // Display the final read-backed answer, retaining the original search attribution.
-    return diagnosticStage('web_followup_validation',()=>parseGroundedWebResearch({steps:[...payload.steps.filter(step=>step.type!=='model_output'),...followup.steps]}));
+    return diagnosticStage('web_followup_validation',()=>parseGroundedWebResearch({status:followup.status,steps:[...payload.steps.filter(step=>step.type!=='model_output'),...followup.steps]}));
   };
 }
 
@@ -153,12 +159,16 @@ export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch
 export function validateWebResearchEnvelope(web) {
   if(web?.provider!=='google_grounding'||!Number.isFinite(Date.parse(web.retrievedAt))||
     !Array.isArray(web.blocks)||web.blocks.length<1||web.blocks.length>8||
-    !Array.isArray(web.searchSuggestions)||web.searchSuggestions.length<1||web.searchSuggestions.length>5||
+    !Array.isArray(web.searchSuggestions)||web.searchSuggestions.length>5||
     web.searchSuggestions.some(s=>typeof s!=='string'||!s.trim())||
     Buffer.byteLength(web.searchSuggestions.join(''))>WEB_RESEARCH_LIMITS.maximumSuggestionBytes||
     !Array.isArray(web.retrievedSourceURLs)||!web.retrievedSourceURLs.length||web.retrievedSourceURLs.length>20||
     web.retrievedSourceURLs.some(u=>typeof u!=='string'||publicSourceURL(u)!==u)||
-    !Number.isSafeInteger(web.observedSearchQueries)||web.observedSearchQueries<1)invalid();
+    web.observedSearchQueries!=null&&(!Number.isSafeInteger(web.observedSearchQueries)||web.observedSearchQueries<0||web.observedSearchQueries>20*WEB_RESEARCH_LIMITS.maximumSteps))invalid();
+  // Legacy envelopes had only a positive query count. New unknown totals need
+  // explicit successful call evidence; omission must not pass vacuously.
+  if(web.observedSearchCalls==null?!(web.observedSearchQueries>0):
+    !Number.isSafeInteger(web.observedSearchCalls)||web.observedSearchCalls<1||web.observedSearchCalls>WEB_RESEARCH_LIMITS.maximumSteps)invalid('search_evidence_missing');
   let textCharacters=0,citationCount=0,hasRead=false;
   for(const block of web.blocks) {
     if(typeof block?.text!=='string'||!block.text.trim()||!Array.isArray(block.citations)||!block.citations.length)invalid();
@@ -166,8 +176,12 @@ export function validateWebResearchEnvelope(web) {
     textCharacters+=block.text.length;
     for(const c of block.citations) {
       if(typeof c?.url!=='string'||publicSourceURL(c.url)!==c.url||typeof c.title!=='string'||c.title.length>500||
-        !Number.isSafeInteger(c.startIndex)||!Number.isSafeInteger(c.endIndex)||c.endIndex<=c.startIndex||
-        !boundaries.has(c.startIndex)||!boundaries.has(c.endIndex))invalid();
+        !['passage','source'].includes(c.scope??'passage'))invalid();
+      if(c.scope==='source') {
+        if(c.startIndex!=null||c.endIndex!=null)invalid('citation_range_invalid');
+        if(!web.retrievedSourceURLs.includes(c.url))invalid('source_page_evidence_missing');
+      } else if(!Number.isSafeInteger(c.startIndex)||!Number.isSafeInteger(c.endIndex)||c.endIndex<=c.startIndex||
+        !boundaries.has(c.startIndex)||!boundaries.has(c.endIndex))invalid('citation_range_invalid');
       citationCount++;hasRead ||= web.retrievedSourceURLs.includes(c.url);
     }
   }

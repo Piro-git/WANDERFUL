@@ -5,8 +5,32 @@ nonisolated struct DynamicWebResearch: Decodable, Hashable, Sendable {
     struct Citation: Decodable, Hashable, Sendable {
         let url: URL
         let title: String
-        let startIndex: Int
-        let endIndex: Int
+        enum Scope: String, Decodable, Hashable, Sendable { case passage, source }
+        let startIndex: Int?
+        let endIndex: Int?
+        let scope: Scope
+
+        init(url: URL, title: String, startIndex: Int? = nil, endIndex: Int? = nil, scope: Scope = .passage) {
+            self.url = url; self.title = title
+            self.startIndex = startIndex; self.endIndex = endIndex; self.scope = scope
+        }
+
+        private enum CodingKeys: String, CodingKey { case url, title, startIndex, endIndex, scope }
+        init(from decoder: Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            url = try values.decode(URL.self, forKey: .url)
+            title = try values.decode(String.self, forKey: .title)
+            startIndex = try values.decodeIfPresent(Int.self, forKey: .startIndex)
+            endIndex = try values.decodeIfPresent(Int.self, forKey: .endIndex)
+            // Older transient responses contain complete spans without a scope.
+            scope = try values.decodeIfPresent(Scope.self, forKey: .scope) ?? .passage
+        }
+
+        func passage(in text: String) -> String? {
+            guard scope == .passage, DynamicWebResearch.validRange(self, in: text),
+                  let startIndex, let endIndex else { return nil }
+            return (text as NSString).substring(with: NSRange(location: startIndex, length: endIndex - startIndex))
+        }
     }
     struct Block: Decodable, Hashable, Sendable {
         let text: String
@@ -17,7 +41,8 @@ nonisolated struct DynamicWebResearch: Decodable, Hashable, Sendable {
     let blocks: [Block]
     let searchSuggestions: [String]
     let retrievedSourceURLs: [URL]
-    let observedSearchQueries: Int
+    let observedSearchQueries: Int?
+    var observedSearchCalls: Int? = nil
 
     var routeEvidence: DynamicRouteEvidence? = nil
 
@@ -39,25 +64,32 @@ nonisolated struct DynamicWebResearch: Decodable, Hashable, Sendable {
             index >= 0 && index <= units.count &&
                 (index == 0 || index == units.count || !(0xDC00...0xDFFF).contains(units[index]))
         }
-        return citation.endIndex > citation.startIndex && boundary(citation.startIndex) && boundary(citation.endIndex)
+        guard citation.scope == .passage, let start = citation.startIndex, let end = citation.endIndex else { return false }
+        return end > start && boundary(start) && boundary(end)
     }
 
     func validate() throws {
         guard provider == "google_grounding", Self.retrievalDate(retrievedAt) != nil, (1...8).contains(blocks.count),
-              (1...5).contains(searchSuggestions.count), searchSuggestions.allSatisfy({ !$0.isEmpty }),
+              (0...5).contains(searchSuggestions.count), searchSuggestions.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),
               searchSuggestions.reduce(0, { $0 + $1.utf8.count }) <= 65_536,
               !retrievedSourceURLs.isEmpty, retrievedSourceURLs.count <= 20,
-              retrievedSourceURLs.allSatisfy(Self.isPublicCitation), observedSearchQueries > 0,
+              retrievedSourceURLs.allSatisfy(Self.isPublicCitation),
+              observedSearchQueries.map({ (0...1200).contains($0) }) ?? true,
+              observedSearchCalls.map({ (1...60).contains($0) }) ?? (observedSearchQueries.map({ $0 > 0 }) ?? false),
               blocks.reduce(0, { $0 + $1.text.utf16.count }) <= 12_000,
               blocks.reduce(0, { $0 + $1.citations.count }) <= 40 else { throw OutdoorAdventurePlanningClientFailure.invalidResponse }
         for block in blocks {
-            guard !block.text.isEmpty, !block.citations.isEmpty else { throw OutdoorAdventurePlanningClientFailure.invalidResponse }
+            guard !block.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !block.citations.isEmpty else { throw OutdoorAdventurePlanningClientFailure.invalidResponse }
             for citation in block.citations {
-                guard Self.isPublicCitation(citation.url), citation.title.count <= 500,
-                      citation.startIndex >= 0, citation.endIndex > citation.startIndex,
-                      citation.endIndex <= block.text.utf16.count,
-                      Self.validRange(citation, in: block.text) else {
+                guard Self.isPublicCitation(citation.url), citation.title.utf16.count <= 500 else {
                     throw OutdoorAdventurePlanningClientFailure.invalidResponse
+                }
+                switch citation.scope {
+                case .passage:
+                    guard Self.validRange(citation, in: block.text) else { throw OutdoorAdventurePlanningClientFailure.invalidResponse }
+                case .source:
+                    guard citation.startIndex == nil, citation.endIndex == nil,
+                          retrievedSourceURLs.contains(citation.url) else { throw OutdoorAdventurePlanningClientFailure.invalidResponse }
                 }
             }
         }
@@ -123,12 +155,12 @@ nonisolated struct DynamicRouteEvidence: Decodable, Hashable, Sendable {
         for (blockIndex, block) in research.blocks.enumerated() {
             for (citationIndex, citation) in block.citations.enumerated() {
                 let claim = claims[index]
-                let identity = research.retrievedSourceURLs.contains(citation.url)
+                let identity = citation.scope == .passage && research.retrievedSourceURLs.contains(citation.url)
                     ? places.first(where: { $0.sourceURL == citation.url }) : nil
                 guard claim.id == "b\(blockIndex)-c\(citationIndex)", claim.blockIndex == blockIndex,
                       claim.citationIndex == citationIndex else { throw failure }
                 if claim.relationship == "source_passage" {
-                    guard identity == nil, let placeId = claim.placeId,
+                    guard citation.scope == .passage, identity == nil, let placeId = claim.placeId,
                           let place = places.first(where: { $0.placeId == placeId }),
                           ["stable_reference", "structured_name_coordinate"].contains(claim.identityMethod ?? ""),
                           let passage = claim.sourcePassage,
@@ -137,7 +169,7 @@ nonisolated struct DynamicRouteEvidence: Decodable, Hashable, Sendable {
                           (12...1200).contains(passage.text.utf16.count),
                           !passage.text.contains("<"), !passage.text.contains(">"),
                           passage.text.localizedCaseInsensitiveContains(place.name),
-                          (block.text as NSString).substring(with: NSRange(location: citation.startIndex, length: citation.endIndex - citation.startIndex)).localizedCaseInsensitiveContains(place.name),
+                          citation.passage(in: block.text)?.localizedCaseInsensitiveContains(place.name) == true,
                           let retrieved = PlanningEvidenceDate.parse(passage.retrievedAt),
                           retrieved <= now.addingTimeInterval(300), now.timeIntervalSince(retrieved) <= 86_400 else { throw failure }
                 } else {

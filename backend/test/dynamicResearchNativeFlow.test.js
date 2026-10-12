@@ -8,7 +8,7 @@ import {createOwnerProviderBudget} from '../scripts/owner-phone-provider-budget.
 
 // Synthetic provider fixtures, exercised through the real private HTTP routing/composition.
 // This is deliberately not a live provider acceptance test.
-for (const {web,revise,named=false,locale} of [{web:false,revise:false},{web:false,revise:true},{web:true,revise:false},{web:true,revise:true},{web:true,revise:true,named:true},{web:false,revise:false,locale:'en'},{web:true,revise:true,locale:'de'}]) test(`native flow reaches evaluated route; web=${web}; revision=${revise}; named=${named}; locale=${locale??'omitted'}`,async t=>{
+for (const {web,revise,named=false,locale,optional=false} of [{web:false,revise:false},{web:false,revise:true},{web:true,revise:false},{web:true,revise:true},{web:true,revise:true,named:true},{web:false,revise:false,locale:'en'},{web:true,revise:true,locale:'de'},{web:true,revise:false,optional:true}]) test(`native flow reaches evaluated route; web=${web}; revision=${revise}; named=${named}; locale=${locale??'omitted'}; optional=${optional}`,async t=>{
  const fixture=JSON.parse(fs.readFileSync(new URL('../../TrailMindTests/Fixtures/dynamic-research-offline.json',import.meta.url),'utf8'));
  const directory=fs.mkdtempSync('/private/tmp/wanderful-dynamic-native-offline-');fs.chmodSync(directory,0o700);
  const token=randomBytes(32).toString('base64url');
@@ -33,11 +33,11 @@ for (const {web,revise,named=false,locale} of [{web:false,revise:false},{web:fal
    const body=JSON.parse(init.body);
    if(body.response_format)return json({output_text:JSON.stringify(parsed)});
    if(body.tools?.some(tool=>tool.type==='google_search'))return json({steps:[
-    {type:'google_search_call',id:'web-s',arguments:{queries:['village hilltop places']}},
-    {type:'google_search_result',call_id:'web-s',result:[{search_suggestions:'<div>Provider suggestions</div>'}]},
+    {type:'google_search_call',id:'web-s',arguments:optional?{}:{queries:['village hilltop places']}},
+    {type:'google_search_result',call_id:'web-s',result:optional?[{}]:[{search_suggestions:'<div>Provider suggestions</div>'}]},
     {type:'url_context_call',id:'web-u',arguments:{urls:['https://park.example.org/ridge']}},
     {type:'url_context_result',call_id:'web-u',result:[{url:'https://park.example.org/ridge',status:'success'}]},
-    {type:'model_output',content:[{type:'text',text:groundedText,annotations:[{type:'url_citation',url:'https://park.example.org/ridge',title:'Park source',start_index:0,end_index:Buffer.byteLength(groundedText)}]}]}
+    {type:'model_output',content:[{type:'text',text:groundedText,annotations:[{type:'url_citation',url:'https://park.example.org/ridge',title:'Park source',...(optional?{}:{start_index:0,end_index:Buffer.byteLength(groundedText)})}]}]}
    ]});
    if(body.tools?.some(t=>t.name==='review_route_quality'))return json({steps:[call('review','review_route_quality',{decision:'complete',summary:'Measured route connecting the selected mapped stops.',remainingWishes:['Current access is unverified.'],evidenceIds:fixture.route.places.map(p=>p.id)})]});
    assert.equal(body.store,false);assert.ok(JSON.stringify(body.input).includes(prompt));
@@ -75,7 +75,11 @@ for (const {web,revise,named=false,locale} of [{web:false,revise:false},{web:fal
  assert.equal(result.route.statistics.distanceMeters,fixture.route.path.distance);assert.equal(result.route.geometryProvider,'graphhopper');
  assert.deepEqual(result.route.path.instructions,fixture.route.path.instructions.map(i=>({...i,text:locale==='de'?'Geradeaus gehen':i.text})));
  assert.equal(result.route.webResearch?.provider,web?'google_grounding':undefined);
- if(web) {const block=result.route.webResearch.blocks[0];assert.equal(block.text,groundedText);assert.equal(block.citations[0].endIndex,groundedText.length);}
+ if(web) {const block=result.route.webResearch.blocks[0];assert.equal(block.text,groundedText);if(optional) {
+  assert.equal(result.route.webResearch.observedSearchQueries,null);assert.equal(result.route.webResearch.observedSearchCalls,1);
+  assert.deepEqual(result.route.webResearch.searchSuggestions,[]);assert.equal(block.citations[0].scope,'source');
+  assert.equal(block.citations[0].endIndex,undefined);assert.equal(result.route.webResearch.routeEvidence.claims[0].relationship,'unconfirmed');
+ } else assert.equal(block.citations[0].endIndex,groundedText.length);}
  if(named) {assert.ok(result.route.places.every(p=>p.category==='named_place'));assert.equal(result.route.counts.resolutions,3);}
  assert.deepEqual(budget.remaining(),{google:(revise?3:4)-(web?1:0),graphhopper:revise?1:2,osm:0,wikidata:10,commons:3,...(web?{grounding:0}:{}),stopped:false});
 });

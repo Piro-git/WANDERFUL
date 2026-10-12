@@ -3,17 +3,19 @@ import WebKit
 
 struct DynamicWebResearchView: View {
     let research: DynamicWebResearch
+    @Environment(AppLanguageController.self) private var languageController
+    private var isGerman: Bool { languageController.language == .german }
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Original web research").font(.title3.weight(.semibold))
-            Text("Research before route selection — includes alternatives and unconfirmed context. Only the stops listed above belong to this route. Source statements may be outdated; they do not verify route conditions.")
+            Text(isGerman ? "Web-Recherche mit Google" : "Web research with Google").font(.title3.weight(.semibold))
+            Text(isGerman ? "Die Recherche enthält auch Alternativen. Nur die oben genannten Stopps gehören zur Route. Quellen können veraltet sein und bestätigen keine aktuellen Bedingungen." : "Research includes alternatives. Only the stops listed above belong to this route. Sources may be outdated and do not confirm current conditions.")
                 .font(.caption).foregroundStyle(.secondary)
             if let evidence = research.routeEvidence {
                 let excluded = evidence.places.filter { $0.selection == "excluded" }
                 if !excluded.isEmpty {
-                    Text("Not on this route: " + excluded.map(\.name).joined(separator: ", "))
+                    Text((isGerman ? "Nicht auf dieser Route: " : "Not on this route: ") + excluded.map(\.name).joined(separator: ", "))
                         .font(.subheadline.weight(.medium))
                         .accessibilityIdentifier("route.evidence.excluded")
                 }
@@ -25,23 +27,29 @@ struct DynamicWebResearchView: View {
             ForEach(Array(research.searchSuggestions.enumerated()), id: \.offset) { _, html in
                 GroundedSearchSuggestions(html: html, openLink: { openURL($0) })
                     .frame(height: 180)
-                    .accessibilityLabel("Google Search suggestions")
+                    .accessibilityLabel(isGerman ? "Suchvorschläge von Google" : "Google Search suggestions")
             }
             // Separate from the complete provider result: preserve every citation,
             // including overlapping ranges that a single inline link cannot represent.
-            DisclosureGroup("Source passages") {
+            DisclosureGroup(isGerman ? "Quellen" : "Sources") {
                 ForEach(Array(research.blocks.enumerated()), id: \.offset) { blockIndex, block in
                     ForEach(Array(block.citations.enumerated()), id: \.offset) { citationIndex, citation in
                         VStack(alignment: .leading, spacing: 6) {
-                            Link("\(blockIndex + 1).\(citationIndex + 1) · \(citation.title.isEmpty ? citation.url.host ?? "Source" : citation.title)", destination: citation.url)
-                            Text((block.text as NSString).substring(with: NSRange(location: citation.startIndex, length: citation.endIndex - citation.startIndex)))
-                                .textSelection(.enabled)
-                            Text("Attributed research passage, not a verified statement about this route.")
-                                .foregroundStyle(.secondary)
+                            Link("\(blockIndex + 1).\(citationIndex + 1) · \(citation.title.isEmpty ? citation.url.host ?? (isGerman ? "Quelle" : "Source") : citation.title)", destination: citation.url)
+                            if let passage = citation.passage(in: block.text) {
+                                Text(passage).textSelection(.enabled)
+                                Text(isGerman ? "Dieser Text verweist auf die Quelle. Aktuelle Bedingungen sind nicht bestätigt." : "This text cites the source. Current conditions are not confirmed.")
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text(isGerman ? "In der Recherche genannt und gelesen. Die Quelle ist keinem bestimmten Satz zugeordnet." : "Cited and read during research. The source is not linked to a specific sentence.")
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("route.evidence.sourceScope.\(blockIndex).\(citationIndex)")
+                            }
                         }.font(.caption).padding(.vertical, 6)
                     }
                 }
             }
+            .accessibilityIdentifier("route.evidence.sources")
         }
         .padding(18)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22))
@@ -50,7 +58,9 @@ struct DynamicWebResearchView: View {
     private func attributed(_ block: DynamicWebResearch.Block) -> AttributedString {
         var text = AttributedString(block.text)
         for citation in block.citations {
-            let range = NSRange(location: citation.startIndex, length: citation.endIndex - citation.startIndex)
+            guard citation.scope == .passage, DynamicWebResearch.validRange(citation, in: block.text),
+                  let start = citation.startIndex, let end = citation.endIndex else { continue }
+            let range = NSRange(location: start, length: end - start)
             if let stringRange = Range(range, in: block.text),
                let attributedRange = Range(stringRange, in: text) {
                 text[attributedRange].link = citation.url

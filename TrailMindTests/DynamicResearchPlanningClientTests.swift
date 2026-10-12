@@ -201,6 +201,40 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
         XCTAssertEqual(try validate(legacy).path.count, route.path.count)
     }
 
+    func testOptionalResearchMetadataSurvivesFullNativeRouteDecoderWithoutChangingGeometry() throws {
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Fixtures")
+        var response = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: directory.appendingPathComponent("dynamic-evidence-revised-offline.json"))) as? [String: Any])
+        var rawRoute = response["route"] as! [String: Any]
+        let baseline = try BackendDynamicResearchPlanningClient.validate(JSONSerialization.data(withJSONObject: response),
+            request: request, start: start, end: nil, context: .unspecified,
+            now: PlanningEvidenceDate.parse("2026-09-07T01:00:00Z")!, requiresWebResearch: true).suggestion.route
+        var research = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: directory.appendingPathComponent("dynamic-web-optional-metadata.json"))) as? [String: Any])
+        var evidence = (rawRoute["webResearch"] as! [String: Any])["routeEvidence"] as! [String: Any]
+        evidence["claims"] = [["id": "b0-c0", "blockIndex": 0, "citationIndex": 0, "placeId": NSNull(), "relationship": "unconfirmed"]]
+        research["routeEvidence"] = evidence; rawRoute["webResearch"] = research; response["route"] = rawRoute
+        func validate(_ value: [String: Any]) throws -> TrailRoute {
+            try BackendDynamicResearchPlanningClient.validate(JSONSerialization.data(withJSONObject: value),
+                request: request, start: start, end: nil, context: .unspecified,
+                now: PlanningEvidenceDate.parse("2026-09-07T01:00:00Z")!, requiresWebResearch: true).suggestion.route
+        }
+        let route = try validate(response)
+        XCTAssertEqual(route.path, baseline.path)
+        XCTAssertEqual(route.distanceKilometers, baseline.distanceKilometers)
+        XCTAssertEqual(route.routeInstructions, baseline.routeInstructions)
+        XCTAssertEqual(route.dynamicResearchStops, baseline.dynamicResearchStops)
+        XCTAssertNil(route.dynamicWebResearch?.observedSearchQueries)
+        XCTAssertEqual(route.dynamicWebResearch?.routeEvidence?.claims.first?.relationship, "unconfirmed")
+        for relationship in ["source_identity", "source_passage"] {
+            var invalid = response
+            var mapping = evidence
+            mapping["claims"] = [["id": "b0-c0", "blockIndex": 0, "citationIndex": 0,
+                                  "placeId": "osm:node:1", "relationship": relationship]]
+            var web = research; web["routeEvidence"] = mapping
+            var result = rawRoute; result["webResearch"] = web; invalid["route"] = result
+            XCTAssertThrowsError(try validate(invalid), relationship)
+        }
+    }
+
     func testDocumentedEntranceKeepsPOIIdentityAndRejectsUnrelatedBoundaryNode() throws {
         let fixtureURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("Fixtures/dynamic-research-offline.json")
@@ -479,6 +513,21 @@ final class DynamicResearchPlanningClientTests: XCTestCase {
                 }
             }
         }
+    }
+
+    func testOptionalCurrentResearchAttributionIsDecodedValidatedAndNotPersisted() throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-web-optional-metadata.json")
+        let web = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: fixture)) as? [String: Any])
+        let conditions: [String: Any] = ["schemaVersion": 1, "checkedAt": "2026-09-07T01:00:00Z",
+            "expiresAt": "2026-09-07T02:00:00Z", "visitTime": NSNull(), "scope": "route_corridor", "coverage": "partial",
+            "sources": [], "notices": [], "blockingNoticeIds": [], "limitations": [], "researchEvidence": web]
+        let decoded = try JSONDecoder().decode(RouteLocalConditions.self, from: JSONSerialization.data(withJSONObject: conditions))
+        try decoded.validate()
+        XCTAssertNil(decoded.researchEvidence?.observedSearchQueries)
+        XCTAssertEqual(decoded.researchEvidence?.blocks.first?.citations.first?.scope, .source)
+        let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded)) as? [String: Any])
+        XCTAssertNil(saved["researchEvidence"])
     }
 
     func testCurrentResearchAttributionIsDecodedValidatedAndNotPersisted() throws {

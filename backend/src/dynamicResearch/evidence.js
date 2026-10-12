@@ -46,6 +46,8 @@ export function reconcileRouteEvidence(web,{routeId,selectedPlaces,inspectedPlac
   const places=[...selectedPlaces,...inspectedPlaces.filter(p=>!selected.has(p.id)).sort((a,b)=>a.id.localeCompare(b.id))]
     .map(p=>({placeId:p.id,name:p.name,sourceURL:p.source.url,selection:selected.has(p.id)?'selected':'excluded'}));
   const claims=web.blocks.flatMap((block,blockIndex)=>block.citations.map((citation,citationIndex)=>{
+    // A source reference has no attributed sentence or place identity claim.
+    if(citation.scope==='source')return {id:`b${blockIndex}-c${citationIndex}`,blockIndex,citationIndex,placeId:null,relationship:'unconfirmed'};
     const identity=web.retrievedSourceURLs.includes(citation.url)?places.find(p=>p.sourceURL===citation.url):null;
     if(identity)return {id:`b${blockIndex}-c${citationIndex}`,blockIndex,citationIndex,placeId:identity.placeId,relationship:'source_identity'};
     const documents=web.retrievedSourceURLs.includes(citation.url)?sourceDocuments.filter(d=>[d.url,d.requestedURL,d.canonicalURL].includes(citation.url)):[];
