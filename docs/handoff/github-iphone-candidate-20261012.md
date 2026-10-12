@@ -22,3 +22,11 @@ Real provider routes, source-matched Commons photographs, physical-phone Saved/p
 ## Continuation
 
 Fetch this named branch, inspect its commit and read this handoff. Preserve unrelated local work. API replay OIDs differ from the retained original local branch; reconcile via the provenance mapping, without force-pushing or resetting it. Historical owner handoffs describe their checkpoint, while this file describes the final backed-up candidate. Secrets, private execution evidence and app products remain outside Git.
+
+## Reviewed backend supplement continuation
+
+The source backup now also contains original checkpoint `541df9623f69c2d89462de5cf0174ffe198bb751`, appended on the existing sanitized public history. Backend tree `ff32ec095e5f662d0575ee3db83f194579d3b6e2` is exact; the app and both native test trees remain unchanged. The setup SQL, activation template and operator test blobs match the reviewed originals. Only the new Handoff and README prose are sanitized; provenance records every original/published blob and parent.
+
+The coordinator reported 50 independent offline fixture checks plus nine disposable PostgreSQL checks with no failures. These were not repeated by the backup owner. The supplement remains opt-in: at most one intent/plan, eight Google and six GraphHopper attempts, with cumulative provider ceilings of 16/10. This source publication is not a record of an active allocation, actual ledger state or rollout, and establishes no genuine phone/provider result.
+
+For continuation, use the public branch and latest provenance entry. The locally retained original source history remains distinct; never push its private documentation ancestors back into this branch.

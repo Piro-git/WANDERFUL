@@ -156,5 +156,118 @@
     "Screenshots, xcresults, logs, built/exported app products",
     "Private recovery material"
   ],
-  "validation": "Publication verifies source identity; it does not establish live route/photo success, physical-phone acceptance or release approval."
+  "validation": "Publication verifies source identity; it does not establish live route/photo success, physical-phone acceptance or release approval.",
+  "latestOriginalCandidate": "541df9623f69c2d89462de5cf0174ffe198bb751",
+  "latestSourceCandidateCommit": "22fb52dda84a02ffbffabb13830e6d2bca1cf68f",
+  "latestSourceTrees": {
+    "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+    "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+    "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
+    "backend": "ff32ec095e5f662d0575ee3db83f194579d3b6e2"
+  },
+  "supplements": [
+    {
+      "original": "541df9623f69c2d89462de5cf0174ffe198bb751",
+      "originalParent": "674d11de286c9185c995bf246d2a6794d3bf0fa4",
+      "originalTree": "ca4bd4e6079bafb256e214e7fbc685250ff4a6b9",
+      "publishedSourceCommit": "22fb52dda84a02ffbffabb13830e6d2bca1cf68f",
+      "publishedSourceParent": "79eb421639b7cadb9f96fa78d4c99d4f320b0d2d",
+      "publishedSourceTree": "ec5305eb3e599ccdcf615ccac175a6e3853e296b",
+      "sourceTrees": {
+        "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+        "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+        "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
+        "backend": "ff32ec095e5f662d0575ee3db83f194579d3b6e2"
+      },
+      "fileMapping": [
+        {
+          "path": "backend/src/ownerAccess/ownerDynamicPlanning.js",
+          "originalBlob": "a3682c143c65126dbf95c0c9ce332c61dcb0f066",
+          "publishedBlob": "a3682c143c65126dbf95c0c9ce332c61dcb0f066",
+          "sha256Original": "d64d18c8749d251d93311bbf93b55aeef7c9cfa361cd63ee88b9f482b24727be",
+          "sha256Published": "d64d18c8749d251d93311bbf93b55aeef7c9cfa361cd63ee88b9f482b24727be"
+        },
+        {
+          "path": "backend/src/ownerAccess/planningSupplement.js",
+          "originalBlob": "0baf6fc63c7483a99339c52970e1793dd987ecbe",
+          "publishedBlob": "0baf6fc63c7483a99339c52970e1793dd987ecbe",
+          "sha256Original": "38ad333546d3b0cfc61fddcd3e2b4ca28a942cff99e062198c8e2da5c26c825d",
+          "sha256Published": "38ad333546d3b0cfc61fddcd3e2b4ca28a942cff99e062198c8e2da5c26c825d"
+        },
+        {
+          "path": "backend/src/ownerAccess/postgresOwnerRepository.js",
+          "originalBlob": "c75bb7da0f3cbf8f4b6f621456baaa5ce188d2fe",
+          "publishedBlob": "c75bb7da0f3cbf8f4b6f621456baaa5ce188d2fe",
+          "sha256Original": "8eb6aec2bce80371dc15c82c03c6b40e3a12d08e773b0e82c441df76291aea38",
+          "sha256Published": "8eb6aec2bce80371dc15c82c03c6b40e3a12d08e773b0e82c441df76291aea38"
+        },
+        {
+          "path": "backend/src/ownerAccess/runSupplementPostgresTests.js",
+          "originalBlob": "1a787173b2f959af131cc7a3dc1c72172cb96c75",
+          "publishedBlob": "1a787173b2f959af131cc7a3dc1c72172cb96c75",
+          "sha256Original": "5e577f5645597fdb29fd439d00dfbd06aa6afe67746f69434fd339ac7eddb02b",
+          "sha256Published": "5e577f5645597fdb29fd439d00dfbd06aa6afe67746f69434fd339ac7eddb02b"
+        },
+        {
+          "path": "backend/src/ownerAccess/vercelOwnerRuntime.js",
+          "originalBlob": "98b2fdadb96075388c74a3705b1ba312c2012300",
+          "publishedBlob": "98b2fdadb96075388c74a3705b1ba312c2012300",
+          "sha256Original": "bf7162bc7dbc8d34d88b2eda0ea554fdae7a0976f12c0f2c1532f0fd47f20ccf",
+          "sha256Published": "bf7162bc7dbc8d34d88b2eda0ea554fdae7a0976f12c0f2c1532f0fd47f20ccf"
+        },
+        {
+          "path": "backend/test/ownerDynamicPlanning.test.js",
+          "originalBlob": "814e060f9186ffeadb56443fa820cd02ae4a98bb",
+          "publishedBlob": "814e060f9186ffeadb56443fa820cd02ae4a98bb",
+          "sha256Original": "291d4970927e4d2039d4ffa9078c42f767696a47871e43f43e36c3f339696b89",
+          "sha256Published": "291d4970927e4d2039d4ffa9078c42f767696a47871e43f43e36c3f339696b89"
+        },
+        {
+          "path": "backend/test/ownerPlanningSupplementPostgres.test.js",
+          "originalBlob": "79abe8d7da2159f16d9ac26cadcf03a1b3c4b64c",
+          "publishedBlob": "79abe8d7da2159f16d9ac26cadcf03a1b3c4b64c",
+          "sha256Original": "721cdaf0cd60882de892e206b317a2c2d855e7e6953745ae2ef45466826a073c",
+          "sha256Published": "721cdaf0cd60882de892e206b317a2c2d855e7e6953745ae2ef45466826a073c"
+        },
+        {
+          "path": "docs/handoff/backend-final-phone-rollout-20261012.md",
+          "originalBlob": "8bb79c860ee0f624d0a3d9f8d0fc5f66721aaa29",
+          "publishedBlob": "6af4834e3ef3c4997b43642fc5b35bdf99985fbd",
+          "sha256Original": "0fdf366b1facb33bac6184c4c3e5e6aa5f334b42ea7d765ddfed55b868fb3874",
+          "sha256Published": "4a37753790fba2d9a7881c789ee4306f30f34004ab08b2d91cc9ccc7b5f64166"
+        },
+        {
+          "path": "docs/operations/owner-supplement-20261012/README.md",
+          "originalBlob": "bbe7c3ef130de46ed88b324353ec2e6be322cd48",
+          "publishedBlob": "9a34baf3a0ce085f61013971cf0edbe548b3a408",
+          "sha256Original": "5307e6cf101f7bf6d3fb4b12c12bc8888b7a657b5bfd0493a1d734757844b9cd",
+          "sha256Published": "3ebdeaf1491c9f57dc8f33c5514f2944c31ec22f13ac84f518a981051dd64814"
+        },
+        {
+          "path": "docs/operations/owner-supplement-20261012/planningSupplementSetup.sql",
+          "originalBlob": "ccfc4d25df2c01b306812b468e4da348dbdd0042",
+          "publishedBlob": "ccfc4d25df2c01b306812b468e4da348dbdd0042",
+          "sha256Original": "69f3e0c8a88827b1f418566a9bf510c38aa1b82ed9e3fbb8c498e7fbd52609f7",
+          "sha256Published": "69f3e0c8a88827b1f418566a9bf510c38aa1b82ed9e3fbb8c498e7fbd52609f7"
+        },
+        {
+          "path": "docs/operations/owner-supplement-20261012/prepareSupplementActivation.mjs",
+          "originalBlob": "1f685a1982fb94ae20a112e820c18359974b4c8b",
+          "publishedBlob": "1f685a1982fb94ae20a112e820c18359974b4c8b",
+          "sha256Original": "4967b43a88937ad13642bd130549bb1764439239720dc9d160ad3005867ba306",
+          "sha256Published": "4967b43a88937ad13642bd130549bb1764439239720dc9d160ad3005867ba306"
+        },
+        {
+          "path": "docs/operations/owner-supplement-20261012/prepareSupplementActivation.test.mjs",
+          "originalBlob": "54c4c0af6489451a3e8db58c1a24c9923c8bfacc",
+          "publishedBlob": "54c4c0af6489451a3e8db58c1a24c9923c8bfacc",
+          "sha256Original": "1182134ba29feb0eac32f4017e64a9b050119373a2336e173b476584fad77b48",
+          "sha256Published": "1182134ba29feb0eac32f4017e64a9b050119373a2336e173b476584fad77b48"
+        }
+      ],
+      "publication": "Source equivalent checkpoint appended to the verified existing sanitized publication head. Original private commit history, handoff and README blobs are not imported. Backend/native source and operator SQL/template/test blobs are unchanged.",
+      "priorIndependentValidation": "Coordinator reported 50 offline fixtures and nine disposable PostgreSQL checks, zero failures. Not rerun for this backup; no genuine provider/phone acceptance inferred.",
+      "operations": "Publication only; no deployment, database/activation, provider, quota or phone operation."
+    }
+  ]
 }
