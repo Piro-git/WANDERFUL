@@ -38,3 +38,13 @@ Original checkpoints `7c2917b707b33d00e74abf18665defdd50c8201b` and `33c759eff28
 The coordinator reported manual source/SQL/operator review after four guard corrections, 46 independent fixture checks and seven disposable PostgreSQL checks, with zero failures. The backup owner did not repeat these. This is diagnostic preparation: no actual functional repair or real route/provider/phone result has been demonstrated.
 
 Ordinary package/default deployment configuration is unchanged. The diagnostic configuration requires explicit selection and a guarded one-shot operator. Publication does not execute the operator, activate an allocation, deploy or authorize later native acceptance. Private approvals, actual statuses, trial timing and generated execution records remain outside Git.
+
+## Latest functional recovery repair
+
+Latest original source: `115fb52a111785285800fa72ff7cc7fa94f44deb`, preceded by `2ae22dc66ef6d417a8728b5a319f4efd2d320bdc`. Both are source-equivalent public replays on the existing sanitized history. Backend tree: `bac148120e9801a1bdd06805967199a38ffa66f0`; app and both native test trees remain unchanged. Every source/test/runtime/SQL/operator byte and mode matches the reviewed source.
+
+The dispatcher rejects an unregistered research function truthfully, permits one separately reserved stateless recovery, preserves complete transient history/signatures and accepts only completed, genuine search/read/citation evidence. The final diagnostic correction does not invent a pending status for malformed completed recovery. Invalid histories, further pending results, denied reservations and expiry remain closed.
+
+The coordinator independently reviewed the final source and reported 130 credential-free fixtures passing. The backup owner did not rerun them. This latest checkpoint supersedes the earlier preparation-only status above: functional recovery has mocked proof, while actual provider completion, real route/Commons photographs and physical-phone Saved/packing acceptance are still unproven.
+
+Publication does not deploy, activate an allocation, execute SQL/providers or update the phone. Private runtime/deployment/trial/approval records remain excluded. Use the latest provenance mapping for continuation and preserve public history.

@@ -157,13 +157,13 @@
     "Private recovery material"
   ],
   "validation": "Publication verifies source identity; it does not establish live route/photo success, physical-phone acceptance or release approval.",
-  "latestOriginalCandidate": "33c759eff28bf8c9330288b82f39ed32cc951f05",
-  "latestSourceCandidateCommit": "a4deb33fb3cd7b6d9352c322692e0a0093149f53",
+  "latestOriginalCandidate": "115fb52a111785285800fa72ff7cc7fa94f44deb",
+  "latestSourceCandidateCommit": "3009bde00da83f0e618252386da01c5d01616040",
   "latestSourceTrees": {
+    "backend": "bac148120e9801a1bdd06805967199a38ffa66f0",
     "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
     "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
-    "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
-    "backend": "0a36a3e616b3357d00645c4c7fb5357f5847211b"
+    "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
   },
   "supplements": [
     {
@@ -461,6 +461,146 @@
       "ordinaryBuildInputsUnchanged": true,
       "validation": "Coordinator reported manual code/SQL/operator review after four guard corrections, 46 independent fixtures and seven disposable PostgreSQL checks, zero failures. Not rerun for publication; no demonstrated functional fix or real provider/phone acceptance.",
       "scope": "Preparation for one explicitly selected Google diagnostic and a separately bound later native phase. Publication performs no deployment, database/activation, provider or phone action."
+    }
+  ],
+  "functionalRepairs": [
+    {
+      "originalBase": "33c759eff28bf8c9330288b82f39ed32cc951f05",
+      "publishedBase": "871f146da952d67c7982b68a20b5af4f8577d9b7",
+      "originalCandidate": "115fb52a111785285800fa72ff7cc7fa94f44deb",
+      "publishedSourceCandidate": "3009bde00da83f0e618252386da01c5d01616040",
+      "publishedSourceTree": "bbbb4c68b59a64b487ab6f423f5a6fdb5e9f2ae3",
+      "sourceTrees": {
+        "backend": "bac148120e9801a1bdd06805967199a38ffa66f0",
+        "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+        "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+        "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
+      },
+      "commits": [
+        {
+          "original": "2ae22dc66ef6d417a8728b5a319f4efd2d320bdc",
+          "published": "16dfcdd7b6b4781080e1f02145a27cd22a14dcfc",
+          "originalParent": "33c759eff28bf8c9330288b82f39ed32cc951f05",
+          "publishedParent": "871f146da952d67c7982b68a20b5af4f8577d9b7",
+          "originalTree": "870d7b86323070492f434d1507e7321a3366c91d",
+          "publishedTree": "57d2df7d0106f558697fb7efe4dde49a24796be7",
+          "sourceTrees": {
+            "backend": "8be4d6f67c093ccba694fb1e6a46f6ad0ccbe123",
+            "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+            "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+            "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
+          },
+          "fileMapping": [
+            {
+              "path": "backend/src/dynamicResearch/researchActionFeedback.js",
+              "mode": "100644",
+              "originalBlob": "3f07c677ca940959032204f2fd71f4502d57993c",
+              "publishedBlob": "3f07c677ca940959032204f2fd71f4502d57993c",
+              "originalSHA256": "3466719724c18f22b2d7c33bc3f5cc86df2efca2ca382680c4bbeda375676a8c",
+              "publishedSHA256": "3466719724c18f22b2d7c33bc3f5cc86df2efca2ca382680c4bbeda375676a8c"
+            },
+            {
+              "path": "backend/src/dynamicResearch/webResearch.js",
+              "mode": "100644",
+              "originalBlob": "9b5a0f4038d8c3be5864fc003700416e0f595989",
+              "publishedBlob": "9b5a0f4038d8c3be5864fc003700416e0f595989",
+              "originalSHA256": "9fa582e00d975b5693c258415475fb749827a5160853be95936aada2b957ab8e",
+              "publishedSHA256": "9fa582e00d975b5693c258415475fb749827a5160853be95936aada2b957ab8e"
+            },
+            {
+              "path": "backend/src/ownerAccess/privatePlanningDiagnostics.js",
+              "mode": "100644",
+              "originalBlob": "2122ce2be21f5c1359ecc81bf3295ec7572d85e1",
+              "publishedBlob": "2122ce2be21f5c1359ecc81bf3295ec7572d85e1",
+              "originalSHA256": "6c3cf4fe842faa91e3664d3aa708b7bb05678e7ceba8017142bc977d9f1ce6bb",
+              "publishedSHA256": "6c3cf4fe842faa91e3664d3aa708b7bb05678e7ceba8017142bc977d9f1ce6bb"
+            },
+            {
+              "path": "backend/test/privatePlanningDiagnostics.test.js",
+              "mode": "100644",
+              "originalBlob": "e3e06b8a9f83158b73c5cba3eefdc8aa6e3b28c2",
+              "publishedBlob": "e3e06b8a9f83158b73c5cba3eefdc8aa6e3b28c2",
+              "originalSHA256": "20f49c017e33333e0e2fcca1c6f8f5563c3cfce9dc563706656475fbc80c23bd",
+              "publishedSHA256": "20f49c017e33333e0e2fcca1c6f8f5563c3cfce9dc563706656475fbc80c23bd"
+            },
+            {
+              "path": "backend/test/webResearchActionLifecycle.test.js",
+              "mode": "100644",
+              "originalBlob": "1ac3b8ac90a54d36d0b5f1aa70d02478697d04b3",
+              "publishedBlob": "1ac3b8ac90a54d36d0b5f1aa70d02478697d04b3",
+              "originalSHA256": "bea2cb89f1c73cba838d1c6f0a7dc6854b565c50df6d97dea4d89ecfece928a1",
+              "publishedSHA256": "bea2cb89f1c73cba838d1c6f0a7dc6854b565c50df6d97dea4d89ecfece928a1"
+            },
+            {
+              "path": "docs/handoff/backend-functional-research-fix-20261013.md",
+              "mode": "100644",
+              "originalBlob": "a2661113672df9a81d85563258cb0bf10611edd2",
+              "publishedBlob": "0c5026577dae30cbf72246abd363ec982a56a1d3",
+              "originalSHA256": "a09f7ecbd5c486059f51b3e1097864c88f751391383f29301d0a29301d4d0ef3",
+              "publishedSHA256": "b4094974c4f6a5ad59fb2891732306f187f46010840cec50353c24e6953a4a85"
+            },
+            {
+              "path": "docs/operations/research-followup-20261013/README.md",
+              "mode": "100644",
+              "originalBlob": "18a70683f6fd2f37e21164230188984c8ed5302c",
+              "publishedBlob": "451f5fc6813f27cd1d9d5ad6b09280b2912e9957",
+              "originalSHA256": "46c1b4a0b88c9e2fbebc1db6ef6c398602a811c587960e5a9626ddb4880ceca0",
+              "publishedSHA256": "1688035f3be36d1acb010bde540501c04eb2a912f1c154426e735ed3c00ee725"
+            }
+          ]
+        },
+        {
+          "original": "115fb52a111785285800fa72ff7cc7fa94f44deb",
+          "published": "3009bde00da83f0e618252386da01c5d01616040",
+          "originalParent": "2ae22dc66ef6d417a8728b5a319f4efd2d320bdc",
+          "publishedParent": "16dfcdd7b6b4781080e1f02145a27cd22a14dcfc",
+          "originalTree": "99c592793d0cd2dd30e73fd4afa5f013af0a1d35",
+          "publishedTree": "bbbb4c68b59a64b487ab6f423f5a6fdb5e9f2ae3",
+          "sourceTrees": {
+            "backend": "bac148120e9801a1bdd06805967199a38ffa66f0",
+            "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+            "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+            "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
+          },
+          "fileMapping": [
+            {
+              "path": "backend/src/dynamicResearch/researchActionFeedback.js",
+              "mode": "100644",
+              "originalBlob": "ba8976688648b60b632b265e6e035ef95f5ad183",
+              "publishedBlob": "ba8976688648b60b632b265e6e035ef95f5ad183",
+              "originalSHA256": "5b26061ebb8888ec92dab02cc67eb2a59076c1eac8d86a955a571904e3780ea4",
+              "publishedSHA256": "5b26061ebb8888ec92dab02cc67eb2a59076c1eac8d86a955a571904e3780ea4"
+            },
+            {
+              "path": "backend/src/dynamicResearch/webResearch.js",
+              "mode": "100644",
+              "originalBlob": "142374401483e4a02cc7805c9cd0f2f31ee45e9e",
+              "publishedBlob": "142374401483e4a02cc7805c9cd0f2f31ee45e9e",
+              "originalSHA256": "d341b0d7b9bd4a5d1b75faa8e7c4afa9c6bd06dee0a058116ed9083844d704a8",
+              "publishedSHA256": "d341b0d7b9bd4a5d1b75faa8e7c4afa9c6bd06dee0a058116ed9083844d704a8"
+            },
+            {
+              "path": "backend/test/webResearchActionLifecycle.test.js",
+              "mode": "100644",
+              "originalBlob": "165981e9d589d2aa0231b06f209974a9db2b69d4",
+              "publishedBlob": "165981e9d589d2aa0231b06f209974a9db2b69d4",
+              "originalSHA256": "b1f1efa0474d116a2015df01345cb9eab4e7d35c201dd864b13ea6cb11826e65",
+              "publishedSHA256": "b1f1efa0474d116a2015df01345cb9eab4e7d35c201dd864b13ea6cb11826e65"
+            },
+            {
+              "path": "docs/handoff/backend-functional-research-fix-20261013.md",
+              "mode": "100644",
+              "originalBlob": "cf05adb44e5cf46718f6c419917d8927b3e7a36a",
+              "publishedBlob": "4997d323affc5a9bfeb5817053c083707529fe08",
+              "originalSHA256": "09f352476f899561895db69ecf5df47e543635debe306ea518b2f0083ebad60d",
+              "publishedSHA256": "c7a88c08e5c85077dc1a5d40fa5424d61bfcd4f9d4b2b5b4738a2e784b10efc8"
+            }
+          ]
+        }
+      ],
+      "publication": "Source/test/runtime/SQL/operator bytes and modes preserved exactly. New operational Markdown versions are sanitized; private runtime, trial, key/role, deployment and approval facts are not published. Append-only continuation of the existing public backup.",
+      "validation": "Coordinator reports independent manual final-source review and 130 credential-free fixtures passing; source owner recorded 108 then 109 focused checks at its checkpoints. No rerun by backup owner. Mocked functional recovery is established; live provider/route/Commons/phone acceptance remains unproven.",
+      "ordinaryBuildOperatorConfigurationSQLEntitlementFilesUnchangedFromPreviousCandidate": true
     }
   ]
 }

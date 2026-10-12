@@ -1,6 +1,6 @@
 # Bounded research lifecycle diagnostic proposal
 
-This directory contains reviewed source preparation. Publication does not establish an active entitlement, an executed diagnostic or a functional repair. Ordinary `backend/package.json` and `backend/vercel.json` remain unchanged.
+This directory contains reviewed diagnostic and bounded recovery source. Fixtures establish mocked recovery behavior; publication does not establish actual provider completion, an active entitlement or live phone acceptance. Ordinary `backend/package.json` and `backend/vercel.json` remain unchanged.
 
 ## Code rules
 
@@ -22,7 +22,7 @@ Any execution requires separate approval of exact source, SQL, configuration and
 
 The operator uses a public fixed reproduction input. It keeps only closed status/type buckets, presence booleans, bounded step/function/error/token counts and validator results. It does not retain text, prompt, coordinates, source URLs, opaque IDs or token values. The result must match its job binding and affect exactly one row. There is no polling, background/store mode, URL followup or automatic continuation.
 
-Synthetic/disposable PostgreSQL tests cover immutable bindings, race/replay, cumulative accounting, disabled guards, unsafe grants, expired/future/prebound inserts and reset refusal. Fixture results do not prove actual provider completion or route/photo/Saved/packing behavior. Observe and review any real result before claiming a functional correction or authorizing later native acceptance.
+Synthetic/disposable PostgreSQL tests cover immutable bindings, race/replay, cumulative accounting, disabled guards, unsafe grants, expired/future/prebound inserts and reset refusal. Fixture results do not prove actual provider completion or route/photo/Saved/packing behavior. Observe and review any real result before claiming live remediation or authorizing later native acceptance.
 
 Revocation preserves all spent phase and original counters. Expired or used phases cannot be silently renewed.
 
