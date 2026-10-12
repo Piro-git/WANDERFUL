@@ -1,6 +1,6 @@
 # Current Wanderful development source
 
-The `codex/latest-20261010` branch combines the recovered iOS/integration source, the latest backend corrections, and the independent QA source. It is the development starting point for local and Cloud work. Read `AGENTS.md` and `CLOUD_HANDOFF.md` first.
+The combined iOS/integration, backend and independent QA source from `codex/latest-20261010` was merged into main. Use verified current `origin/main` as the baseline for new local and Cloud tasks; continue unfinished work on its own named task branch. Read `AGENTS.md` and `CLOUD_HANDOFF.md` first.
 
 ## Source provenance
 

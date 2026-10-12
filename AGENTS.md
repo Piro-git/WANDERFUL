@@ -1,8 +1,35 @@
 # AGENTS.md — TrailMind / EasyWander
 
+## Automatic task checkpoints and device handoff — enabled 2026-10-12
+
+Use the repository skill `.agents/skills/device-handoff/SKILL.md` at the start
+of a source/docs work unit and before its final response. The user enabled
+routine review, task handoff updates, commits and normal pushes of task-owned
+source/docs to this repository's task branches. This is not authorization to
+publish unrelated/private files or to merge main, deploy or change databases.
+
+- Start by inspecting local work and freshly checking the requested task branch
+  on GitHub. For new work use current main as the base; for continuation use the
+  existing task branch and `docs/handoff/<task-name>.md`. Never auto-switch away
+  from unfinished work or reset a stale Cloud workspace.
+- After a coherent work unit, review the diff, run appropriate checks, update the
+  task handoff and checkpoint reviewed task files on a codex/ branch. Push through
+  available authorized Git/GitHub tools and verify the remote commit. For partial
+  work report failed/unrun tests honestly and keep the PR in draft.
+- These routine checkpoints do not require a fresh confirmation when within the
+  enabled scope; actual tool permissions still apply. Report blocked publication
+  plainly. Never describe an unpushed local commit as a completed handoff.
+- One writer per task branch. For an explicit device handoff, stop editing after
+  the receipt. A handoff file is context, not an enforceable cross-agent lock.
+- Informational questions alone do not trigger commits/pushes. Do not create
+  timers, hooks, new chats or deployments as a side effect of this workflow.
+
+The personal copy makes the skill reusable locally; the repo copy makes the
+same procedure available to Cloud agents. See `CLOUD_HANDOFF.md` for usage.
+
 ## Cross-device development — updated 2026-10-10
 
-Read `CLOUD_HANDOFF.md` before continuing from Codex Cloud or a new checkout. Use `codex/latest-20261010` for the current combined development source. `docs/development/SOURCE_PUBLICATION_2026-10-10.json` maps each imported source file to its original Git blob and records portable operator-script adaptations. The separate backup branches preserve each source variant; their private execution receipts and credentials are kept outside the public repository. Earlier publication receipts describe their dated candidates, not this updated source. Do not infer live readiness or App Store approval from source publication.
+Read `CLOUD_HANDOFF.md` before continuing from Codex Cloud or a new checkout. Use verified current `origin/main` for new tasks; continue unfinished work on its named task branch. The former `codex/latest-20261010` source has been merged into main. `docs/development/SOURCE_PUBLICATION_2026-10-10.json` maps each imported source file to its original Git blob and records portable operator-script adaptations. The separate backup branches preserve each source variant; their private execution receipts and credentials are kept outside the public repository. Earlier publication receipts describe their dated candidates, not this updated source. Do not infer live readiness or App Store approval from source publication.
 
 Cloud setup uses Node 22+, locked backend dependencies and credential-free fixture checks. Preserve complete Git history for provenance tests. Keep iOS/Xcode and physical-device validation on an appropriate Apple environment; report unsupported checks honestly. Personal Mac skills are not automatically synced to Cloud. Never transfer local secrets, signing material or personal Codex authentication. Commit/push intended work when switching execution environments; reopening the same Cloud chat preserves that task's own workspace.
 
