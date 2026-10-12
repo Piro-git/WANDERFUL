@@ -10,7 +10,7 @@ test('provided public title is preserved; missing display metadata never manufac
  const f=fixture();f.steps[4].content[0].annotations[0].title='Official park page';assert.equal(parseGroundedWebResearch(f).blocks[0].citations[0].title,'Official park page');
 });
 test('title compatibility cannot bypass ranges, public URL, actual read, call correlation or attribution checks',()=>{
- for(const mutate of [f=>{delete f.steps[4].content[0].annotations[0].url;},f=>{delete f.steps[4].content[0].annotations[0].start_index;},f=>{f.steps[4].content[0].annotations[0].end_index=999;},f=>{f.steps[3].result[0].status='paywall';},f=>{f.steps[1].call_id='unmatched';},f=>{f.steps[4].content[0].annotations[0].url='http://127.0.0.1/';},f=>{f.steps[4].content[0].annotations[0].title={body:'untrusted'};}]){
+ for(const mutate of [f=>{delete f.steps[4].content[0].annotations[0].url;},f=>{f.steps[4].content[0].annotations[0].end_index=999;},f=>{f.steps[3].result[0].status='paywall';},f=>{f.steps[1].call_id='unmatched';},f=>{f.steps[4].content[0].annotations[0].url='http://127.0.0.1/';},f=>{f.steps[4].content[0].annotations[0].title={body:'untrusted'};}]){
   const f=fixture();mutate(f);assert.throws(()=>parseGroundedWebResearch(f),{code:'web_research_unverified'});
  }
 });

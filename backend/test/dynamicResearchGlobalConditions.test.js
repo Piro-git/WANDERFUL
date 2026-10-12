@@ -22,6 +22,19 @@ for(const row of cases)test(`generic discovery + source read + extraction withou
  const result=await lookup({...f,visitTime:'2026-09-10T09:00:00+02:00'},{reserveGeneration:()=>{gen++;},reserveSource:()=>{sources++;return true;}});
  assert.equal(searches,1);assert.equal(reads,1);assert.equal(extracts,1);assert.equal(gen,2);assert.equal(sources,1);assert.equal(result.notices.length,1);assert.equal(result.notices[0].status,row[4]);assert.equal(result.notices[0].geometry,null);assert.equal(result.notices[0].restrictionArea,false);assert.ok(result.researchEvidence);assert.equal(result.sources[0].state,'checked');
 });
+test('optional citation metadata survives nested current-source attribution without attributing a model sentence',async()=>{
+ const f=fixture(cases[0]);
+ const citation=f.web.blocks[0].citations[0];delete citation.startIndex;delete citation.endIndex;citation.scope='source';
+ f.web.observedSearchQueries=null;f.web.observedSearchCalls=1;f.web.searchSuggestions=[];
+ const lookup=createGenericConditionLookup({userAgent:'Synthetic contract test',now:()=>now,researchWeb:async()=>f.web,
+  publicFetchImpl:async()=>new Response(f.html,{headers:{'Content-Type':'text/html'}}),extractConditions:async()=>({notices:[f.n]})});
+ const result=await lookup(f);
+ assert.equal(result.researchEvidence,f.web);assert.equal(result.researchEvidence.observedSearchQueries,null);
+ assert.equal(result.researchEvidence.blocks[0].citations[0].scope,'source');
+ assert.equal(result.researchEvidence.blocks[0].citations[0].startIndex,undefined);
+ // Notice extraction still uses independently read document passages, not the model's unspanned text.
+ assert.equal(result.notices.length,1);assert.equal(result.notices[0].status,'active');
+});
 test('same-name remote subject, forged passage, missing identity and invented date rejected',()=>{
  const f=fixture(cases[0]),document=parseSourceDocument(f.html,{url:f.url,retrievedAt:checkedAt,generic:true});
  const validate=(n=f.n,doc=document,request=f.request)=>validateConditionExtraction({notices:[n]},{documents:[doc],request,checkedAt});

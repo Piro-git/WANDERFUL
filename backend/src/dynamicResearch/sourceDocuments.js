@@ -103,7 +103,7 @@ export function createSourceDocumentLookup({fetchImpl=globalThis.fetch,userAgent
   return async({web,places},{signal,reserveSource=()=>true}={})=>{
     if(!Array.isArray(places)||places.length>10)throw new TypeError('invalid_route_evidence');
     let calls=0;const documents=[],sources=[];
-    const urls=[...new Set(web.blocks.flatMap(b=>b.citations.filter(c=>places.some(p=>mentionsName(b.text.slice(c.startIndex,c.endIndex),p.name))).map(c=>c.url)))];
+    const urls=[...new Set(web.blocks.flatMap(b=>b.citations.filter(c=>c.scope!=='source'&&places.some(p=>mentionsName(b.text.slice(c.startIndex,c.endIndex),p.name))).map(c=>c.url)))];
     for(const url of urls.slice(0,20)) {
       if(!web.retrievedSourceURLs.includes(url)||!publicSourceURL(url)){sources.push({url,state:'not_checked',reason:'unread_or_unreviewed_source'});continue;}
       try {

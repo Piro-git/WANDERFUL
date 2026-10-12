@@ -36,7 +36,7 @@ test('grounded answer preserves full text, citation offsets, suggestions and ret
 test('model claims alone, search without page read, and failed page retrieval cannot count as completed research',()=>{
  for(const mutate of [f=>{f.steps=f.steps.filter(s=>s.type==='model_output');},f=>{f.steps=f.steps.filter(s=>!s.type.startsWith('url_context'));},
   f=>{f.steps[3].result[0].status='paywall';},f=>{f.steps[3].result[0].url='https://different.example.org/';},
-  f=>{f.steps[1].call_id='invented';},f=>{f.steps[1].result=[];}]) {
+  f=>{f.steps[1].call_id='invented';},f=>{delete f.steps[1].result;}]) {
   const f=fixture();mutate(f);assert.throws(()=>parseGroundedWebResearch(f),{code:'web_research_unverified'});
  }
 });

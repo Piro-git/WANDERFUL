@@ -12,13 +12,31 @@ struct DynamicEvidenceUITestView: View {
         let fixtureDate = ISO8601DateFormatter().date(from: "2026-09-07T01:00:00Z")!
         var route = try! BackendDynamicResearchPlanningClient.validate(Data(contentsOf: file), request: request,
             start: Coordinate(latitude: 57.2, longitude: -4.7), end: nil, context: .unspecified, now: fixtureDate).suggestion.route
+        if ProcessInfo.processInfo.arguments.contains("--trailmind-ui-evidence-source-only"), let web = route.dynamicWebResearch {
+            // Preserve route geometry/IDs while exercising documented optional metadata.
+            let blocks = web.blocks.map { block in
+                DynamicWebResearch.Block(text: block.text, citations: block.citations.map {
+                    .init(url: $0.url, title: $0.title, scope: .source)
+                })
+            }
+            let claims = web.routeEvidence?.claims.map {
+                DynamicRouteEvidence.Claim(id: $0.id, blockIndex: $0.blockIndex, citationIndex: $0.citationIndex,
+                    placeId: nil, relationship: "unconfirmed")
+            } ?? []
+            let mapping = web.routeEvidence.map {
+                DynamicRouteEvidence(schemaVersion: $0.schemaVersion, routeId: $0.routeId, places: $0.places, claims: claims)
+            }
+            route.dynamicWebResearch = DynamicWebResearch(provider: web.provider, retrievedAt: web.retrievedAt,
+                blocks: blocks, searchSuggestions: [], retrievedSourceURLs: web.retrievedSourceURLs,
+                observedSearchQueries: nil, observedSearchCalls: 1, routeEvidence: mapping)
+        }
         if ProcessInfo.processInfo.arguments.contains("--trailmind-ui-evidence-missing") {
             route.dynamicWebResearch = nil
         } else if !ProcessInfo.processInfo.arguments.contains("--trailmind-ui-evidence-expired"), let web = route.dynamicWebResearch {
             route.dynamicWebResearch = DynamicWebResearch(provider: web.provider,
                 retrievedAt: ISO8601DateFormatter().string(from: .now), blocks: web.blocks,
                 searchSuggestions: web.searchSuggestions, retrievedSourceURLs: web.retrievedSourceURLs,
-                observedSearchQueries: web.observedSearchQueries, routeEvidence: web.routeEvidence)
+                observedSearchQueries: web.observedSearchQueries, observedSearchCalls: web.observedSearchCalls, routeEvidence: web.routeEvidence)
         }
         if ProcessInfo.processInfo.arguments.contains("--trailmind-ui-preparation-persistence") {
             // Dedicated synthetic identity; exercise the real store without touching saved routes.

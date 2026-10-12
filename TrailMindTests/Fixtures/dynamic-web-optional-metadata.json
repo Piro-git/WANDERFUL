@@ -1,0 +1,25 @@
+{
+  "provider": "google_grounding",
+  "retrievedAt": "2026-09-07T00:00:00.000Z",
+  "blocks": [
+    {
+      "text": "🥾 Schöne 山 é — synthetic source context.",
+      "citations": [
+        {
+          "url": "https://www.openstreetmap.org/node/1",
+          "title": "www.openstreetmap.org",
+          "scope": "source"
+        }
+      ]
+    }
+  ],
+  "searchSuggestions": [],
+  "retrievedSourceURLs": [
+    "https://www.openstreetmap.org/node/1"
+  ],
+  "observedSearchQueries": null,
+  "observedSearchCalls": 1,
+  "limitations": [
+    "Source references attribute research; they do not verify current access, safety, water or route geometry."
+  ]
+}

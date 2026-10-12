@@ -181,6 +181,47 @@ final class SavedRouteStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testSourceOnlyResearchSavePreservesRouteAndSeparatePackingState() async throws {
+        let directory = makeDirectoryURL()
+        var route = makeCompleteRoute()
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/dynamic-web-optional-metadata.json")
+        route.dynamicWebResearch = try JSONDecoder().decode(DynamicWebResearch.self, from: Data(contentsOf: fixture))
+        try route.dynamicWebResearch?.validate()
+        let suite = "ResearchContractPacking." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let input = PreparationInput(routeID: route.id, isHiking: true,
+            distanceKM: route.distanceKilometers, durationHours: route.durationHours)
+        let packingStore = PreparationStore(defaults: defaults)
+        var packing = try packingStore.load(input)
+        packing.statuses["water"] = .packed
+        packing.add("My camera")
+        let customID = try XCTUnwrap(packing.customItems.first?.id)
+        packing.statuses[customID] = .packed
+        try packingStore.save(packing)
+        let originalPackingData = defaults.data(forKey: packingStore.key(route.id))
+        _ = try await LocalSavedRouteStore(directoryURL: directory).save(route, at: .now)
+        let loaded = try await LocalSavedRouteStore(directoryURL: directory).load()
+        let restored = try XCTUnwrap(loaded.snapshots.first?.route)
+        XCTAssertEqual(restored.id, route.id)
+        XCTAssertEqual(restored.path, route.path)
+        XCTAssertEqual(restored.days, route.days)
+        XCTAssertNil(restored.dynamicWebResearch)
+        XCTAssertEqual(defaults.data(forKey: packingStore.key(restored.id)), originalPackingData)
+        let restoredPacking = try PreparationStore(defaults: defaults).load(input)
+        XCTAssertEqual(restoredPacking.status("water"), .packed)
+        XCTAssertEqual(restoredPacking.status(customID), .packed)
+        XCTAssertEqual(restoredPacking.customItems.first?.label, "My camera")
+        for file in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            where file.pathExtension == "json" {
+            let stored = try String(contentsOf: file, encoding: .utf8)
+            XCTAssertFalse(stored.contains("synthetic source context"))
+            XCTAssertFalse(stored.contains("observedSearchCalls"))
+        }
+    }
+
+    @MainActor
     func testCompleteRouteSurvivesStoreRecreation() async throws {
         let directory = makeDirectoryURL()
         let route = makeCompleteRoute()

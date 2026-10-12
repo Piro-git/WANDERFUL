@@ -11,7 +11,7 @@ final class DynamicEvidenceUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["route.evidence.osm:node:2"].label.contains("No web passage reliably linked"))
         for _ in 0..<4 where !app.buttons["route.evidence.originalResearch"].isHittable { app.swipeUp() }
         app.buttons["route.evidence.originalResearch"].tap()
-        XCTAssertTrue(app.staticTexts["Original web research"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Web research with Google"].waitForExistence(timeout: 5))
         // SwiftUI reports this medium-weight label as Other on some iOS 26 runtimes.
         let excluded = app.descendants(matching: .any).matching(
             NSPredicate(format: "label == %@", "Not on this route: Earlier ridge (offline fixture)")
@@ -19,7 +19,7 @@ final class DynamicEvidenceUITests: XCTestCase {
         for _ in 0..<4 where !excluded.isHittable { app.swipeUp() }
         XCTAssertTrue(excluded.exists)
         XCTAssertTrue(excluded.isHittable)
-        XCTAssertTrue(app.staticTexts["Original web research"].exists)
+        XCTAssertTrue(app.staticTexts["Web research with Google"].exists)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Revised route — offline fixture"
         attachment.lifetime = .keepAlways
@@ -35,6 +35,36 @@ final class DynamicEvidenceUITests: XCTestCase {
             XCTAssertTrue(app.staticTexts["route.evidence.osm:node:1"].label.contains("Web evidence unavailable"))
             app.swipeUp()
             XCTAssertFalse(app.buttons["route.evidence.originalResearch"].exists)
+            app.terminate()
+        }
+    }
+
+    @MainActor
+    func testSourceOnlyResearchHasNoInventedPassagesOrSuggestionsInEitherLanguage() {
+        for (language, title, description) in [
+            ("de", "Web-Recherche mit Google", "In der Recherche genannt und gelesen. Die Quelle ist keinem bestimmten Satz zugeordnet."),
+            ("en", "Web research with Google", "Cited and read during research. The source is not linked to a specific sentence.")
+        ] {
+            let app = launch(extra: ["--trailmind-ui-evidence-source-only"], language: language)
+            let research = app.buttons["route.evidence.originalResearch"]
+            for _ in 0..<8 where !research.isHittable { app.swipeUp() }
+            XCTAssertTrue(research.waitForExistence(timeout: 5))
+            research.tap()
+            XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
+            let sources = app.buttons["route.evidence.sources"]
+            for _ in 0..<8 where !sources.isHittable { app.swipeUp() }
+            XCTAssertTrue(sources.waitForExistence(timeout: 5))
+            sources.tap()
+            let reference = app.staticTexts["route.evidence.sourceScope.0.0"]
+            for _ in 0..<6 where !reference.isHittable { app.swipeUp() }
+            XCTAssertEqual(reference.label, description)
+            XCTAssertTrue(reference.isHittable)
+            XCTAssertFalse(app.staticTexts["Selected map record."].exists)
+            XCTAssertEqual(app.webViews.count, 0, "No provider HTML was supplied in this synthetic response.")
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Source reference without sentence span · " + language
+            attachment.lifetime = .keepAlways
+            add(attachment)
             app.terminate()
         }
     }

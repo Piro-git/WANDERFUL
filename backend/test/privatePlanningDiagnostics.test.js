@@ -27,3 +27,16 @@ test('HTTP success with invalid grounded shape is a distinct validation stage, u
  let calls=0;const fn=createGeminiWebResearch({apiKey:'offline-only',model:'gemini-3.8-flash',fetchImpl:async()=>{calls++;return Response.json({steps:[],sensitive:SECRET});}});
  await assert.rejects(fn({prompt:'Public test walk',locationName:'Public town'}),e=>e.code==='web_research_unverified'&&e.privateResearchStage==='web_search_validation'&&!JSON.stringify(safePrivateFailure(e)).includes(SECRET));assert.equal(calls,1);
 });
+
+test('closed validation subreason is preserved while arbitrary provider shape values remain private',()=>{
+ const rows=[],logger=createPrivatePlanningLogger({info:x=>rows.push(x)});
+ const summary=safePrivateFailure({code:'web_research_unverified',privateResearchStage:'web_search_validation',privateResearchValidationReason:'citation_range_missing',message:SECRET,body:SECRET});
+ assert.deepEqual(summary,{diagnosticCode:'web_research_unverified',diagnosticStage:'web_search_validation',diagnosticValidationReason:'citation_range_missing'});
+ logger.info({event:'llm_first_planning_completed',...summary,providerShape:SECRET});
+ assert.equal(rows[0].diagnosticValidationReason,'citation_range_missing');
+ const unknown=safePrivateFailure({code:'web_research_unverified',privateResearchStage:'web_search_validation',privateResearchValidationReason:SECRET});
+ assert.equal(unknown.diagnosticValidationReason,undefined);
+ logger.info({event:'llm_first_planning_completed',diagnosticValidationReason:SECRET});
+ assert.deepEqual(rows[1],{event:'llm_first_planning_completed'});
+ assert.ok(!JSON.stringify(rows).includes(SECRET));
+});
