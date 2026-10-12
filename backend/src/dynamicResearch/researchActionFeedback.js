@@ -1,8 +1,7 @@
 // This phase declares only server-side Google Search and URL Context tools.
 // Never dispatch a proposed client function or fetch a URL from its arguments.
 const invalid=()=>{throw Object.assign(new Error('web_research_unverified'),{
- code:'web_research_unverified',privateResearchValidationReason:'research_action_invalid',
- privateResearchProviderStatus:'requires_action'
+ code:'web_research_unverified',privateResearchValidationReason:'research_action_invalid'
 });};
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const id=x=>typeof x==='string'&&x.trim().length>0&&x.length<=200;

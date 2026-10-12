@@ -155,7 +155,11 @@ export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch
     let history=[{type:'user_input',content:[{type:'text',text:input}]}];
     let payload=await diagnosticStage('web_search_http',()=>interact(input,tools));
     if(payload?.status==='requires_action'){
-      const feedback=await diagnosticStage('web_action_validation',()=>researchActionFeedback(payload));
+      const feedback=await diagnosticStage('web_action_validation',()=>{
+        try{return researchActionFeedback(payload);}catch(error){
+          error.privateResearchProviderStatus='requires_action';throw error;
+        }
+      });
       recovered=true;
       history=validateResearchHistory([...history,...payload.steps,...feedback,
         {type:'user_input',content:[{type:'text',text:'The unregistered client function was rejected and was not executed. Complete source research only with the declared Google Search and URL Context tools. Do not request client-side routing or image functions; those run in later stages. Return source-backed text, not invented tool results.'}]}

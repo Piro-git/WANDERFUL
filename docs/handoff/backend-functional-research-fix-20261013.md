@@ -1,6 +1,6 @@
 # Functional research lifecycle repair source handoff
 
-Source checkpoint: `2ae22dc66ef6d417a8728b5a319f4efd2d320bdc`. Publication continues `codex/github-iphone-candidate-20261012`.
+Source checkpoint: `115fb52a111785285800fa72ff7cc7fa94f44deb`. Publication continues `codex/github-iphone-candidate-20261012`.
 
 ## Completed and decisions
 
@@ -10,9 +10,11 @@ Complete transport history and opaque signatures remain transient and unchanged 
 
 Evidence remains separate: genuine server tool records survive while unfinished model output is excluded. Acceptance requires completed status, correlated unique calls/results, successful public source reads and valid citations. Unsafe or executable histories, conflicting IDs and denied reservations cannot bypass these checks. Native source, SQL, entitlement accounting implementation and ordinary build configuration are unchanged.
 
+The final diagnostic correction preserves the actually observed provider status; malformed completed recovery does not acquire an invented pending status.
+
 ## Checks and limits
 
-The source owner recorded 108 focused credential-free fixture checks passing at this checkpoint. These checks were not rerun by the backup owner. Mocked functional behavior is established; real provider routes, Commons photographs and physical-phone Saved/packing acceptance remain unproven.
+The source owner recorded 109 focused credential-free fixture checks. The coordinator independently reviewed the final source and reported 130 credential-free fixtures passing. These checks were not rerun by the backup owner. Mocked functional behavior is established; real provider routes, Commons photographs and physical-phone Saved/packing acceptance remain unproven.
 
 ## Continuation
 

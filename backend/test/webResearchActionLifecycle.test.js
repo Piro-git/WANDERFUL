@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {safePrivateFailure} from '../src/ownerAccess/privatePlanningDiagnostics.js';
 import {createGeminiWebResearch} from '../src/dynamicResearch/webResearch.js';
 const url='https://official.example.org/viewpoint',text='A documented viewpoint.';
 const pending=()=>({status:'requires_action',steps:[{type:'thought',summary:[{type:'text',text:'Opaque model thought.'}],signature:'SYNTHETIC_THOUGHT_SIGNATURE'},{type:'function_call',id:'actual-fixture-call',name:'unregistered_lookup',arguments:{query:'Synthetic source query'}}]});
@@ -82,4 +83,13 @@ test('bounded invalid histories and exhausted readback reservation cannot start 
  let calls=0,reserves=0;const g=grounded(),search={status:'completed',steps:[...g.steps.slice(0,2),g.steps[4]]};
  const research=createGeminiWebResearch({apiKey:'offline-only',model:'gemini-3.8-flash',fetchImpl:async()=>{calls++;return Response.json(calls===1?pending():search);}});
  await assert.rejects(research(req,{reserveGeneration(){return ++reserves<2;}}),{code:'research_budget_exhausted'});assert.equal(calls,2);
+});
+
+test('invalid completed recovery never invents a requires-action status in diagnostics',async()=>{
+ let calls=0;const completed=grounded();completed.steps.unshift({type:'function_call',id:'invalid-extra',name:'unknown',arguments:{}});
+ const research=createGeminiWebResearch({apiKey:'offline-only',model:'gemini-3.8-flash',fetchImpl:async()=>{calls++;return Response.json(calls===1?pending():completed);}});
+ await assert.rejects(research(req),error=>{
+  const summary=safePrivateFailure(error);assert.equal(summary.diagnosticValidationReason,'research_action_invalid');
+  assert.equal(summary.diagnosticStage,'web_action_validation');assert.equal(summary.diagnosticProviderStatus,undefined);return true;
+ });assert.equal(calls,2);
 });
