@@ -157,13 +157,13 @@
     "Private recovery material"
   ],
   "validation": "Publication verifies source identity; it does not establish live route/photo success, physical-phone acceptance or release approval.",
-  "latestOriginalCandidate": "541df9623f69c2d89462de5cf0174ffe198bb751",
-  "latestSourceCandidateCommit": "22fb52dda84a02ffbffabb13830e6d2bca1cf68f",
+  "latestOriginalCandidate": "33c759eff28bf8c9330288b82f39ed32cc951f05",
+  "latestSourceCandidateCommit": "a4deb33fb3cd7b6d9352c322692e0a0093149f53",
   "latestSourceTrees": {
     "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
     "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
     "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
-    "backend": "ff32ec095e5f662d0575ee3db83f194579d3b6e2"
+    "backend": "0a36a3e616b3357d00645c4c7fb5357f5847211b"
   },
   "supplements": [
     {
@@ -268,6 +268,199 @@
       "publication": "Source equivalent checkpoint appended to the verified existing sanitized publication head. Original private commit history, handoff and README blobs are not imported. Backend/native source and operator SQL/template/test blobs are unchanged.",
       "priorIndependentValidation": "Coordinator reported 50 offline fixtures and nine disposable PostgreSQL checks, zero failures. Not rerun for this backup; no genuine provider/phone acceptance inferred.",
       "operations": "Publication only; no deployment, database/activation, provider, quota or phone operation."
+    }
+  ],
+  "diagnosticPreparations": [
+    {
+      "originalBase": "541df9623f69c2d89462de5cf0174ffe198bb751",
+      "publishedBase": "fa692396bbbde8ed901bc6dd033d4044c3cf9257",
+      "originalCandidate": "33c759eff28bf8c9330288b82f39ed32cc951f05",
+      "publishedSourceCandidate": "a4deb33fb3cd7b6d9352c322692e0a0093149f53",
+      "publishedSourceTree": "65fbd74d02ca654517ad5b039719de3f0876f90d",
+      "sourceTrees": {
+        "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+        "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+        "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
+        "backend": "0a36a3e616b3357d00645c4c7fb5357f5847211b"
+      },
+      "commits": [
+        {
+          "original": "7c2917b707b33d00e74abf18665defdd50c8201b",
+          "published": "bd972d48486b23cd2855ac8dd9ed019962a7760a",
+          "originalParent": "541df9623f69c2d89462de5cf0174ffe198bb751",
+          "publishedParent": "fa692396bbbde8ed901bc6dd033d4044c3cf9257",
+          "originalTree": "78c62851e135e8c9a32cd0bac7a66475153c4412",
+          "publishedTree": "e11703f18bc90d5de029af534c03e5c55a7d8ccd",
+          "sourceTrees": {
+            "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+            "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+            "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
+            "backend": "760eae2a3f3726145b72344bdf71e07933333f3c"
+          },
+          "fileMapping": [
+            {
+              "path": "backend/src/dynamicResearch/webResearch.js",
+              "originalBlob": "99a107b059661e171b23e8ca708b5c5130e9b50b",
+              "publishedBlob": "99a107b059661e171b23e8ca708b5c5130e9b50b",
+              "originalSHA256": "df095c547d47a7219d87e73e976bd8ac1dd64cd44333a5934cfa29d5289f8c0d",
+              "publishedSHA256": "df095c547d47a7219d87e73e976bd8ac1dd64cd44333a5934cfa29d5289f8c0d"
+            },
+            {
+              "path": "backend/src/ownerAccess/privatePlanningDiagnostics.js",
+              "originalBlob": "f0124cc2539d19e3197e3c62bc532eba7fcf3af8",
+              "publishedBlob": "f0124cc2539d19e3197e3c62bc532eba7fcf3af8",
+              "originalSHA256": "9a4e8365c3466fb903cbeae7cd414bb42322709552272bf6535f00db3e149851",
+              "publishedSHA256": "9a4e8365c3466fb903cbeae7cd414bb42322709552272bf6535f00db3e149851"
+            },
+            {
+              "path": "backend/test/privatePlanningDiagnostics.test.js",
+              "originalBlob": "4aff14c4c9355982b9673010132dcbef26f54b10",
+              "publishedBlob": "4aff14c4c9355982b9673010132dcbef26f54b10",
+              "originalSHA256": "b5857b0c920fcb6ff1376d5ac7c109d33e24dfb3e34eb9c5923f9eed1c98c35a",
+              "publishedSHA256": "b5857b0c920fcb6ff1376d5ac7c109d33e24dfb3e34eb9c5923f9eed1c98c35a"
+            },
+            {
+              "path": "docs/handoff/backend-provider-completion-diagnostics-20261013.md",
+              "originalBlob": "1e08d9d0ae8fb6394366cb84ce82fcdb3cb1a4ba",
+              "publishedBlob": "03c9698eda9d232570cefd21cb91172638be9d29",
+              "originalSHA256": "d76ca354f034bb09f6e5065a996c8029fd6b3c8e85de818c227600b41cdeff41",
+              "publishedSHA256": "00fa2f46ef7e3d92a90f44aa16762052ac0d8c6306944db2d45e3593149487ad"
+            }
+          ]
+        },
+        {
+          "original": "33c759eff28bf8c9330288b82f39ed32cc951f05",
+          "published": "a4deb33fb3cd7b6d9352c322692e0a0093149f53",
+          "originalParent": "7c2917b707b33d00e74abf18665defdd50c8201b",
+          "publishedParent": "bd972d48486b23cd2855ac8dd9ed019962a7760a",
+          "originalTree": "880727467ea322a632dbd4173cfd11473d087690",
+          "publishedTree": "65fbd74d02ca654517ad5b039719de3f0876f90d",
+          "sourceTrees": {
+            "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+            "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+            "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
+            "backend": "0a36a3e616b3357d00645c4c7fb5357f5847211b"
+          },
+          "fileMapping": [
+            {
+              "path": "backend/scripts/runReviewedBuildDiagnostic.js",
+              "originalBlob": "aea4b28bcf2993729b8252a8cacae0a0e75c5859",
+              "publishedBlob": "aea4b28bcf2993729b8252a8cacae0a0e75c5859",
+              "originalSHA256": "57c70266d14a0b6a768d4ecb0c9614e6eb7aec7e63e8579dc5c8c932bfbec464",
+              "publishedSHA256": "57c70266d14a0b6a768d4ecb0c9614e6eb7aec7e63e8579dc5c8c932bfbec464"
+            },
+            {
+              "path": "backend/src/dynamicResearch/webResearch.js",
+              "originalBlob": "0dc1a86354a45b1b8ace08672b8db0e6dda82c12",
+              "publishedBlob": "0dc1a86354a45b1b8ace08672b8db0e6dda82c12",
+              "originalSHA256": "424beb3e3fade6c085f980ccaae09346e851e583a07bc5dc7f67baa8126483ec",
+              "publishedSHA256": "424beb3e3fade6c085f980ccaae09346e851e583a07bc5dc7f67baa8126483ec"
+            },
+            {
+              "path": "backend/src/ownerAccess/ownerDynamicPlanning.js",
+              "originalBlob": "4da33fa9e6d4fd899873687f4e316f6e81cf024a",
+              "publishedBlob": "4da33fa9e6d4fd899873687f4e316f6e81cf024a",
+              "originalSHA256": "b5c428a170a84650fd449eaffa93f0846bf11ab0596809c85fbe27557b64a7bf",
+              "publishedSHA256": "b5c428a170a84650fd449eaffa93f0846bf11ab0596809c85fbe27557b64a7bf"
+            },
+            {
+              "path": "backend/src/ownerAccess/planningFollowupEntitlement.js",
+              "originalBlob": "6a7f8e9ba4953d3142850096872c4549d9f5aa14",
+              "publishedBlob": "6a7f8e9ba4953d3142850096872c4549d9f5aa14",
+              "originalSHA256": "36cdb0bf936cc42121d95857bd13f3029361374217e3cc13df2b58d41717ecdc",
+              "publishedSHA256": "36cdb0bf936cc42121d95857bd13f3029361374217e3cc13df2b58d41717ecdc"
+            },
+            {
+              "path": "backend/src/ownerAccess/postgresOwnerRepository.js",
+              "originalBlob": "00b9eab4df0c741a06d2bda4cb35a3768f627980",
+              "publishedBlob": "00b9eab4df0c741a06d2bda4cb35a3768f627980",
+              "originalSHA256": "7d26a6ced31345d02c730f6d3a635ef51798b6318f6d454ebf587b389c94f14c",
+              "publishedSHA256": "7d26a6ced31345d02c730f6d3a635ef51798b6318f6d454ebf587b389c94f14c"
+            },
+            {
+              "path": "backend/src/ownerAccess/researchLifecycleDiagnostic.js",
+              "originalBlob": "9f0bfc9d56388bf8cfb0511c8d0f38cf8df29bd2",
+              "publishedBlob": "9f0bfc9d56388bf8cfb0511c8d0f38cf8df29bd2",
+              "originalSHA256": "0e050d16b5790e02aac0a72f790604d187b8de4b1646a711350fa0251806cb5b",
+              "publishedSHA256": "0e050d16b5790e02aac0a72f790604d187b8de4b1646a711350fa0251806cb5b"
+            },
+            {
+              "path": "backend/src/ownerAccess/runFollowupPostgresTests.js",
+              "originalBlob": "475e3ca1e7758e147b20c2da5cf51afe3f2a5294",
+              "publishedBlob": "475e3ca1e7758e147b20c2da5cf51afe3f2a5294",
+              "originalSHA256": "62d92ecf5f2d116012220e1d5a5bb7062ec719d38631d32c31dc2a08d85a88a4",
+              "publishedSHA256": "62d92ecf5f2d116012220e1d5a5bb7062ec719d38631d32c31dc2a08d85a88a4"
+            },
+            {
+              "path": "backend/src/ownerAccess/vercelOwnerRuntime.js",
+              "originalBlob": "985bf904798ca300dc97a5f27a72740eb923cdf5",
+              "publishedBlob": "985bf904798ca300dc97a5f27a72740eb923cdf5",
+              "originalSHA256": "f1b789b2ded63fb5378ba888f083f942cf90019b6d27355750add0738652af51",
+              "publishedSHA256": "f1b789b2ded63fb5378ba888f083f942cf90019b6d27355750add0738652af51"
+            },
+            {
+              "path": "backend/test/ownerFollowupEntitlementPostgres.test.js",
+              "originalBlob": "09a7b00eeef885ae561e0c2b668a3a0a3cdc62df",
+              "publishedBlob": "09a7b00eeef885ae561e0c2b668a3a0a3cdc62df",
+              "originalSHA256": "855ee9eb2d3dc2bbbc9b17080c36128859c9bd4b749f161736f8222bcb737875",
+              "publishedSHA256": "855ee9eb2d3dc2bbbc9b17080c36128859c9bd4b749f161736f8222bcb737875"
+            },
+            {
+              "path": "backend/test/researchLifecycleDiagnostic.test.js",
+              "originalBlob": "e283f096859dd6543da8761d6a06e8fbcb0df908",
+              "publishedBlob": "e283f096859dd6543da8761d6a06e8fbcb0df908",
+              "originalSHA256": "ab3258b72456a2058c24c76bb44dba71231ea7520048d923065b822068ef8f6a",
+              "publishedSHA256": "ab3258b72456a2058c24c76bb44dba71231ea7520048d923065b822068ef8f6a"
+            },
+            {
+              "path": "docs/handoff/backend-functional-research-fix-20261013.md",
+              "originalBlob": "bc2a754a112989357d768f194ee7a2b6949c37d6",
+              "publishedBlob": "6ca76c75f4eff2dd0bb47a7c57b29fc9c132aecd",
+              "originalSHA256": "9a73b0bb4f4810eb71201e78aff6ac63615930edef405f11dd22e3aad4d83b52",
+              "publishedSHA256": "bf5b042ab2ab25173dc46026d87d7afbbb3d4b65dce7fd3d7164ee4d9f1616dd"
+            },
+            {
+              "path": "docs/operations/research-followup-20261013/README.md",
+              "originalBlob": "f289e0d0da112a1ce2350eab1d74113f05b8161b",
+              "publishedBlob": "592b792d635e7371b6fdc7479eeee54270ab82e9",
+              "originalSHA256": "58fe8da64b1de075e90335610dafa445f77dc2bba8d6cbe37bb56fe92cb95f0e",
+              "publishedSHA256": "07e5aedc3d75b1e2e2980391fa9141db4708a3bd2bf2e61840dfc5883f3fabcb"
+            },
+            {
+              "path": "docs/operations/research-followup-20261013/followupEntitlementSetup.sql",
+              "originalBlob": "e55e493abc24ec7f3edbe4bd07ab5364134d5e1d",
+              "publishedBlob": "e55e493abc24ec7f3edbe4bd07ab5364134d5e1d",
+              "originalSHA256": "50f25d8b0522197b0759553520857b24480907502db3fad8b37eee9dda8d9a82",
+              "publishedSHA256": "50f25d8b0522197b0759553520857b24480907502db3fad8b37eee9dda8d9a82"
+            },
+            {
+              "path": "docs/operations/research-followup-20261013/prepareOperatorDiagnostic.mjs",
+              "originalBlob": "b3b4a45d07d01f93fa9a41eed4b2753a049c9a8f",
+              "publishedBlob": "b3b4a45d07d01f93fa9a41eed4b2753a049c9a8f",
+              "originalSHA256": "9178dea9b1105e78ddea95842767762208b6d3bd91c3cae9da054fa5d13c03d3",
+              "publishedSHA256": "9178dea9b1105e78ddea95842767762208b6d3bd91c3cae9da054fa5d13c03d3"
+            },
+            {
+              "path": "docs/operations/research-followup-20261013/prepareOperatorDiagnostic.test.mjs",
+              "originalBlob": "9ea8c069fe9c4ae82b9536d86092d6b73857f2ca",
+              "publishedBlob": "9ea8c069fe9c4ae82b9536d86092d6b73857f2ca",
+              "originalSHA256": "0c4a24b1c3ee8ed5f2596ab3f2a95e39ba97534e2ef34b24fd66b169f7172c3d",
+              "publishedSHA256": "0c4a24b1c3ee8ed5f2596ab3f2a95e39ba97534e2ef34b24fd66b169f7172c3d"
+            },
+            {
+              "path": "docs/operations/research-followup-20261013/vercel.operator-diagnostic.proposal.json",
+              "originalBlob": "9ddfcb4d6157206580f227eb770c2f1dbb979522",
+              "publishedBlob": "9ddfcb4d6157206580f227eb770c2f1dbb979522",
+              "originalSHA256": "3f90a82b9d8bbb1fb4d2ee638a3ae57e36c5022ffb87f7196f8acbef2e8e2ba9",
+              "publishedSHA256": "3f90a82b9d8bbb1fb4d2ee638a3ae57e36c5022ffb87f7196f8acbef2e8e2ba9"
+            }
+          ]
+        }
+      ],
+      "publication": "Two source-equivalent checkpoints appended to the existing sanitized publication. Three new Markdown documents omit private runtime, trial, approval and deployment details. Source/test/operator/SQL/configuration blobs are unchanged.",
+      "ordinaryBuildInputsUnchanged": true,
+      "validation": "Coordinator reported manual code/SQL/operator review after four guard corrections, 46 independent fixtures and seven disposable PostgreSQL checks, zero failures. Not rerun for publication; no demonstrated functional fix or real provider/phone acceptance.",
+      "scope": "Preparation for one explicitly selected Google diagnostic and a separately bound later native phase. Publication performs no deployment, database/activation, provider or phone action."
     }
   ]
 }

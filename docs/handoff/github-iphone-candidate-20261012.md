@@ -30,3 +30,11 @@ The source backup now also contains original checkpoint `541df9623f69c2d89462de5
 The coordinator reported 50 independent offline fixture checks plus nine disposable PostgreSQL checks with no failures. These were not repeated by the backup owner. The supplement remains opt-in: at most one intent/plan, eight Google and six GraphHopper attempts, with cumulative provider ceilings of 16/10. This source publication is not a record of an active allocation, actual ledger state or rollout, and establishes no genuine phone/provider result.
 
 For continuation, use the public branch and latest provenance entry. The locally retained original source history remains distinct; never push its private documentation ancestors back into this branch.
+
+## Research lifecycle diagnostic preparation
+
+Original checkpoints `7c2917b707b33d00e74abf18665defdd50c8201b` and `33c759eff28bf8c9330288b82f39ed32cc951f05` are source-equivalent public continuations of the existing sanitized history. Latest backend tree: `0a36a3e616b3357d00645c4c7fb5357f5847211b`. App and both native test trees remain unchanged. Code, SQL, operator proposal/configuration and tests retain their original blobs; the new handoffs and README omit private operational state.
+
+The coordinator reported manual source/SQL/operator review after four guard corrections, 46 independent fixture checks and seven disposable PostgreSQL checks, with zero failures. The backup owner did not repeat these. This is diagnostic preparation: no actual functional repair or real route/provider/phone result has been demonstrated.
+
+Ordinary package/default deployment configuration is unchanged. The diagnostic configuration requires explicit selection and a guarded one-shot operator. Publication does not execute the operator, activate an allocation, deploy or authorize later native acceptance. Private approvals, actual statuses, trial timing and generated execution records remain outside Git.
