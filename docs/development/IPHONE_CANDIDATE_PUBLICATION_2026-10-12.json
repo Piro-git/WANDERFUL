@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "repository": "Piro-git/WANDERFUL",
+  "branch": "codex/github-iphone-candidate-20261012",
+  "baseCommit": "d850970a67c52b92a456ea893553a0c55e392851",
+  "originalCandidate": "674d11de286c9185c995bf246d2a6794d3bf0fa4",
+  "originalCandidateTree": "f8ad4293d6b234175d403d4602a3360df61f0315",
+  "publishedCandidateCommit": "37e288146e594d7e06266eee8a395ae03a83d543",
+  "publishedCandidateTree": "dd7d5fa15d13bbd412fd10efc8278cc611ac2e98",
+  "sourceTrees": {
+    "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+    "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+    "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
+    "backend": "2fa5c9998329bb271863f575868048fe409fa243"
+  },
+  "sourceBlobs": {
+    "backend/src/dynamicResearch/webResearch.js": "281c54ef4ec647c13d9c85a4272613ec6fc2b4cf",
+    "backend/src/ownerAccess/privatePlanningDiagnostics.js": "f797a8f4077878c3092c38b04a6fa942cc67ed17",
+    "backend/test/privatePlanningDiagnostics.test.js": "f917c157f0379248c87c5547f82ea043edff1bc9",
+    "backend/test/webResearchOptionalContent.test.js": "4f4adf2817c96afc1dfe1f63bb465121224014ff",
+    "TrailMind/Localizable.xcstrings": "7cda65e2656fe2e7322603e92fc6a6ec582ab196",
+    "TrailMind/Services/DynamicWebResearch.swift": "56162496251e431e14a5c981407fa11295ed60f3",
+    "TrailMind/Testing/DynamicEvidenceUITestView.swift": "fdb9017e9f34ba68e147fd8bcd771bcfdc3979f0",
+    "TrailMind/Views/Route/DynamicResearchStopsView.swift": "7289b90a26ec8aecae3ef4612d6471a30e911349",
+    "TrailMind/Views/Route/DynamicWebResearchView.swift": "073931addd3dbc8f79fc24ec1c94a2a13a1cf094",
+    "TrailMindTests/DynamicResearchPlanningClientTests.swift": "8ebf063c6188649f9b5ae6c32cd31f2c29430347",
+    "TrailMindTests/DynamicWebResearchTests.swift": "c92d266a25b30d5eac8cf1176098dfb01a35d033",
+    "TrailMindTests/Fixtures/dynamic-web-optional-metadata.json": "86df9db8ca63946b42c8df72f8522e03ed4ef948",
+    "TrailMindTests/SavedRouteStoreTests.swift": "19cf99d8b4bc8affc81f4cda93c025223e70530c",
+    "TrailMindUITests/DynamicEvidenceUITests.swift": "a412284519a7fd9d2ccf199a17d60050a0262e3d",
+    "backend/src/dynamicResearch/evidence.js": "04fbe0d3652c9accd35c66ac18e2f601d7fe7835",
+    "backend/src/dynamicResearch/sourceDocuments.js": "57dca51f692601e3d675e55c7eda3cd53c40a14e",
+    "backend/test/dynamicResearchGlobalConditions.test.js": "dd0c49898e54bf26f490b210ccf16816ce2bc938",
+    "backend/test/dynamicResearchNativeFlow.test.js": "06c3f966473b1d8a8550f5e47a61327fdf42e45e",
+    "backend/test/dynamicResearchWeb.test.js": "aaab79ab3ffbf89fc8006a7801e6a15401e4e7fd",
+    "backend/test/webResearchOptionalCitationTitle.test.js": "33145299ad6937d9bccf32c9bdb2f9fe62a74985",
+    "backend/test/webResearchSharedContract.test.js": "9a788011b8372db027499da1bb45998b6c163aea"
+  },
+  "publication": "GitHub connector replay; source/test blobs preserved, public handoffs sanitized at every replayed checkpoint. Original private handoff blobs and original commit objects were not uploaded. Commit metadata is assigned by the authenticated connector. Parent order and merge topology preserved.",
+  "commits": [
+    {
+      "original": "f370a04dfb59d4f4e2b4d7d360bbf7852d5d738a",
+      "published": "c87e179186e2a3578360eca456956acda2a61d8b",
+      "originalTree": "7361a0eb77d12800ad061190fb4398f32ecec757",
+      "publishedTree": "40c728e6929f407e5d77db7aaa8d6d5163cd0fa4",
+      "originalParents": [
+        "d850970a67c52b92a456ea893553a0c55e392851"
+      ],
+      "publishedParents": [
+        "d850970a67c52b92a456ea893553a0c55e392851"
+      ],
+      "sourceTrees": {
+        "TrailMind": "c26af2265784fb0205e3f76cd7b5f003f5d0dc01",
+        "TrailMindTests": "04fb3e3aa5b1762e42e5bb12c8fb50318a1315bd",
+        "TrailMindUITests": "533e3b562123dfa21034b9bac57749cd2ab2e682",
+        "backend": "e795c59dd89d21d34c6c1cd6ac2aaa5bfc721b9c"
+      }
+    },
+    {
+      "original": "071c513f0d609867c956af21465749aab4f8b95c",
+      "published": "7efc82c2a57b83e93b1e3dad7a4858d4e5d90752",
+      "originalTree": "949b7212ca0b1f19fa91c98dd0127a5bf4021929",
+      "publishedTree": "326292112480cb6d2992869700376da53afce025",
+      "originalParents": [
+        "d850970a67c52b92a456ea893553a0c55e392851"
+      ],
+      "publishedParents": [
+        "d850970a67c52b92a456ea893553a0c55e392851"
+      ],
+      "sourceTrees": {
+        "TrailMind": "c26af2265784fb0205e3f76cd7b5f003f5d0dc01",
+        "TrailMindTests": "04fb3e3aa5b1762e42e5bb12c8fb50318a1315bd",
+        "TrailMindUITests": "533e3b562123dfa21034b9bac57749cd2ab2e682",
+        "backend": "e78e7fd22df48d269c374657be2618bd55a9ab76"
+      }
+    },
+    {
+      "original": "9dfefd3e6ca5daeca3076c940ba6f488a7b10de0",
+      "published": "50f9ee6dcfba4699472a03f4962af3f5096c72eb",
+      "originalTree": "38152ec17057b8802335aee5fd5c26b1bc01b117",
+      "publishedTree": "92352e95210e034692fe295eca4ec0841f784016",
+      "originalParents": [
+        "071c513f0d609867c956af21465749aab4f8b95c"
+      ],
+      "publishedParents": [
+        "7efc82c2a57b83e93b1e3dad7a4858d4e5d90752"
+      ],
+      "sourceTrees": {
+        "TrailMind": "3ed49bd7f504662c4df272abe47f64b4d54aeef6",
+        "TrailMindTests": "5943f26b929ea8ae91ad4738e7288a064a53033f",
+        "TrailMindUITests": "538376cb671841541aaab13cd5f4086806addbe0",
+        "backend": "2fa5c9998329bb271863f575868048fe409fa243"
+      }
+    },
+    {
+      "original": "45ee88d4ccad8f0746d8f7c83f48885f9f99a482",
+      "published": "965653df04ab04c3cf61918fe298643109fd403e",
+      "originalTree": "ad34a96fc1d87ae0f33d95d269c58161f035fec0",
+      "publishedTree": "d0ab417c7c252a37ed1e023f3d6820056a8769f0",
+      "originalParents": [
+        "f370a04dfb59d4f4e2b4d7d360bbf7852d5d738a",
+        "9dfefd3e6ca5daeca3076c940ba6f488a7b10de0"
+      ],
+      "publishedParents": [
+        "c87e179186e2a3578360eca456956acda2a61d8b",
+        "50f9ee6dcfba4699472a03f4962af3f5096c72eb"
+      ],
+      "sourceTrees": {
+        "TrailMind": "3ed49bd7f504662c4df272abe47f64b4d54aeef6",
+        "TrailMindTests": "5943f26b929ea8ae91ad4738e7288a064a53033f",
+        "TrailMindUITests": "538376cb671841541aaab13cd5f4086806addbe0",
+        "backend": "2fa5c9998329bb271863f575868048fe409fa243"
+      }
+    },
+    {
+      "original": "14efec2814b34ca4d3a649d25993f29aef89da74",
+      "published": "9445242e73a3f1d799bbe7f69a464a643bc1ad32",
+      "originalTree": "a67fe8a9843f1bd742e7f463832d7a6e3d64cdf6",
+      "publishedTree": "897875838a1656501f4c938b36f60c12a700b9f9",
+      "originalParents": [
+        "45ee88d4ccad8f0746d8f7c83f48885f9f99a482"
+      ],
+      "publishedParents": [
+        "965653df04ab04c3cf61918fe298643109fd403e"
+      ],
+      "sourceTrees": {
+        "TrailMind": "3ed49bd7f504662c4df272abe47f64b4d54aeef6",
+        "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+        "TrailMindUITests": "73040ad65a800b1c8b859ffe3db3a0ae3c08044c",
+        "backend": "2fa5c9998329bb271863f575868048fe409fa243"
+      }
+    },
+    {
+      "original": "674d11de286c9185c995bf246d2a6794d3bf0fa4",
+      "published": "37e288146e594d7e06266eee8a395ae03a83d543",
+      "originalTree": "f8ad4293d6b234175d403d4602a3360df61f0315",
+      "publishedTree": "dd7d5fa15d13bbd412fd10efc8278cc611ac2e98",
+      "originalParents": [
+        "14efec2814b34ca4d3a649d25993f29aef89da74"
+      ],
+      "publishedParents": [
+        "9445242e73a3f1d799bbe7f69a464a643bc1ad32"
+      ],
+      "sourceTrees": {
+        "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+        "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+        "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5",
+        "backend": "2fa5c9998329bb271863f575868048fe409fa243"
+      }
+    }
+  ],
+  "scope": "Six additionally reachable commits and 33 distinct changed blobs across 24 paths reviewed against freshly verified main; only source/test files and sanitized public documentation added. Existing published main history remains the base.",
+  "exclusions": [
+    "Credentials and private configuration",
+    "Actual device/session/signing/runtime records",
+    "Screenshots, xcresults, logs, built/exported app products",
+    "Private recovery material"
+  ],
+  "validation": "Publication verifies source identity; it does not establish live route/photo success, physical-phone acceptance or release approval."
+}
