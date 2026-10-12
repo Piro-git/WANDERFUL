@@ -128,3 +128,16 @@ test('owner service private global opt-in closes old route and App Attest mounts
   const unknown=await send('/api/owner-access/challenge',{method:'POST',headers:{host:'owner.example.com','content-type':'application/json'},body:JSON.stringify({keyId:randomBytes(32).toString('base64url')})});
   assert.equal(unknown.status,403);
 });
+
+
+test('reviewed supplement binding is server-selected and schema4 cannot spend its single plan',async()=>{
+ const env={...config(),OWNER_ACCESS_ORIGIN:'https://backend-zeta-amber-69.vercel.app',OWNER_ACCESS_SUPPLEMENT_ENABLED:'true',OWNER_ACCESS_SUPPLEMENT_APPROVAL_SHA256:'a'.repeat(64),OWNER_ACCESS_SUPPLEMENT_BACKEND_TREE:'b'.repeat(40)};
+ const cfg=ownerDynamicPlanningConfiguration(env,{now:clock});
+ assert.equal(cfg.supplement.keyId,keyId);assert.equal(cfg.supplement.expiresAt,cfg.expiresAt);
+ assert.ok(Object.isFrozen(cfg.supplement));
+ for(const patch of [{OWNER_ACCESS_SUPPLEMENT_APPROVAL_SHA256:'bad'},{OWNER_ACCESS_SUPPLEMENT_BACKEND_TREE:'bad'}])assert.throws(()=>ownerDynamicPlanningConfiguration({...env,...patch},{now:clock}));
+ const events=[];const endpoint=createOwnerDynamicPlanningEndpoints({repository:repository(events,'route_session_exhausted'),configuration:cfg,now:()=>clock,fetchImpl:()=>assert.fail('network after denied allocation')});
+ assert.equal((await endpoint.plan({...body(),schemaVersion:4},context())).statusCode,400);assert.equal(events.length,0);
+ await endpoint.plan(body(),context());assert.deepEqual(events[0][1].planning.supplement,cfg.supplement);
+ await endpoint.parseIntent({prompt,locale:'en'},context());assert.deepEqual(events.at(-1)[1].planning.supplement,cfg.supplement);
+});

@@ -49,6 +49,7 @@ export function createVercelPrivateOwnerHandler({env=process.env,PoolClass=pg.Po
         if(Date.now()>=runtime.configuration.dynamic.expiresAt)return false;
         await runtime.repository.readiness();
         await runtime.repository.planningWaveReadiness();
+        if(runtime.configuration.dynamic.supplement)await runtime.repository.planningSupplementReadiness(runtime.configuration.dynamic.supplement);
         if(!await runtime.repository.findActiveOwnerKey({keyId:runtime.configuration.dynamic.keyId}))return false;
         return true;
       }catch{return false;}

@@ -1,3 +1,4 @@
+import {reserveSupplementAdmission,reserveSupplementProvider,supplementReadiness} from './planningSupplement.js';
 import { randomUUID } from "node:crypto";
 import { hashOpaqueValue } from "../appAttest/clientData.js";
 import { appAttestError } from "../appAttest/appAttestErrors.js";
@@ -94,12 +95,13 @@ export class PostgresOwnerRepository {
       const { rows } = await c.query(`SELECT count(*)::int AS count FROM wanderful_owner_v1.leases
         WHERE released_at IS NULL AND expires_at>clock_timestamp()`);
       if (rows[0].count >= input.maximumConcurrency) throw appAttestError("app_attest_rate_limited");
-      if(input.planning?.admitRequest && !await consumePlanningWindow(c,'requests',OWNER_PLANNING_CAPS.requests)) {
+      const leaseId = randomUUID();
+      if(input.planning?.supplement)await reserveSupplementAdmission(c,input,leaseId);
+      else if(input.planning?.admitRequest && !await consumePlanningWindow(c,'requests',OWNER_PLANNING_CAPS.requests)) {
         throw appAttestError('route_session_exhausted');
       }
       await c.query(`INSERT INTO wanderful_owner_v1.requests(token_hash,request_id) VALUES($1,$2)`, [input.tokenHash,input.requestId]);
       await c.query(`UPDATE wanderful_owner_v1.sessions SET remaining_cost=remaining_cost-$2 WHERE token_hash=$1`, [input.tokenHash,input.cost]);
-      const leaseId = randomUUID();
       await c.query(`INSERT INTO wanderful_owner_v1.leases(lease_id,token_hash,installation_id,scope,expires_at)
         VALUES($1,$2,$3,$4,clock_timestamp()+($5*interval '1 second'))`,
       // Private planning has a 120s HTTP work deadline and a 30s abort/release
@@ -142,9 +144,11 @@ export class PostgresOwnerRepository {
         AND scope='intent' AND released_at IS NULL AND expires_at>clock_timestamp()
         AND clock_timestamp()<to_timestamp($3/1000.0)`,[input.leaseId,input.tokenHash,input.expiresAt]);
       if(!lease.rowCount)return false;
+      if(input.supplement)return reserveSupplementProvider(c,input);
       return consumePlanningWindow(c,input.provider,OWNER_PLANNING_CAPS[input.provider]);
     });
   }
+  async planningSupplementReadiness(configuration){return this.transaction(c=>supplementReadiness(c,configuration));}
   async planningWaveUsage(){
     const {rows}=await this.pool.query(`SELECT scope,cost FROM wanderful_owner_v1.windows WHERE identity_hash='global'
       AND scope=ANY($1::text[])`,[Object.keys(OWNER_PLANNING_CAPS).map(k=>`${OWNER_PLANNING_WAVE}:${k}`)]);
