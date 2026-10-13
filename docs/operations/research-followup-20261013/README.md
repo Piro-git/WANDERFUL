@@ -1,6 +1,6 @@
 # Bounded research lifecycle diagnostic proposal
 
-This directory contains reviewed diagnostic and bounded recovery source. Fixtures establish mocked recovery behavior; publication does not establish actual provider completion, an active entitlement or live phone acceptance. Ordinary `backend/package.json` and `backend/vercel.json` remain unchanged.
+This directory contains reviewed diagnostic preparation and a research-only protocol candidate. Fixtures establish request and refusal behavior; publication does not establish actual provider completion, an active entitlement or live phone acceptance. Ordinary `backend/package.json` and `backend/vercel.json` remain unchanged.
 
 ## Code rules
 
@@ -26,8 +26,8 @@ Synthetic/disposable PostgreSQL tests cover immutable bindings, race/replay, cum
 
 Revocation preserves all spent phase and original counters. Expired or used phases cannot be silently renewed.
 
-## Functional recovery source checkpoint
+## Latest research-only protocol source
 
-The reviewed repair rejects an unregistered client function with truthful error feedback and permits one separately reserved stateless recovery generation. Only a completed, genuinely search/read-backed result can be accepted. Complete transient history and opaque signatures are preserved in memory, including any later bounded readback; histories are not logged or persisted. Pending/failed/malformed responses, unsafe histories, budget refusal and expiry remain closed.
+The current candidate uses validated request mode and a research-only system instruction, preserves full user wishes, and permits only the declared server research tools. Earlier client-function error-feedback recovery is removed. Both HTTP responses require explicit completed status; pending or malformed results cannot become verified research. The existing bounded, separately reserved source-read followup and source/citation gates remain.
 
-The coordinator reports 130 independent credential-free fixtures and manual review for the final repair. This establishes mocked behavior, not actual provider, route, photograph or physical-phone acceptance. Publication does not grant another operator run or activate a native phase. Existing single-use diagnostic/phase guards and cumulative ceilings remain unchanged.
+The coordinator reports 131 credential-free fixtures passing after five synthetic HTTP-flow fixtures added the required completed status. This is a source protocol candidate, not a guarantee of real provider behavior or live route/photo/phone success. Existing SQL, operator configuration and entitlement accounting files are unchanged. Publication grants no new operator run or native allowance; separate accounting work is outside this checkpoint.

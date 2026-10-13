@@ -157,10 +157,10 @@
     "Private recovery material"
   ],
   "validation": "Publication verifies source identity; it does not establish live route/photo success, physical-phone acceptance or release approval.",
-  "latestOriginalCandidate": "115fb52a111785285800fa72ff7cc7fa94f44deb",
-  "latestSourceCandidateCommit": "3009bde00da83f0e618252386da01c5d01616040",
+  "latestOriginalCandidate": "aaeb137a366cc78423a1138798fe3b7daa3426e3",
+  "latestSourceCandidateCommit": "5f13b2829b5b0e6f81007f98ebdfa48eb4559f04",
   "latestSourceTrees": {
-    "backend": "bac148120e9801a1bdd06805967199a38ffa66f0",
+    "backend": "ecc25bea160a13e486ca3b9c571c3fdecac38f69",
     "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
     "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
     "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
@@ -601,6 +601,145 @@
       "publication": "Source/test/runtime/SQL/operator bytes and modes preserved exactly. New operational Markdown versions are sanitized; private runtime, trial, key/role, deployment and approval facts are not published. Append-only continuation of the existing public backup.",
       "validation": "Coordinator reports independent manual final-source review and 130 credential-free fixtures passing; source owner recorded 108 then 109 focused checks at its checkpoints. No rerun by backup owner. Mocked functional recovery is established; live provider/route/Commons/phone acceptance remains unproven.",
       "ordinaryBuildOperatorConfigurationSQLEntitlementFilesUnchangedFromPreviousCandidate": true
+    }
+  ],
+  "protocolCandidates": [
+    {
+      "originalBase": "115fb52a111785285800fa72ff7cc7fa94f44deb",
+      "publishedBase": "2b47e8f65d3c6d1ad7a8b63c322a798d38920346",
+      "originalCandidate": "aaeb137a366cc78423a1138798fe3b7daa3426e3",
+      "publishedSourceCandidate": "5f13b2829b5b0e6f81007f98ebdfa48eb4559f04",
+      "publishedSourceTree": "de2a689f7b3a6e23998b42d61910537b27ba8249",
+      "sourceTrees": {
+        "backend": "ecc25bea160a13e486ca3b9c571c3fdecac38f69",
+        "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+        "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+        "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
+      },
+      "commits": [
+        {
+          "original": "10b54484d37c00e5ab4777811db9504a1ea8c5e9",
+          "published": "26a1dbb7a8bd577db789bb268b4c2433c92eab75",
+          "originalParent": "115fb52a111785285800fa72ff7cc7fa94f44deb",
+          "publishedParent": "2b47e8f65d3c6d1ad7a8b63c322a798d38920346",
+          "originalTree": "595968d165f69ead7a3603b51c6d23cca5571536",
+          "publishedTree": "e577b5ecb33cbe02c65ef2338d1cd9a4e7f77494",
+          "sourceTrees": {
+            "backend": "c765b1128dd47c49d5fde4d2d493cd2799213a48",
+            "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+            "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+            "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
+          },
+          "fileMapping": [
+            {
+              "path": "backend/src/dynamicResearch/researchActionFeedback.js",
+              "mode": "100644",
+              "originalBlob": "ba8976688648b60b632b265e6e035ef95f5ad183",
+              "publishedBlob": null,
+              "disposition": "deleted"
+            },
+            {
+              "path": "backend/src/dynamicResearch/researchProtocol.js",
+              "mode": "100644",
+              "originalBlob": "2e3e649c1768b1305e666425f3cb735108898a58",
+              "publishedBlob": "2e3e649c1768b1305e666425f3cb735108898a58",
+              "originalSHA256": "94a2f4a99c347cc7a9cf441d48af2d1ae8dd0c6a31e9083225e413350eba4d6a",
+              "publishedSHA256": "94a2f4a99c347cc7a9cf441d48af2d1ae8dd0c6a31e9083225e413350eba4d6a"
+            },
+            {
+              "path": "backend/src/dynamicResearch/webResearch.js",
+              "mode": "100644",
+              "originalBlob": "bcb968da09cd859f2cf8855b0d263c145e83650c",
+              "publishedBlob": "bcb968da09cd859f2cf8855b0d263c145e83650c",
+              "originalSHA256": "5a1c19b2b5f87ad11f557c8d5580542881ce5a2fa707f10a3f78e47c54ff4193",
+              "publishedSHA256": "5a1c19b2b5f87ad11f557c8d5580542881ce5a2fa707f10a3f78e47c54ff4193"
+            },
+            {
+              "path": "backend/src/ownerAccess/privatePlanningDiagnostics.js",
+              "mode": "100644",
+              "originalBlob": "0c76a9803f3918d92728517d06b1ae2791066639",
+              "publishedBlob": "0c76a9803f3918d92728517d06b1ae2791066639",
+              "originalSHA256": "d5ce6c31d5f8436fa6575d0263ffc42f43d18a0537a2fb4a4c872e90fadbc322",
+              "publishedSHA256": "d5ce6c31d5f8436fa6575d0263ffc42f43d18a0537a2fb4a4c872e90fadbc322"
+            },
+            {
+              "path": "backend/test/dynamicResearchWeb.test.js",
+              "mode": "100644",
+              "originalBlob": "a2efa75ef8d770226e7fede5eb3e1eb55c9ed1c8",
+              "publishedBlob": "a2efa75ef8d770226e7fede5eb3e1eb55c9ed1c8",
+              "originalSHA256": "d64aa79e1f69c8bb28eaa95b6476ebec4919b384b07a764b371f126c4a2efa37",
+              "publishedSHA256": "d64aa79e1f69c8bb28eaa95b6476ebec4919b384b07a764b371f126c4a2efa37"
+            },
+            {
+              "path": "backend/test/ownerDynamicPlanning.test.js",
+              "mode": "100644",
+              "originalBlob": "9d38c6d0c3d5471f135de9bd3e2a1448cf6f6a30",
+              "publishedBlob": "9d38c6d0c3d5471f135de9bd3e2a1448cf6f6a30",
+              "originalSHA256": "5f53d75f3f26e2a952b9738e6fb998d23375f8cb964e12f2fccfef8a7404b321",
+              "publishedSHA256": "5f53d75f3f26e2a952b9738e6fb998d23375f8cb964e12f2fccfef8a7404b321"
+            },
+            {
+              "path": "backend/test/privatePlanningDiagnostics.test.js",
+              "mode": "100644",
+              "originalBlob": "a63cd88fb397950c989540e43a2d5f917aee05d7",
+              "publishedBlob": "a63cd88fb397950c989540e43a2d5f917aee05d7",
+              "originalSHA256": "e76132893864b3c42d0e3a47cbc9ae0fe929afcffad25f70298d29b799ba8a38",
+              "publishedSHA256": "e76132893864b3c42d0e3a47cbc9ae0fe929afcffad25f70298d29b799ba8a38"
+            },
+            {
+              "path": "backend/test/webResearchActionLifecycle.test.js",
+              "mode": "100644",
+              "originalBlob": "dc9fdd8553ec664712ec099c0b4200cc1129933b",
+              "publishedBlob": "dc9fdd8553ec664712ec099c0b4200cc1129933b",
+              "originalSHA256": "0d5eaa763d26d8052e7ea382b169d6c89892dc0c4ba35c7f7075cd8395ee3828",
+              "publishedSHA256": "0d5eaa763d26d8052e7ea382b169d6c89892dc0c4ba35c7f7075cd8395ee3828"
+            },
+            {
+              "path": "docs/handoff/backend-functional-research-fix-20261013.md",
+              "mode": "100644",
+              "originalBlob": "c5997036e2c53291de94b429fbb9b4c37ebec0b4",
+              "publishedBlob": "c3cc314de42770a35d63cd2b249b22877979fb48",
+              "originalSHA256": "fe02837e64239242ea70cfd84e63b5ccbb9ac45ff09c707019c4b60f690276a9",
+              "publishedSHA256": "53d835d77e8665012739ddba8f5c9fc9ea67c8bcbd90c3735840f0bef7e99265"
+            }
+          ]
+        },
+        {
+          "original": "aaeb137a366cc78423a1138798fe3b7daa3426e3",
+          "published": "5f13b2829b5b0e6f81007f98ebdfa48eb4559f04",
+          "originalParent": "10b54484d37c00e5ab4777811db9504a1ea8c5e9",
+          "publishedParent": "26a1dbb7a8bd577db789bb268b4c2433c92eab75",
+          "originalTree": "d115ca89c95e613add46d620698ba1f6652c0826",
+          "publishedTree": "de2a689f7b3a6e23998b42d61910537b27ba8249",
+          "sourceTrees": {
+            "backend": "ecc25bea160a13e486ca3b9c571c3fdecac38f69",
+            "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+            "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+            "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
+          },
+          "fileMapping": [
+            {
+              "path": "backend/test/dynamicResearchNativeFlow.test.js",
+              "mode": "100644",
+              "originalBlob": "385fa46c01f2fa615c4a951b6a2e3a18d6f629b7",
+              "publishedBlob": "385fa46c01f2fa615c4a951b6a2e3a18d6f629b7",
+              "originalSHA256": "a6fee03ebe9bcb331c6df902a6d3bd1c98113d2622fa96d21846a146467ca338",
+              "publishedSHA256": "a6fee03ebe9bcb331c6df902a6d3bd1c98113d2622fa96d21846a146467ca338"
+            },
+            {
+              "path": "docs/handoff/backend-functional-research-fix-20261013.md",
+              "mode": "100644",
+              "originalBlob": "90dfef32ae09ab6258b16d504a99d159331dec10",
+              "publishedBlob": "18e3d67857744aef443316a2c708ef91c6b45a19",
+              "originalSHA256": "00aa879a6674250c3db371b2c56734f5d85da693ded8d07b82906082162a451d",
+              "publishedSHA256": "3262f3dd74ff542062811762bb09361808df54cd3686690b73b20461ddc306d2"
+            }
+          ]
+        }
+      ],
+      "publication": "Exact pinned source/test bytes, modes and deletion replayed onto existing public history. Operational handoff versions sanitized; private failures, trial/runtime/operator/approval records omitted. No uncommitted or later accounting work imported.",
+      "validation": "Coordinator reports 131 credential-free fixtures passing after five older synthetic HTTP-flow responses declared the required completed status. Tests not rerun by backup owner. Protocol candidate only; no demonstrated new live provider/route/photo/phone success.",
+      "scope": "Validated research-only request policy; removed client-function error-feedback recovery; strict explicit completed status and bounded closed pending counts. No deployment, database, provider or phone operation performed by publication."
     }
   ]
 }

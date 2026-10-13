@@ -48,3 +48,13 @@ The dispatcher rejects an unregistered research function truthfully, permits one
 The coordinator independently reviewed the final source and reported 130 credential-free fixtures passing. The backup owner did not rerun them. This latest checkpoint supersedes the earlier preparation-only status above: functional recovery has mocked proof, while actual provider completion, real route/Commons photographs and physical-phone Saved/packing acceptance are still unproven.
 
 Publication does not deploy, activate an allocation, execute SQL/providers or update the phone. Private runtime/deployment/trial/approval records remain excluded. Use the latest provenance mapping for continuation and preserve public history.
+
+## Latest research-only protocol candidate
+
+Latest original source: `aaeb137a366cc78423a1138798fe3b7daa3426e3`, preceded by `10b54484d37c00e5ab4777811db9504a1ea8c5e9`. Backend tree `ecc25bea160a13e486ca3b9c571c3fdecac38f69` is preserved exactly. The app and both native test trees remain unchanged. Every code/test/SQL/runtime file and mode matches the pinned source, including deletion of `researchActionFeedback.js`.
+
+This candidate supersedes the earlier recovery behavior above. The first research request uses validated mode and a research-only system boundary. Client-function feedback/recovery is removed; pending, missing or malformed completion is terminal. Source/read/citation gates remain closed. Only bounded builtin/planning/other diagnostic counts are retained.
+
+The coordinator reports 131 credential-free fixtures passing after five legacy mock responses supplied the required completed status. These tests were not rerun by the backup owner. This establishes fixture behavior for a protocol candidate, not live completion or a successful real route/photo/phone feature.
+
+Publication performs no deployment, allowance activation, database/provider call or phone operation. Private failure/runtime/operator/approval records remain excluded. Later accounting work and uncommitted source are outside this exact backup; use the latest provenance entry for continuation.
