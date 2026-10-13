@@ -47,8 +47,8 @@ test('non-completed provider lifecycle emits only documented closed states and n
   let calls=0;const research=createGeminiWebResearch({apiKey:'offline-only',model:'gemini-3.8-flash',fetchImpl:async()=>{calls++;return Response.json({status,steps:[],private:SECRET});}});
   await assert.rejects(research({prompt:'Public test walk',locationName:'Public town'}),error=>{
    const summary=safePrivateFailure(error),rows=[];
-   assert.equal(summary.diagnosticValidationReason,status==='requires_action'?'research_action_invalid':'provider_not_completed');
-   assert.equal(summary.diagnosticStage,status==='requires_action'?'web_action_validation':'web_search_validation');
+   assert.equal(summary.diagnosticValidationReason,'provider_not_completed');
+   assert.equal(summary.diagnosticStage,'web_search_validation');
    assert.equal(summary.diagnosticProviderStatus,states.includes(status)?status:'unrecognized');
    createPrivatePlanningLogger({info:x=>rows.push(x)}).info({event:'llm_first_planning_completed',...summary,body:SECRET});
    assert.equal(rows[0].diagnosticProviderStatus,summary.diagnosticProviderStatus);
@@ -57,4 +57,12 @@ test('non-completed provider lifecycle emits only documented closed states and n
  }
  const summary=safePrivateFailure({code:'web_research_unverified',privateResearchProviderStatus:SECRET});assert.equal(summary.diagnosticProviderStatus,undefined);
  const rows=[];createPrivatePlanningLogger({info:x=>rows.push(x)}).info({event:'llm_first_planning_completed',diagnosticProviderStatus:SECRET});assert.equal(rows[0].diagnosticProviderStatus,undefined);
+});
+
+test('closed pending counts require observed pending state, bounded integers and ignore arbitrary names/arguments',()=>{
+ const base={code:'web_research_unverified',privateResearchStage:'web_search_validation',privateResearchProviderStatus:'requires_action',privateResearchPendingCounts:{builtin:1,planning:2,other:3,name:SECRET,args:SECRET}};
+ const summary=safePrivateFailure(base);assert.equal(summary.diagnosticPendingBuiltinCalls,1);assert.equal(summary.diagnosticPendingPlanningCalls,2);assert.equal(summary.diagnosticPendingOtherCalls,3);
+ const rows=[];createPrivatePlanningLogger({info:x=>rows.push(x)}).info({event:'llm_first_planning_completed',...summary,name:SECRET,args:SECRET});assert.ok(!JSON.stringify(rows).includes(SECRET));
+ for(const status of [undefined,'completed','failed'])assert.equal(safePrivateFailure({...base,privateResearchProviderStatus:status}).diagnosticPendingOtherCalls,undefined);
+ for(const value of [-1,61,1.5,SECRET,null])assert.equal(safePrivateFailure({...base,privateResearchPendingCounts:{other:value}}).diagnosticPendingOtherCalls,undefined);
 });

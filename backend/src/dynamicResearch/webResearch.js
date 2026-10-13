@@ -1,4 +1,4 @@
-import {researchActionFeedback,validateResearchHistory,completedResearchSteps} from './researchActionFeedback.js';
+import {researchInteractionBody,validateResearchHistory,pendingResearchFunctionCounts} from './researchProtocol.js';
 import {fetchBoundedJson} from '../llmPlanning/adapters/providerHttp.js';
 
 const invalid=(reason='web_envelope_invalid')=>{throw Object.assign(new Error('web_research_unverified'),{code:'web_research_unverified',privateResearchValidationReason:reason});};
@@ -26,6 +26,18 @@ function citationBoundaries(text) {
 const validId=id=>typeof id==='string'&&id.length>0&&id.length<=200;
 const NON_COMPLETED_STATUSES=new Set(['in_progress','requires_action','failed','cancelled','incomplete','budget_exceeded','queued']);
 async function diagnosticStage(stage,operation){try{return await operation();}catch(error){try{if(error&&typeof error==='object')error.privateResearchStage=stage;}catch{}throw error;}}
+async function validateResearchResponse(stage,payload,tools,operation){
+ return diagnosticStage(stage,()=>{try{
+  if(payload?.status!=='completed')throw Object.assign(new Error('web_research_unverified'),{
+   code:'web_research_unverified',privateResearchValidationReason:'provider_not_completed',
+   privateResearchProviderStatus:NON_COMPLETED_STATUSES.has(payload?.status)?payload.status:'unrecognized'
+  });
+  return operation();
+ }catch(error){
+  const counts=pendingResearchFunctionCounts(payload,tools);
+  if(counts)error.privateResearchPendingCounts=counts;throw error;
+ }});
+}
 
 
 /** Preserve grounded text and suggestions verbatim for the submitting user's display.
@@ -46,6 +58,8 @@ export function parseGroundedWebResearch(payload,{now=Date.now(),requirePageRead
   const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
   for(const step of steps) {
     if(!object(step)||typeof step.type!=='string')invalid('provider_steps_invalid');
+    if(step.type==='function_call'||step.type==='function_result')invalid('research_action_invalid');
+    if(!['thought','model_output','google_search_call','google_search_result','url_context_call','url_context_result'].includes(step.type))invalid('provider_steps_invalid');
     if(step?.type==='google_search_call') {
       const queries=step.arguments?.queries;
       if(!validId(step.id)||toolIds.has(step.id)||!object(step.arguments))invalid('search_call_invalid');
@@ -143,7 +157,7 @@ export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch
     const input=buildWebResearchInput({prompt,locationName,preferences,intent,constraints,plannedStartAt,purpose,resolvedLocation,routeContext});
     const interact=async(input,tools)=>fetchBoundedJson({url:new URL('https://generativelanguage.googleapis.com/v1beta/interactions'),fetchImpl,signal,
       init:{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json','x-goog-api-key':apiKey},
-        body:JSON.stringify({model,store:false,input,tools})},
+        body:JSON.stringify(researchInteractionBody({model,input,tools}))},
       deadlineMs:WEB_RESEARCH_LIMITS.timeoutMs,maximumDeadlineMs:60000,maximumAttempts:1,maximumResponseBytes:262144,maximumErrorResponseBytes:8192,
       setTimeoutImpl:setTimeout,clearTimeoutImpl:clearTimeout});
     const reserveAdditional=async()=>{
@@ -151,30 +165,13 @@ export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch
       if(await reserveGeneration()===false)throw Object.assign(new Error('research_budget_exhausted'),{code:'research_budget_exhausted'});
     };
     const tools=[{type:'google_search',search_types:['web_search']},{type:'url_context'}];
-    let recovered=false;
-    let history=[{type:'user_input',content:[{type:'text',text:input}]}];
-    let payload=await diagnosticStage('web_search_http',()=>interact(input,tools));
-    if(payload?.status==='requires_action'){
-      const feedback=await diagnosticStage('web_action_validation',()=>{
-        try{return researchActionFeedback(payload);}catch(error){
-          error.privateResearchProviderStatus='requires_action';throw error;
-        }
-      });
-      recovered=true;
-      history=validateResearchHistory([...history,...payload.steps,...feedback,
-        {type:'user_input',content:[{type:'text',text:'The unregistered client function was rejected and was not executed. Complete source research only with the declared Google Search and URL Context tools. Do not request client-side routing or image functions; those run in later stages. Return source-backed text, not invented tool results.'}]}
-      ]);
-      await reserveAdditional();
-      const resumed=await diagnosticStage('web_action_http',()=>interact(history,tools));
-      const steps=await diagnosticStage('web_action_validation',()=>completedResearchSteps(payload.steps,resumed));
-      history=validateResearchHistory([...history,...resumed.steps]);
-      payload={status:resumed.status,steps};
-    }else{
-      history=[...history,...(Array.isArray(payload?.steps)?payload.steps:[])];
-    }
+    const payload=await diagnosticStage('web_search_http',()=>interact(input,tools));
+    // A research-only phase has no client function dispatcher. Pending actions
+    // are terminal; the real one-error-feedback recovery did not complete.
+    const history=[{type:'user_input',content:[{type:'text',text:input}]},...(Array.isArray(payload?.steps)?payload.steps:[])];
     // Search tool availability does not guarantee the model reads a source page.
     // Validate search attribution first; complete an omitted page-read stage once.
-    const search=await diagnosticStage('web_search_validation',()=>parseGroundedWebResearch(payload,{requirePageRead:false}));
+    const search=await validateResearchResponse('web_search_validation',payload,tools,()=>parseGroundedWebResearch(payload,{requirePageRead:false}));
     if(payload.steps.some(step=>step.type==='url_context_call'))return diagnosticStage('web_page_validation',()=>parseGroundedWebResearch(payload));
     const urls=[...new Set(search.blocks.flatMap(block=>block.citations.map(c=>c.url)))].slice(0,3);
     const followupHistory=validateResearchHistory([...history,
@@ -182,10 +179,10 @@ export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch
     ]);
     await reserveAdditional();
     const followup=await diagnosticStage('web_followup_http',()=>interact(followupHistory,[{type:'url_context'}]));
-    if(!Array.isArray(followup?.steps))return diagnosticStage('web_followup_validation',()=>invalid());
+    if(!Array.isArray(followup?.steps))return validateResearchResponse('web_followup_validation',followup,[{type:'url_context'}],()=>invalid());
     // Display the final read-backed answer, retaining the original search attribution.
-    return diagnosticStage('web_followup_validation',()=>parseGroundedWebResearch({status:followup.status,
-      steps:recovered?completedResearchSteps(payload.steps,followup):[...payload.steps.filter(step=>step.type!=='model_output'),...followup.steps]}));
+    return validateResearchResponse('web_followup_validation',followup,[{type:'url_context'}],()=>parseGroundedWebResearch({status:followup.status,
+      steps:[...payload.steps.filter(step=>step.type!=='model_output'),...followup.steps]}));
   };
 }
 

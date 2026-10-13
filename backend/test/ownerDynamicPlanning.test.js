@@ -64,11 +64,12 @@ test('actual global composition keeps original prompt and consumes each Google/G
     events.push(['fetch',u.hostname]);
     if(u.hostname==='generativelanguage.googleapis.com'){
       const input=JSON.parse(init.body);assert.equal(input.store,false);assert.equal(input.model,'gemini-3.8-flash');
-      if(input.tools.some(t=>t.type==='google_search'))return Response.json({steps:[{type:'google_search_call',id:'web',arguments:{queries:['Fixture village']}},
+      if(input.tools.some(t=>t.type==='google_search')){assert.deepEqual(input.generation_config,{tool_choice:'validated'});return Response.json({status:'completed',steps:[{type:'google_search_call',id:'web',arguments:{queries:['Fixture village']}},
         {type:'google_search_result',call_id:'web',result:[{search_suggestions:'<div>Suggestions</div>'}]},
         {type:'url_context_call',id:'read',arguments:{urls:['https://park.example.org/ridge']}},
         {type:'url_context_result',call_id:'read',result:[{url:'https://park.example.org/ridge',status:'success'}]},
-        {type:'model_output',content:[{type:'text',text:'General source description.',annotations:[{type:'url_citation',url:'https://park.example.org/ridge',title:'Public source',start_index:0,end_index:27}]}]}]});
+        {type:'model_output',content:[{type:'text',text:'General source description.',annotations:[{type:'url_citation',url:'https://park.example.org/ridge',title:'Public source',start_index:0,end_index:27}]}]}]});}
+      assert.equal(input.generation_config,undefined);
       if(input.tools.some(t=>t.name==='review_route_quality'))return Response.json({steps:[call('review_route_quality',{decision:'complete',summary:'Measured fixture route.',remainingWishes:['Access not verified.'],evidenceIds:fixture.route.places.map(p=>p.id)})]});
       assert.ok(JSON.stringify(input.input).includes(prompt));
       return Response.json({steps:turns++===0?[call('search_places',{radiusMeters:5000,kinds:['viewpoint']})]:[call('route_itinerary',{placeIds:fixture.route.places.map(p=>p.id)})]});

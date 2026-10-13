@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseGroundedWebResearch,createGeminiWebResearch} from '../src/dynamicResearch/webResearch.js';
 const url='https://park.example.org/places/ridge';
-const fixture=()=>({steps:[
+const fixture=()=>({status:'completed',steps:[
  {type:'google_search_call',id:'s',arguments:{queries:['village hiking viewpoints']}},
  {type:'google_search_result',call_id:'s',result:[{search_suggestions:'<div>Provider search suggestions</div>'}]},
  {type:'url_context_call',id:'u',arguments:{urls:[url]}},
@@ -69,7 +69,7 @@ test('search-only success completes exactly one separately accounted page-read s
   assert.deepEqual(body.tools,[{type:'url_context'}]);
   assert.deepEqual(body.input.slice(1,-1),first.steps);
   assert.deepEqual(JSON.parse(body.input.at(-1).content[0].text).urls,[url]);
-  return Response.json({steps:fixture().steps.slice(2)});
+  return Response.json({status:'completed',steps:fixture().steps.slice(2)});
  }});
  const value=await research({prompt:'Public village viewpoints',locationName:'Village'},{reserveGeneration:()=>reservations++});
  assert.equal(calls,2);assert.equal(value.blocks.length,1);assert.equal(value.observedSearchQueries,1);

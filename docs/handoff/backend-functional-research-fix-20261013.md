@@ -1,21 +1,21 @@
-# Functional research lifecycle repair source handoff
+# Research-only protocol candidate
 
-Source checkpoint: `115fb52a111785285800fa72ff7cc7fa94f44deb`. Publication continues `codex/github-iphone-candidate-20261012`.
+Source checkpoint: `10b54484d37c00e5ab4777811db9504a1ea8c5e9`. Publication continues `codex/github-iphone-candidate-20261012`.
 
-## Completed and decisions
+## Source behavior
 
-For a research response with a pending unregistered client function, the dispatcher does not execute the function. It supplies truthful `function_result` error feedback tied to the original call, then permits exactly one separately reserved stateless recovery generation. Another pending, failed, incomplete or malformed response remains terminal.
+The first research request uses `generation_config.tool_choice: validated` and a phase-specific system instruction. Full user wishes remain in the input, while client route actions and Wikimedia lookup belong to later application stages. Only the declared Google Search / URL Context tools are accepted; no guessed builtin names are added to `allowed_tools`.
 
-Complete transport history and opaque signatures remain transient and unchanged in memory. If recovery needs the existing one-time URL Context readback, that readback receives the full history. Every additional generation reserves before IO, checks cancellation and respects durable budget/expiry. Histories are bounded by structure, depth and 512 KiB and are neither logged nor persisted. No polling, background/stored interaction or opaque-token continuation is introduced.
+The earlier client-function error-feedback recovery is removed. A pending state is terminal. Both research HTTP responses require an explicit `completed` status; missing, malformed or non-completed status cannot be rescued by plausible source steps. Completed responses with client or undeclared executable tools are also refused. Direct legacy parser compatibility remains separate.
 
-Evidence remains separate: genuine server tool records survive while unfinished model output is excluded. Acceptance requires completed status, correlated unique calls/results, successful public source reads and valid citations. Unsafe or executable histories, conflicting IDs and denied reservations cannot bypass these checks. Native source, SQL, entitlement accounting implementation and ordinary build configuration are unchanged.
-
-The final diagnostic correction preserves the actually observed provider status; malformed completed recovery does not acquire an invented pending status.
+The existing single source-read followup preserves successful transient history/signatures and the same request policy, reserving before IO. Source/read/citation validation, routing and the native envelope remain in force. Closed diagnostics retain only bounded builtin/planning/other count buckets; names, arguments, IDs, URLs and signatures are excluded.
 
 ## Checks and limits
 
-The source owner recorded 109 focused credential-free fixture checks. The coordinator independently reviewed the final source and reported 130 credential-free fixtures passing. These checks were not rerun by the backup owner. Mocked functional behavior is established; real provider routes, Commons photographs and physical-phone Saved/packing acceptance remain unproven.
+The source owner recorded 110 focused credential-free fixture checks at this checkpoint. These checks were not rerun by the backup owner.
+
+This is a source protocol candidate with fixture proof, not proof that the request mode guarantees provider behavior or that the real feature is fixed. Actual provider routes, Commons photographs and physical-phone acceptance remain unproven. Native app and both native test source trees are unchanged.
 
 ## Continuation
 
-Read the publication handoff and provenance mapping. Any deployment, database binding, provider request or native acceptance belongs to separately authorized coordination. Public source backup does not grant retries or reopen a spent/expired phase. Private runtime, deployment, trial, key/role and approval records remain outside Git.
+Read the candidate publication handoff and provenance mapping. Publication does not deploy, activate an allowance, execute database/provider work or update the phone. Private failures, runtime/entitlement records, operator inputs, prompts, signatures and execution evidence remain outside Git. Later accounting work is outside this pinned checkpoint.

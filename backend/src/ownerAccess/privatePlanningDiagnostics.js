@@ -9,6 +9,9 @@ export function safePrivateFailure(error){
  const out={diagnosticCode:CODES.has(error?.code)?error.code:'unclassified',diagnosticStage:STAGES.has(error?.privateResearchStage)?error.privateResearchStage:'unclassified'};
  if(VALIDATION_REASONS.has(error?.privateResearchValidationReason))out.diagnosticValidationReason=error.privateResearchValidationReason;
  if(PROVIDER_STATUSES.has(error?.privateResearchProviderStatus))out.diagnosticProviderStatus=error.privateResearchProviderStatus;
+ if(error?.privateResearchProviderStatus==='requires_action')for(const [key,field] of [['builtin','diagnosticPendingBuiltinCalls'],['planning','diagnosticPendingPlanningCalls'],['other','diagnosticPendingOtherCalls']]){
+  const count=error?.privateResearchPendingCounts?.[key];if(Number.isSafeInteger(count)&&count>=0&&count<=60)out[field]=count;
+ }
  return out;
 }
 export function createPrivatePlanningLogger(sink){
@@ -27,6 +30,7 @@ export function createPrivatePlanningLogger(sink){
   if(STAGES.has(value.diagnosticStage)||value.diagnosticStage==='unclassified')out.diagnosticStage=value.diagnosticStage;
   if(VALIDATION_REASONS.has(value.diagnosticValidationReason))out.diagnosticValidationReason=value.diagnosticValidationReason;
   if(PROVIDER_STATUSES.has(value.diagnosticProviderStatus))out.diagnosticProviderStatus=value.diagnosticProviderStatus;
+  if(value.diagnosticProviderStatus==='requires_action')for(const key of ['diagnosticPendingBuiltinCalls','diagnosticPendingPlanningCalls','diagnosticPendingOtherCalls'])if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=60)out[key]=value[key];
   try{sink.info(out);}catch{}
  }};
 }
