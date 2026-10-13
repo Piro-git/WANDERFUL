@@ -1,4 +1,4 @@
-import {researchInteractionBody,validateResearchHistory,pendingResearchFunctionCounts} from './researchProtocol.js';
+import {researchInteractionBody,validateResearchHistory,pendingResearchFunctionCounts,researchResponseSummary} from './researchProtocol.js';
 import {fetchBoundedJson} from '../llmPlanning/adapters/providerHttp.js';
 
 const invalid=(reason='web_envelope_invalid')=>{throw Object.assign(new Error('web_research_unverified'),{code:'web_research_unverified',privateResearchValidationReason:reason});};
@@ -151,15 +151,18 @@ export function buildWebResearchInput({prompt,locationName,preferences,intent,co
 }
 
 // Prepare with the existing durable accounting fetch; live grounding needs its own explicit allowance.
-export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch}) {
+export function createGeminiWebResearch({apiKey,model,fetchImpl=globalThis.fetch,observeResponse}) {
   if(typeof apiKey!=='string'||!apiKey.trim()||model!=='gemini-3.8-flash')throw new TypeError('research_configuration_missing');
   return async({prompt,locationName,preferences,intent,constraints,plannedStartAt,purpose,resolvedLocation,routeContext},{signal,reserveGeneration=()=>{}}={})=>{
     const input=buildWebResearchInput({prompt,locationName,preferences,intent,constraints,plannedStartAt,purpose,resolvedLocation,routeContext});
-    const interact=async(input,tools)=>fetchBoundedJson({url:new URL('https://generativelanguage.googleapis.com/v1beta/interactions'),fetchImpl,signal,
+    const interact=async(input,tools)=>{const payload=await fetchBoundedJson({url:new URL('https://generativelanguage.googleapis.com/v1beta/interactions'),fetchImpl,signal,
       init:{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json','x-goog-api-key':apiKey},
         body:JSON.stringify(researchInteractionBody({model,input,tools}))},
       deadlineMs:WEB_RESEARCH_LIMITS.timeoutMs,maximumDeadlineMs:60000,maximumAttempts:1,maximumResponseBytes:262144,maximumErrorResponseBytes:8192,
       setTimeoutImpl:setTimeout,clearTimeoutImpl:clearTimeout});
+      if(typeof observeResponse==='function')try{observeResponse(researchResponseSummary(payload,tools));}catch{}
+      return payload;
+    };
     const reserveAdditional=async()=>{
       if(signal?.aborted)throw Object.assign(new Error('cancelled'),{code:'cancelled'});
       if(await reserveGeneration()===false)throw Object.assign(new Error('research_budget_exhausted'),{code:'research_budget_exhausted'});

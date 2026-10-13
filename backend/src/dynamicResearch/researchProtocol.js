@@ -44,3 +44,14 @@ export function pendingResearchFunctionCounts(payload,declaredTools){
  }
  return counts;
 }
+
+export function researchResponseSummary(payload,tools){
+ const statuses=new Set(['completed','in_progress','requires_action','failed','cancelled','incomplete','budget_exceeded','queued']);
+ const status=statuses.has(payload?.status)?payload.status:payload?.status===undefined?'missing':'unrecognized';
+ const steps=Array.isArray(payload?.steps)?payload.steps.slice(0,60):null;
+ const pending=pendingResearchFunctionCounts(payload,tools);
+ let citations=0;
+ for(const s of steps??[])if(s?.type==='model_output')for(const c of Array.isArray(s.content)?s.content.slice(0,8):[])for(const a of Array.isArray(c?.annotations)?c.annotations.slice(0,40):[])if(a?.type==='url_citation')citations=Math.min(60,citations+1);
+ const tokens=payload?.usage?.total_tokens;
+ return Object.freeze({status,searchCalls:steps?steps.filter(s=>s?.type==='google_search_call').length:null,pageCalls:steps?steps.filter(s=>s?.type==='url_context_call').length:null,citationCount:steps?citations:null,pendingBuiltin:pending?.builtin??null,pendingPlanning:pending?.planning??null,pendingOther:pending?.other??null,totalTokens:Number.isSafeInteger(tokens)&&tokens>=0&&tokens<=1000000?tokens:null});
+}

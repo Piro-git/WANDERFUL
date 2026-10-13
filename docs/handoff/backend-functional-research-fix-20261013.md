@@ -19,3 +19,11 @@ This is a source protocol candidate with fixture proof, not proof that the reque
 ## Continuation
 
 Read the candidate publication handoff and provenance mapping. Publication does not deploy, activate an allowance, execute database/provider work or update the phone. Private failures, runtime/entitlement records, operator inputs, prompts, signatures and execution evidence remain outside Git. Later accounting work is outside this pinned checkpoint.
+
+## Fixed operator verification preparation
+
+Source checkpoint `3073ec6e863ff4f4c00677d2429b3acd85a88bf9` adds an inactive, explicitly selected operator for the current research factory and final-envelope validator. It permits one claimed job and at most two separately charged Google attempts; the second is only the existing validated source-read followup. No GraphHopper or native call is part of this operator. The normal package/build configuration and public API mounts are unchanged.
+
+Fresh source/input/key/origin/time binding and approval are required by the code before execution. Typed claim/reservation/result guards preserve existing accounting and cumulative provider ceilings. The optional observer supplies a frozen closed projection; it cannot change research validation. Raw payloads, source text/URLs, signatures, IDs and credentials do not become results or logs.
+
+The coordinator reports independent manual SQL/worker/protocol review, 135 credential-free fixtures and eleven disposable PostgreSQL checks passing, with zero failures or skips. The backup owner did not rerun them. This is source preparation only: the real API has not been verified by these fixtures, and actual route/photo/phone acceptance remains unproven. Publication does not activate the operator, deploy or perform database/provider/phone work. Private metadata, requests, approval records and execution evidence remain outside Git.
