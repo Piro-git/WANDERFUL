@@ -32,13 +32,13 @@ for (const {web,revise,named=false,locale,optional=false} of [{web:false,revise:
   if(target.hostname==='generativelanguage.googleapis.com') {
    const body=JSON.parse(init.body);
    if(body.response_format)return json({output_text:JSON.stringify(parsed)});
-   if(body.tools?.some(tool=>tool.type==='google_search'))return json({steps:[
+   if(body.tools?.some(tool=>tool.type==='google_search')){assert.deepEqual(body.generation_config,{tool_choice:'validated'});return json({status:'completed',steps:[
     {type:'google_search_call',id:'web-s',arguments:optional?{}:{queries:['village hilltop places']}},
     {type:'google_search_result',call_id:'web-s',result:optional?[{}]:[{search_suggestions:'<div>Provider suggestions</div>'}]},
     {type:'url_context_call',id:'web-u',arguments:{urls:['https://park.example.org/ridge']}},
     {type:'url_context_result',call_id:'web-u',result:[{url:'https://park.example.org/ridge',status:'success'}]},
     {type:'model_output',content:[{type:'text',text:groundedText,annotations:[{type:'url_citation',url:'https://park.example.org/ridge',title:'Park source',...(optional?{}:{start_index:0,end_index:Buffer.byteLength(groundedText)})}]}]}
-   ]});
+   ]});}
    if(body.tools?.some(t=>t.name==='review_route_quality'))return json({steps:[call('review','review_route_quality',{decision:'complete',summary:'Measured route connecting the selected mapped stops.',remainingWishes:['Current access is unverified.'],evidenceIds:fixture.route.places.map(p=>p.id)})]});
    assert.equal(body.store,false);assert.ok(JSON.stringify(body.input).includes(prompt));
    if(revise && turn===2) assert.ok(JSON.stringify(body.input).includes('route_connection_not_found'));

@@ -1,6 +1,6 @@
 # Research-only protocol candidate
 
-Source checkpoint: `10b54484d37c00e5ab4777811db9504a1ea8c5e9`. Publication continues `codex/github-iphone-candidate-20261012`.
+Source checkpoint: `aaeb137a366cc78423a1138798fe3b7daa3426e3`. Publication continues `codex/github-iphone-candidate-20261012`.
 
 ## Source behavior
 
@@ -12,7 +12,7 @@ The existing single source-read followup preserves successful transient history/
 
 ## Checks and limits
 
-The source owner recorded 110 focused credential-free fixture checks at this checkpoint. These checks were not rerun by the backup owner.
+The five synthetic web-enabled HTTP-flow fixtures now declare the required completed status and assert the validated request mode. The coordinator reports 131 credential-free fixtures passing after those mock corrections. These checks were not rerun by the backup owner.
 
 This is a source protocol candidate with fixture proof, not proof that the request mode guarantees provider behavior or that the real feature is fixed. Actual provider routes, Commons photographs and physical-phone acceptance remain unproven. Native app and both native test source trees are unchanged.
 
