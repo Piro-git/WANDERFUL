@@ -58,3 +58,11 @@ This candidate supersedes the earlier recovery behavior above. The first researc
 The coordinator reports 131 credential-free fixtures passing after five legacy mock responses supplied the required completed status. These tests were not rerun by the backup owner. This establishes fixture behavior for a protocol candidate, not live completion or a successful real route/photo/phone feature.
 
 Publication performs no deployment, allowance activation, database/provider call or phone operation. Private failure/runtime/operator/approval records remain excluded. Later accounting work and uncommitted source are outside this exact backup; use the latest provenance entry for continuation.
+
+## Latest fixed operator verification preparation
+
+Latest original source: `3073ec6e863ff4f4c00677d2429b3acd85a88bf9`. Backend tree `55f620bb07eb29db6f29db24a3d535236dab4858` and all source/test/SQL/runtime/configuration bytes and modes are exact. App and both native test trees remain unchanged. Public operational Markdown omits private execution, approval and runtime metadata.
+
+The inactive operator uses the current strict research factory and final-envelope validator. One future freshly approved and bound job may reserve at most two Google attempts; the second is only the existing completed, genuine source-read followup. No GraphHopper/native operation is part of it. Claim/reservation/result and cumulative-accounting guards stay typed and monotone; ordinary build configuration and public mounts are unchanged.
+
+The coordinator independently reviewed SQL/worker/protocol source and reported 135 credential-free fixtures plus eleven disposable PostgreSQL checks passing, zero failures/skips. The backup owner did not repeat them. This is preparation, not a real API result or proof of the actual route/photo/phone goal. Publication does not activate any allowance, deploy or execute SQL/providers/phone work. Only the named committed source is included; future source remains outside this backup.

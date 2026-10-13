@@ -157,10 +157,10 @@
     "Private recovery material"
   ],
   "validation": "Publication verifies source identity; it does not establish live route/photo success, physical-phone acceptance or release approval.",
-  "latestOriginalCandidate": "aaeb137a366cc78423a1138798fe3b7daa3426e3",
-  "latestSourceCandidateCommit": "5f13b2829b5b0e6f81007f98ebdfa48eb4559f04",
+  "latestOriginalCandidate": "3073ec6e863ff4f4c00677d2429b3acd85a88bf9",
+  "latestSourceCandidateCommit": "754c88cbe407c762c1316a20a63d13872f4c2a0b",
   "latestSourceTrees": {
-    "backend": "ecc25bea160a13e486ca3b9c571c3fdecac38f69",
+    "backend": "55f620bb07eb29db6f29db24a3d535236dab4858",
     "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
     "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
     "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
@@ -740,6 +740,139 @@
       "publication": "Exact pinned source/test bytes, modes and deletion replayed onto existing public history. Operational handoff versions sanitized; private failures, trial/runtime/operator/approval records omitted. No uncommitted or later accounting work imported.",
       "validation": "Coordinator reports 131 credential-free fixtures passing after five older synthetic HTTP-flow responses declared the required completed status. Tests not rerun by backup owner. Protocol candidate only; no demonstrated new live provider/route/photo/phone success.",
       "scope": "Validated research-only request policy; removed client-function error-feedback recovery; strict explicit completed status and bounded closed pending counts. No deployment, database, provider or phone operation performed by publication."
+    }
+  ],
+  "operatorVerificationPreparations": [
+    {
+      "original": "3073ec6e863ff4f4c00677d2429b3acd85a88bf9",
+      "originalParent": "aaeb137a366cc78423a1138798fe3b7daa3426e3",
+      "originalTree": "3822ac0c35bb0850cb5669e3c53fd720f94550b5",
+      "publishedSourceCommit": "754c88cbe407c762c1316a20a63d13872f4c2a0b",
+      "publishedSourceParent": "6055e0c927e8f93f340a09d3acfacfabed75c54c",
+      "publishedSourceTree": "dc93861152f7af57e844e4cbd50bb9902751d082",
+      "sourceTrees": {
+        "backend": "55f620bb07eb29db6f29db24a3d535236dab4858",
+        "TrailMind": "6a360a0a0b1ba6676f9a11b2615d23a895f88e26",
+        "TrailMindTests": "77c8cd76f6119e6c262841d403de086f9bc46162",
+        "TrailMindUITests": "c323378b99a6add328e174fb88716eeb49a839e5"
+      },
+      "fileMapping": [
+        {
+          "path": "backend/scripts/runReviewedProtocolVerification.js",
+          "mode": "100644",
+          "originalBlob": "307b2e80468b9ad881b9bc280e87cf3cd5eeebe4",
+          "publishedBlob": "307b2e80468b9ad881b9bc280e87cf3cd5eeebe4",
+          "originalSHA256": "509eb153678c5121db860a1e1dfb4719faaaa6c46131c6a087a11bcd279ebdd3",
+          "publishedSHA256": "509eb153678c5121db860a1e1dfb4719faaaa6c46131c6a087a11bcd279ebdd3"
+        },
+        {
+          "path": "backend/src/dynamicResearch/researchProtocol.js",
+          "mode": "100644",
+          "originalBlob": "66f941ed52f384b2a094a910f64c294ec974a8df",
+          "publishedBlob": "66f941ed52f384b2a094a910f64c294ec974a8df",
+          "originalSHA256": "e556e411823724f405d10fcc207050832007dd8527ddf6e875efa65c24ba384b",
+          "publishedSHA256": "e556e411823724f405d10fcc207050832007dd8527ddf6e875efa65c24ba384b"
+        },
+        {
+          "path": "backend/src/dynamicResearch/webResearch.js",
+          "mode": "100644",
+          "originalBlob": "b1bdb3ef424961f7b8ae02ad076835990b2b46f9",
+          "publishedBlob": "b1bdb3ef424961f7b8ae02ad076835990b2b46f9",
+          "originalSHA256": "6df3cb1747056e9792ef8f709467602b0688a66fdc91bf030729c7d68f6006f3",
+          "publishedSHA256": "6df3cb1747056e9792ef8f709467602b0688a66fdc91bf030729c7d68f6006f3"
+        },
+        {
+          "path": "backend/src/ownerAccess/planningFollowupEntitlement.js",
+          "mode": "100644",
+          "originalBlob": "fdd377c833c923f243e1af803980519a295d0431",
+          "publishedBlob": "fdd377c833c923f243e1af803980519a295d0431",
+          "originalSHA256": "98ea16f7db2f2365582d8addb71c1a19684251863e4b6313ee4dc8d999e6f89a",
+          "publishedSHA256": "98ea16f7db2f2365582d8addb71c1a19684251863e4b6313ee4dc8d999e6f89a"
+        },
+        {
+          "path": "backend/src/ownerAccess/protocolVerificationBudget.js",
+          "mode": "100644",
+          "originalBlob": "f4b16508e3ed757c0df4c1821f3daf5ade258b67",
+          "publishedBlob": "f4b16508e3ed757c0df4c1821f3daf5ade258b67",
+          "originalSHA256": "8e477ba1fcba0e4c678ab16ae1af50f90aee4da2dbfa4ee1037f5f89d23c2791",
+          "publishedSHA256": "8e477ba1fcba0e4c678ab16ae1af50f90aee4da2dbfa4ee1037f5f89d23c2791"
+        },
+        {
+          "path": "backend/src/ownerAccess/protocolVerificationRequest.js",
+          "mode": "100644",
+          "originalBlob": "69c61171052255c36743f5990093eec083eccfaa",
+          "publishedBlob": "69c61171052255c36743f5990093eec083eccfaa",
+          "originalSHA256": "c0a30d23b3f0d2d38cbe4267dc90b98e1aa3a895b443a8348daa6a0fba54f7c8",
+          "publishedSHA256": "c0a30d23b3f0d2d38cbe4267dc90b98e1aa3a895b443a8348daa6a0fba54f7c8"
+        },
+        {
+          "path": "backend/src/ownerAccess/runProtocolVerificationPostgresTests.js",
+          "mode": "100644",
+          "originalBlob": "85f23f0339914d8d60bffc8e49886cf276be7aae",
+          "publishedBlob": "85f23f0339914d8d60bffc8e49886cf276be7aae",
+          "originalSHA256": "93b89d40764fcd1d72465bd0387119e00f4501ff40b4f7c6f3cb546af49e56f2",
+          "publishedSHA256": "93b89d40764fcd1d72465bd0387119e00f4501ff40b4f7c6f3cb546af49e56f2"
+        },
+        {
+          "path": "backend/test/protocolVerification.test.js",
+          "mode": "100644",
+          "originalBlob": "393de09e426555dc4fa84fda7bc3cf5323523671",
+          "publishedBlob": "393de09e426555dc4fa84fda7bc3cf5323523671",
+          "originalSHA256": "1bb6269792fc88097693d68f31b6f245db1f0cc782a6982407733a0f09c8bdd6",
+          "publishedSHA256": "1bb6269792fc88097693d68f31b6f245db1f0cc782a6982407733a0f09c8bdd6"
+        },
+        {
+          "path": "backend/test/protocolVerificationPostgres.test.js",
+          "mode": "100644",
+          "originalBlob": "be6109d52b26eec0833ed72181d6860cb03fc815",
+          "publishedBlob": "be6109d52b26eec0833ed72181d6860cb03fc815",
+          "originalSHA256": "6598991cb3ba0905e4cb663a4543a5b0159038df32e8e89366e89332e49e0705",
+          "publishedSHA256": "6598991cb3ba0905e4cb663a4543a5b0159038df32e8e89366e89332e49e0705"
+        },
+        {
+          "path": "docs/handoff/backend-functional-research-fix-20261013.md",
+          "mode": "100644",
+          "originalBlob": "3db26c07922b48de262a5b0d835dde8a74746701",
+          "publishedBlob": "f1681c44af58d2bef3295523ba479ddbcab5efcb",
+          "originalSHA256": "0fd0a9a3eb933a9dafc5c1bf0450c2966090ab7fc2f0c94041bfec03a476858a",
+          "publishedSHA256": "c2b488b1230c6a4aabf9142d12e8a0deb8df0a29cca64d40d5b5404f238c2ed7"
+        },
+        {
+          "path": "docs/operations/research-protocol-verification-20261013/README.md",
+          "mode": "100644",
+          "originalBlob": "8b5ff87627f4e451f9e4a9f1f2b15d3fbc6b52f2",
+          "publishedBlob": "43128610c16eebfaa49712645508383f335a2645",
+          "originalSHA256": "7b480d97058a55a21344275ac6ceee20ffe20e6f7599360b2595adf6264064d4",
+          "publishedSHA256": "a7f338f4d5fb837cfc70a1b6c0952d61a0b0db3ee509bb5f13157ba7c8c39b0f"
+        },
+        {
+          "path": "docs/operations/research-protocol-verification-20261013/prepareProtocolVerification.mjs",
+          "mode": "100644",
+          "originalBlob": "1872f6bb87921a10133c40877e71be9b545f32da",
+          "publishedBlob": "1872f6bb87921a10133c40877e71be9b545f32da",
+          "originalSHA256": "57608e0e9b7020c803b1a13771a73c9793242d0aed81ae0f9e3831ab450e83b6",
+          "publishedSHA256": "57608e0e9b7020c803b1a13771a73c9793242d0aed81ae0f9e3831ab450e83b6"
+        },
+        {
+          "path": "docs/operations/research-protocol-verification-20261013/protocolVerificationSetup.sql",
+          "mode": "100644",
+          "originalBlob": "7f103ca2a32d0d4e4350cfe3fbe4e2e7a5a077cf",
+          "publishedBlob": "7f103ca2a32d0d4e4350cfe3fbe4e2e7a5a077cf",
+          "originalSHA256": "48df18890eca57f9f53b66e68d0d1469b33aa486501fe2e423e33589f43090b3",
+          "publishedSHA256": "48df18890eca57f9f53b66e68d0d1469b33aa486501fe2e423e33589f43090b3"
+        },
+        {
+          "path": "docs/operations/research-protocol-verification-20261013/vercel.protocol-verification.proposal.json",
+          "mode": "100644",
+          "originalBlob": "2a901e41c7cf5e615310ac0b370407e10cb1bc05",
+          "publishedBlob": "2a901e41c7cf5e615310ac0b370407e10cb1bc05",
+          "originalSHA256": "c4ccf8c13204b92c176f63c79eedaf471341490ab8d653d2940629a9a902cac8",
+          "publishedSHA256": "c4ccf8c13204b92c176f63c79eedaf471341490ab8d653d2940629a9a902cac8"
+        }
+      ],
+      "publication": "Exact tracked source/test/SQL/operator/configuration bytes and modes preserved on existing sanitized history. Two operational Markdown versions sanitized. No private metadata/approval/failure/raw request/evidence/signing/secret artifacts imported; no later or uncommitted source.",
+      "validation": "Coordinator reports independent manual SQL/worker/protocol review, 135 credential-free fixtures and eleven disposable PostgreSQL checks passed, zero failures/skips. Backup owner did not rerun them. Real API execution and actual route/photo/phone acceptance remain unproven.",
+      "scope": "Inactive fixed operator preparation; no default build hook or public API mount added. One future freshly bound/approved job, at most two Google attempts, zero GraphHopper/native calls. Publication performs no activation/deployment/database/provider/phone operation."
     }
   ]
 }
